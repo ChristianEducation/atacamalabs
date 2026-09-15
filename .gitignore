@@ -33,6 +33,10 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# credenciales pegadas como texto plano por error (defensivo)
+ACCESO*.md
+*ACCESO-AGENTE*
+
 # vercel
 .vercel
 
