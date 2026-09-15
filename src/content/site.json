@@ -1,0 +1,414 @@
+{
+  "version": "1.0",
+  "locale": "es-CL",
+  "brand": {
+    "name": "Atacama Labs",
+    "descriptor": "Software, sistemas y automatización para empresas.",
+    "origin": "Antofagasta, Chile",
+    "founder": "Christian Wevar",
+    "preferredDomain": "atacamalabs.cl",
+    "preferredHandle": "atacamalabs"
+  },
+  "publicSettings": {
+    "canonicalOrigin": null,
+    "contactEmail": null,
+    "whatsappE164": null,
+    "bookingUrl": null,
+    "linkedinCompanyUrl": null,
+    "linkedinFounderUrl": null,
+    "instagramUrl": null,
+    "githubUrl": null,
+    "privacyController": null,
+    "verifiedAt": null
+  },
+  "navigation": [
+    {
+      "label": "Soluciones",
+      "href": "/soluciones"
+    },
+    {
+      "label": "Casos",
+      "href": "/proyectos"
+    },
+    {
+      "label": "Cómo trabajamos",
+      "href": "/como-trabajamos"
+    },
+    {
+      "label": "Nosotros",
+      "href": "/sobre-el-estudio"
+    }
+  ],
+  "hero": {
+    "eyebrow": "Desde Antofagasta",
+    "title": "Soluciones que mueven tu negocio.",
+    "body": "Ayudamos a empresas a mejorar sus procesos comerciales y operativos con software, integraciones y automatización a medida.",
+    "primaryCta": {
+      "label": "Conversemos sobre tu proceso",
+      "href": "/contacto"
+    },
+    "secondaryCta": {
+      "label": "Ver casos",
+      "href": "/proyectos"
+    }
+  },
+  "solutions": [
+    {
+      "slug": "atencion-y-seguimiento",
+      "title": "Atención y seguimiento",
+      "problem": "Las consultas llegan por distintos canales y el seguimiento depende de recordar cada conversación.",
+      "summary": "Ordenamos la entrada de consultas, las respuestas y los próximos pasos para que cada oportunidad tenga seguimiento.",
+      "scope": [
+        "Captura y clasificación de consultas.",
+        "Asignación de responsables y próximos pasos.",
+        "Integración con CRM, agenda y canales existentes.",
+        "Recordatorios y seguimiento con reglas de detención."
+      ],
+      "flow": [
+        "Consulta",
+        "Registro y contexto",
+        "Respuesta o derivación",
+        "Seguimiento"
+      ],
+      "outcome": "Un proceso comercial consultable, con responsables y próximos pasos visibles.",
+      "boundary": "No prometemos ventas ni sustituimos conversaciones que requieren criterio humano."
+    },
+    {
+      "slug": "automatizacion-de-procesos",
+      "title": "Automatización de procesos",
+      "problem": "El equipo repite tareas, transcribe información y conecta sistemas a mano.",
+      "summary": "Conectamos tareas repetitivas y definimos validaciones para reducir trabajo manual y mantener trazabilidad.",
+      "scope": [
+        "Levantamiento del proceso actual.",
+        "Validaciones y aprobaciones donde sean necesarias.",
+        "Automatización de tareas y documentos.",
+        "Alertas, seguimiento de errores y recuperación."
+      ],
+      "flow": [
+        "Entrada",
+        "Validación",
+        "Acción",
+        "Registro y control"
+      ],
+      "outcome": "Un flujo definido que permite saber qué se ejecutó y qué necesita atención.",
+      "boundary": "Las excepciones y decisiones sensibles conservan supervisión humana."
+    },
+    {
+      "slug": "sistemas-a-medida",
+      "title": "Sistemas a medida",
+      "problem": "La operación depende de planillas o herramientas que no representan cómo trabaja la empresa.",
+      "summary": "Diseñamos e implementamos sistemas para pedidos, registros, operación y administración, ajustados al proceso real.",
+      "scope": [
+        "Flujos y pantallas orientados a sus usuarios.",
+        "Permisos y registro de actividad.",
+        "Vistas administrativas y exportaciones.",
+        "Puesta en marcha, documentación y soporte acordado."
+      ],
+      "flow": [
+        "Proceso actual",
+        "Diseño del flujo",
+        "Implementación por etapas",
+        "Puesta en marcha"
+      ],
+      "outcome": "Una herramienta que centraliza el proceso y facilita su uso cotidiano.",
+      "boundary": "El alcance y las integraciones se acuerdan antes de implementar."
+    },
+    {
+      "slug": "integraciones",
+      "title": "Integraciones",
+      "problem": "La información se repite en varias herramientas y cuesta mantenerla actualizada.",
+      "summary": "Conectamos herramientas existentes para que los datos circulen con reglas claras y controles de errores.",
+      "scope": [
+        "Mapa de sistemas y fuentes de información.",
+        "Integraciones mediante APIs y eventos disponibles.",
+        "Sincronización y prevención de duplicados.",
+        "Monitoreo, reintentos seguros y documentación."
+      ],
+      "flow": [
+        "Sistema de origen",
+        "Validación",
+        "Sincronización",
+        "Confirmación"
+      ],
+      "outcome": "Información conectada y errores visibles, sin depender de copiar y pegar.",
+      "boundary": "La viabilidad depende de accesos y capacidades reales de cada plataforma."
+    }
+  ],
+  "cases": [
+    {
+      "slug": "pedidos-de-almuerzos",
+      "title": "Pedidos de almuerzos y operación de cocina",
+      "sector": "Alimentación escolar",
+      "situation": "Coordinar la selección semanal de almuerzos, el pago y la información que necesita la cocina.",
+      "solution": "Plataforma que conecta la selección del usuario con la administración de pedidos y preparación.",
+      "features": [
+        "Selección de almuerzos por semana.",
+        "Pago online.",
+        "Vistas administrativas y de cocina.",
+        "Totales, exportaciones y reglas horarias."
+      ],
+      "role": "Desarrollo e implementación por Christian Wevar.",
+      "visuals": [
+        "Selección semanal con datos ficticios.",
+        "Vista de cocina y resumen de cantidades."
+      ],
+      "clientName": null,
+      "externalUrl": null,
+      "images": [],
+      "id": "case-01",
+      "internalName": "Casino Escolar",
+      "publicationMode": "anonymous",
+      "identityAuthorized": false,
+      "metrics": [],
+      "evidenceStatus": "SOURCE_DESCRIBED_ASSET_PENDING",
+      "evidenceLabel": "Descripción del flujo implementado",
+      "diagramSteps": [
+        "Selección semanal",
+        "Pago",
+        "Administración",
+        "Preparación en cocina"
+      ]
+    },
+    {
+      "slug": "pedidos-por-turno",
+      "title": "Pedidos organizados por calendario y turno",
+      "sector": "Operación empresarial",
+      "situation": "Organizar pedidos de distintos días y turnos, y reunir la información para administrarlos.",
+      "solution": "Plataforma de selección por calendario con turnos y resumen administrativo.",
+      "features": [
+        "Calendario de 20 días.",
+        "Turnos de día y noche.",
+        "Vista de administración.",
+        "Exportación de pedidos."
+      ],
+      "role": "Desarrollo e implementación por Christian Wevar.",
+      "visuals": [
+        "Calendario de selección.",
+        "Resumen por día y turno."
+      ],
+      "clientName": null,
+      "externalUrl": null,
+      "images": [],
+      "id": "case-02",
+      "internalName": "Pedidos Empresas",
+      "publicationMode": "anonymous",
+      "identityAuthorized": false,
+      "metrics": [],
+      "evidenceStatus": "SOURCE_DESCRIBED_ASSET_PENDING",
+      "evidenceLabel": "Descripción del flujo implementado",
+      "diagramSteps": [
+        "Calendario de 20 días",
+        "Día o noche",
+        "Consolidación",
+        "Exportación"
+      ]
+    },
+    {
+      "slug": "registro-de-entregas",
+      "title": "Registro de entregas desde una tablet",
+      "sector": "Operación y trazabilidad",
+      "situation": "Reemplazar el registro de recepción en papel por un proceso digital consultable.",
+      "solution": "Interfaz de dos pasos para registrar entregas y firma de recepción desde una tablet.",
+      "features": [
+        "Registro de entrega.",
+        "Firma de recepción en pantalla.",
+        "Flujo de dos pasos.",
+        "Consulta administrativa."
+      ],
+      "role": "Desarrollo e implementación por Christian Wevar.",
+      "visuals": [
+        "Registro con destinatario ficticio.",
+        "Confirmación y consulta de registros de ejemplo."
+      ],
+      "clientName": null,
+      "externalUrl": null,
+      "images": [],
+      "id": "case-03",
+      "internalName": "Firma / registro iPad",
+      "publicationMode": "anonymous",
+      "identityAuthorized": false,
+      "metrics": [],
+      "evidenceStatus": "SOURCE_DESCRIBED_ASSET_PENDING",
+      "evidenceLabel": "Descripción del flujo implementado",
+      "diagramSteps": [
+        "Datos de entrega",
+        "Firma en tablet",
+        "Confirmación",
+        "Consulta"
+      ]
+    },
+    {
+      "slug": "tienda-online",
+      "title": "Tienda online con pedidos y pagos",
+      "sector": "Comercio",
+      "situation": "Ofrecer un catálogo comprensible y conectar la compra del cliente con la gestión de pedidos.",
+      "solution": "Ecommerce con navegación de catálogo, productos, pedidos e integración de pago.",
+      "features": [
+        "Catálogo y fichas de producto.",
+        "Carrito y recorrido de compra.",
+        "Pago online.",
+        "Gestión de pedidos."
+      ],
+      "role": "Desarrollo e implementación de Christian Wevar, en colaboración con un diseñador.",
+      "visuals": [
+        "Catálogo con productos de ejemplo.",
+        "Ficha de producto y resumen de compra."
+      ],
+      "clientName": null,
+      "externalUrl": null,
+      "images": [],
+      "id": "case-04",
+      "internalName": "Librería Crecer",
+      "publicationMode": "anonymous",
+      "identityAuthorized": false,
+      "metrics": [],
+      "evidenceStatus": "SOURCE_DESCRIBED_ASSET_PENDING",
+      "evidenceLabel": "Descripción del flujo implementado",
+      "diagramSteps": [
+        "Catálogo",
+        "Carrito",
+        "Pago",
+        "Gestión de pedidos"
+      ]
+    }
+  ],
+  "routes": [
+    {
+      "path": "/",
+      "kind": "home"
+    },
+    {
+      "path": "/soluciones",
+      "kind": "solutions-index"
+    },
+    {
+      "path": "/soluciones/atencion-y-seguimiento",
+      "kind": "solution",
+      "ref": "atencion-y-seguimiento"
+    },
+    {
+      "path": "/soluciones/automatizacion-de-procesos",
+      "kind": "solution",
+      "ref": "automatizacion-de-procesos"
+    },
+    {
+      "path": "/soluciones/sistemas-a-medida",
+      "kind": "solution",
+      "ref": "sistemas-a-medida"
+    },
+    {
+      "path": "/soluciones/integraciones",
+      "kind": "solution",
+      "ref": "integraciones"
+    },
+    {
+      "path": "/proyectos",
+      "kind": "cases-index"
+    },
+    {
+      "path": "/proyectos/pedidos-de-almuerzos",
+      "kind": "case",
+      "ref": "pedidos-de-almuerzos"
+    },
+    {
+      "path": "/proyectos/pedidos-por-turno",
+      "kind": "case",
+      "ref": "pedidos-por-turno"
+    },
+    {
+      "path": "/proyectos/registro-de-entregas",
+      "kind": "case",
+      "ref": "registro-de-entregas"
+    },
+    {
+      "path": "/proyectos/tienda-online",
+      "kind": "case",
+      "ref": "tienda-online"
+    },
+    {
+      "path": "/como-trabajamos",
+      "kind": "process"
+    },
+    {
+      "path": "/precios",
+      "kind": "pricing"
+    },
+    {
+      "path": "/sobre-el-estudio",
+      "kind": "about"
+    },
+    {
+      "path": "/contacto",
+      "kind": "contact"
+    },
+    {
+      "path": "/agenda",
+      "kind": "booking"
+    },
+    {
+      "path": "/privacidad",
+      "kind": "privacy"
+    }
+  ],
+  "process": [
+    {
+      "title": "Entendemos el proceso",
+      "body": "Revisamos cómo funciona hoy, dónde se pierde tiempo y qué resultado necesitas."
+    },
+    {
+      "title": "Definimos una propuesta",
+      "body": "Acordamos alcance, entregables, inversión y forma de comprobar el resultado. Si conviene validar primero, proponemos un piloto pagado."
+    },
+    {
+      "title": "Implementamos por etapas",
+      "body": "Construimos y conectamos la solución, revisando avances contigo antes de la puesta en marcha."
+    },
+    {
+      "title": "Acompañamos la operación",
+      "body": "Documentamos la entrega y acordamos soporte cuando la solución necesita operación continua."
+    }
+  ],
+  "about": {
+    "title": "Tecnología que parte del proceso real.",
+    "body": "Atacama Labs nace en Antofagasta para ayudar a empresas a resolver problemas comerciales y operativos mediante software, integraciones y automatización. Partimos de cómo trabaja cada empresa, definimos una solución concreta y la implementamos por etapas.",
+    "founderText": "Christian Wevar está a cargo del desarrollo y la implementación. Según el proyecto, incorporamos colaboración especializada con responsabilidades definidas."
+  },
+  "pricing": {
+    "title": "Una propuesta según tu proceso.",
+    "body": "La inversión depende del alcance, las integraciones y la operación que necesita la solución. Definimos los entregables y los costos antes de comenzar.",
+    "options": [
+      "Implementación con alcance acordado.",
+      "Implementación y soporte mensual cuando exista operación continua.",
+      "Piloto pagado cuando sea necesario validar viabilidad o alcance."
+    ],
+    "cta": "Cuéntanos qué necesitas resolver"
+  },
+  "contact": {
+    "title": "Conversemos sobre tu proceso.",
+    "body": "Cuéntanos qué hace tu empresa, cómo trabajan hoy y qué les gustaría mejorar. Revisaremos el contexto para acordar un siguiente paso.",
+    "submitLabel": "Enviar consulta",
+    "success": "Recibimos tu consulta. Revisaremos el contexto y te contactaremos por el canal que indicaste.",
+    "failure": "No pudimos registrar tu consulta. Tus datos siguen en el formulario; inténtalo nuevamente o utiliza el correo de contacto.",
+    "notice": "Usaremos los datos que envíes para responder y gestionar esta consulta. Revisa cómo tratamos esta información en nuestra Política de privacidad.",
+    "meetingTitle": "Una conversación de 30 minutos",
+    "meetingBody": "Revisaremos tu proceso, los principales obstáculos y si tiene sentido preparar una propuesta."
+  },
+  "faq": [
+    {
+      "q": "¿Necesitamos cambiar todas nuestras herramientas?",
+      "a": "Primero revisamos lo que ya utilizan. Reutilizamos e integramos lo que funcione y proponemos cambios cuando sean necesarios."
+    },
+    {
+      "q": "¿Todos los proyectos comienzan con un piloto?",
+      "a": "No. Usamos un piloto pagado cuando conviene validar una incertidumbre antes de comprometer una implementación completa."
+    },
+    {
+      "q": "¿Trabajan solo con inteligencia artificial?",
+      "a": "No. Utilizamos software, automatización, integraciones e IA aplicada cuando ayudan a resolver el problema."
+    },
+    {
+      "q": "¿El soporte está incluido?",
+      "a": "Cada propuesta define la entrega, el soporte y los costos recurrentes que correspondan."
+    }
+  ]
+}
