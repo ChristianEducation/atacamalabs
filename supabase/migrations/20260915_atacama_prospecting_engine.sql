@@ -60,6 +60,20 @@ comment on column public.sync_jobs.prospect_id is
 -- 3. claim_sync_jobs generalizado: reclama jobs de CUALQUIER origen
 --    (lead_submission o prospect) del pack, misma garantia atomica de
 --    antes (FOR UPDATE SKIP LOCKED + recuperacion de 'processing' > 5min).
+--
+--    IMPORTANTE: la version anterior tiene firma (text, int) -- 2 parametros.
+--    Esta version agrega un 3er parametro (p_source_type). En Postgres,
+--    CREATE OR REPLACE FUNCTION con distinta aridad NO reemplaza la funcion
+--    existente: crea una sobrecarga nueva y deja DOS funciones coexistiendo.
+--    El workflow n8n "Atacama Labs - 01 Lead Sync" llama a esta RPC via
+--    PostgREST con notacion de parametros nombrados (2 argumentos) -- con
+--    las dos sobrecargas presentes esa llamada queda ambigua y falla en
+--    produccion. Por eso se elimina explicitamente la version de 2
+--    parametros antes de crear la de 3 (que es retro-compatible: al llamar
+--    solo con los 2 argumentos originales, p_source_type usa su default
+--    null y el comportamiento es identico al de antes).
+drop function if exists public.claim_sync_jobs(text, int);
+
 create or replace function public.claim_sync_jobs(p_icp_pack_slug text, p_limit int default 5, p_source_type text default null)
 returns table (
   job_id uuid,
