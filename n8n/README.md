@@ -2,6 +2,24 @@
 
 Workflows propios de Atacama Labs en la instancia n8n compartida (`n8n.srv1650725.hstgr.cloud`). **No se tocó ningún workflow ni pipeline de EnBandeja** — todo lo de acá es nuevo, con nombre/credenciales propios.
 
+## Protocolo de pruebas seguras (vigente desde 2026-09-15, tras el incidente de 02 Research)
+
+Tras el incidente de abajo, Christian decidió: entorno de prueba aislado dentro del mismo motor, no probar más contra `atacama-labs` directamente. Reglas vigentes para **todo** workflow nuevo de 003+:
+
+1. **ICP de prueba separado**: `atacama-labs-test` (id `f412a742-7c7f-4cc0-9e2a-20c39d6fcd46`, en Supabase `icp_packs`), config espejo de `atacama-labs` pero exclusivamente para datos ficticios. Nunca se usa para datos reales.
+2. **Sin defaults de ICP pack**: `Init ICP Config` en todos los workflows ya no tiene `|| 'casino-escolar'` ni `|| 'atacama-labs'` — si no llega `icp_pack_id`/`icp_pack_slug` explícito, lanza error y termina antes de leer `icp_packs`.
+3. **Doble validación obligatoria**: nodo `Assert Expected Pack` justo después de `Parse ICP Pack` (compara contra una constante literal `EXPECTED_ICP_PACK_ID`/`SLUG` incrustada en el código de esa copia del workflow — no una variable que pueda derivar) + un guard `Assert Expected Pack (before write...)` inmediatamente antes de cada nodo de escritura (`Upsert Account`, `Claim School`, `Insert Research`, `Insert Contacts`, `Update Account Final Status`).
+4. **Todo acceso a `accounts` incluye `icp_pack_id` explícito** en la URL/filtro (nunca solo `id=eq.X`) — incluido el `PATCH` de `Claim School`, que ahora es `...&icp_pack_id=eq.<esperado>`, por lo que una cuenta de otro pack simplemente no se reclama (0 filas), sin necesidad de tocar `research`/`contacts`. Los escrituras finales (`Upsert Account`) usan el `icp_pack_id` como **literal hardcodeado en el body**, no una variable — no puede derivar aunque algo upstream fallara.
+5. Discovery/Research de Atacama siguen sin tocar `schools` ni ninguna entidad de casino-escolar (ya era así, reafirmado).
+6. **Copias desechables e inmutables**: cada prueba usa un workflow nuevo (`POST /workflows`, id nuevo). Antes de activar, `GET` de vuelta y diff contra el JSON enviado (nodos + conexiones) para confirmar que coincide exactamente.
+7. **Nunca se edita/reactiva una copia ya ejecutada** — si hace falta un cambio, se desactiva, se `DELETE`, y se crea una copia nueva con id nuevo. Evita el riesgo (ya confirmado una vez) de que la instancia ejecute una versión cacheada tras un `PUT` rápido.
+8. **Una sola ejecución controlada**: se activa, se hace polling ajustado (cada ~8-15s) hasta ver la primera ejecución, y se desactiva de inmediato — nunca se deja un cron repitiendo sin supervisión. Al terminar: se desactiva y se **elimina** la copia (no solo se desactiva) y todos los datos ficticios creados.
+9. **Conteos de EnBandeja verificados antes y después** de cada prueba (`schools`, `contacts`, `research`, `accounts` por pack) — deben quedar idénticos.
+
+**Validado con este protocolo, 2026-09-15**: "01 Discovery" y "02 Research" (v2, con las validaciones de arriba) probados cada uno con una copia desechable contra `atacama-labs-test`, una sola ejecución cada uno, sin tocar EnBandeja (conteos idénticos antes/después), copias eliminadas después. Detalle en `execution/EVIDENCE.md`.
+
+**Promoción a `atacama-labs` real**: pendiente hasta que 02b/03/04/05/06 también pasen bajo `atacama-labs-test`. Cuando se promueva, se genera una copia con las constantes cambiadas a `atacama-labs` (mismo protocolo de copia desechable) y se corre una única prueba final supervisada, antes de dejar cualquier workflow activo en producción.
+
 ## Atacama Labs - 01 Lead Sync
 
 - id n8n: `oKQujZqHy09dMJao` (activo).
@@ -23,8 +41,7 @@ Workflows propios de Atacama Labs en la instancia n8n compartida (`n8n.srv165072
 
 ## Atacama Labs — 01 Discovery
 
-- id n8n: `HvLcNkmL8Fo1hePi` (inactivo — se dispara manualmente o por el futuro "00 Orchestrator", no por schedule).
-- Fuente/backup: [`atacama-labs-01-discovery.json`](atacama-labs-01-discovery.json).
+- **v2 (protocolo seguro)**: sin id n8n fijo — cada prueba/uso crea una copia desechable desde el JSON versionado (ver protocolo arriba). Fuente/backup: [`atacama-labs-01-discovery.json`](atacama-labs-01-discovery.json), actualmente en modo `test` (constantes fijadas a `atacama-labs-test`); la versión `real` (fijada a `atacama-labs`) se genera solo al promover.
 - Clonado de "01 - Discovery Engine v3 GEO" de EnBandeja (`TWyJBIBUW4az9XJy`, **solo lectura, nunca modificado**). Reutilizados sin cambios: `Init ICP Config`/`Fetch ICP Pack`/`Parse ICP Pack` (slug default → `atacama-labs`), `Build Job Payload` (prefijo de nombre de job → "Atacama Labs"), `Create Maps Job`/`Prepare Job Context`/`Check Job`/`Finished?`/loop de poll/`Download CSV`/`Extract CSV`/`Normalize Results`/`Filter and Deduplicate` (ya eran pack-driven vía `icp_packs.discovery.result_filter`).
 - **Diferencias deliberadas frente al original**:
   - No lee ni escribe `public.territories` (esa tabla es geografía compartida sin `icp_pack_id`, leída sin filtro por el `01` real de EnBandeja — agregar filas ahí sería visible para ese workflow sin poder modificarlo). En su lugar, un nodo nuevo `Build Areas` genera items en memoria desde `icp_packs.atacama-labs.discovery.areas` (`["Antofagasta","Calama","Mejillones","Tocopilla"]`).
@@ -32,14 +49,15 @@ Workflows propios de Atacama Labs en la instancia n8n compartida (`n8n.srv165072
   - `Aggregate Discovery Results`/`Prepare Failure Summary`/`Discovery Summary` no escriben de vuelta a `territories` (no hay fila de territorio que actualizar).
 - Credenciales propias: `Atacama Labs - Supabase` en todos los nodos que llaman a Supabase. `Create Maps Job`/`Check Job`/`Download CSV` llaman al microservicio interno compartido `enbandeja-gmaps:8080` (sin auth, mismo patrón que EnBandeja, reutilizado directamente per instrucción de Christian).
 
-### Probado 2026-09-15 (parcial)
+### Probado 2026-09-15
 
-Disparado 3 veces vía trigger de schedule temporal (agregado y retirado después — la API de n8n no tiene "run now"). Mecánica confirmada correcta end-to-end: resolución de ICP pack real, generación de áreas, construcción de keywords, creación de jobs reales en `enbandeja-gmaps` (IDs devueltos), loop de poll (21 intentos por job) sin errores, cierre limpio por "Prepare Failure Summary → Discovery Summary" sin datos falsos cuando se agota el intento. **No se completó el camino feliz todavía**: los jobs de Maps quedaron en `status:"pending"` las 3 veces (10 min cada una) — posible degradación del contenedor compartido `enbandeja-gmaps` en el momento de la prueba, no un bug de este workflow. `accounts` de Atacama quedó en 0 filas (correcto, sin inventar resultados). Pendiente: reintentar cuando el servicio esté saludable, confirmar el camino feliz completo (`Upsert Account` real) antes de conectar al orquestador.
+**v1** (3 ejecuciones, sin el protocolo de copias desechables, contra `atacama-labs` directo): mecánica correcta end-to-end (ICP pack real, áreas, keywords, jobs reales creados en `enbandeja-gmaps`, poll loop sin errores, cierre limpio sin datos falsos), pero los jobs de Maps quedaron en `status:"pending"` las 3 veces (posible degradación del contenedor compartido, no un bug propio). `accounts` quedó en 0 filas.
+
+**v2** (protocolo seguro, copia desechable contra `atacama-labs-test`, 1 sola ejecución, 3 intentos de activación hasta que el cron registró — ver hallazgo de triggers `interval`/`cronExpression` en `execution/EVIDENCE.md`): mismo resultado — mecánica correcta, `Assert Expected Pack` confirmó `atacama-labs-test`, pero el job de Maps volvió a quedar en `pending`, nunca llegó a `Upsert Account`. **Camino feliz de Discovery (escritura real en `accounts`) sigue sin confirmar** — depende de que el scraper compartido esté saludable. No bloquea seguir con 02b/03/04/05/06.
 
 ## Atacama Labs — 02 Research
 
-- id n8n: `oVNNvuRye4pp0Kz0` (inactivo).
-- Fuente/backup: [`atacama-labs-02-research.json`](atacama-labs-02-research.json).
+- **v2 (protocolo seguro)**: sin id n8n fijo — copias desechables desde el JSON versionado. Fuente/backup: [`atacama-labs-02-research.json`](atacama-labs-02-research.json), modo `test` (fijado a `atacama-labs-test`).
 - Clonado de "02 - Research Engine FINAL" de EnBandeja (`XudNFS0CNx3SeGtb`, **solo lectura, nunca modificado**). El mecanismo (`Init ICP Config→Fetch ICP Pack→Parse ICP Pack→Init Configuration→OpenClaw Preflight→Fetch Pending Accounts (por `icp_pack_id`)→Loop→Claim→Crawl4AI→Prospector (OpenClaw)→Insert Research/Contacts→Update Account Final Status`) ya era genéricamente horizontal en el original (opera sobre `accounts`, no sobre `schools`, filtrado por `icp_pack_id` real). Se retiró completo el subgrafo de resolución de "operador" (11 nodos: `Has Confirmed Operator?`… `Operator Lookup Failed`) — no aplica a Atacama, sin concepto de operador/concesionaria. Se reescribieron `Build Prospector Prompt`/`Parse Research Result` para pedir evidencia de los 7 factores de `contracts/PROSPECTING.md` (pain/budget_proxy/volume/automation/access/urgency/fit) en vez de vocabulario casino-escolar.
 - **Credencial pendiente (no bloqueante para el resto)**: los nodos `OpenClaw Preflight - Models`/`Prospector Research`/`Crawl4AI Crawl Website` reutilizan temporalmente las credenciales compartidas de EnBandeja (`Header Auth account`, `Header Auth account 2`) — no tengo el token para crear credenciales propias de Atacama todavía (instrucción de Christian: "credenciales propias, aunque apunten a servicios compartidos"). Ver `docs/USER-ACTIONS.md` (nuevo ítem) para la acción exacta.
 
@@ -51,7 +69,7 @@ Corregido el código y verificado por inspección directa (`GET` del workflow). 
 
 **Remediado por completo, verificado con conteos exactos antes/después**: los 11 registros de `research` insertados por error fueron identificados uno por uno y eliminados; `research_status` de ambas cuentas restaurado a `pending` (su valor previo, confirmado porque `Fetch Pending Accounts` solo las tomó por tener ese estado); ninguna otra columna fue tocada (no `schools`, no `contacts`, no `current_operator_id` ni ningún campo de calificación). Conteos finales verificados: `schools` 2654, `contacts` 189, `research` 928, `accounts` 2686 — **idénticos a la línea base**, sin regresión.
 
-**Pausado hasta que Christian decida cómo seguir probando workflows de n8n con seguridad** (ver mensaje de cierre de esta sesión) — no se ejecutó una tercera prueba en vivo.
+**Resuelto 2026-09-15**: Christian decidió el protocolo de pruebas seguras (arriba). "02 Research" reescrito con las validaciones dobles + `atacama-labs-test`, probado con una copia desechable (1 sola ejecución, ~48s hasta que el cron disparó): `Assert Expected Pack` confirmó `atacama-labs-test`, procesó únicamente la cuenta ficticia esperada, insertó 1 fila de evidencia real (factor `fit`), sin tocar ninguna cuenta de EnBandeja. Datos ficticios y la copia del workflow eliminados después; conteos de EnBandeja verificados idénticos antes/después.
 
 ## Pendiente / no incluido en esta versión
 

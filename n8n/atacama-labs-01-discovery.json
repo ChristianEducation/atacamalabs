@@ -1,11 +1,5 @@
 {
- "updatedAt": "2026-09-15T23:00:43.010Z",
- "createdAt": "2026-09-15T22:46:10.567Z",
- "id": "HvLcNkmL8Fo1hePi",
- "name": "Atacama Labs — 01 Discovery",
- "description": null,
- "active": false,
- "isArchived": false,
+ "name": "Atacama Labs — 01 Discovery (TEST)",
  "nodes": [
   {
    "parameters": {},
@@ -46,19 +40,6 @@
    ],
    "id": "f32a3ec9-7500-4708-87bb-54cc5b0c5e5f",
    "name": "When Executed by Another Workflow"
-  },
-  {
-   "id": "a09e1f06-7f45-4dbe-981f-f13af811fe2b",
-   "name": "Init ICP Config",
-   "type": "n8n-nodes-base.code",
-   "typeVersion": 2,
-   "position": [
-    4468,
-    624
-   ],
-   "parameters": {
-    "jsCode": "// FASE 2 horizontal — resuelve que ICP Pack usar. Por defecto casino-escolar (compatibilidad).\n// FASE 5 — agrega territory_ids/territory_count opcionales (config de la corrida).\nconst incoming = $input.first()?.json ?? {};\nconst icpPackId = incoming.icp_pack_id || null;\nconst icpPackSlug = incoming.icp_pack_slug || 'atacama-labs';\nconst filter = icpPackId ? `id=eq.${icpPackId}` : `slug=eq.${icpPackSlug}`;\n\nlet territoryIds = incoming.territory_ids;\nif (typeof territoryIds === 'string') {\n  try { territoryIds = JSON.parse(territoryIds); } catch { territoryIds = null; }\n}\nif (!Array.isArray(territoryIds) || !territoryIds.length) territoryIds = null;\n\nlet territoryCount = Number(incoming.territory_count);\nif (!Number.isFinite(territoryCount) || territoryCount <= 0) territoryCount = 5;\nterritoryCount = Math.min(20, Math.max(1, Math.trunc(territoryCount)));\n\nreturn [{\n  json: {\n    territory_ids: territoryIds,\n    territory_count: territoryCount,\n    icp_pack_url: `https://uwquwjmiofixzugttals.supabase.co/rest/v1/icp_packs?${filter}&select=id,slug,status,discovery&limit=1`,\n  },\n}];\n"
-   }
   },
   {
    "id": "f1a06749-8c64-4254-81e0-97bb48ebf328",
@@ -103,20 +84,6 @@
    "parameters": {
     "jsCode": "const res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nconst row = Array.isArray(body) ? body[0] : body;\nif (status < 200 || status >= 300 || !row || !row.id) {\n  throw new Error(`ICP Pack no encontrado o inaccesible (HTTP ${status || 'unknown'}). Revisa que exista un pack activo con ese id/slug en icp_packs.`);\n}\nif (row.status !== 'active') {\n  throw new Error(`ICP Pack '${row.slug}' esta en estado '${row.status}', no 'active'. No se puede ejecutar un ICP que no esta activo (evita correr configuraciones en preparacion por accidente).`);\n}\nconst templates = row.discovery && row.discovery.open_sources && row.discovery.open_sources[0] && row.discovery.open_sources[0].query_templates;\nif (!Array.isArray(templates) || !templates.length) {\n  throw new Error(`El ICP Pack '${row.slug}' no tiene query_templates configurados en discovery.open_sources[0].`);\n}\nconst init = $('Init ICP Config').first().json;\nreturn [{\n  json: {\n    icp_pack_id: row.id,\n    icp_pack_slug: row.slug,\n    query_templates: templates,\n    discovery: row.discovery || {},\n    territory_ids: init.territory_ids,\n    territory_count: init.territory_count,\n  },\n}];\n"
    }
-  },
-  {
-   "parameters": {
-    "mode": "runOnceForEachItem",
-    "jsCode": "const t = $json;\nconst icp = $('Parse ICP Pack').first().json;\nlet area;\nif (t.city && t.city !== 'Santiago') area = t.city;\nelse if (t.commune) area = t.commune;\nelse area = t.city || t.region;\n\nconst keywords = icp.query_templates.map(tpl => String(tpl).replace(/\\{area\\}/g, area));\n\nreturn {\n  json:{\n    territory_id:t.id,\n    region:t.region,\n    commune:t.commune,\n    city:t.city,\n    priority:Number(t.priority || 3),\n    cycle_number:Number(t.cycle_number || 0),\n    area,\n    icp_pack_id: icp.icp_pack_id,\n    keywords,\n    job_name:`Atacama Labs - ${area} - ${new Date().toISOString().slice(0,10)}`\n  }\n};"
-   },
-   "type": "n8n-nodes-base.code",
-   "typeVersion": 2,
-   "position": [
-    5648,
-    624
-   ],
-   "id": "2ee35070-68af-4192-b06e-b34c32cbd975",
-   "name": "Build Job Payload"
   },
   {
    "parameters": {
@@ -358,7 +325,33 @@
    ]
   },
   {
-   "id": "a3f120b0-66fa-49b1-84ff-3addf1c80e01",
+   "id": "a09e1f06-7f45-4dbe-981f-f13af811fe2b",
+   "name": "Init ICP Config",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    4468,
+    624
+   ],
+   "parameters": {
+    "jsCode": "// SEGURIDAD (2026-09-15): sin default de ICP pack. Nunca adivinar el ICP.\nconst incoming = $input.first()?.json ?? {};\nconst icpPackId = incoming.icp_pack_id || null;\nconst icpPackSlug = incoming.icp_pack_slug || null;\nif (!icpPackId && !icpPackSlug) {\n  throw new Error('SEGURIDAD: icp_pack_id o icp_pack_slug es obligatorio (sin valor por defecto). Abortando antes de leer icp_packs.');\n}\nconst filter = icpPackId ? `id=eq.${icpPackId}` : `slug=eq.${icpPackSlug}`;\nreturn [{json:{\n  icp_pack_url: `https://uwquwjmiofixzugttals.supabase.co/rest/v1/icp_packs?${filter}&select=id,slug,status,discovery&limit=1`\n}}];"
+   }
+  },
+  {
+   "id": "f8eea98e-cdee-450d-a0c7-2479e0b1cdfe",
+   "name": "Assert Expected Pack",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    -880,
+    -180
+   ],
+   "parameters": {
+    "jsCode": "// SEGURIDAD: validacion obligatoria #1 (inicio). Copia de workflow fijada a UN SOLO ICP pack.\nconst EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nconst EXPECTED_ICP_PACK_SLUG = 'atacama-labs-test';\nconst row = $json;\nif (!row || !row.icp_pack_id || !row.icp_pack_slug) {\n  throw new Error('SEGURIDAD: Parse ICP Pack no devolvio icp_pack_id/icp_pack_slug. Abortando.');\n}\nif (row.icp_pack_id !== EXPECTED_ICP_PACK_ID || row.icp_pack_slug !== EXPECTED_ICP_PACK_SLUG) {\n  throw new Error(`SEGURIDAD: ICP pack resuelto (${row.icp_pack_slug} / ${row.icp_pack_id}) NO coincide con el esperado (${EXPECTED_ICP_PACK_SLUG} / ${EXPECTED_ICP_PACK_ID}). Esta copia del workflow esta fijada a ese ICP unicamente. Abortando antes de leer o escribir nada.`);\n}\nreturn [{ json: { ...row, EXPECTED_ICP_PACK_ID, EXPECTED_ICP_PACK_SLUG } }];"
+   }
+  },
+  {
+   "id": "2c993767-b027-49c4-8809-33290dab5120",
    "name": "Build Areas",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -367,11 +360,39 @@
     -180
    ],
    "parameters": {
-    "jsCode": "const icp = $('Parse ICP Pack').first().json;\nconst areas = (icp.discovery && icp.discovery.areas) || [];\nconst region = (icp.discovery && icp.discovery.region) || 'Antofagasta';\nif (!areas.length) {\n  throw new Error(`ICP Pack '${icp.icp_pack_slug}' no tiene discovery.areas configuradas (Region.Antofagasta esperado).`);\n}\nreturn areas.map((area, i) => ({\n  json: {\n    id: null,\n    region,\n    commune: null,\n    city: area,\n    priority: i + 1,\n    cycle_number: 0,\n  },\n}));"
+    "jsCode": "const icp = $('Assert Expected Pack').first().json;\nconst areas = (icp.discovery && icp.discovery.areas) || [];\nconst region = (icp.discovery && icp.discovery.region) || 'Antofagasta';\nif (!areas.length) {\n  throw new Error(`ICP Pack '${icp.icp_pack_slug}' no tiene discovery.areas configuradas.`);\n}\nreturn areas.map((area, i) => ({\n  json: { id: null, region, commune: null, city: area, priority: i + 1, cycle_number: 0 },\n}));"
    }
   },
   {
-   "id": "a1da0ea3-60db-46bc-8089-d06b7e8812b3",
+   "id": "3b66d547-6e33-49e1-9d0f-6cfc15a1786b",
+   "name": "Build Job Payload",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    -480,
+    -180
+   ],
+   "parameters": {
+    "mode": "runOnceForEachItem",
+    "jsCode": "const t = $json;\nconst icp = $('Assert Expected Pack').first().json;\nlet area;\nif (t.city && t.city !== 'Santiago') area = t.city;\nelse if (t.commune) area = t.commune;\nelse area = t.city || t.region;\n\nconst keywords = icp.discovery.open_sources[0].query_templates.map(tpl => String(tpl).replace(/\\{area\\}/g, area));\n\nreturn {\n  json: {\n    territory_id: t.id,\n    region: t.region,\n    commune: t.commune,\n    city: t.city,\n    priority: Number(t.priority || 3),\n    cycle_number: Number(t.cycle_number || 0),\n    area,\n    icp_pack_id: icp.EXPECTED_ICP_PACK_ID,\n    keywords,\n    job_name: `Atacama Labs (${icp.icp_pack_slug}) - ${area} - ${new Date().toISOString().slice(0,10)}`,\n  },\n};"
+   }
+  },
+  {
+   "id": "eb0c3058-dd43-48cc-be3d-bf4f968017bf",
+   "name": "Assert Expected Pack (before write)",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1620,
+    -60
+   ],
+   "parameters": {
+    "mode": "runOnceForEachItem",
+    "jsCode": "// SEGURIDAD: validacion obligatoria #2 (inmediatamente antes de escribir en accounts).\nconst EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nconst actual = $json.icp_pack_id;\nif (actual !== EXPECTED_ICP_PACK_ID) {\n  throw new Error(`SEGURIDAD: icp_pack_id del item (${actual}) no coincide con el esperado (${EXPECTED_ICP_PACK_ID}) justo antes de escribir en accounts. Abortando esta escritura.`);\n}\nreturn { json: $json };"
+   }
+  },
+  {
+   "id": "0ced0a41-3e85-4447-b153-69687d07bac9",
    "name": "Upsert Account",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,
@@ -405,7 +426,7 @@
     "sendBody": true,
     "contentType": "raw",
     "rawContentType": "application/json",
-    "body": "={{ JSON.stringify({ icp_pack_id:$json.icp_pack_id, account_type:'company', dedupe_key:$json.google_place_id, name:$json.name, normalized_name:$json.normalized_name, region:$json.region, commune:$json.commune, city:$json.city, address:$json.address, website:$json.website, domain:$json.domain, phone:$json.phone, google_maps_url:$json.google_maps_url, google_place_id:$json.google_place_id, source:$json.source, source_url:$json.source_url, discovery_status:$json.discovery_status, research_status:'pending', last_seen_at:$json.last_seen_at }) }}",
+    "body": "={{ JSON.stringify({ icp_pack_id:'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46', account_type:'company', dedupe_key:$json.google_place_id, name:$json.name, normalized_name:$json.normalized_name, region:$json.region, commune:$json.commune, city:$json.city, address:$json.address, website:$json.website, domain:$json.domain, phone:$json.phone, google_maps_url:$json.google_maps_url, google_place_id:$json.google_place_id, source:$json.source, source_url:$json.source_url, discovery_status:$json.discovery_status, research_status:'pending', last_seen_at:$json.last_seen_at }) }}",
     "options": {
      "timeout": 30000
     }
@@ -418,7 +439,7 @@
    }
   },
   {
-   "id": "a71e042c-4b5b-441e-9e41-ef16b7ecbeb7",
+   "id": "f27ae9e9-dd49-41ed-8c68-d69d6f1fddf6",
    "name": "Aggregate Discovery Results",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -431,7 +452,7 @@
    }
   },
   {
-   "id": "fdf0bcd0-bfcd-4b0c-92cf-4f995e90492f",
+   "id": "2c85a486-0f7a-4ab8-abe8-2b3ba34a554b",
    "name": "Prepare Failure Summary",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -445,17 +466,17 @@
    }
   },
   {
-   "parameters": {
-    "jsCode": "const rows = $input.all().map(i => i.json);\nconst failed = rows.filter(r => r.failed);\nconst ok = rows.filter(r => !r.failed);\nconst accountsUpserted = ok.reduce((sum, r) => sum + (r.accounts_upserted || 0), 0);\nreturn [{\n  json: {\n    workflow: 'Atacama Labs - 01 Discovery',\n    finished_at: new Date().toISOString(),\n    accounts_upserted: accountsUpserted,\n    failures: failed.length,\n    status: failed.length && !accountsUpserted ? 'failed' : 'completed',\n  },\n}];"
-   },
+   "id": "322a9fe6-387b-4e16-b8db-3c6047e1c4cf",
+   "name": "Discovery Summary",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
    "position": [
-    9488,
-    624
+    2220,
+    -60
    ],
-   "id": "9d237c8c-6b09-4757-a870-dfec5c096531",
-   "name": "Discovery Summary"
+   "parameters": {
+    "jsCode": "const rows = $input.all().map(i => i.json);\nconst failed = rows.filter(r => r.failed);\nconst ok = rows.filter(r => !r.failed);\nconst accountsUpserted = ok.reduce((sum, r) => sum + (r.accounts_upserted || 0), 0);\nreturn [{ json: { workflow: 'Atacama Labs - 01 Discovery (test)', finished_at: new Date().toISOString(), accounts_upserted: accountsUpserted, failures: failed.length, status: failed.length && !accountsUpserted ? 'failed' : 'completed' } }];"
+   }
   }
  ],
  "connections": {
@@ -504,6 +525,17 @@
    ]
   },
   "Parse ICP Pack": {
+   "main": [
+    [
+     {
+      "node": "Assert Expected Pack",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Assert Expected Pack": {
    "main": [
     [
      {
@@ -635,6 +667,17 @@
    "main": [
     [
      {
+      "node": "Assert Expected Pack (before write)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Assert Expected Pack (before write)": {
+   "main": [
+    [
+     {
       "node": "Upsert Account",
       "type": "main",
       "index": 0
@@ -718,26 +761,7 @@
  },
  "settings": {
   "executionOrder": "v1",
+  "binaryMode": "separate",
   "availableInMCP": false
- },
- "staticData": {
-  "node:TEST Trigger (temporal)": {
-   "recurrenceRules": [
-    null
-   ],
-   "recurrenceRuleSignatures": [
-    null
-   ]
-  }
- },
- "meta": null,
- "nodeGroups": [],
- "pinData": null,
- "versionId": "15412bf9-a825-47da-8cf7-4b116aadd4f8",
- "activeVersionId": null,
- "versionCounter": 4,
- "triggerCount": 1,
- "sourceWorkflowId": null,
- "tags": [],
- "activeVersion": null
+ }
 }
