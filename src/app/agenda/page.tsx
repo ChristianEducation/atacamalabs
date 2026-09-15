@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Container, PrimaryLink, Card } from "@/components/ui";
+import { TrackedBookingLink } from "@/components/TrackedBookingLink";
 import site from "@/lib/content";
 
 export const metadata: Metadata = {
@@ -26,7 +27,7 @@ export default function Agenda() {
 
           {bookingUrl ? (
             <div className="mt-10">
-              <PrimaryLink href={bookingUrl}>Reservar horario</PrimaryLink>
+              <TrackedBookingLink href={bookingUrl} label="Reservar horario" />
             </div>
           ) : (
             <Card className="mt-10">

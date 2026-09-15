@@ -9,6 +9,7 @@ import {
   type LeadFormValues,
   type LeadUiState,
 } from "@/lib/leads-contract";
+import { track } from "@/lib/analytics";
 
 const EMPTY: LeadFormValues = {
   name: "",
@@ -25,9 +26,9 @@ export function ContactForm({ initialSolution }: { initialSolution?: string }) {
     solution: initialSolution ?? "unsure",
   });
   const [state, setState] = useState<LeadUiState>({ status: "idle" });
-  const requestIdRef = useRef<string>(
-    typeof crypto !== "undefined" ? crypto.randomUUID() : String(Date.now()),
-  );
+  // Lazy initializer: forma segura de generar un valor impuro una sola vez
+  // en el montaje (react-hooks/purity), a diferencia de useRef(expr()).
+  const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   const errorSummaryId = useId();
   const errorSummaryRef = useRef<HTMLDivElement>(null);
 
@@ -39,6 +40,12 @@ export function ContactForm({ initialSolution }: { initialSolution?: string }) {
       errorSummaryRef.current?.focus();
     }
   }, [state.status]);
+
+  useEffect(() => {
+    track({ name: "lead_form_view", props: { solution: initialSolution } });
+    // Se dispara una sola vez al montar el formulario real (no en la vista previa).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function update<K extends keyof LeadFormValues>(key: K, value: LeadFormValues[K]) {
     setValues((v) => ({ ...v, [key]: value }));
@@ -55,12 +62,17 @@ export function ContactForm({ initialSolution }: { initialSolution?: string }) {
     }
 
     setState({ status: "submitting" });
-    const result = await submitLead(values, requestIdRef.current);
+    const result = await submitLead(values, requestId);
     setState(result);
 
     if (result.status === "received") {
-      requestIdRef.current =
-        typeof crypto !== "undefined" ? crypto.randomUUID() : String(Date.now());
+      track({ name: "lead_submit_success", props: { requestId } });
+      setRequestId(crypto.randomUUID());
+    } else if (result.status === "retryable_error") {
+      track({
+        name: "lead_submit_error",
+        props: { requestId, reason: "retryable" },
+      });
     }
     // en error, se conserva el mismo requestId para reintentar el mismo intento
   }
@@ -73,6 +85,7 @@ export function ContactForm({ initialSolution }: { initialSolution?: string }) {
         <div className="mt-6">
           <Link
             href="/agenda"
+            onClick={() => track({ name: "booking_click", props: { source: "contact_success" } })}
             className="inline-flex h-11 items-center justify-center rounded-lg bg-action px-6 text-sm font-medium text-white hover:bg-action-hover transition-colors"
           >
             Agendar una conversación
@@ -95,7 +108,11 @@ export function ContactForm({ initialSolution }: { initialSolution?: string }) {
           {site.publicSettings.contactEmail && (
             <p className="mt-2">
               También puedes escribirnos a{" "}
-              <a className="underline" href={`mailto:${site.publicSettings.contactEmail}`}>
+              <a
+                className="underline"
+                href={`mailto:${site.publicSettings.contactEmail}`}
+                onClick={() => track({ name: "contact_channel_click", props: { channel: "email" } })}
+              >
                 {site.publicSettings.contactEmail}
               </a>
               .

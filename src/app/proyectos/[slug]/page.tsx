@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Container, Eyebrow, PrimaryLink, Card } from "@/components/ui";
+import { ViewBeacon } from "@/components/ViewBeacon";
 import site, { getCase, publicCase } from "@/lib/content";
 
 export function generateStaticParams() {
@@ -35,6 +36,7 @@ export default async function CaseDetail({
 
   return (
     <div className="flex flex-col flex-1 bg-background">
+      <ViewBeacon event={{ name: "case_view", props: { caseSlug: c.slug } }} />
       <SiteHeader />
       <main className="flex-1 py-16 md:py-20">
         <Container>
