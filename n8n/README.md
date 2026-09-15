@@ -21,6 +21,21 @@ Workflows propios de Atacama Labs en la instancia n8n compartida (`n8n.srv165072
 2. **Camino de reintento** (ya tiene IDs de GHL de un intento previo): el workflow detectó los IDs ya guardados y fue directo a `complete_sync_job` **sin llamar a GHL** — verificado que los IDs no cambiaron.
 3. **Camino de fallo/backoff**: probado directo en SQL sobre `complete_sync_job` (no disparado por un error real de GHL en esta sesión) — `retry_wait`, `attempts=1`, `next_at` futuro, error sin PII. El workflow usa la misma función, así que hereda ese comportamiento; no se forzó un fallo real de la API de GHL para no arriesgar nada en producción sin necesidad.
 
+## Atacama Labs — 01 Discovery
+
+- id n8n: `HvLcNkmL8Fo1hePi` (inactivo — se dispara manualmente o por el futuro "00 Orchestrator", no por schedule).
+- Fuente/backup: [`atacama-labs-01-discovery.json`](atacama-labs-01-discovery.json).
+- Clonado de "01 - Discovery Engine v3 GEO" de EnBandeja (`TWyJBIBUW4az9XJy`, **solo lectura, nunca modificado**). Reutilizados sin cambios: `Init ICP Config`/`Fetch ICP Pack`/`Parse ICP Pack` (slug default → `atacama-labs`), `Build Job Payload` (prefijo de nombre de job → "Atacama Labs"), `Create Maps Job`/`Prepare Job Context`/`Check Job`/`Finished?`/loop de poll/`Download CSV`/`Extract CSV`/`Normalize Results`/`Filter and Deduplicate` (ya eran pack-driven vía `icp_packs.discovery.result_filter`).
+- **Diferencias deliberadas frente al original**:
+  - No lee ni escribe `public.territories` (esa tabla es geografía compartida sin `icp_pack_id`, leída sin filtro por el `01` real de EnBandeja — agregar filas ahí sería visible para ese workflow sin poder modificarlo). En su lugar, un nodo nuevo `Build Areas` genera items en memoria desde `icp_packs.atacama-labs.discovery.areas` (`["Antofagasta","Calama","Mejillones","Tocopilla"]`).
+  - Escribe únicamente en `accounts` (nunca en `schools`), con `account_type:'company'`. El nodo `Upsert Account` usa `on_conflict=icp_pack_id,dedupe_key` (índice único real `accounts_icp_dedupe_key_idx`, confirmado vía `pg_indexes` — más correcto que usar `google_place_id` solo, que no tiene constraint única propia), con `dedupe_key = google_place_id`.
+  - `Aggregate Discovery Results`/`Prepare Failure Summary`/`Discovery Summary` no escriben de vuelta a `territories` (no hay fila de territorio que actualizar).
+- Credenciales propias: `Atacama Labs - Supabase` en todos los nodos que llaman a Supabase. `Create Maps Job`/`Check Job`/`Download CSV` llaman al microservicio interno compartido `enbandeja-gmaps:8080` (sin auth, mismo patrón que EnBandeja, reutilizado directamente per instrucción de Christian).
+
+### Probado 2026-09-15 (parcial)
+
+Disparado 3 veces vía trigger de schedule temporal (agregado y retirado después — la API de n8n no tiene "run now"). Mecánica confirmada correcta end-to-end: resolución de ICP pack real, generación de áreas, construcción de keywords, creación de jobs reales en `enbandeja-gmaps` (IDs devueltos), loop de poll (21 intentos por job) sin errores, cierre limpio por "Prepare Failure Summary → Discovery Summary" sin datos falsos cuando se agota el intento. **No se completó el camino feliz todavía**: los jobs de Maps quedaron en `status:"pending"` las 3 veces (10 min cada una) — posible degradación del contenedor compartido `enbandeja-gmaps` en el momento de la prueba, no un bug de este workflow. `accounts` de Atacama quedó en 0 filas (correcto, sin inventar resultados). Pendiente: reintentar cuando el servicio esté saludable, confirmar el camino feliz completo (`Upsert Account` real) antes de conectar al orquestador.
+
 ## Pendiente / no incluido en esta versión
 
 - No hay alerta ni notificación cuando un job llega a `failed` tras 4 intentos — hoy solo queda visible consultando `sync_jobs`/`lead_submissions` directamente. Agregar si Christian lo pide (p.ej. un nodo que notifique cuando `attempts>=4`).
