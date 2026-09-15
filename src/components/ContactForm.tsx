@@ -26,6 +26,7 @@ export function ContactForm({ initialSolution }: { initialSolution?: string }) {
     solution: initialSolution ?? "unsure",
   });
   const [state, setState] = useState<LeadUiState>({ status: "idle" });
+  const [honeypot, setHoneypot] = useState("");
   // Lazy initializer: forma segura de generar un valor impuro una sola vez
   // en el montaje (react-hooks/purity), a diferencia de useRef(expr()).
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
@@ -62,7 +63,7 @@ export function ContactForm({ initialSolution }: { initialSolution?: string }) {
     }
 
     setState({ status: "submitting" });
-    const result = await submitLead(values, requestId);
+    const result = await submitLead(values, requestId, honeypot);
     setState(result);
 
     if (result.status === "received") {
@@ -97,6 +98,22 @@ export function ContactForm({ initialSolution }: { initialSolution?: string }) {
 
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-5">
+      {/* Honeypot anti-spam: invisible para personas, los bots que llenan
+          todo lo detectan. No usar display:none (algunos lectores de
+          formularios de bots lo ignoran) — se oculta visualmente y del
+          árbol de accesibilidad en su lugar. */}
+      <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", width: 1, height: 1, overflow: "hidden" }}>
+        <label htmlFor="website">No completar este campo</label>
+        <input
+          id="website"
+          name="website"
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          value={honeypot}
+          onChange={(e) => setHoneypot(e.target.value)}
+        />
+      </div>
       {state.status === "retryable_error" && (
         <div
           ref={errorSummaryRef}

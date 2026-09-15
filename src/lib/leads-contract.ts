@@ -58,6 +58,7 @@ export function validateLead(values: LeadFormValues): FieldErrors {
 export async function submitLead(
   values: LeadFormValues,
   requestId: string,
+  honeypot?: string,
 ): Promise<LeadUiState> {
   let response: Response;
   try {
@@ -73,6 +74,7 @@ export async function submitLead(
         message: values.message.trim(),
         solution: values.solution || "unsure",
         source: "web",
+        website: honeypot || undefined,
       }),
     });
   } catch {
