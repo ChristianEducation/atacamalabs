@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 160" role="img" aria-labelledby="atacama-mark-title">
+<title id="atacama-mark-title">Atacama Labs — símbolo topográfico</title>
+<g fill="none" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+  <path stroke="#83523A" d="M20 118 C52 105 66 74 92 76 C118 78 126 46 153 48 C180 50 186 78 220 92"/>
+  <path stroke="#9E6448" d="M26 130 C58 116 70 88 95 90 C121 92 132 60 158 62 C184 64 191 88 214 101"/>
+  <path stroke="#B87656" d="M38 141 C69 126 79 102 101 104 C125 106 139 76 162 78 C185 80 194 99 205 108"/>
+  <path stroke="#69402C" d="M45 103 C68 94 78 62 103 64 C127 66 134 34 160 36 C186 38 194 66 224 79"/>
+  <path stroke="#4E2E1E" d="M53 87 C74 81 84 50 109 52 C132 54 140 24 165 26 C190 28 200 52 226 64"/>
+</g>
+</svg>

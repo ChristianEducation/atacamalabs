@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="atacama-favicon-title">
+<title id="atacama-favicon-title">Atacama Labs</title>
+<defs>
+  <linearGradient id="atacamaFaviconBg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#B87656"/>
+    <stop offset="1" stop-color="#4E2E1E"/>
+  </linearGradient>
+</defs>
+<rect width="64" height="64" rx="14" fill="url(#atacamaFaviconBg)"/>
+<g fill="none" stroke="#FAF6F0" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M8 44 C18 39 21 28 30 29 C39 30 42 19 51 21 C56 22 59 27 62 30"/>
+  <path d="M11 51 C21 46 24 36 33 37 C42 38 46 30 54 32 C58 33 60 36 62 38"/>
+  <path d="M14 33 C22 30 26 21 34 22 C41 23 46 15 53 16 C57 17 59 20 62 23"/>
+</g>
+</svg>
