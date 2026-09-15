@@ -1,0 +1,1462 @@
+{
+ "updatedAt": "2026-09-15T23:12:25.674Z",
+ "createdAt": "2026-09-15T23:06:25.811Z",
+ "id": "oVNNvuRye4pp0Kz0",
+ "name": "Atacama Labs — 02 Research",
+ "description": null,
+ "active": false,
+ "isArchived": false,
+ "nodes": [
+  {
+   "parameters": {},
+   "type": "n8n-nodes-base.manualTrigger",
+   "typeVersion": 1,
+   "position": [
+    -192,
+    288
+   ],
+   "id": "79b1a68d-0bc3-4976-af4f-2f5a5ec0ec29",
+   "name": "Manual Test Trigger"
+  },
+  {
+   "parameters": {
+    "workflowInputs": {
+     "values": [
+      {
+       "name": "limit",
+       "type": "number"
+      },
+      {
+       "name": "school_ids",
+       "type": "object"
+      },
+      {
+       "name": "icp_pack_id",
+       "type": "string"
+      }
+     ]
+    }
+   },
+   "type": "n8n-nodes-base.executeWorkflowTrigger",
+   "typeVersion": 1.1,
+   "position": [
+    -192,
+    464
+   ],
+   "id": "56afc600-9926-4353-9ec5-a8d604b05f1b",
+   "name": "When Executed by Another Workflow"
+  },
+  {
+   "id": "b7c0dc00-f3c4-43eb-aa45-b5cc0c58249f",
+   "name": "Init ICP Config",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    -636,
+    384
+   ],
+   "parameters": {
+    "jsCode": "// FASE 2 horizontal — resuelve que ICP Pack usar. Por defecto casino-escolar (compatibilidad).\nconst incoming = $input.first()?.json ?? {};\nconst icpPackId = incoming.icp_pack_id || null;\nconst icpPackSlug = incoming.icp_pack_slug || 'atacama-labs';\nconst filter = icpPackId ? `id=eq.${icpPackId}` : `slug=eq.${icpPackSlug}`;\nreturn [{json:{\n  limit: incoming.limit,\n  account_ids: incoming.account_ids,\n  school_ids: incoming.school_ids,\n  icp_pack_url: `https://uwquwjmiofixzugttals.supabase.co/rest/v1/icp_packs?${filter}&select=id,slug,status,discovery,research_vocabulary&limit=1`\n}}];"
+   }
+  },
+  {
+   "id": "b935b820-a6f4-421c-8e7f-4f4fbe0e5274",
+   "name": "Fetch ICP Pack",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    -416,
+    384
+   ],
+   "parameters": {
+    "url": "={{ $json.icp_pack_url }}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "supabaseApi",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 15000
+    }
+   },
+   "credentials": {
+    "supabaseApi": {
+     "id": "XOmXUuyLVSazDIh5",
+     "name": "Atacama Labs - Supabase"
+    }
+   }
+  },
+  {
+   "id": "b4b6fa81-a275-4688-8e2a-627e866c9562",
+   "name": "Parse ICP Pack",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    -196,
+    384
+   ],
+   "parameters": {
+    "jsCode": "const res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nconst row = Array.isArray(body) ? body[0] : body;\nif (status < 200 || status >= 300 || !row || !row.id) {\n  throw new Error(`ICP Pack no encontrado o inaccesible (HTTP ${status || 'unknown'}). Revisa que exista un pack activo con ese id/slug en icp_packs.`);\n}\nif (row.status !== 'active') {\n  throw new Error(`ICP Pack '${row.slug}' esta en estado '${row.status}', no 'active'. No se puede ejecutar un ICP que no esta activo (evita correr configuraciones en preparacion por accidente).`);\n}\nconst init = $('Init ICP Config').first().json;\nreturn [{json:{\n  icp_pack_id: row.id,\n  icp_pack_slug: row.slug,\n  discovery: row.discovery || {},\n  research_vocabulary: row.research_vocabulary || {},\n  limit: init.limit,\n  account_ids: init.account_ids,\n  school_ids: init.school_ids\n}}];"
+   }
+  },
+  {
+   "parameters": {
+    "url": "={{ $('Init Configuration').first().json.openclaw_base_url.replace(/\\/$/, '') + '/v1/models' }}",
+    "authentication": "genericCredentialType",
+    "genericAuthType": "httpHeaderAuth",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 30000
+    }
+   },
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    304,
+    384
+   ],
+   "id": "04ceb2bd-47be-4f19-a6d2-96f02d9715b6",
+   "name": "OpenClaw Preflight - Models",
+   "alwaysOutputData": true,
+   "credentials": {
+    "httpHeaderAuth": {
+     "id": "OcCmEtxlfOj1feFe",
+     "name": "Header Auth account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "jsCode": "const cfg = $('Init Configuration').first().json;\nconst res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nif (status < 200 || status >= 300) {\n  throw new Error(`OpenClaw preflight failed: HTTP ${status || 'unknown'}. Verify the OpenClaw Header Auth credential and the internal proxy.`);\n}\nconst models = Array.isArray(body?.data) ? body.data.map(x => x?.id).filter(Boolean) : [];\nif (!models.includes(cfg.openclaw_model)) {\n  throw new Error(`Configured Prospector target '${cfg.openclaw_model}' was not returned by GET /v1/models. Available: ${models.join(', ') || '(none)'}`);\n}\nreturn [{json:{ok:true, models, selected_model:cfg.openclaw_model}}];"
+   },
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    544,
+    384
+   ],
+   "id": "7f8014bf-f58b-4b59-a8c1-2b5021d19cfc",
+   "name": "Validate OpenClaw Preflight"
+  },
+  {
+   "parameters": {
+    "url": "={{ $('Init Configuration').first().json.accounts_url }}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "supabaseApi",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 30000
+    }
+   },
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    752,
+    384
+   ],
+   "id": "20209c8f-70d7-411e-881b-e8c1101fcde0",
+   "name": "Fetch Pending Accounts",
+   "alwaysOutputData": true,
+   "credentials": {
+    "supabaseApi": {
+     "id": "XOmXUuyLVSazDIh5",
+     "name": "Atacama Labs - Supabase"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "jsCode": "const res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nif (status < 200 || status >= 300) {\n  throw new Error(`Supabase schools read failed: HTTP ${status || 'unknown'}`);\n}\nconst rows = Array.isArray(body) ? body : [];\nif (!rows.length) return [{json:{_no_work:true, reason:'No pending schools matched this run'}}];\n\n// Fase 6 — round-robin por territory_id: reparte el cupo real entre comunas en vez de\n// agotar la mas antigua primero. Con accountIds explicitos (test manual) no hace falta repartir.\nconst realLimit = Number($('Init Configuration').first().json.request.limit) || rows.length;\nconst groups = new Map();\nfor (const r of rows) {\n  const key = r.territory_id || 'none';\n  if (!groups.has(key)) groups.set(key, []);\n  groups.get(key).push(r);\n}\nconst groupArrays = [...groups.values()];\nconst selected = [];\nlet i = 0;\nwhile (selected.length < realLimit && groupArrays.some(g => g.length)) {\n  const g = groupArrays[i % groupArrays.length];\n  if (g.length) selected.push(g.shift());\n  i++;\n}\n\nreturn selected.map(s => ({json:{...s, _no_work:false}}));"
+   },
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    976,
+    384
+   ],
+   "id": "a0a7a2aa-74c6-4db5-954b-74d46d8213e6",
+   "name": "Build School Items"
+  },
+  {
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "strict",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "0805bef1-fbeb-48c4-8349-7eabf402a270",
+       "leftValue": "={{ $json._no_work === true }}",
+       "rightValue": "",
+       "operator": {
+        "type": "boolean",
+        "operation": "true",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   },
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    1184,
+    384
+   ],
+   "id": "34340eb1-8d1c-4684-9799-200b510f7f81",
+   "name": "No Work?"
+  },
+  {
+   "parameters": {
+    "options": {}
+   },
+   "type": "n8n-nodes-base.splitInBatches",
+   "typeVersion": 3,
+   "position": [
+    1424,
+    448
+   ],
+   "id": "f156e690-8dad-4dcb-add9-39870cb1a60d",
+   "name": "Loop Over Schools"
+  },
+  {
+   "parameters": {
+    "method": "PATCH",
+    "url": "={{ $('Init Configuration').first().json.supabase_url + '/rest/v1/accounts?id=eq.' + $json.id + '&research_status=eq.pending&select=id' }}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "supabaseApi",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "Prefer",
+       "value": "return=representation"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ { research_status: 'researching', updated_at: new Date().toISOString() } }}",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 30000
+    }
+   },
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1664,
+    544
+   ],
+   "id": "f924dca2-3359-4ba3-8c91-0244a30e526c",
+   "name": "Claim School",
+   "alwaysOutputData": true,
+   "credentials": {
+    "supabaseApi": {
+     "id": "XOmXUuyLVSazDIh5",
+     "name": "Atacama Labs - Supabase"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "jsCode": "const school = $('Loop Over Schools').item.json;\nconst res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? [];\nconst claimed = status >= 200 && status < 300 && Array.isArray(body) && body.length === 1;\nreturn [{json:{school, claimed, claim_http_status:status, claim_reason:claimed ? null : `Could not claim pending row (HTTP ${status || 'unknown'} / rows ${Array.isArray(body)?body.length:'?'})`}}];"
+   },
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1888,
+    544
+   ],
+   "id": "af685afd-c686-454e-adbf-4a092a16482f",
+   "name": "Check Claim"
+  },
+  {
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "strict",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "cab23ee9-34e8-45fd-b9b4-be25a16fbc0e",
+       "leftValue": "={{ $json.claimed === true }}",
+       "rightValue": "",
+       "operator": {
+        "type": "boolean",
+        "operation": "true",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   },
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    2112,
+    544
+   ],
+   "id": "da415fe0-2c80-4bc9-bf08-72decc38aa1b",
+   "name": "Claimed?"
+  },
+  {
+   "parameters": {
+    "jsCode": "const cfg = $('Init Configuration').first().json;\nconst school = $json.school;\nconst website = typeof school.website === 'string' ? school.website.trim() : '';\nreturn [{json:{school, crawl4ai_should_run:Boolean(cfg.crawl4ai_enabled && website), verification_started_at:new Date().toISOString()}}];"
+   },
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    2352,
+    448
+   ],
+   "id": "90ca061e-1ffb-442b-8339-7cfce617d302",
+   "name": "Build Research Context"
+  },
+  {
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "strict",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "fbf13333-9299-44b0-8a96-bc6dfd054e63",
+       "leftValue": "={{ $json.crawl4ai_should_run === true }}",
+       "rightValue": "",
+       "operator": {
+        "type": "boolean",
+        "operation": "true",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   },
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    2560,
+    448
+   ],
+   "id": "ac8d6db3-0fb3-472a-8bfe-967f15e1d039",
+   "name": "Use Crawl4AI?"
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "={{ $('Init Configuration').first().json.crawl4ai_base_url.replace(/\\/$/, '') + '/crawl' }}",
+    "authentication": "genericCredentialType",
+    "genericAuthType": "httpHeaderAuth",
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ { urls: [$('Build Research Context').item.json.school.website], priority: 10 } }}",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 120000
+    }
+   },
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    2800,
+    368
+   ],
+   "id": "b800ad0f-07e2-4e39-91f1-ef0a731b1fcf",
+   "name": "Crawl4AI Crawl Website",
+   "alwaysOutputData": true,
+   "retryOnFail": true,
+   "maxTries": 2,
+   "waitBetweenTries": 1500,
+   "credentials": {
+    "httpHeaderAuth": {
+     "id": "1QelGbw5B2BBgGNT",
+     "name": "Header Auth account 2"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "jsCode": "return [{json:{crawl4ai_skipped:true, reason:'disabled_or_no_website'}}];"
+   },
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    2800,
+    544
+   ],
+   "id": "9827dd36-d50a-4ab0-a694-7f4c8be6f6c4",
+   "name": "Crawl4AI Skipped"
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "={{ $('Init Configuration').first().json.openclaw_base_url.replace(/\\/$/, '') + '/v1/chat/completions' }}",
+    "authentication": "genericCredentialType",
+    "genericAuthType": "httpHeaderAuth",
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ { model: $('Init Configuration').first().json.openclaw_model, max_completion_tokens: 8000, messages: [ { role: 'system', content: $('Build Prospector Prompt').item.json.system_prompt }, { role: 'user', content: $('Build Prospector Prompt').item.json.user_prompt } ] } }}",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 900000
+    }
+   },
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    3280,
+    448
+   ],
+   "id": "de88fb3d-f7d5-4566-b5f4-5f3c24677200",
+   "name": "Prospector Research",
+   "alwaysOutputData": true,
+   "retryOnFail": false,
+   "maxTries": 2,
+   "waitBetweenTries": 2000,
+   "credentials": {
+    "httpHeaderAuth": {
+     "id": "OcCmEtxlfOj1feFe",
+     "name": "Header Auth account"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "strict",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "d73f16a4-da62-43d0-b4da-17277a9409f3",
+       "leftValue": "={{ $json.valid === true }}",
+       "rightValue": "",
+       "operator": {
+        "type": "boolean",
+        "operation": "true",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   },
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    -480,
+    1264
+   ],
+   "id": "53e0566b-d589-4799-98dc-c07868c2788d",
+   "name": "Research Valid?"
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "={{ $('Init Configuration').first().json.supabase_url + '/rest/v1/research' }}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "supabaseApi",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "Prefer",
+       "value": "return=minimal"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ $json.new_research_rows }}",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 30000
+    }
+   },
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1840,
+    1120
+   ],
+   "id": "c1f4c4c3-e345-4297-acc0-7147fd3b28ef",
+   "name": "Insert Research",
+   "alwaysOutputData": true,
+   "credentials": {
+    "supabaseApi": {
+     "id": "XOmXUuyLVSazDIh5",
+     "name": "Atacama Labs - Supabase"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "jsCode": "const s=$('Filter New Research').item.json; const res=$input.first().json??{}; const status=Number(res.statusCode??0); const errs=[...(s.persistence_errors||[])]; const ok=status>=200&&status<300; if(!ok) errs.push(`research insert HTTP ${status||'unknown'}`); return [{json:{...s,persistence_errors:errs,research_inserted:ok?s.new_research_rows.length:0}}];"
+   },
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    2080,
+    1120
+   ],
+   "id": "88512875-24f9-497c-8ad2-eab77d7cfe72",
+   "name": "Check Research Insert"
+  },
+  {
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "strict",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "01e8b6d4-476d-4d6c-aedb-b252655bbabd",
+       "leftValue": "={{ Array.isArray($json.new_research_rows) && $json.new_research_rows.length > 0 }}",
+       "rightValue": "",
+       "operator": {
+        "type": "boolean",
+        "operation": "true",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   },
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    1616,
+    1216
+   ],
+   "id": "939d97df-ad82-40fc-a49c-a84fb3184fe0",
+   "name": "New Research?"
+  },
+  {
+   "parameters": {
+    "url": "={{ $json.existing_contacts_url }}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "supabaseApi",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 30000
+    }
+   },
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    2528,
+    1216
+   ],
+   "id": "1ccee67e-89a1-4f46-a84d-30a2ed0654cc",
+   "name": "Fetch Existing Contacts",
+   "alwaysOutputData": true,
+   "credentials": {
+    "supabaseApi": {
+     "id": "XOmXUuyLVSazDIh5",
+     "name": "Atacama Labs - Supabase"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "={{ $('Init Configuration').first().json.supabase_url + '/rest/v1/contacts' }}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "supabaseApi",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "Prefer",
+       "value": "return=minimal"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ $json.new_contacts }}",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 30000
+    }
+   },
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    3216,
+    1120
+   ],
+   "id": "ec12dbc0-399d-4908-b0f9-41a9d81acbdd",
+   "name": "Insert Contacts",
+   "alwaysOutputData": true,
+   "credentials": {
+    "supabaseApi": {
+     "id": "XOmXUuyLVSazDIh5",
+     "name": "Atacama Labs - Supabase"
+    }
+   }
+  },
+  {
+   "parameters": {
+    "jsCode": "const s=$('Filter New Contacts').item.json; const res=$input.first().json??{}; const status=Number(res.statusCode??0); const errs=[...(s.persistence_errors||[])]; const ok=status>=200&&status<300; if(!ok) errs.push(`contacts insert HTTP ${status||'unknown'}`); return [{json:{...s,persistence_errors:errs,contacts_inserted:ok?s.new_contacts.length:0}}];"
+   },
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    3456,
+    1120
+   ],
+   "id": "04bd3a48-0fc1-45a5-b0db-5afd225f92c9",
+   "name": "Check Contacts Insert"
+  },
+  {
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "strict",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "b61824b0-3db4-4abc-a8a8-4d63d66c6dc8",
+       "leftValue": "={{ Array.isArray($json.new_contacts) && $json.new_contacts.length > 0 }}",
+       "rightValue": "",
+       "operator": {
+        "type": "boolean",
+        "operation": "true",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   },
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2.2,
+   "position": [
+    2992,
+    1216
+   ],
+   "id": "399db72a-2268-466b-b9bd-cd2fac54c89d",
+   "name": "New Contacts?"
+  },
+  {
+   "parameters": {
+    "jsCode": "// 02 - Research Engine FINAL — EnBandeja (FASE 2: horizontal, lee accounts + ICP Pack)\n// Runtime endpoints below were verified from n8n on 2026-08-13; generalizado 2026-09-01.\n// DO NOT paste tokens/API keys/passwords in this Code node. Use n8n credentials.\nconst incoming = $input.first()?.json ?? {};\nconst icp = $('Parse ICP Pack').first().json;\n\nconst CONFIG = {\n  supabase_url: 'https://uwquwjmiofixzugttals.supabase.co',\n\n  crawl4ai_enabled: true,\n  crawl4ai_base_url: 'http://crawl4ai:11235',\n\n  openclaw_base_url: 'http://openclaw-gateway:18790',\n  openclaw_model: 'openclaw/prospector',\n\n  default_limit: 1,\n  manual_test_account_ids: [], // Atacama: sin fallback de prueba fijo; requiere account_ids o limit explicito, o no hace nada\n  max_limit: 25,\n\n  crawl4ai_markdown_max_chars: 16000,\n  crawl4ai_links_max: 30,\n\n  researcher: 'prospector/openclaw',\n  workflow_revision: 'atacama-02-research-2026-09-15',\n  icp_pack_id: icp.icp_pack_id,\n  icp_pack_slug: icp.icp_pack_slug,\n};\n\nconst requestedLimit = Number(incoming.limit ?? CONFIG.default_limit);\nconst limit = Number.isFinite(requestedLimit)\n  ? Math.max(1, Math.min(CONFIG.max_limit, Math.trunc(requestedLimit)))\n  : CONFIG.default_limit;\n\nconst manualRun = incoming.limit === undefined && incoming.account_ids === undefined && incoming.school_ids === undefined;\nlet accountIds = incoming.account_ids ?? incoming.school_ids ?? (manualRun ? CONFIG.manual_test_account_ids : []);\nif (typeof accountIds === 'string') {\n  try { accountIds = JSON.parse(accountIds); }\n  catch { accountIds = accountIds.split(',').map(s => s.trim()).filter(Boolean); }\n}\nif (!Array.isArray(accountIds)) accountIds = [];\naccountIds = [...new Set(accountIds.map(String).filter(Boolean))].slice(0, CONFIG.max_limit);\n\nfor (const [key, value] of Object.entries({\n  openclaw_base_url: CONFIG.openclaw_base_url,\n  openclaw_model: CONFIG.openclaw_model,\n  crawl4ai_base_url: CONFIG.crawl4ai_base_url,\n})) {\n  if (!value || String(value).startsWith('__VERIFY_')) {\n    throw new Error(`CONFIG REQUIRED: ${key} is missing or unverified.`);\n  }\n}\n\nconst select = 'id,legacy_school_id,legacy_operator_id,account_type,territory_id,name,normalized_name,region,commune,city,address,website,domain,phone,google_maps_url,google_place_id,source,source_url,research_status,created_at';\n// Fase 6 — pedimos un pool mas grande que el limit real para poder repartir por territorio (round-robin)\n// en 'Build School Items', en vez de agotar el territorio mas antiguo antes de tocar los demas.\nconst fetchPoolSize = accountIds.length ? limit : Math.min(CONFIG.max_limit * 12, 1000);\nconst filters = [`research_status=eq.pending`, `icp_pack_id=eq.${CONFIG.icp_pack_id}`, `select=${select}`, `order=territory_id.asc,created_at.asc`, `limit=${fetchPoolSize}`];\nif (accountIds.length) filters.push(`id=in.(${accountIds.join(',')})`);\n\nreturn [{json: {\n  ...CONFIG,\n  request: { limit, account_ids: accountIds },\n  accounts_url: `${CONFIG.supabase_url}/rest/v1/accounts?${filters.join('&')}`\n}}];"
+   },
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    64,
+    384
+   ],
+   "id": "0ed4736e-4d2c-48fe-907f-a20deee99bce",
+   "name": "Init Configuration"
+  },
+  {
+   "id": "6a8afece-fadc-4ee1-aaa3-ad8e6a05432e",
+   "name": "Build Prospector Prompt",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1300,
+    -60
+   ],
+   "parameters": {
+    "jsCode": "const cfg = $('Init Configuration').first().json;\nconst vocab = ($('Parse ICP Pack').first().json.research_vocabulary) || {};\nconst factors = Array.isArray(vocab.factors) && vocab.factors.length\n  ? vocab.factors\n  : ['pain', 'budget_proxy', 'volume', 'automation', 'access', 'urgency', 'fit'];\nconst promptContext = vocab.prompt_context || 'Empresa B2B. Evalua evidencia de dolor operativo, capacidad de inversion, volumen, potencial de automatizacion, acceso a decisor, urgencia y encaje.';\nconst ctx = $('Build Research Context').item.json;\nconst account = ctx.school;\nconst c4 = $input.first().json ?? {};\n\nconst asUrl = value => {\n  if (typeof value !== 'string' || !value.trim()) return null;\n  try {\n    const u = new URL(value.trim(), account.website || undefined);\n    return /^https?:$/.test(u.protocol) ? u.toString() : null;\n  } catch { return null; }\n};\nconst markdownText = value => {\n  if (typeof value === 'string') return value;\n  if (!value || typeof value !== 'object') return null;\n  for (const key of ['fit_markdown', 'raw_markdown', 'markdown_with_citations', 'markdown']) {\n    if (typeof value[key] === 'string' && value[key].trim()) return value[key];\n  }\n  return null;\n};\nconst normalizeLinks = value => {\n  const raw = [];\n  if (Array.isArray(value)) raw.push(...value);\n  else if (value && typeof value === 'object') {\n    for (const key of ['internal', 'external']) if (Array.isArray(value[key])) raw.push(...value[key]);\n  }\n  const out = []; const seen = new Set();\n  for (const item of raw) {\n    const candidate = typeof item === 'string' ? item : (item?.href || item?.url || null);\n    const url = asUrl(candidate);\n    if (!url || seen.has(url)) continue;\n    seen.add(url); out.push(url);\n    if (out.length >= Number(cfg.crawl4ai_links_max || 30)) break;\n  }\n  return out;\n};\n\nlet crawl4ai = { used: false, ok: false, source_url: account.website || null, markdown: null, links: [], error: null, http_status: null };\nif (!c4.crawl4ai_skipped) {\n  const status = Number(c4.statusCode ?? 0);\n  const body = c4.body ?? c4;\n  const results = Array.isArray(body?.results) ? body.results : (Array.isArray(body?.result?.results) ? body.result.results : []);\n  const result = results[0] ?? null;\n  crawl4ai.used = true;\n  crawl4ai.http_status = status || null;\n  crawl4ai.ok = status >= 200 && status < 300 && body?.success !== false && result !== null && result?.success !== false;\n  crawl4ai.source_url = asUrl(result?.url) || asUrl(result?.metadata?.url) || account.website || null;\n  const md = markdownText(result?.markdown);\n  crawl4ai.markdown = md ? md.slice(0, Number(cfg.crawl4ai_markdown_max_chars || 16000)) : null;\n  crawl4ai.links = normalizeLinks(result?.links);\n  if (!crawl4ai.ok) {\n    crawl4ai.error = body?.task_id && !result\n      ? `Crawl4AI returned async task_id ${String(body.task_id).slice(0, 120)} instead of synchronous results`\n      : `HTTP ${status || 'unknown'}${body?.error ? ': ' + String(body.error).slice(0, 500) : ''}`;\n  }\n}\n\nconst system = `Eres el agente de investigacion de Atacama Labs. Tu unica tarea es reunir evidencia VERIFICABLE (con URL y fecha reales) sobre una empresa real, para calificarla segun un modelo de 7 factores -- NUNCA inventes datos ni afirmes algo sin evidencia real.\n\nContexto del ICP: ${promptContext}\n\nFactores a evaluar (usa EXACTAMENTE estas claves en tu respuesta, ninguna otra): ${factors.join(', ')}.\nPara cada factor donde encuentres evidencia (no es obligatorio tener las 7), reporta un nivel:\n  0 = sin evidencia o no encaja\n  1 = senal indirecta plausible (ej: mencion general, tamano de empresa, industria)\n  2 = evidencia concreta y directa (ej: declaracion explicita, dato verificable)\nNo inventes dolor ni intencion de compra. Si no hay evidencia real de un factor, simplemente no lo incluyas (no fuerces nivel 0 con una nota inventada).\n\nResponde EXCLUSIVAMENTE en JSON valido con esta forma exacta:\n{\n  \"evidence\": [\n    {\n      \"id\": \"e1\",\n      \"factor\": \"<una de las claves de factores>\",\n      \"level\": 0 | 1 | 2,\n      \"finding\": \"resumen de una linea de lo encontrado\",\n      \"evidence_text\": \"cita o descripcion textual de la evidencia real\",\n      \"source_url\": \"https://...\",\n      \"source_date\": \"YYYY-MM-DD o null si no se puede determinar\",\n      \"certainty\": \"observed\" | \"inferred\"\n    }\n  ],\n  \"summary\": \"resumen breve en 1-2 frases de lo mas relevante encontrado\"\n}\nNo agregues texto fuera del JSON. No uses markdown ni bloques de codigo.`;\n\nconst userParts = [\n  `Empresa: ${account.name}`,\n  account.website ? `Sitio web: ${account.website}` : null,\n  account.region || account.city ? `Ubicacion: ${[account.city, account.region].filter(Boolean).join(', ')}` : null,\n  account.source_url ? `Fuente de descubrimiento: ${account.source_url}` : null,\n  crawl4ai.ok && crawl4ai.markdown ? `\\n--- Contenido del sitio web (crawl real) ---\\n${crawl4ai.markdown}` : '\\n(No se pudo crawlear el sitio web o no existe; basate en lo que puedas verificar por otras fuentes publicas si tu agente tiene esa capacidad, o reporta evidence vacio.)',\n  crawl4ai.links.length ? `\\nEnlaces internos detectados: ${crawl4ai.links.slice(0, 10).join(', ')}` : null,\n].filter(Boolean).join('\\n');\n\nreturn [{\n  json: {\n    ...ctx,\n    crawl4ai,\n    system_prompt: system,\n    user_prompt: userParts,\n  },\n}];"
+   }
+  },
+  {
+   "id": "909078b7-1ed8-457d-8609-bff70ba70a82",
+   "name": "Parse Research Result",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1740,
+    -60
+   ],
+   "parameters": {
+    "jsCode": "const base = $('Build Prospector Prompt').item.json;\nconst res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nconst errors = [];\n\nif (status < 200 || status >= 300) errors.push(`OpenClaw HTTP ${status || 'unknown'}`);\n\nlet content = body?.choices?.[0]?.message?.content;\nif (typeof content !== 'string') errors.push('OpenClaw response missing choices[0].message.content');\n\nlet parsed = null;\nif (typeof content === 'string') {\n  let cleaned = content.trim().replace(/^```json\\s*/i, '').replace(/^```\\s*/, '').replace(/\\s*```$/, '').trim();\n  const first = cleaned.indexOf('{'), last = cleaned.lastIndexOf('}');\n  if (first >= 0 && last > first) cleaned = cleaned.slice(first, last + 1);\n  try { parsed = JSON.parse(cleaned); } catch (e) { errors.push(`Invalid JSON from Prospector: ${e.message}`); }\n}\nif (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) parsed = {};\n\nconst allowedFactors = new Set(['pain', 'budget_proxy', 'volume', 'automation', 'access', 'urgency', 'fit']);\nconst text = (v, max = 1400) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null);\nconst httpUrl = u => {\n  const s = text(u, 2000);\n  return s && /^https?:\\/\\/[^\\s]+$/i.test(s) ? s : null;\n};\n\nconst evidence = [];\nconst seenIds = new Set();\nfor (const raw of (Array.isArray(parsed.evidence) ? parsed.evidence : [])) {\n  const factor = allowedFactors.has(raw?.factor) ? raw.factor : null;\n  const level = [0, 1, 2].includes(Number(raw?.level)) ? Number(raw.level) : null;\n  const finding = text(raw?.finding, 1400);\n  const evidence_text = text(raw?.evidence_text, 1800);\n  const source_url = httpUrl(raw?.source_url);\n  if (!factor || level === null || !finding || !evidence_text || !source_url) continue;\n\n  let id = String(raw.id || `e${evidence.length + 1}`).trim();\n  if (!id || seenIds.has(id)) id = `e${evidence.length + 1}`;\n  seenIds.add(id);\n\n  const source_date = /^\\d{4}-\\d{2}-\\d{2}$/.test(String(raw.source_date || '')) ? String(raw.source_date) : null;\n  const certainty = raw.certainty === 'observed' ? 'observed' : 'inferred';\n\n  evidence.push({ id, factor, level, finding, evidence_text, source_url, source_date, certainty });\n}\n\nconst valid = errors.length === 0;\nreturn [{\n  json: {\n    ...base,\n    valid,\n    parse_errors: errors,\n    evidence,\n    summary: text(parsed.summary, 500),\n    resolution: valid ? (evidence.length ? 'evidence_found' : 'no_public_evidence') : 'invalid',\n  },\n}];"
+   }
+  },
+  {
+   "parameters": {
+    "jsCode": "return [{json:{iteration_result:{account_id:$json.school.id,account_name:$json.school.name,status:'skipped',reason:$json.claim_reason,research_inserted:0,contacts_inserted:0}}}];"
+   },
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    2352,
+    720
+   ],
+   "id": "0aa1ba3b-5f94-49d1-b505-20c786b723f6",
+   "name": "Skipped Claim"
+  },
+  {
+   "parameters": {
+    "jsCode": "return [{json:{...$json,persistence_errors:[...($json.persistence_errors||[]),...($json.parse_errors||['Research response invalid'])]}}];"
+   },
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    -240,
+    1488
+   ],
+   "id": "c78f06ed-6d40-4706-8e03-8dfa6782bd5c",
+   "name": "Prepare Agent Error"
+  },
+  {
+   "parameters": {
+    "url": "={{ $('Init Configuration').first().json.supabase_url + '/rest/v1/research?account_id=eq.' + $json.school.id + '&select=research_type,finding,evidence_text,source_url&limit=1000' }}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "supabaseApi",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 30000
+    }
+   },
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1152,
+    1216
+   ],
+   "id": "d9d47fe0-d461-4f26-9ac0-63200bf0983f",
+   "name": "Fetch Existing Research",
+   "alwaysOutputData": true,
+   "credentials": {
+    "supabaseApi": {
+     "id": "0TQT6Efoeq7g7PBT",
+     "name": "Supabase account"
+    }
+   }
+  },
+  {
+   "id": "1bda4257-e4f5-4526-8f6c-be37b935a104",
+   "name": "Filter New Research",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    2180,
+    -60
+   ],
+   "parameters": {
+    "jsCode": "const s = $('Parse Research Result').item.json;\nconst res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nconst errs = [...(s.persistence_errors || [])];\n\nlet existingKeys = new Set();\nif (status >= 200 && status < 300 && Array.isArray(body)) {\n  existingKeys = new Set(body.map(r => [r.research_type, String(r.source_url || '').trim().toLowerCase(), String(r.finding || '').trim().toLowerCase()].join('|')));\n} else if (status !== 0) {\n  errs.push(`Fetch existing research failed: HTTP ${status}`);\n}\n\nconst nowIso = new Date().toISOString();\nconst newRows = [];\nfor (const e of (s.evidence || [])) {\n  const research_type = 'factor:' + e.factor;\n  const key = [research_type, String(e.source_url).trim().toLowerCase(), String(e.finding).trim().toLowerCase()].join('|');\n  if (existingKeys.has(key)) continue;\n  newRows.push({\n    account_id: s.school.id,\n    research_type,\n    finding: e.finding,\n    evidence_text: e.evidence_text,\n    source_url: e.source_url,\n    source_title: null,\n    source_date: e.source_date,\n    verified_at: nowIso,\n    confidence: e.level / 2,\n    is_current: true,\n    researcher: 'prospector/openclaw',\n    raw_metadata: { factor: e.factor, level: e.level, certainty: e.certainty, evidence_id: e.id },\n  });\n}\n\nreturn [{ json: { ...s, persistence_errors: errs, new_research_rows: newRows } }];"
+   }
+  },
+  {
+   "id": "10fbfc3b-8e1a-4baf-89d0-4b61544f8b54",
+   "name": "Prepare Contacts",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    2620,
+    -60
+   ],
+   "parameters": {
+    "jsCode": "const s = $json;\nconst sb = $('Init Configuration').first().json.supabase_url;\nconst aid = s.school.id;\nreturn [{ json: { ...s, contacts: [], existing_contacts_url: `${sb}/rest/v1/contacts?account_id=eq.${aid}&select=id,account_id,email,phone,whatsapp&limit=1000` } }];"
+   }
+  },
+  {
+   "parameters": {
+    "jsCode": "const s=$('Prepare Contacts').item.json; const res=$input.first().json??{}; const status=Number(res.statusCode??0); const body=res.body??res; const errs=[...(s.persistence_errors||[])];\nconst normPhone=v=>String(v||'').replace(/\\D/g,''); const normEmail=v=>String(v||'').trim().toLowerCase();\nlet rows=[];\nif(status>=200&&status<300&&Array.isArray(body)){\n  const emails=new Set(body.map(x=>normEmail(x.email)).filter(Boolean));\n  const phones=new Set(body.flatMap(x=>[normPhone(x.phone),normPhone(x.whatsapp)]).filter(Boolean));\n  rows=(s.contacts||[]).filter(c=>{\n    const e=normEmail(c.email), p=normPhone(c.phone||c.whatsapp);\n    if(e&&emails.has(e)) return false;\n    if(p&&phones.has(p)) return false;\n    return true;\n  }).map(c=>({account_id:s.school.id, name:c.name||null, job_title:c.job_title||null, email:c.email||null, phone:c.phone||null, whatsapp:c.whatsapp||null, source_url:c.source_url||null, confidence:c.confidence||null, contact_status:'found', metadata:{}}));\n} else if (status!==0) { errs.push(`Fetch existing contacts failed: HTTP ${status}`); }\nreturn [{json:{...s, persistence_errors:errs, new_contacts:rows}}];"
+   },
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    2768,
+    1216
+   ],
+   "id": "a16b2b55-6e62-448e-94e6-30e7fd8d16f5",
+   "name": "Filter New Contacts"
+  },
+  {
+   "id": "785a533b-e69d-4fc2-a3dc-7d84682c641d",
+   "name": "Prepare Final Account Update",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    3060,
+    -60
+   ],
+   "parameters": {
+    "jsCode": "const s = $json;\nconst errs = [...(s.persistence_errors || [])];\nlet status = 'recheck';\nlet reason = null;\nconst evidenceCount = (s.new_research_rows || []).length + (s.evidence || []).length;\n\nif (errs.length) {\n  status = 'error';\n  reason = errs.join('; ');\n} else if (s.resolution === 'evidence_found') {\n  status = 'complete';\n  reason = `Research con evidencia (${evidenceCount} hallazgo(s))`;\n} else if (s.resolution === 'no_public_evidence') {\n  status = 'complete';\n  reason = 'Sin evidencia publica encontrada (research igualmente completado, sin inventar)';\n} else {\n  status = 'recheck';\n  reason = 'Respuesta del agente invalida o incompleta';\n}\n\nreturn [{\n  json: {\n    ...s,\n    final_research_status: status,\n    final_reason: reason,\n    account_patch: { research_status: status, updated_at: new Date().toISOString() },\n  },\n}];"
+   }
+  },
+  {
+   "id": "e51dc153-aeae-483f-badf-5dbacce900ee",
+   "name": "Update Account Final Status",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    3300,
+    -60
+   ],
+   "parameters": {
+    "method": "PATCH",
+    "url": "={{ $('Init Configuration').first().json.supabase_url + '/rest/v1/accounts?id=eq.' + $('Prepare Final Account Update').first().json.school.id + '&select=id' }}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "supabaseApi",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "Prefer",
+       "value": "return=representation"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify($('Prepare Final Account Update').first().json.account_patch) }}",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 15000
+    },
+    "continueOnFail": true,
+    "alwaysOutputData": true
+   },
+   "credentials": {
+    "supabaseApi": {
+     "id": "XOmXUuyLVSazDIh5",
+     "name": "Atacama Labs - Supabase"
+    }
+   }
+  },
+  {
+   "id": "34edcd2b-6bd7-4926-8bc7-caf51d0df250",
+   "name": "Build Iteration Result",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    3540,
+    -60
+   ],
+   "parameters": {
+    "jsCode": "if ($json.iteration_result) return [{ json: $json }];\nlet s = null;\ntry { s = $('Prepare Final Account Update').first().json; } catch {}\nif (!s) return [{ json: { iteration_result: { status: 'error', reason: 'Could not recover final state' } } }];\n\nconst res = $input.first().json ?? {};\nconst http = Number(res.statusCode ?? 0);\nconst body = res.body ?? [];\nconst updateOk = http >= 200 && http < 300 && Array.isArray(body) && body.length === 1;\nconst status = updateOk ? s.final_research_status : 'error';\nconst reason = updateOk ? s.final_reason : `Final account update failed: HTTP ${http}`;\n\nreturn [{\n  json: {\n    iteration_result: {\n      account_id: s.school.id,\n      account_name: s.school.name,\n      status,\n      reason,\n      research_inserted: (s.new_research_rows || []).length,\n      contacts_inserted: (s.new_contacts || []).length,\n      evidence_factors: [...new Set((s.evidence || []).map(e => e.factor))],\n    },\n  },\n}];"
+   }
+  },
+  {
+   "parameters": {
+    "jsCode": "return [{json:{workflow:'Atacama Labs - 02 Research', processed:0, complete:0, recheck:0, error:0, skipped:0, message:$json.reason || 'No work'}}];"
+   },
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1424,
+    224
+   ],
+   "id": "afb5ee88-aa84-4b89-a080-8d2269541006",
+   "name": "No Work Summary"
+  },
+  {
+   "parameters": {
+    "jsCode": "let items=[]; try{items=$items('Build Iteration Result').map(x=>x.json.iteration_result).filter(Boolean);}catch{}\nconst count=k=>items.filter(x=>x.status===k).length;\nreturn [{json:{\n  workflow:'Atacama Labs - 02 Research',\n  revision:$('Init Configuration').first().json.workflow_revision,\n  processed:items.length, complete:count('complete'), recheck:count('recheck'), error:count('error'), skipped:count('skipped'),\n  research_rows_inserted: items.reduce((a,x)=>a+(x.research_inserted||0),0),\n  contacts_inserted: items.reduce((a,x)=>a+(x.contacts_inserted||0),0),\n  results: items,\n}}];"
+   },
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1680,
+    304
+   ],
+   "id": "90839404-f39e-420f-a63f-373f4268cdf5",
+   "name": "Run Summary"
+  }
+ ],
+ "connections": {
+  "Manual Test Trigger": {
+   "main": [
+    [
+     {
+      "node": "Init ICP Config",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "When Executed by Another Workflow": {
+   "main": [
+    [
+     {
+      "node": "Init ICP Config",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Init ICP Config": {
+   "main": [
+    [
+     {
+      "node": "Fetch ICP Pack",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Fetch ICP Pack": {
+   "main": [
+    [
+     {
+      "node": "Parse ICP Pack",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Parse ICP Pack": {
+   "main": [
+    [
+     {
+      "node": "Init Configuration",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Init Configuration": {
+   "main": [
+    [
+     {
+      "node": "OpenClaw Preflight - Models",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "OpenClaw Preflight - Models": {
+   "main": [
+    [
+     {
+      "node": "Validate OpenClaw Preflight",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Validate OpenClaw Preflight": {
+   "main": [
+    [
+     {
+      "node": "Fetch Pending Accounts",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Fetch Pending Accounts": {
+   "main": [
+    [
+     {
+      "node": "Build School Items",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Build School Items": {
+   "main": [
+    [
+     {
+      "node": "No Work?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "No Work?": {
+   "main": [
+    [
+     {
+      "node": "No Work Summary",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Loop Over Schools",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Loop Over Schools": {
+   "main": [
+    [
+     {
+      "node": "Run Summary",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Claim School",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Claim School": {
+   "main": [
+    [
+     {
+      "node": "Check Claim",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Check Claim": {
+   "main": [
+    [
+     {
+      "node": "Claimed?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Claimed?": {
+   "main": [
+    [
+     {
+      "node": "Build Research Context",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Skipped Claim",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Skipped Claim": {
+   "main": [
+    [
+     {
+      "node": "Build Iteration Result",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Build Research Context": {
+   "main": [
+    [
+     {
+      "node": "Use Crawl4AI?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Use Crawl4AI?": {
+   "main": [
+    [
+     {
+      "node": "Crawl4AI Crawl Website",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Crawl4AI Skipped",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Crawl4AI Crawl Website": {
+   "main": [
+    [
+     {
+      "node": "Build Prospector Prompt",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Crawl4AI Skipped": {
+   "main": [
+    [
+     {
+      "node": "Build Prospector Prompt",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Build Prospector Prompt": {
+   "main": [
+    [
+     {
+      "node": "Prospector Research",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Prospector Research": {
+   "main": [
+    [
+     {
+      "node": "Parse Research Result",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Parse Research Result": {
+   "main": [
+    [
+     {
+      "node": "Research Valid?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Research Valid?": {
+   "main": [
+    [
+     {
+      "node": "Fetch Existing Research",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Prepare Agent Error",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Prepare Agent Error": {
+   "main": [
+    [
+     {
+      "node": "Prepare Final Account Update",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Fetch Existing Research": {
+   "main": [
+    [
+     {
+      "node": "Filter New Research",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Filter New Research": {
+   "main": [
+    [
+     {
+      "node": "New Research?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "New Research?": {
+   "main": [
+    [
+     {
+      "node": "Insert Research",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Prepare Contacts",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Insert Research": {
+   "main": [
+    [
+     {
+      "node": "Check Research Insert",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Check Research Insert": {
+   "main": [
+    [
+     {
+      "node": "Prepare Contacts",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Prepare Contacts": {
+   "main": [
+    [
+     {
+      "node": "Fetch Existing Contacts",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Fetch Existing Contacts": {
+   "main": [
+    [
+     {
+      "node": "Filter New Contacts",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Filter New Contacts": {
+   "main": [
+    [
+     {
+      "node": "New Contacts?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "New Contacts?": {
+   "main": [
+    [
+     {
+      "node": "Insert Contacts",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Prepare Final Account Update",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Insert Contacts": {
+   "main": [
+    [
+     {
+      "node": "Check Contacts Insert",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Check Contacts Insert": {
+   "main": [
+    [
+     {
+      "node": "Prepare Final Account Update",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Prepare Final Account Update": {
+   "main": [
+    [
+     {
+      "node": "Update Account Final Status",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Update Account Final Status": {
+   "main": [
+    [
+     {
+      "node": "Build Iteration Result",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Build Iteration Result": {
+   "main": [
+    [
+     {
+      "node": "Loop Over Schools",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1",
+  "availableInMCP": false
+ },
+ "staticData": {
+  "node:TEST Trigger (temporal)": {
+   "recurrenceRules": [
+    null
+   ],
+   "recurrenceRuleSignatures": [
+    null
+   ]
+  }
+ },
+ "meta": null,
+ "nodeGroups": [],
+ "pinData": null,
+ "versionId": "4e09b9b0-9445-4696-871f-2b96d8f1900c",
+ "activeVersionId": null,
+ "versionCounter": 5,
+ "triggerCount": 1,
+ "sourceWorkflowId": null,
+ "tags": [],
+ "activeVersion": null
+}
