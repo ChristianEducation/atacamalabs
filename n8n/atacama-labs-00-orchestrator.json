@@ -1,0 +1,878 @@
+{
+ "name": "Atacama Labs — 00 Orchestrator",
+ "nodes": [
+  {
+   "id": "ec38e5ab-477e-4de8-bf39-b3c4710bbf47",
+   "name": "Manual Trigger",
+   "type": "n8n-nodes-base.manualTrigger",
+   "typeVersion": 1,
+   "position": [
+    -1360,
+    0
+   ],
+   "parameters": {}
+  },
+  {
+   "id": "81550eb1-7648-4fc9-8eb5-ff83b7037218",
+   "name": "When Executed by Another Workflow",
+   "type": "n8n-nodes-base.executeWorkflowTrigger",
+   "typeVersion": 1.1,
+   "position": [
+    -1360,
+    160
+   ],
+   "parameters": {
+    "workflowInputs": {
+     "values": [
+      {
+       "name": "icp_pack_id",
+       "type": "string"
+      },
+      {
+       "name": "cohort_limit",
+       "type": "number"
+      },
+      {
+       "name": "skip_discovery",
+       "type": "boolean"
+      },
+      {
+       "name": "run_label",
+       "type": "string"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "56bc1b53-1d81-4f09-895b-6d872c1f179e",
+   "name": "Require ICP Pack ID",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    -1120,
+    0
+   ],
+   "parameters": {
+    "jsCode": "const incoming = $input.first()?.json ?? {};\nconst EXPECTED_ICP_PACK_ID = '0ba54785-bff0-4a2d-a397-64e697d34e38';\nif (!incoming.icp_pack_id) {\n  throw new Error('SEGURIDAD: icp_pack_id es obligatorio para el orquestador. Sin valor por defecto, sin resolucion por slug. Abortando antes de leer o escribir nada.');\n}\nif (incoming.icp_pack_id !== EXPECTED_ICP_PACK_ID) {\n  throw new Error(`SEGURIDAD: icp_pack_id recibido (${incoming.icp_pack_id}) no coincide con el esperado (${EXPECTED_ICP_PACK_ID}) para esta copia del orquestador. Abortando.`);\n}\nconst cohortLimit = Math.max(1, Math.min(25, Number(incoming.cohort_limit) || 25));\nreturn [{ json: {\n  icp_pack_id: EXPECTED_ICP_PACK_ID,\n  cohort_limit: cohortLimit,\n  skip_discovery: incoming.skip_discovery === true,\n  run_label: incoming.run_label || ('cohorte-' + new Date().toISOString().slice(0,10)),\n} }];"
+   }
+  },
+  {
+   "id": "f96bd37a-9010-4e2e-a268-45945063f747",
+   "name": "Verify ICP Pack Active",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    -880,
+    0
+   ],
+   "parameters": {
+    "url": "={{ 'https://uwquwjmiofixzugttals.supabase.co/rest/v1/icp_packs?id=eq.' + $json.icp_pack_id + '&status=eq.active&select=id,slug' }}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "supabaseApi",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 15000
+    }
+   },
+   "credentials": {
+    "supabaseApi": {
+     "id": "XOmXUuyLVSazDIh5",
+     "name": "Atacama Labs - Supabase"
+    }
+   }
+  },
+  {
+   "id": "f1a2fc6c-d03a-449f-bbd2-570ae38dfbdb",
+   "name": "Assert Pack Active",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    -640,
+    0
+   ],
+   "parameters": {
+    "jsCode": "const cfg = $('Require ICP Pack ID').first().json;\nconst res = $json;\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nconst row = Array.isArray(body) ? body[0] : null;\nif (status < 200 || status >= 300 || !row || row.id !== cfg.icp_pack_id) {\n  throw new Error(`SEGURIDAD: ICP pack ${cfg.icp_pack_id} no encontrado o no esta 'active' (HTTP ${status}). Abortando antes de crear el run.`);\n}\nreturn [{ json: cfg }];"
+   }
+  },
+  {
+   "id": "e4c3a37b-ac81-4367-b19c-8d5d55cd2777",
+   "name": "Recover Stuck Research Claims",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    -400,
+    0
+   ],
+   "parameters": {
+    "method": "PATCH",
+    "url": "={{ 'https://uwquwjmiofixzugttals.supabase.co/rest/v1/accounts?icp_pack_id=eq.' + $('Assert Pack Active').first().json.icp_pack_id + '&research_status=eq.researching&updated_at=lt.' + new Date(Date.now()-15*60*1000).toISOString() + '&select=id' }}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "supabaseApi",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "Prefer",
+       "value": "return=representation"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ { research_status: 'pending' } }}",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 15000
+    }
+   },
+   "credentials": {
+    "supabaseApi": {
+     "id": "XOmXUuyLVSazDIh5",
+     "name": "Atacama Labs - Supabase"
+    }
+   }
+  },
+  {
+   "id": "5a2d4f68-4349-4914-a34e-69ddb77b665f",
+   "name": "Note Recovered Claims",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    -160,
+    0
+   ],
+   "parameters": {
+    "jsCode": "const cfg = $('Assert Pack Active').first().json;\nconst res = $json;\nconst body = res.body ?? [];\nconst recovered = Array.isArray(body) ? body.length : 0;\nreturn [{ json: { ...cfg, recovered_stuck_claims: recovered } }];"
+   }
+  },
+  {
+   "id": "32989a5c-dd71-4d70-86db-366d5256afb7",
+   "name": "Acquire Lock (insert run)",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    80,
+    0
+   ],
+   "parameters": {
+    "method": "POST",
+    "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/runs",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "supabaseApi",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "Prefer",
+       "value": "return=representation"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ { icp_pack_id: $json.icp_pack_id, label: $json.run_label, source: 'open_discovery', territory_count: 0, research_limit_per_cycle: $json.cohort_limit, qualification_limit: $json.cohort_limit, ghl_intake_limit: 0, max_cycles: 1, target_new_hot: $json.cohort_limit, signals_enabled: true, ghl_send_enabled: false, status: 'running', result: { steps: {}, recovered_stuck_claims: $json.recovered_stuck_claims }, started_at: new Date().toISOString() } }}",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 15000
+    }
+   },
+   "credentials": {
+    "supabaseApi": {
+     "id": "XOmXUuyLVSazDIh5",
+     "name": "Atacama Labs - Supabase"
+    }
+   }
+  },
+  {
+   "id": "4146a633-3285-4e44-aed9-827e6ecb157e",
+   "name": "Check Lock Acquired",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    320,
+    0
+   ],
+   "parameters": {
+    "jsCode": "const cfg = $('Note Recovered Claims').first().json;\nconst res = $json;\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nif (status === 409 || (status >= 400 && JSON.stringify(body).includes('runs_one_active_per_pack'))) {\n  throw new Error('LOCK: ya existe una ejecucion en curso (status=running) para este icp_pack_id en la tabla runs. Abortando para evitar ejecuciones superpuestas. Espera a que termine o revisa/corrige manualmente esa fila si quedo atascada.');\n}\nif (status < 200 || status >= 300 || !Array.isArray(body) || !body.length) {\n  throw new Error(`No se pudo crear el run (lock): HTTP ${status} ${JSON.stringify(body).slice(0,300)}`);\n}\nconst run = body[0];\nreturn [{ json: { icp_pack_id: cfg.icp_pack_id, cohort_limit: cfg.cohort_limit, skip_discovery: cfg.skip_discovery, run_id: run.id } }];"
+   }
+  },
+  {
+   "id": "3a35f1e1-189e-4820-b1a9-468a34a29258",
+   "name": "Skip Discovery?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2,
+   "position": [
+    560,
+    0
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "strict",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "77ae9441-6859-44a9-a5f5-5498a59110e5",
+       "leftValue": "={{ $json.skip_discovery === true }}",
+       "rightValue": "",
+       "operator": {
+        "type": "boolean",
+        "operation": "true",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "2e88a38c-06bb-4c9a-94de-82a74ceb013e",
+   "name": "Mark Discovery Skipped",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    560,
+    160
+   ],
+   "parameters": {
+    "jsCode": "return [{ json: { status: 'skipped', reason: 'skip_discovery=true (lista semilla manual usada en su lugar de Discovery automatico)' } }];"
+   }
+  },
+  {
+   "id": "6b235ae5-66eb-4bca-8258-ebee63dd305e",
+   "name": "Call 01 Discovery",
+   "type": "n8n-nodes-base.executeWorkflow",
+   "typeVersion": 1.2,
+   "position": [
+    560,
+    -160
+   ],
+   "parameters": {
+    "source": "database",
+    "workflowId": {
+     "__rl": true,
+     "value": "AnjrmngEzXWiXIVT",
+     "mode": "id"
+    },
+    "workflowInputs": {
+     "value": {
+      "icp_pack_id": "={{ $('Check Lock Acquired').first().json.icp_pack_id }}"
+     },
+     "schema": []
+    },
+    "options": {}
+   },
+   "continueOnFail": true
+  },
+  {
+   "id": "add9740d-4e88-42df-a440-45cd1f528d29",
+   "name": "Merge Discovery Branch",
+   "type": "n8n-nodes-base.noOp",
+   "typeVersion": 1,
+   "position": [
+    800,
+    -160
+   ],
+   "parameters": {}
+  },
+  {
+   "id": "37bec48a-3ca1-4dfb-bc49-d14832d1aab9",
+   "name": "Record Discovery Result",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1040,
+    0
+   ],
+   "parameters": {
+    "jsCode": "const out = $json;\nlet discovery_result;\nif (out.error) discovery_result = { status: 'error', error: String(out.error.message || out.error).slice(0, 500) };\nelse if (out.status === 'skipped') discovery_result = out;\nelse discovery_result = out; // shape of 01 Discovery's own \"Discovery Summary\" output\nreturn [{ json: { discovery_result } }];"
+   }
+  },
+  {
+   "id": "753f82cf-b094-4e86-8b81-4a333377b395",
+   "name": "Checkpoint After Discovery",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1280,
+    0
+   ],
+   "parameters": {
+    "method": "PATCH",
+    "url": "={{ 'https://uwquwjmiofixzugttals.supabase.co/rest/v1/runs?id=eq.' + $('Check Lock Acquired').first().json.run_id + '&icp_pack_id=eq.' + $('Check Lock Acquired').first().json.icp_pack_id }}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "supabaseApi",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "Prefer",
+       "value": "return=minimal"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ { result: { steps: { discovery: $('Record Discovery Result').first().json.discovery_result }, checkpoint_at: new Date().toISOString() } } }}",
+    "options": {
+     "timeout": 15000
+    }
+   },
+   "credentials": {
+    "supabaseApi": {
+     "id": "XOmXUuyLVSazDIh5",
+     "name": "Atacama Labs - Supabase"
+    }
+   }
+  },
+  {
+   "id": "8decf336-17eb-4445-944f-97bb7e7f0df8",
+   "name": "Call 02 Research",
+   "type": "n8n-nodes-base.executeWorkflow",
+   "typeVersion": 1.2,
+   "position": [
+    1520,
+    0
+   ],
+   "parameters": {
+    "source": "database",
+    "workflowId": {
+     "__rl": true,
+     "value": "cw3oTblethuiTtEm",
+     "mode": "id"
+    },
+    "workflowInputs": {
+     "value": {
+      "icp_pack_id": "={{ $('Check Lock Acquired').first().json.icp_pack_id }}",
+      "limit": "={{ $('Check Lock Acquired').first().json.cohort_limit }}"
+     },
+     "schema": []
+    },
+    "options": {}
+   },
+   "continueOnFail": true
+  },
+  {
+   "id": "ba50b082-55aa-401d-b797-3cb3c3f1467a",
+   "name": "Record Research Result",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1760,
+    0
+   ],
+   "parameters": {
+    "jsCode": "const out = $json;\nlet research_result;\nif (out.error) research_result = { status: 'error', error: String(out.error.message || out.error).slice(0, 500) };\nelse research_result = out;\nreturn [{ json: { research_result } }];"
+   }
+  },
+  {
+   "id": "5ce1e11f-9818-47aa-be51-c2525d364ae0",
+   "name": "Checkpoint After Research",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    2000,
+    0
+   ],
+   "parameters": {
+    "method": "PATCH",
+    "url": "={{ 'https://uwquwjmiofixzugttals.supabase.co/rest/v1/runs?id=eq.' + $('Check Lock Acquired').first().json.run_id + '&icp_pack_id=eq.' + $('Check Lock Acquired').first().json.icp_pack_id }}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "supabaseApi",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "Prefer",
+       "value": "return=minimal"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ { result: { steps: { discovery: $('Record Discovery Result').first().json.discovery_result, research: $('Record Research Result').first().json.research_result }, checkpoint_at: new Date().toISOString() } } }}",
+    "options": {
+     "timeout": 15000
+    }
+   },
+   "credentials": {
+    "supabaseApi": {
+     "id": "XOmXUuyLVSazDIh5",
+     "name": "Atacama Labs - Supabase"
+    }
+   }
+  },
+  {
+   "id": "b8fb1770-1553-41ad-8f76-62b2a64c82de",
+   "name": "Call 02b Signals",
+   "type": "n8n-nodes-base.executeWorkflow",
+   "typeVersion": 1.2,
+   "position": [
+    2240,
+    0
+   ],
+   "parameters": {
+    "source": "database",
+    "workflowId": {
+     "__rl": true,
+     "value": "liNLmszWOlEz9kVv",
+     "mode": "id"
+    },
+    "workflowInputs": {
+     "value": {
+      "icp_pack_id": "={{ $('Check Lock Acquired').first().json.icp_pack_id }}",
+      "limit": "={{ $('Check Lock Acquired').first().json.cohort_limit }}"
+     },
+     "schema": []
+    },
+    "options": {}
+   },
+   "continueOnFail": true
+  },
+  {
+   "id": "044351b7-1ece-4c49-9aeb-a11866b6406a",
+   "name": "Record Signals Result",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    2480,
+    0
+   ],
+   "parameters": {
+    "jsCode": "const out = $json;\nlet signals_result;\nif (out.error) signals_result = { status: 'error', error: String(out.error.message || out.error).slice(0, 500) };\nelse signals_result = out;\nreturn [{ json: { signals_result } }];"
+   }
+  },
+  {
+   "id": "ef6819b2-9695-40d8-9a49-e8a00239ffba",
+   "name": "Checkpoint After Signals",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    2720,
+    0
+   ],
+   "parameters": {
+    "method": "PATCH",
+    "url": "={{ 'https://uwquwjmiofixzugttals.supabase.co/rest/v1/runs?id=eq.' + $('Check Lock Acquired').first().json.run_id + '&icp_pack_id=eq.' + $('Check Lock Acquired').first().json.icp_pack_id }}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "supabaseApi",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "Prefer",
+       "value": "return=minimal"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ { result: { steps: { discovery: $('Record Discovery Result').first().json.discovery_result, research: $('Record Research Result').first().json.research_result, signals: $('Record Signals Result').first().json.signals_result }, checkpoint_at: new Date().toISOString() } } }}",
+    "options": {
+     "timeout": 15000
+    }
+   },
+   "credentials": {
+    "supabaseApi": {
+     "id": "XOmXUuyLVSazDIh5",
+     "name": "Atacama Labs - Supabase"
+    }
+   }
+  },
+  {
+   "id": "e2a0705f-055d-45e3-85af-43f358e672f1",
+   "name": "Call 03 Qualification",
+   "type": "n8n-nodes-base.executeWorkflow",
+   "typeVersion": 1.2,
+   "position": [
+    2960,
+    0
+   ],
+   "parameters": {
+    "source": "database",
+    "workflowId": {
+     "__rl": true,
+     "value": "LzkojauO5ypKNALc",
+     "mode": "id"
+    },
+    "workflowInputs": {
+     "value": {
+      "icp_pack_id": "={{ $('Check Lock Acquired').first().json.icp_pack_id }}",
+      "limit": "={{ $('Check Lock Acquired').first().json.cohort_limit }}"
+     },
+     "schema": []
+    },
+    "options": {}
+   },
+   "continueOnFail": true
+  },
+  {
+   "id": "8810fb90-791d-432a-93e0-6bb273dbc80e",
+   "name": "Record Qualification Result",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    3200,
+    0
+   ],
+   "parameters": {
+    "jsCode": "const out = $json;\nlet qualification_result;\nif (out.error) qualification_result = { status: 'error', error: String(out.error.message || out.error).slice(0, 500) };\nelse qualification_result = out;\nreturn [{ json: { qualification_result } }];"
+   }
+  },
+  {
+   "id": "cc1ac879-e8aa-4cf3-84d1-dfc0fbc5c990",
+   "name": "Release Lock (finish run)",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    3440,
+    0
+   ],
+   "parameters": {
+    "method": "PATCH",
+    "url": "={{ 'https://uwquwjmiofixzugttals.supabase.co/rest/v1/runs?id=eq.' + $('Check Lock Acquired').first().json.run_id + '&icp_pack_id=eq.' + $('Check Lock Acquired').first().json.icp_pack_id + '&select=id,status,result' }}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "supabaseApi",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "Prefer",
+       "value": "return=representation"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ { status: [$('Record Discovery Result').first().json.discovery_result, $('Record Research Result').first().json.research_result, $('Record Signals Result').first().json.signals_result, $('Record Qualification Result').first().json.qualification_result].some(r => r && r.status === 'error') ? 'error' : 'completed', finished_at: new Date().toISOString(), result: { steps: { discovery: $('Record Discovery Result').first().json.discovery_result, research: $('Record Research Result').first().json.research_result, signals: $('Record Signals Result').first().json.signals_result, qualification: $('Record Qualification Result').first().json.qualification_result }, note: 'Flujo automatico se detiene aqui por diseno -- 04 CRM Sync y 05 Outreach Draft requieren aprobacion humana explicita (status=ready_to_contact puesto a mano).' } } }}",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 15000
+    }
+   },
+   "credentials": {
+    "supabaseApi": {
+     "id": "XOmXUuyLVSazDIh5",
+     "name": "Atacama Labs - Supabase"
+    }
+   }
+  },
+  {
+   "id": "8d644329-c344-47ce-8c9a-e9ae0dfd700e",
+   "name": "Orchestrator Summary",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    3680,
+    0
+   ],
+   "parameters": {
+    "jsCode": "return [{ json: {\n  workflow: 'Atacama Labs - 00 Orchestrator (real)',\n  run_id: $('Check Lock Acquired').first().json.run_id,\n  discovery: $('Record Discovery Result').first().json.discovery_result,\n  research: $('Record Research Result').first().json.research_result,\n  signals: $('Record Signals Result').first().json.signals_result,\n  qualification: $('Record Qualification Result').first().json.qualification_result,\n  note: 'Flujo automatico terminado en 03 Qualification. 04/05 requieren aprobacion humana explicita, fuera de este workflow.',\n} }];"
+   }
+  }
+ ],
+ "connections": {
+  "Manual Trigger": {
+   "main": [
+    [
+     {
+      "node": "Require ICP Pack ID",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "When Executed by Another Workflow": {
+   "main": [
+    [
+     {
+      "node": "Require ICP Pack ID",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Require ICP Pack ID": {
+   "main": [
+    [
+     {
+      "node": "Verify ICP Pack Active",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Verify ICP Pack Active": {
+   "main": [
+    [
+     {
+      "node": "Assert Pack Active",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Assert Pack Active": {
+   "main": [
+    [
+     {
+      "node": "Recover Stuck Research Claims",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Recover Stuck Research Claims": {
+   "main": [
+    [
+     {
+      "node": "Note Recovered Claims",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Note Recovered Claims": {
+   "main": [
+    [
+     {
+      "node": "Acquire Lock (insert run)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Acquire Lock (insert run)": {
+   "main": [
+    [
+     {
+      "node": "Check Lock Acquired",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Check Lock Acquired": {
+   "main": [
+    [
+     {
+      "node": "Skip Discovery?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Skip Discovery?": {
+   "main": [
+    [
+     {
+      "node": "Mark Discovery Skipped",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Call 01 Discovery",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Call 01 Discovery": {
+   "main": [
+    [
+     {
+      "node": "Merge Discovery Branch",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Mark Discovery Skipped": {
+   "main": [
+    [
+     {
+      "node": "Merge Discovery Branch",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Merge Discovery Branch": {
+   "main": [
+    [
+     {
+      "node": "Record Discovery Result",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Record Discovery Result": {
+   "main": [
+    [
+     {
+      "node": "Checkpoint After Discovery",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Checkpoint After Discovery": {
+   "main": [
+    [
+     {
+      "node": "Call 02 Research",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Call 02 Research": {
+   "main": [
+    [
+     {
+      "node": "Record Research Result",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Record Research Result": {
+   "main": [
+    [
+     {
+      "node": "Checkpoint After Research",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Checkpoint After Research": {
+   "main": [
+    [
+     {
+      "node": "Call 02b Signals",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Call 02b Signals": {
+   "main": [
+    [
+     {
+      "node": "Record Signals Result",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Record Signals Result": {
+   "main": [
+    [
+     {
+      "node": "Checkpoint After Signals",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Checkpoint After Signals": {
+   "main": [
+    [
+     {
+      "node": "Call 03 Qualification",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Call 03 Qualification": {
+   "main": [
+    [
+     {
+      "node": "Record Qualification Result",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Record Qualification Result": {
+   "main": [
+    [
+     {
+      "node": "Release Lock (finish run)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Release Lock (finish run)": {
+   "main": [
+    [
+     {
+      "node": "Orchestrator Summary",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {}
+}

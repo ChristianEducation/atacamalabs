@@ -79,6 +79,25 @@ Corregido el código y verificado por inspección directa (`GET` del workflow). 
 
 **Resuelto 2026-09-15**: Christian decidió el protocolo de pruebas seguras (arriba). "02 Research" reescrito con las validaciones dobles + `atacama-labs-test`, probado con una copia desechable (1 sola ejecución, ~48s hasta que el cron disparó): `Assert Expected Pack` confirmó `atacama-labs-test`, procesó únicamente la cuenta ficticia esperada, insertó 1 fila de evidencia real (factor `fit`), sin tocar ninguna cuenta de EnBandeja. Datos ficticios y la copia del workflow eliminados después; conteos de EnBandeja verificados idénticos antes/después.
 
+## Atacama Labs — 00 Orchestrator
+
+- Fuente: [`atacama-labs-00-orchestrator.json`](atacama-labs-00-orchestrator.json), modo `real`. Workflow estable en n8n (id `ubXANtYTd5y9wdbP`), **inactivo** salvo cuando se dispara manualmente (ver protocolo de disparo abajo — no tiene "run now" en la API, se usa el mismo truco de trigger temporal que el resto).
+- Encadena **01 Discovery → 02 Research → 02b Signals → 03 Qualification** vía nodos `executeWorkflow` apuntando a 4 sub-workflows estables e inactivos (creados una vez, referenciados por id fijo: `AnjrmngEzXWiXIVT`/`cw3oTblethuiTtEm`/`liNLmszWOlEz9kVv`/`LzkojauO5ypKNALc`). **Se detiene después de 03 Qualification por diseño** — no existe ningún camino, ni siquiera ante error, que llegue a llamar a 04 CRM Sync o 05 Outreach Draft. Esos requieren que un humano apruebe cada prospect (`status='ready_to_contact'`) fuera de este workflow.
+- **`icp_pack_id` explícito obligatorio**: el primer nodo (`Require ICP Pack ID`) no acepta ningún default ni resolución por slug — si falta o no coincide con la constante fijada en esta copia del workflow, lanza error antes de tocar cualquier tabla.
+- **Lock atómico contra ejecuciones superpuestas**: `supabase/migrations/20260916_runs_one_active_lock.sql` agrega un índice único parcial `runs_one_active_per_pack` sobre `public.runs(icp_pack_id) where status='running'`. El nodo `Acquire Lock (insert run)` inserta un run nuevo; si ya hay uno `running` para ese pack, el índice hace fallar el `INSERT` (HTTP 409) y el orquestador aborta con un mensaje claro — no es una bandera de lectura-luego-escritura (no atómica), es una restricción real de base de datos.
+- **Recuperación de claims atascados**: antes de tomar el lock, hace `PATCH accounts SET research_status='pending' WHERE research_status='researching' AND updated_at < now()-15min` — si una corrida anterior de 02 Research murió a mitad de un item, esa cuenta no queda huérfana.
+- **Checkpoint de progreso**: después de cada paso (Discovery/Research/Signals/Qualification) hace `PATCH runs.result` con el resultado acumulado — permite ver el avance real consultando la tabla `runs` sin esperar a que termine todo el flujo, y es la base de la reanudabilidad (cada sub-workflow ya es idempotente por diseño: vuelve a llamarlos con los mismos parámetros y solo procesan lo que sigue pendiente).
+- **Discovery opcional** (`skip_discovery`): si el scraper compartido `enbandeja-gmaps` está bloqueado, el flujo puede saltarse Discovery y usar cuentas ya sembradas manualmente (ver "Cohorte 1" abajo) — nunca reintenta Discovery en loop ni genera ejecuciones superpuestas para compensar.
+- **Manejo de errores sin dejar el lock atascado**: cada nodo `Call *` tiene `continueOnFail:true` — si un sub-workflow falla, el orquestador registra el error y sigue hasta `Release Lock (finish run)`, que **siempre** se ejecuta y marca el run `completed` o `error` según corresponda. Nunca hay un camino que deje `status='running'` colgado indefinidamente por una falla de un paso.
+
+### Validado en producción, 2026-09-16 (lock probado con datos reales, no solo simulado)
+
+Se ejecutó 2 veces contra el ICP real (`atacama-labs`). En **ambas** ejecuciones, el trigger de schedule temporal disparó dos veces (mismo comportamiento de plataforma ya documentado) — y en **ambas** el lock rechazó correctamente la segunda ejecución con el mensaje `LOCK: ya existe una ejecución en curso`. Esto no fue una prueba planeada del lock — fue el propio comportamiento errático de la plataforma poniendo a prueba la protección en condiciones reales, y funcionó las 3 veces (2 en esta corrida real + 1 en la prueba mecánica contra `atacama-labs-test`).
+
+**1er intento** (`skip_discovery=false`): Discovery falló las 4 áreas (scraper bloqueado, 4ta vez en la sesión). Research/Signals/Qualification correctamente no hicieron nada (`no_work`) en vez de inventar datos. Run completado limpio en ~10 min, lock liberado.
+
+**2do intento** (`skip_discovery=true`, tras sembrar 25 cuentas reales manualmente — ver abajo): Research encontró 0 pendientes (correcto, ya estaban `research_status='complete'`), Signals y Qualification procesaron las 25 cuentas reales. Resultado detallado en la tabla de revisión de la Cohorte 1.
+
 ## Atacama Labs — 02b Signals
 
 - Fuente: [`atacama-labs-02b-signals.json`](atacama-labs-02b-signals.json), modo `test`.
