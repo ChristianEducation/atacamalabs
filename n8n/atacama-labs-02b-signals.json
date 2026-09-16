@@ -1,0 +1,734 @@
+{
+ "name": "Atacama Labs — 02b Signals (TEST)",
+ "nodes": [
+  {
+   "id": "28480ea0-7d75-44bd-87d8-405bd931515f",
+   "name": "Manual Test Trigger",
+   "type": "n8n-nodes-base.manualTrigger",
+   "typeVersion": 1,
+   "position": [
+    0,
+    0
+   ],
+   "parameters": {}
+  },
+  {
+   "id": "a0fa3144-cebc-411c-ab67-8fb3a2382509",
+   "name": "When Executed by Another Workflow",
+   "type": "n8n-nodes-base.executeWorkflowTrigger",
+   "typeVersion": 1.1,
+   "position": [
+    0,
+    180
+   ],
+   "parameters": {
+    "workflowInputs": {
+     "values": [
+      {
+       "name": "icp_pack_id",
+       "type": "string"
+      },
+      {
+       "name": "limit",
+       "type": "number"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "fb92ef22-5415-40af-a6a6-beffd6651a47",
+   "name": "Fetch ICP Pack",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    460,
+    90
+   ],
+   "parameters": {
+    "url": "={{ $json.icp_pack_url }}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "supabaseApi",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 15000
+    }
+   },
+   "credentials": {
+    "supabaseApi": {
+     "id": "XOmXUuyLVSazDIh5",
+     "name": "Atacama Labs - Supabase"
+    }
+   }
+  },
+  {
+   "id": "3e462167-1d57-4329-b586-7ab5439752c3",
+   "name": "Parse ICP Pack",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    680,
+    90
+   ],
+   "parameters": {
+    "jsCode": "const res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nconst row = Array.isArray(body) ? body[0] : body;\nif (status < 200 || status >= 300 || !row || !row.id) {\n  throw new Error(`ICP Pack no encontrado o inaccesible (HTTP ${status || 'unknown'}).`);\n}\nif (row.status !== 'active') {\n  throw new Error(`ICP Pack '${row.slug}' esta en estado '${row.status}', no 'active'. No se puede ejecutar un ICP que no esta activo (evita correr configuraciones en preparacion por accidente).`);\n}\nconst init = $('Init ICP Config').first().json;\nreturn [{json:{\n  icp_pack_id: row.id,\n  icp_pack_slug: row.slug,\n  signals: row.signals || {},\n  limit: init.limit,\n  account_ids: init.account_ids\n}}];"
+   }
+  },
+  {
+   "id": "f68ae7ed-5b3c-449d-9fa6-cc98e8f02afa",
+   "name": "Build Account Items",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1340,
+    90
+   ],
+   "parameters": {
+    "jsCode": "const res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nif (status < 200 || status >= 300) throw new Error(`Supabase accounts read failed: HTTP ${status || 'unknown'}`);\nconst rows = Array.isArray(body) ? body : [];\nif (!rows.length) return [{json:{_no_work:true, reason:'No accounts due for a signals check this run'}}];\nreturn rows.map(a => ({json:{...a, _no_work:false}}));"
+   }
+  },
+  {
+   "id": "d7f74608-7d64-4708-9b4f-4a8dc7fe1fd9",
+   "name": "No Work?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2,
+   "position": [
+    1560,
+    90
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "strict",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "70fba30b-d6d8-49ca-a52a-6dbc48391f97",
+       "leftValue": "={{ $json._no_work === true }}",
+       "rightValue": "",
+       "operator": {
+        "type": "boolean",
+        "operation": "true",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "961962b0-624c-4eac-b20e-abc4f30f3df6",
+   "name": "No Work Summary",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1780,
+    0
+   ],
+   "parameters": {
+    "jsCode": "return [{json:{workflow:'02b - Signals Engine', status:'no_work', finished_at:new Date().toISOString()}}];"
+   }
+  },
+  {
+   "id": "75141f79-e75d-4197-ab7a-1da50f1fc408",
+   "name": "Loop Over Accounts",
+   "type": "n8n-nodes-base.splitInBatches",
+   "typeVersion": 3,
+   "position": [
+    1780,
+    180
+   ],
+   "parameters": {
+    "options": {}
+   }
+  },
+  {
+   "id": "c84d10f6-d675-4eda-b456-5a7f9ede3915",
+   "name": "Build Signals Prompt",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    2000,
+    260
+   ],
+   "parameters": {
+    "jsCode": "const cfg = $('Init Configuration').first().json;\nconst account = $json;\nconst sigCfg = cfg.signals_config || {};\nconst types = Array.isArray(sigCfg.types) ? sigCfg.types : [];\nconst guidance = sigCfg.search_guidance || 'Busca eventos recientes y relevantes sobre esta cuenta.';\n\nconst system = `You are Prospector, the dedicated EnBandeja research agent. Follow your workspace AGENTS.md/SOUL.md rules. This run is SIGNAL DETECTION ONLY: do not sell, contact, qualify HOT/WARM/COLD, modify CRM or draft outreach. Use your configured web search tools actively. Never invent a signal, date or source. Return exactly one JSON object and no markdown or chain-of-thought.`;\n\nconst schema = `{\n  \\\"signals\\\": [\n    {\n      \\\"signal_type\\\": \\\"one of: ${types.join('|')}\\\",\n      \\\"signal_date\\\": \\\"YYYY-MM-DD|null\\\",\n      \\\"source_url\\\": \\\"https://...\\\",\n      \\\"source_title\\\": null,\n      \\\"evidence_text\\\": \\\"short precise excerpt or paraphrase that supports this signal\\\",\n      \\\"signal_strength\\\": 0.0,\n      \\\"confidence\\\": 0.0\n    }\n  ],\n  \\\"sources_checked\\\": [\\\"https://...\\\"],\n  \\\"summary\\\": \\\"short auditable summary\\\"\n}`;\n\nconst prompt = `Look for recent, evidenced commercial signals about this account, as of ${new Date().toISOString().slice(0,10)}.\n\nACCOUNT:\n${JSON.stringify({id:account.id, name:account.name, website:account.website, region:account.region, commune:account.commune, city:account.city, phone:account.phone}, null, 2)}\n\nWHAT TO LOOK FOR:\n${guidance}\n\nALLOWED SIGNAL TYPES: ${types.join(', ')}\n\nRULES:\n1. A signal MUST have a real, checkable source_url and a short evidence_text quoting/paraphrasing what the source actually says.\n2. A signal without a clear recent date should still be reported with signal_date=null, but prefer dated evidence.\n3. signal_strength (0.0-1.0) reflects how strong/direct the evidence is, not how exciting the finding is.\n4. If you find nothing real after a reasonable search, return an empty \\\"signals\\\" array. Do NOT invent a signal to avoid returning empty.\n5. Use only the allowed signal types; if something relevant does not fit, omit it rather than mislabeling it.\n\nRETURN EXACTLY ONE JSON OBJECT MATCHING THIS SCHEMA:\n${schema}`;\n\nreturn [{json:{account, system_prompt:system, user_prompt:prompt}}];"
+   }
+  },
+  {
+   "id": "38d241d1-4204-4059-b4db-effe60370139",
+   "name": "Parse Signals Result",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    2440,
+    260
+   ],
+   "parameters": {
+    "jsCode": "const cfg = $('Init Configuration').first().json;\nconst base = $('Build Signals Prompt').item.json;\nconst res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nconst errors=[];\nif (status<200||status>=300) errors.push(`OpenClaw HTTP ${status||'unknown'}`);\nlet content = body?.choices?.[0]?.message?.content;\nif (typeof content !== 'string') errors.push('OpenClaw response missing choices[0].message.content');\nlet parsed=null;\nif (typeof content==='string') {\n  let cleaned=content.trim().replace(/^```json\\s*/i,'').replace(/^```\\s*/,'').replace(/\\s*```$/,'').trim();\n  const first=cleaned.indexOf('{'), last=cleaned.lastIndexOf('}');\n  if (first>=0 && last>first) cleaned=cleaned.slice(first,last+1);\n  try { parsed=JSON.parse(cleaned); } catch(e) { errors.push(`Invalid JSON: ${e.message}`); }\n}\nif (!parsed || typeof parsed!=='object') parsed={};\n\nconst allowedTypes = new Set((cfg.signals_config && cfg.signals_config.types) || []);\nconst clamp=v=>{const n=Number(v);return Number.isFinite(n)?Math.max(0,Math.min(1,n)):null;};\nconst text=(v,max)=>typeof v==='string'&&v.trim()?v.trim().slice(0,max||2000):null;\nconst httpUrl=u=>{const s=text(u,2000); if(!s) return null; return /^https?:\\/\\/[^\\s]+$/i.test(s)?s:null;};\n\nconst now = new Date().toISOString();\nconst signalRows=[];\nfor (const raw of (Array.isArray(parsed.signals)?parsed.signals:[])) {\n  const source_url = httpUrl(raw && raw.source_url);\n  const evidence_text = text(raw && raw.evidence_text,1800);\n  if (!source_url || !evidence_text) continue;\n  const signal_type = (raw && allowedTypes.has(raw.signal_type)) ? raw.signal_type : null;\n  if (!signal_type) continue;\n  const signal_date = /^\\d{4}-\\d{2}-\\d{2}$/.test(String((raw&&raw.signal_date)||'')) ? String(raw.signal_date) : null;\n  signalRows.push({\n    account_id: base.account.id,\n    icp_pack_id: 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46',\n    signal_type,\n    signal_date,\n    signal_source: 'prospector/openclaw',\n    signal_url: source_url,\n    signal_evidence: evidence_text,\n    signal_strength: clamp(raw.signal_strength) ?? clamp(raw.confidence) ?? 0.5,\n    last_seen: now,\n  });\n}\n\nreturn [{json:{\n  account: base.account,\n  valid: errors.length===0,\n  parse_errors: errors,\n  signal_rows: signalRows,\n  summary: text(parsed.summary,2000),\n  openclaw_http_status: status,\n}}];"
+   }
+  },
+  {
+   "id": "2ca59fd1-def9-4c3b-96f7-0398f1875277",
+   "name": "New Signals?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2,
+   "position": [
+    2660,
+    260
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "strict",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "fbbfaef0-e9aa-41f5-8f9a-d56a54c0a94e",
+       "leftValue": "={{ Array.isArray($json.signal_rows) && $json.signal_rows.length > 0 }}",
+       "rightValue": "",
+       "operator": {
+        "type": "boolean",
+        "operation": "true",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "b1c99360-6142-484a-9228-d16ac447516d",
+   "name": "Build Iteration Result",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    3320,
+    260
+   ],
+   "parameters": {
+    "jsCode": "let s=null; try{s=$('Parse Signals Result').item.json;}catch{}\nif(!s) return [{json:{account_id:null,error:'Could not recover signals state'}}];\nreturn [{json:{\n  account_id: s.account.id,\n  account_name: s.account.name,\n  signals_found: (s.signal_rows||[]).length,\n  signal_types: (s.signal_rows||[]).map(r=>r.signal_type),\n  valid: s.valid,\n  parse_errors: s.parse_errors,\n  summary: s.summary,\n  workflow_revision: $('Init Configuration').first().json.workflow_revision,\n}}];"
+   }
+  },
+  {
+   "id": "215b2039-12f9-40b1-aa60-1004a9a71b1b",
+   "name": "Run Summary",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    2000,
+    0
+   ],
+   "parameters": {
+    "jsCode": "const rows = $input.all().map(i => i.json);\nconst signalsFound = rows.reduce((sum,r)=>sum+Number(r.signals_found||0),0);\nreturn [{json:{\n  workflow:'02b - Signals Engine',\n  revision: rows[0]?.workflow_revision || null,\n  accounts_checked: rows.length,\n  signals_found_total: signalsFound,\n  results: rows,\n}}];"
+   }
+  },
+  {
+   "id": "722ce9a8-5f2f-484c-9a8a-61c70b7521ef",
+   "name": "Init ICP Config",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    240,
+    90
+   ],
+   "parameters": {
+    "jsCode": "// SEGURIDAD (2026-09-15): sin default de ICP pack.\nconst incoming = $input.first()?.json ?? {};\nconst icpPackId = incoming.icp_pack_id || null;\nconst icpPackSlug = incoming.icp_pack_slug || null;\nif (!icpPackId && !icpPackSlug) {\n  throw new Error('SEGURIDAD: icp_pack_id o icp_pack_slug es obligatorio (sin valor por defecto). Abortando.');\n}\nconst filter = icpPackId ? `id=eq.${icpPackId}` : `slug=eq.${icpPackSlug}`;\nreturn [{json:{\n  limit: incoming.limit,\n  account_ids: incoming.account_ids,\n  icp_pack_url: `https://uwquwjmiofixzugttals.supabase.co/rest/v1/icp_packs?${filter}&select=id,slug,status,signals&limit=1`\n}}];"
+   }
+  },
+  {
+   "id": "554016a6-c234-4282-ae3d-a9bf826496d2",
+   "name": "Assert Expected Pack",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    560,
+    -60
+   ],
+   "parameters": {
+    "jsCode": "const EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nconst EXPECTED_ICP_PACK_SLUG = 'atacama-labs-test';\nconst row = $json;\nif (!row || !row.icp_pack_id || !row.icp_pack_slug) throw new Error('SEGURIDAD: Parse ICP Pack no devolvio icp_pack_id/icp_pack_slug. Abortando.');\nif (row.icp_pack_id !== EXPECTED_ICP_PACK_ID || row.icp_pack_slug !== EXPECTED_ICP_PACK_SLUG) {\n  throw new Error(`SEGURIDAD: ICP pack resuelto (${row.icp_pack_slug} / ${row.icp_pack_id}) NO coincide con el esperado (${EXPECTED_ICP_PACK_SLUG} / ${EXPECTED_ICP_PACK_ID}). Abortando antes de leer o escribir nada.`);\n}\nreturn [{ json: { ...row, EXPECTED_ICP_PACK_ID, EXPECTED_ICP_PACK_SLUG } }];"
+   }
+  },
+  {
+   "id": "22fad4fa-582b-444a-a62f-f3da08ad3c47",
+   "name": "Init Configuration",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    780,
+    -60
+   ],
+   "parameters": {
+    "jsCode": "const incoming = $input.first()?.json ?? {};\nconst icp = $('Assert Expected Pack').first().json;\nconst EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nconst CONFIG = {\n  supabase_url: 'https://uwquwjmiofixzugttals.supabase.co',\n  openclaw_base_url: 'http://openclaw-gateway:18790',\n  openclaw_model: 'openclaw/prospector',\n  default_limit: 1,\n  max_limit: 30,\n  recheck_after_hours: 24,\n  researcher: 'prospector/openclaw',\n  workflow_revision: 'atacama-02b-signals-test-2026-09-15',\n  icp_pack_id: EXPECTED_ICP_PACK_ID,\n  icp_pack_slug: icp.icp_pack_slug,\n  signals_config: icp.signals || {},\n};\n\nconst requestedLimit = Number(incoming.limit ?? CONFIG.default_limit);\nconst limit = Number.isFinite(requestedLimit) ? Math.max(1, Math.min(CONFIG.max_limit, Math.trunc(requestedLimit))) : CONFIG.default_limit;\n\nlet accountIds = incoming.account_ids ?? [];\nif (typeof accountIds === 'string') { try { accountIds = JSON.parse(accountIds); } catch { accountIds = accountIds.split(',').map(s=>s.trim()).filter(Boolean); } }\nif (!Array.isArray(accountIds)) accountIds = [];\naccountIds = [...new Set(accountIds.map(String).filter(Boolean))].slice(0, CONFIG.max_limit);\n\nconst cutoff = new Date(Date.now() - CONFIG.recheck_after_hours*3600*1000).toISOString();\nconst select = 'id,icp_pack_id,name,website,region,commune,city,phone';\nconst filters = [\n  'research_status=eq.complete',\n  `icp_pack_id=eq.${EXPECTED_ICP_PACK_ID}`,\n  `or=(signals_checked_at.is.null,signals_checked_at.lt.${cutoff})`,\n  `select=${select}`,\n  'order=signals_checked_at.asc.nullsfirst',\n  `limit=${limit}`,\n];\nif (accountIds.length) filters.push(`id=in.(${accountIds.join(',')})`);\n\nreturn [{json: { ...CONFIG, request: { limit, account_ids: accountIds }, accounts_url: `${CONFIG.supabase_url}/rest/v1/accounts?${filters.join('&')}` }}];"
+   }
+  },
+  {
+   "id": "4412dd04-b34b-473d-9b06-aa4a324c4106",
+   "name": "Fetch Accounts For Signals",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1000,
+    -60
+   ],
+   "parameters": {
+    "url": "={{ $('Init Configuration').first().json.accounts_url }}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "supabaseApi",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 30000
+    }
+   },
+   "credentials": {
+    "supabaseApi": {
+     "id": "XOmXUuyLVSazDIh5",
+     "name": "Atacama Labs - Supabase"
+    }
+   }
+  },
+  {
+   "id": "f6784079-1644-411b-86d6-380d2281652f",
+   "name": "Assert Expected Pack (before signals write)",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1600,
+    -60
+   ],
+   "parameters": {
+    "mode": "runOnceForEachItem",
+    "jsCode": "const EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nconst item = $json;\nif (item.icp_pack_id !== EXPECTED_ICP_PACK_ID) {\n  throw new Error(`SEGURIDAD: cuenta ${item.id} tiene icp_pack_id (${item.icp_pack_id}) distinto del esperado (${EXPECTED_ICP_PACK_ID}). Abortando antes de generar/escribir señales.`);\n}\nreturn { json: item };"
+   }
+  },
+  {
+   "id": "305d8a24-e73a-4e1d-8de1-6d5c912ac768",
+   "name": "Call OpenClaw Signals",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1820,
+    -60
+   ],
+   "parameters": {
+    "method": "POST",
+    "url": "={{ $('Init Configuration').first().json.openclaw_base_url.replace(/\\/$/, '') + '/v1/chat/completions' }}",
+    "authentication": "genericCredentialType",
+    "genericAuthType": "httpHeaderAuth",
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ { model: $('Init Configuration').first().json.openclaw_model, max_completion_tokens: 4000, messages: [ { role: 'system', content: $('Build Signals Prompt').item.json.system_prompt }, { role: 'user', content: $('Build Signals Prompt').item.json.user_prompt } ] } }}",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 600000
+    }
+   },
+   "credentials": {
+    "httpHeaderAuth": {
+     "id": "OcCmEtxlfOj1feFe",
+     "name": "Header Auth account"
+    }
+   }
+  },
+  {
+   "id": "0a604867-77f7-4197-b383-f15c25bc0354",
+   "name": "Assert Expected Pack (before upsert signals)",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    2320,
+    -60
+   ],
+   "parameters": {
+    "jsCode": "const EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nconst rows = $json.signal_rows || [];\nif (rows.some(r => r.icp_pack_id !== EXPECTED_ICP_PACK_ID)) {\n  throw new Error('SEGURIDAD: signal_rows contiene un icp_pack_id distinto del esperado. Abortando antes de escribir en signals.');\n}\nreturn $input.all();"
+   }
+  },
+  {
+   "id": "47eb1c4c-fcb7-44dc-885c-c880e52d69da",
+   "name": "Upsert Signals",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    2540,
+    -60
+   ],
+   "parameters": {
+    "method": "POST",
+    "url": "={{ $('Init Configuration').first().json.supabase_url + '/rest/v1/signals?on_conflict=account_id,signal_type,signal_url' }}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "supabaseApi",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "Prefer",
+       "value": "resolution=merge-duplicates,return=minimal"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ $json.signal_rows }}",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 30000
+    }
+   },
+   "credentials": {
+    "supabaseApi": {
+     "id": "XOmXUuyLVSazDIh5",
+     "name": "Atacama Labs - Supabase"
+    }
+   }
+  },
+  {
+   "id": "f78a7678-ed6c-41d3-8288-258380c573e6",
+   "name": "Assert Expected Pack (before account update)",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    2760,
+    -60
+   ],
+   "parameters": {
+    "jsCode": "const EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nconst cfgId = $('Init Configuration').first().json.icp_pack_id;\nif (cfgId !== EXPECTED_ICP_PACK_ID) throw new Error(`SEGURIDAD: icp_pack_id (${cfgId}) no coincide con el esperado (${EXPECTED_ICP_PACK_ID}) justo antes de actualizar accounts. Abortando.`);\nreturn $input.all();"
+   }
+  },
+  {
+   "id": "00140167-8beb-4186-ba37-176fd7087ed3",
+   "name": "Update Account Signals Checked",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    2980,
+    -60
+   ],
+   "parameters": {
+    "method": "PATCH",
+    "url": "={{ $('Init Configuration').first().json.supabase_url + '/rest/v1/accounts?id=eq.' + $('Parse Signals Result').item.json.account.id + '&icp_pack_id=eq.f412a742-7c7f-4cc0-9e2a-20c39d6fcd46&select=id' }}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "supabaseApi",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "Prefer",
+       "value": "return=representation"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ { signals_checked_at: new Date().toISOString() } }}",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 15000
+    }
+   },
+   "credentials": {
+    "supabaseApi": {
+     "id": "XOmXUuyLVSazDIh5",
+     "name": "Atacama Labs - Supabase"
+    }
+   }
+  }
+ ],
+ "connections": {
+  "Manual Test Trigger": {
+   "main": [
+    [
+     {
+      "node": "Init ICP Config",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "When Executed by Another Workflow": {
+   "main": [
+    [
+     {
+      "node": "Init ICP Config",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Init ICP Config": {
+   "main": [
+    [
+     {
+      "node": "Fetch ICP Pack",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Fetch ICP Pack": {
+   "main": [
+    [
+     {
+      "node": "Parse ICP Pack",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Parse ICP Pack": {
+   "main": [
+    [
+     {
+      "node": "Assert Expected Pack",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Assert Expected Pack": {
+   "main": [
+    [
+     {
+      "node": "Init Configuration",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Init Configuration": {
+   "main": [
+    [
+     {
+      "node": "Fetch Accounts For Signals",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Fetch Accounts For Signals": {
+   "main": [
+    [
+     {
+      "node": "Build Account Items",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Build Account Items": {
+   "main": [
+    [
+     {
+      "node": "No Work?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "No Work?": {
+   "main": [
+    [
+     {
+      "node": "No Work Summary",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Loop Over Accounts",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Loop Over Accounts": {
+   "main": [
+    [
+     {
+      "node": "Run Summary",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Assert Expected Pack (before signals write)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Assert Expected Pack (before signals write)": {
+   "main": [
+    [
+     {
+      "node": "Build Signals Prompt",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Build Signals Prompt": {
+   "main": [
+    [
+     {
+      "node": "Call OpenClaw Signals",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Call OpenClaw Signals": {
+   "main": [
+    [
+     {
+      "node": "Parse Signals Result",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Parse Signals Result": {
+   "main": [
+    [
+     {
+      "node": "New Signals?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "New Signals?": {
+   "main": [
+    [
+     {
+      "node": "Assert Expected Pack (before upsert signals)",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Assert Expected Pack (before account update)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Assert Expected Pack (before upsert signals)": {
+   "main": [
+    [
+     {
+      "node": "Upsert Signals",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Upsert Signals": {
+   "main": [
+    [
+     {
+      "node": "Assert Expected Pack (before account update)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Assert Expected Pack (before account update)": {
+   "main": [
+    [
+     {
+      "node": "Update Account Signals Checked",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Update Account Signals Checked": {
+   "main": [
+    [
+     {
+      "node": "Build Iteration Result",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Build Iteration Result": {
+   "main": [
+    [
+     {
+      "node": "Loop Over Accounts",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {
+  "executionOrder": "v1",
+  "availableInMCP": false
+ }
+}

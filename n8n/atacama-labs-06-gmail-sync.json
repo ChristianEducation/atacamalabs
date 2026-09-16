@@ -1,0 +1,43 @@
+{
+ "name": "Atacama Labs — 06 Gmail Sync (BLOQUEADO — sin credencial Gmail)",
+ "nodes": [
+  {
+   "id": "4c6b7a05-f4a7-4223-a744-c5c698d64f7b",
+   "name": "Manual Trigger",
+   "type": "n8n-nodes-base.manualTrigger",
+   "typeVersion": 1,
+   "position": [
+    -600,
+    -60
+   ],
+   "parameters": {}
+  },
+  {
+   "id": "a56c8bdc-0f96-424f-a3e0-d792373686e9",
+   "name": "Blocked: no Gmail credential",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    -380,
+    -60
+   ],
+   "parameters": {
+    "jsCode": "throw new Error('BLOQUEO: no existe credencial de Gmail para Atacama Labs (ni OAuth ni token) en .env.local ni en n8n. Este workflow queda estructuralmente listo pero INACTIVO hasta que Christian entregue el acceso -- ver docs/USER-ACTIONS.md. Alcance previsto cuando exista credencial: leer respuestas/hilos de Gmail vinculados a drafts de outreach.status=sent, registrar direction=inbound/status en la tabla outreach (nunca enviar correos -- 05 Outreach Draft es el unico productor de contenido, y solo en modo draft).');"
+   }
+  }
+ ],
+ "connections": {
+  "Manual Trigger": {
+   "main": [
+    [
+     {
+      "node": "Blocked: no Gmail credential",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {}
+}

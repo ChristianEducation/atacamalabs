@@ -1,0 +1,698 @@
+{
+ "name": "Atacama Labs — 03 Qualification (TEST)",
+ "nodes": [
+  {
+   "id": "aedef8a0-9344-41ea-991e-4abc8956edfd",
+   "name": "Manual Test Trigger",
+   "type": "n8n-nodes-base.manualTrigger",
+   "typeVersion": 1,
+   "position": [
+    -1180,
+    -60
+   ],
+   "parameters": {}
+  },
+  {
+   "id": "10d8050c-ef56-4aca-b6a6-2c9d739d2068",
+   "name": "When Executed by Another Workflow",
+   "type": "n8n-nodes-base.executeWorkflowTrigger",
+   "typeVersion": 1.1,
+   "position": [
+    -1180,
+    140
+   ],
+   "parameters": {}
+  },
+  {
+   "id": "a9d0c20b-f939-4842-940d-3f9eb26d3a40",
+   "name": "Init ICP Config",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    -960,
+    -60
+   ],
+   "parameters": {
+    "jsCode": "// SEGURIDAD: sin default de ICP pack.\nconst incoming = $input.first()?.json ?? {};\nconst icpPackId = incoming.icp_pack_id || null;\nconst icpPackSlug = incoming.icp_pack_slug || null;\nif (!icpPackId && !icpPackSlug) throw new Error('SEGURIDAD: icp_pack_id o icp_pack_slug es obligatorio (sin valor por defecto). Abortando.');\nconst filter = icpPackId ? `id=eq.${icpPackId}` : `slug=eq.${icpPackSlug}`;\nreturn [{json:{ limit: incoming.limit, account_ids: incoming.account_ids, icp_pack_url: `https://uwquwjmiofixzugttals.supabase.co/rest/v1/icp_packs?${filter}&select=id,slug,status,qualification&limit=1` }}];"
+   }
+  },
+  {
+   "id": "e6d4765f-8635-4501-a232-326582b11637",
+   "name": "Fetch ICP Pack",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    -740,
+    -60
+   ],
+   "parameters": {
+    "url": "={{ $json.icp_pack_url }}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "supabaseApi",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 15000
+    }
+   },
+   "credentials": {
+    "supabaseApi": {
+     "id": "XOmXUuyLVSazDIh5",
+     "name": "Atacama Labs - Supabase"
+    }
+   }
+  },
+  {
+   "id": "9eb96607-5cc9-4259-8fba-6c84b7c713b7",
+   "name": "Parse ICP Pack",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    -520,
+    -60
+   ],
+   "parameters": {
+    "jsCode": "const res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nconst row = Array.isArray(body) ? body[0] : body;\nif (status < 200 || status >= 300 || !row || !row.id) throw new Error(`ICP Pack no encontrado (HTTP ${status || 'unknown'}).`);\nif (row.status !== 'active') throw new Error(`ICP Pack '${row.slug}' esta en estado '${row.status}', no 'active'.`);\nconst q = row.qualification || {};\nif (!q.factor_weights || !q.thresholds) throw new Error(`ICP Pack '${row.slug}' no tiene qualification.factor_weights/thresholds configurados.`);\nreturn [{ json: { icp_pack_id: row.id, icp_pack_slug: row.slug, qualification: q } }];"
+   }
+  },
+  {
+   "id": "a5a0046a-db8e-42d2-90c2-a18e6b16175b",
+   "name": "Assert Expected Pack",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    -300,
+    -60
+   ],
+   "parameters": {
+    "jsCode": "const EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nconst EXPECTED_ICP_PACK_SLUG = 'atacama-labs-test';\nconst row = $json;\nif (row.icp_pack_id !== EXPECTED_ICP_PACK_ID || row.icp_pack_slug !== EXPECTED_ICP_PACK_SLUG) {\n  throw new Error(`SEGURIDAD: ICP pack resuelto (${row.icp_pack_slug} / ${row.icp_pack_id}) NO coincide con el esperado (${EXPECTED_ICP_PACK_SLUG} / ${EXPECTED_ICP_PACK_ID}). Abortando antes de leer o escribir nada.`);\n}\nreturn [{ json: { ...row, EXPECTED_ICP_PACK_ID } }];"
+   }
+  },
+  {
+   "id": "2d312b90-b0dd-4b0e-b6e0-a4951ee7d481",
+   "name": "Init Configuration",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    -80,
+    -60
+   ],
+   "parameters": {
+    "jsCode": "const incoming = $('Init ICP Config').first().json;\nconst icp = $('Assert Expected Pack').first().json;\nconst EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nconst q = icp.qualification;\nconst CONFIG = {\n  supabase_url: 'https://uwquwjmiofixzugttals.supabase.co',\n  qualification_version: 'atacama-03-qualification-test-2026-09-15',\n  icp_pack_id: EXPECTED_ICP_PACK_ID,\n  factor_weights: q.factor_weights,\n  thresholds: q.thresholds,\n  evidence_age_days: Number(q.evidence_age_days || 90),\n  urgency_age_days: Number(q.urgency_age_days || 30),\n  human_review_required: q.human_review_required !== false,\n  default_limit: 25,\n  max_limit: 25,\n};\nlet accountIds = incoming.account_ids ?? [];\nif (typeof accountIds === 'string') { try { accountIds = JSON.parse(accountIds); } catch { accountIds = accountIds.split(',').map(s=>s.trim()).filter(Boolean); } }\nif (!Array.isArray(accountIds)) accountIds = [];\naccountIds = [...new Set(accountIds.map(String).filter(Boolean))].slice(0, CONFIG.max_limit);\nconst requestedLimit = Number(incoming.limit ?? CONFIG.default_limit);\nconst limit = Number.isFinite(requestedLimit) ? Math.max(1, Math.min(CONFIG.max_limit, Math.trunc(requestedLimit))) : CONFIG.default_limit;\nconst select = 'id,icp_pack_id,name,website,region,commune,city,research_status';\nconst filters = ['research_status=eq.complete', `icp_pack_id=eq.${EXPECTED_ICP_PACK_ID}`, `select=${select}`, 'order=updated_at.asc', `limit=${limit}`];\nif (accountIds.length) filters.push(`id=in.(${accountIds.join(',')})`);\nreturn [{ json: { ...CONFIG, request: { limit, account_ids: accountIds }, eligible_accounts_url: `${CONFIG.supabase_url}/rest/v1/accounts?${filters.join('&')}` } }];"
+   }
+  },
+  {
+   "id": "ec28b87a-1b50-466e-a5af-71713b8c5a82",
+   "name": "Fetch Eligible Accounts",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    140,
+    -60
+   ],
+   "parameters": {
+    "url": "={{ $json.eligible_accounts_url }}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "supabaseApi",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 30000
+    }
+   },
+   "credentials": {
+    "supabaseApi": {
+     "id": "XOmXUuyLVSazDIh5",
+     "name": "Atacama Labs - Supabase"
+    }
+   }
+  },
+  {
+   "id": "519523d5-7448-47a4-b8d1-438ba0207752",
+   "name": "Build Eligible Accounts",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    360,
+    -60
+   ],
+   "parameters": {
+    "jsCode": "const res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nif (status < 200 || status >= 300) throw new Error(`Supabase eligible accounts read failed: HTTP ${status || 'unknown'}`);\nconst rows = Array.isArray(body) ? body : [];\nif (!rows.length) return [{json:{_no_work:true, reason:'No accounts with research_status=complete matched this run'}}];\nreturn [{json:{_no_work:false, eligible_accounts:rows}}];"
+   }
+  },
+  {
+   "id": "8c40e144-4609-493a-8390-9c714908883f",
+   "name": "No Work?",
+   "type": "n8n-nodes-base.if",
+   "typeVersion": 2,
+   "position": [
+    580,
+    -60
+   ],
+   "parameters": {
+    "conditions": {
+     "options": {
+      "caseSensitive": true,
+      "leftValue": "",
+      "typeValidation": "strict",
+      "version": 2
+     },
+     "conditions": [
+      {
+       "id": "2bafb6f8-4932-4704-a4d8-9a20160a72bc",
+       "leftValue": "={{ $json._no_work === true }}",
+       "rightValue": "",
+       "operator": {
+        "type": "boolean",
+        "operation": "true",
+        "singleValue": true
+       }
+      }
+     ],
+     "combinator": "and"
+    },
+    "options": {}
+   }
+  },
+  {
+   "id": "8e206a38-4464-499a-b83f-422c7fd2ac10",
+   "name": "No Work Summary",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    580,
+    140
+   ],
+   "parameters": {
+    "jsCode": "return [{json:{workflow:'Atacama Labs - 03 Qualification (test)', status:'no_work', finished_at:new Date().toISOString()}}];"
+   }
+  },
+  {
+   "id": "0f6353dd-e393-4efe-b983-e124caf2148f",
+   "name": "Build Prospect Seeds",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    800,
+    -60
+   ],
+   "parameters": {
+    "jsCode": "return ($json.eligible_accounts||[]).map(a => ({ json: a }));"
+   }
+  },
+  {
+   "id": "95955a3e-6506-4fc4-9b06-a7f14aac9116",
+   "name": "Loop Over Accounts",
+   "type": "n8n-nodes-base.splitInBatches",
+   "typeVersion": 3,
+   "position": [
+    1020,
+    -60
+   ],
+   "parameters": {
+    "batchSize": 1,
+    "options": {}
+   }
+  },
+  {
+   "id": "0589c9be-b358-4195-9b81-f2a679c790e7",
+   "name": "Run Summary",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1020,
+    140
+   ],
+   "parameters": {
+    "jsCode": "let items=[]; try{items=$items('Build Iteration Result').map(x=>x.json.iteration_result).filter(Boolean);}catch{}\nconst count=k=>items.filter(x=>x.classification===k).length;\nreturn [{json:{ workflow:'Atacama Labs - 03 Qualification (test)', revision: $('Init Configuration').first().json.qualification_version, processed:items.length, hot:count('hot'), warm:count('warm'), cold:count('cold'), results: items }}];"
+   }
+  },
+  {
+   "id": "34aff5cc-5ec6-49ff-ab7e-76203337755f",
+   "name": "Assert Expected Pack (before fetch)",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1240,
+    -60
+   ],
+   "parameters": {
+    "mode": "runOnceForEachItem",
+    "jsCode": "const EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nconst item = $json;\nif (item.icp_pack_id !== EXPECTED_ICP_PACK_ID) throw new Error(`SEGURIDAD: cuenta ${item.id} tiene icp_pack_id (${item.icp_pack_id}) distinto del esperado (${EXPECTED_ICP_PACK_ID}). Abortando antes de calificarla.`);\nreturn { json: item };"
+   }
+  },
+  {
+   "id": "f998be87-5830-49ab-8068-b1a8afc62e5e",
+   "name": "Fetch Research",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1460,
+    -60
+   ],
+   "parameters": {
+    "url": "={{ 'https://uwquwjmiofixzugttals.supabase.co/rest/v1/research?account_id=eq.' + $json.id + '&select=research_type,finding,evidence_text,source_url,source_date,confidence,verified_at,raw_metadata&order=verified_at.desc&limit=200' }}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "supabaseApi",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 20000
+    }
+   },
+   "credentials": {
+    "supabaseApi": {
+     "id": "XOmXUuyLVSazDIh5",
+     "name": "Atacama Labs - Supabase"
+    }
+   }
+  },
+  {
+   "id": "734cd320-06a3-44ff-8f5f-ab226e272de6",
+   "name": "Fetch Contacts",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1680,
+    -60
+   ],
+   "parameters": {
+    "url": "={{ 'https://uwquwjmiofixzugttals.supabase.co/rest/v1/contacts?account_id=eq.' + $('Assert Expected Pack (before fetch)').item.json.id + '&select=id,name,job_title,email,phone,contact_status&limit=20' }}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "supabaseApi",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 20000
+    }
+   },
+   "credentials": {
+    "supabaseApi": {
+     "id": "XOmXUuyLVSazDIh5",
+     "name": "Atacama Labs - Supabase"
+    }
+   }
+  },
+  {
+   "id": "c97aa986-d700-4ac1-b710-4fa17a6e7d8c",
+   "name": "Score Factors (7-factor model)",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1900,
+    -60
+   ],
+   "parameters": {
+    "jsCode": "// Implementa contracts/PROSPECTING.md + contracts/prospecting-policy.json EXACTAMENTE.\n// Nivel 0/1/2 por factor: 0 sin evidencia, 1 senal indirecta, 2 evidencia concreta.\n// Puntos = peso * nivel/2. Score suma 0-100, medios puntos permitidos.\nconst account = $('Assert Expected Pack (before fetch)').item.json;\nconst cfg = $('Init Configuration').first().json;\nconst weights = cfg.factor_weights; // {pain,budgetProxy,volume,automation,access,urgency,fit}\nconst thresholds = cfg.thresholds; // {A,B}\nconst evidenceAgeDays = cfg.evidence_age_days;\nconst urgencyAgeDays = cfg.urgency_age_days;\n\nconst researchRes = $('Fetch Research').item.json ?? {};\nconst researchStatus = Number(researchRes.statusCode ?? 0);\nconst researchRows = researchStatus >= 200 && researchStatus < 300 && Array.isArray(researchRes.body) ? researchRes.body : [];\n\nconst contactsRes = $('Fetch Contacts').item.json ?? {};\nconst contactsStatus = Number(contactsRes.statusCode ?? 0);\nconst contactRows = contactsStatus >= 200 && contactsStatus < 300 && Array.isArray(contactsRes.body) ? contactsRes.body : [];\n\nconst FACTOR_KEYS = { pain: 'pain', budgetProxy: 'budget_proxy', volume: 'volume', automation: 'automation', access: 'access', urgency: 'urgency', fit: 'fit' };\nconst now = Date.now();\nconst ageDays = (dateStr) => { if (!dateStr) return Infinity; const t = new Date(dateStr).getTime(); if (!Number.isFinite(t)) return Infinity; return (now - t) / (1000*60*60*24); };\n\nconst factors = {};\nconst uncertainty = [];\nlet rawScore = 0;\n\nfor (const [weightKey, factorType] of Object.entries(FACTOR_KEYS)) {\n  const rows = researchRows.filter(r => r.research_type === 'factor:' + factorType);\n  // Best evidence: highest level first, then most recent verified_at/source_date.\n  let best = null;\n  for (const r of rows) {\n    const level = Number(r?.raw_metadata?.level);\n    if (![0, 1, 2].includes(level)) continue;\n    const evAge = ageDays(r.source_date || r.verified_at);\n    if (!best || level > best.level || (level === best.level && evAge < best.ageDays)) {\n      best = { level, ageDays: evAge, finding: r.finding, source_url: r.source_url, source_date: r.source_date, certainty: r?.raw_metadata?.certainty || 'inferred' };\n    }\n  }\n  const weight = Number(weights[weightKey] || 0);\n  let level = best ? best.level : 0;\n  let stale = false;\n  // Vigencia: evidencia de urgencia >30 dias se trata como no vigente (no cuenta el nivel\n  // encontrado, per contracts/PROSPECTING.md \"revisar si >30 dias\"); otros factores usan\n  // evidence_age_days (90) como limite de vigencia general antes de outreach, no para el\n  // score en si -- se registra como incertidumbre, no se fuerza a 0, salvo urgencia.\n  if (best) {\n    if (factorType === 'urgency' && best.ageDays > urgencyAgeDays) { stale = true; level = 0; uncertainty.push('urgency_stale'); }\n    else if (best.ageDays > evidenceAgeDays) { uncertainty.push(factorType + '_evidence_aged'); }\n  }\n  const points = weight * (level / 2);\n  rawScore += points;\n  factors[weightKey] = { level, weight, points, evidence: best ? { finding: best.finding, source_url: best.source_url, source_date: best.source_date, certainty: best.certainty, stale } : null, unknown: !best };\n}\nrawScore = Math.round(rawScore * 2) / 2; // medios puntos permitidos\n\n// Contacto verificable: al menos un contacto con email o telefono.\nconst bestContact = contactRows.find(c => c.email || c.phone) || contactRows[0] || null;\nconst contactVerified = Boolean(bestContact && (bestContact.email || bestContact.phone));\n\n// Empresa verificada: la propia cuenta existe con nombre + (website o direccion) -- ya\n// esta en accounts por Discovery, se toma como verificada si tiene nombre y algun canal.\nconst companyVerified = Boolean(account.name && (account.website || account.city));\n\nconst painVerified = factors.pain.level >= 1;\nconst evidenceVigente = !uncertainty.includes('urgency_stale');\n\nreturn [{\n  json: {\n    account,\n    factors,\n    raw_score: rawScore,\n    final_score: rawScore, // sin penalizaciones de incumbencia -- no aplica a Atacama\n    contact_verified: contactVerified,\n    primary_contact: bestContact,\n    company_verified: companyVerified,\n    pain_verified: painVerified,\n    evidence_vigente: evidenceVigente,\n    uncertainty_codes: uncertainty,\n    thresholds,\n  },\n}];"
+   }
+  },
+  {
+   "id": "4ef5f154-dd8d-4c83-862a-8df6bfbe6fc0",
+   "name": "Classification (Gates A/B/C)",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    2120,
+    -60
+   ],
+   "parameters": {
+    "jsCode": "// Gates per contracts/PROSPECTING.md:\n// A >= 80 AND empresa verificada AND dolor nivel>=1 AND contacto verificable AND evidencia vigente.\n// Si score>=80 pero falla un gate, degrada a B con motivo. B >= 60 si no cumple gate A.\n// C < 60 o research incompleto.\nconst s = $json;\nconst { raw_score, final_score, contact_verified, company_verified, pain_verified, evidence_vigente, thresholds } = s;\nlet classification;\nlet gate_reason = null;\n\nconst gateAOk = final_score >= thresholds.A && company_verified && pain_verified && contact_verified && evidence_vigente;\n\nif (final_score >= thresholds.A) {\n  if (gateAOk) { classification = 'A'; }\n  else {\n    const failed = [];\n    if (!company_verified) failed.push('empresa_no_verificada');\n    if (!pain_verified) failed.push('dolor_no_verificado');\n    if (!contact_verified) failed.push('contacto_no_verificable');\n    if (!evidence_vigente) failed.push('evidencia_no_vigente');\n    classification = final_score >= thresholds.B ? 'B' : 'C';\n    gate_reason = 'score>=A pero gate A fallo: ' + failed.join(',');\n  }\n} else if (final_score >= thresholds.B) {\n  classification = 'B';\n} else {\n  classification = 'C';\n}\n\n// Mapeo al enum existente de prospects.classification (hot/warm/cold) -- A=hot, B=warm, C=cold.\nconst dbClassification = classification === 'A' ? 'hot' : classification === 'B' ? 'warm' : 'cold';\n\nreturn [{ json: { ...s, classification_letter: classification, classification: dbClassification, gate_reason } }];"
+   }
+  },
+  {
+   "id": "07a6f576-70dc-48cf-b55e-602ad9d37837",
+   "name": "Assert Expected Pack (before write)",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    2340,
+    -60
+   ],
+   "parameters": {
+    "jsCode": "const EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nconst cfgId = $('Init Configuration').first().json.icp_pack_id;\nif (cfgId !== EXPECTED_ICP_PACK_ID) throw new Error(`SEGURIDAD: icp_pack_id (${cfgId}) no coincide con el esperado (${EXPECTED_ICP_PACK_ID}) justo antes de escribir en prospects. Abortando.`);\nreturn $input.all();"
+   }
+  },
+  {
+   "id": "5356a766-492a-4896-81c8-d1cf8e1ff900",
+   "name": "Build Prospect Payload",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    2560,
+    -60
+   ],
+   "parameters": {
+    "jsCode": "const s = $json;\nconst cfg = $('Init Configuration').first().json;\nconst EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nconst factorSummary = Object.entries(s.factors).map(([k, f]) => `${k}=${f.level}(${f.points}pt)${f.unknown ? '?' : ''}`).join(', ');\nconst reason = `classification=${s.classification_letter}; raw=${s.raw_score}; final=${s.final_score}; factors: ${factorSummary}${s.gate_reason ? '; ' + s.gate_reason : ''}${s.uncertainty_codes.length ? '; uncertainty=' + s.uncertainty_codes.join('|') : ''}`;\nconst angle = s.factors.pain.evidence?.finding || s.factors.fit.evidence?.finding || 'Sin angulo comercial especifico detectado todavia.';\n\nconst payload = {\n  prospect_key: 'account:' + s.account.id,\n  icp_pack_id: EXPECTED_ICP_PACK_ID,\n  account_id: s.account.id,\n  primary_contact_id: s.primary_contact?.id || null,\n  classification: s.classification,\n  score: Math.round(s.final_score),\n  raw_score: Math.round(s.raw_score),\n  final_score: Math.round(s.final_score),\n  operator_confirmed: false,\n  operator_required: false,\n  operation_current: null,\n  pain_verified: s.pain_verified,\n  contact_verified: s.contact_verified,\n  commercial_angle: angle.slice(0, 500),\n  qualification_reason: reason.slice(0, 2000),\n  status: 'new',\n  crm_candidate: s.classification_letter === 'A',\n  metadata: {\n    human_review_required: cfg.human_review_required,\n    factors: s.factors,\n    uncertainty_codes: s.uncertainty_codes,\n    qualification_version: cfg.qualification_version,\n    scored_at: new Date().toISOString(),\n  },\n};\nreturn [{ json: { ...s, prospect_payload: payload } }];"
+   }
+  },
+  {
+   "id": "df04cf02-c2f8-412b-ba01-f1f283736126",
+   "name": "Deduplicate Upsert Prospect",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    2780,
+    -60
+   ],
+   "parameters": {
+    "method": "POST",
+    "url": "={{ 'https://uwquwjmiofixzugttals.supabase.co/rest/v1/prospects?on_conflict=prospect_key&select=id,prospect_key,classification,raw_score,final_score,crm_candidate,status,qualified_at' }}",
+    "authentication": "predefinedCredentialType",
+    "nodeCredentialType": "supabaseApi",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "Prefer",
+       "value": "resolution=merge-duplicates,return=representation"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ $json.prospect_payload }}",
+    "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "json"
+      }
+     },
+     "timeout": 20000
+    }
+   },
+   "credentials": {
+    "supabaseApi": {
+     "id": "XOmXUuyLVSazDIh5",
+     "name": "Atacama Labs - Supabase"
+    }
+   }
+  },
+  {
+   "id": "5c6b11fb-b458-495c-9fa9-909adc525846",
+   "name": "Validate Prospect Upsert",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    3000,
+    -60
+   ],
+   "parameters": {
+    "jsCode": "const state = $('Build Prospect Payload').item.json;\nconst res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nif (status < 200 || status >= 300 || !Array.isArray(body) || body.length !== 1) {\n  const detail = typeof body === 'string' ? body : JSON.stringify(body).slice(0, 800);\n  throw new Error(`Prospect upsert rejected for ${state.prospect_payload.prospect_key}: HTTP ${status || 'unknown'} ${detail}`);\n}\nreturn [{ json: { ...state, persisted_prospect: body[0] } }];"
+   }
+  },
+  {
+   "id": "7dc5c552-b887-4806-93d7-88cd94e276d4",
+   "name": "Build Iteration Result",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    3220,
+    -60
+   ],
+   "parameters": {
+    "jsCode": "const s = $json;\nreturn [{ json: { iteration_result: {\n  account_id: s.account.id, account_name: s.account.name,\n  classification: s.classification_letter, score: s.final_score, crm_candidate: s.prospect_payload.crm_candidate,\n  prospect_id: s.persisted_prospect?.id || null, gate_reason: s.gate_reason,\n} } }];"
+   }
+  }
+ ],
+ "connections": {
+  "Manual Test Trigger": {
+   "main": [
+    [
+     {
+      "node": "Init ICP Config",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "When Executed by Another Workflow": {
+   "main": [
+    [
+     {
+      "node": "Init ICP Config",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Init ICP Config": {
+   "main": [
+    [
+     {
+      "node": "Fetch ICP Pack",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Fetch ICP Pack": {
+   "main": [
+    [
+     {
+      "node": "Parse ICP Pack",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Parse ICP Pack": {
+   "main": [
+    [
+     {
+      "node": "Assert Expected Pack",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Assert Expected Pack": {
+   "main": [
+    [
+     {
+      "node": "Init Configuration",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Init Configuration": {
+   "main": [
+    [
+     {
+      "node": "Fetch Eligible Accounts",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Fetch Eligible Accounts": {
+   "main": [
+    [
+     {
+      "node": "Build Eligible Accounts",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Build Eligible Accounts": {
+   "main": [
+    [
+     {
+      "node": "No Work?",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "No Work?": {
+   "main": [
+    [
+     {
+      "node": "No Work Summary",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Build Prospect Seeds",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Build Prospect Seeds": {
+   "main": [
+    [
+     {
+      "node": "Loop Over Accounts",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Loop Over Accounts": {
+   "main": [
+    [
+     {
+      "node": "Run Summary",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Assert Expected Pack (before fetch)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Assert Expected Pack (before fetch)": {
+   "main": [
+    [
+     {
+      "node": "Fetch Research",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Fetch Research": {
+   "main": [
+    [
+     {
+      "node": "Fetch Contacts",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Fetch Contacts": {
+   "main": [
+    [
+     {
+      "node": "Score Factors (7-factor model)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Score Factors (7-factor model)": {
+   "main": [
+    [
+     {
+      "node": "Classification (Gates A/B/C)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Classification (Gates A/B/C)": {
+   "main": [
+    [
+     {
+      "node": "Assert Expected Pack (before write)",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Assert Expected Pack (before write)": {
+   "main": [
+    [
+     {
+      "node": "Build Prospect Payload",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Build Prospect Payload": {
+   "main": [
+    [
+     {
+      "node": "Deduplicate Upsert Prospect",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Deduplicate Upsert Prospect": {
+   "main": [
+    [
+     {
+      "node": "Validate Prospect Upsert",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Validate Prospect Upsert": {
+   "main": [
+    [
+     {
+      "node": "Build Iteration Result",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Build Iteration Result": {
+   "main": [
+    [
+     {
+      "node": "Loop Over Accounts",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "settings": {}
+}

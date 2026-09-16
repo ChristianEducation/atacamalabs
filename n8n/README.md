@@ -71,6 +71,40 @@ Corregido el código y verificado por inspección directa (`GET` del workflow). 
 
 **Resuelto 2026-09-15**: Christian decidió el protocolo de pruebas seguras (arriba). "02 Research" reescrito con las validaciones dobles + `atacama-labs-test`, probado con una copia desechable (1 sola ejecución, ~48s hasta que el cron disparó): `Assert Expected Pack` confirmó `atacama-labs-test`, procesó únicamente la cuenta ficticia esperada, insertó 1 fila de evidencia real (factor `fit`), sin tocar ninguna cuenta de EnBandeja. Datos ficticios y la copia del workflow eliminados después; conteos de EnBandeja verificados idénticos antes/después.
 
+## Atacama Labs — 02b Signals
+
+- Fuente: [`atacama-labs-02b-signals.json`](atacama-labs-02b-signals.json), modo `test`.
+- Clonado de "02b - Signals Engine" de EnBandeja (`q4zOm2QckejUodh2`, solo lectura). Este workflow ya era **100% genérico** en el original (sin ningún concepto de operador/colegio) — reutilizado casi sin cambios, solo el protocolo de seguridad (sin defaults, `Assert Expected Pack` ×2, `icp_pack_id` hardcodeado en `Init Configuration`/`Fetch Accounts For Signals`/`Upsert Signals`/`Update Account Signals Checked`). Lee `icp_packs.atacama-labs.signals.{types,search_guidance}` (agregado `search_guidance`, faltaba). Solo corre sobre `accounts` con `research_status='complete'` (después de 02 Research).
+- Credencial OpenClaw compartida temporalmente (mismo pendiente que 02 Research, U17).
+- Aún no probado (construido, sin ejecutar todavía).
+
+## Atacama Labs — 03 Qualification
+
+- Fuente: [`atacama-labs-03-qualification.json`](atacama-labs-03-qualification.json), modo `test`.
+- **Construido desde cero** (NO clonado de EnBandeja): el `03` real está profundamente acoplado a conceptos de operador/colegio/plataforma-incumbente (`operator_relation`, `manual_process_count`, `platform_status`, `Hard Gates`/`Raw Score`/`Caps Penalties` específicos de casino-escolar) que Christian pidió explícitamente no reutilizar ("no inventar criterios nuevos" también implica no heredar los de otro vertical). Se reutilizó solo la forma general de orquestación (resolución de ICP, fetch de cuentas elegibles, loop, upsert).
+- Implementa **exactamente** `contracts/PROSPECTING.md` + `contracts/prospecting-policy.json`: 7 factores (pain/budgetProxy/volume/automation/access/urgency/fit), nivel 0/1/2 por factor leído de `research.research_type='factor:<clave>'` (poblado por 02 Research), puntos = peso×nivel/2, score 0-100 con medios puntos. Gate A (score≥80 + empresa verificada + dolor≥1 + contacto verificable + evidencia vigente) degrada a B si falla, con motivo registrado. Evidencia de urgencia >30 días se trata como no vigente (nivel→0), otras evidencias >90 días quedan marcadas como `_evidence_aged` en `uncertainty_codes` sin forzar el nivel a 0.
+- Escribe en `prospects` (`account_id`, sin `school_id`/`operator_id`), `prospect_key='account:<id>'`, `classification` mapeada A→hot/B→warm/C→cold (mismo enum ya existente), `crm_candidate=true` solo para clasificación A, `status='new'` (nunca `ready_to_contact` automáticamente — **la revisión humana de las primeras 2-3 cohortes es quien cambia el status a `ready_to_contact`**, no este workflow). `metadata` guarda el desglose completo por factor (auto-score, evidencia usada, versión) para calibración futura.
+- Aún no probado (construido, sin ejecutar todavía).
+
+## Atacama Labs — 04 CRM Sync
+
+- Fuente: [`atacama-labs-04-crm-sync.json`](atacama-labs-04-crm-sync.json), modo `test`.
+- Sincroniza **únicamente** `prospects` con `status='ready_to_contact'` AND `crm_candidate=true` (o sea, solo lo que un humano ya aprobó) — nunca lee por clasificación/score directamente. Reutiliza el patrón contact-upsert→opportunity-upsert de "01 Lead Sync" y las RPCs generalizadas de 003: `enqueue_prospect_sync` (encola aprobados no encolados aún) + `claim_sync_jobs(..., p_source_type:'prospect')` (reclama solo jobs de origen prospect, nunca compite con "01 Lead Sync") + `complete_sync_job`. Campos personalizados de GHL (Fuente/Solución de interés/Lead ID) tomados de `icp_packs.crm.fields`, ya creados en 002.
+- Sin trigger de schedule (a diferencia de "01 Lead Sync") — se dispara manualmente o por el futuro orquestador, consistente con que el gate de revisión humana es manual por ahora.
+- Aún no probado (construido, sin ejecutar todavía).
+
+## Atacama Labs — 05 Outreach Draft
+
+- Fuente: [`atacama-labs-05-outreach-draft.json`](atacama-labs-05-outreach-draft.json), modo `test`.
+- Genera **solo borradores** (`outreach.status='draft'`) — no existe ningún nodo que llame a un proveedor de email/WhatsApp, es estructuralmente imposible que este workflow envíe algo. Si un prospect no tiene evidencia real en `research`, se salta explícitamente (`skip_reason`) en vez de inventar un ángulo — consistente con "no inventar dolores ni información". El prompt exige citar al menos una evidencia real con su URL.
+- Alcance: `prospects.crm_candidate=true` sin un draft/envío previo activo. Usa OpenClaw (credencial compartida temporal, mismo pendiente U17) para redactar, citando evidencia de `research`.
+- Aún no probado (construido, sin ejecutar todavía).
+
+## Atacama Labs — 06 Gmail Sync
+
+- Fuente: [`atacama-labs-06-gmail-sync.json`](atacama-labs-06-gmail-sync.json).
+- **Esqueleto terminado, deliberadamente INACTIVO**: no existe credencial de Gmail para Atacama (nunca se compartió). El único nodo real lanza un error explicando el bloqueo exacto. Nunca se activará ni se probará hasta que exista la credencial — registrado en `docs/USER-ACTIONS.md`. Alcance previsto cuando exista: leer respuestas de Gmail vinculadas a drafts `sent`, registrar `direction=inbound` en `outreach` — nunca enviar correos (eso seguiría sin existir; 05 solo genera drafts).
+
 ## Pendiente / no incluido en esta versión
 
 - No hay alerta ni notificación cuando un job llega a `failed` tras 4 intentos — hoy solo queda visible consultando `sync_jobs`/`lead_submissions` directamente. Agregar si Christian lo pide (p.ej. un nodo que notifique cuando `attempts>=4`).
