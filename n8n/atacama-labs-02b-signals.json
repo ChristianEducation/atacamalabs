@@ -253,7 +253,7 @@
    }
   },
   {
-   "id": "554016a6-c234-4282-ae3d-a9bf826496d2",
+   "id": "57790138-ca50-4dd6-8603-005016f703e5",
    "name": "Assert Expected Pack",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -266,7 +266,7 @@
    }
   },
   {
-   "id": "22fad4fa-582b-444a-a62f-f3da08ad3c47",
+   "id": "0abb72b1-6f3d-4549-a542-192fa4b37965",
    "name": "Init Configuration",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -279,7 +279,7 @@
    }
   },
   {
-   "id": "4412dd04-b34b-473d-9b06-aa4a324c4106",
+   "id": "a46ca260-8c6f-455a-b27f-ea9c2fde5846",
    "name": "Fetch Accounts For Signals",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,
@@ -310,7 +310,7 @@
    }
   },
   {
-   "id": "f6784079-1644-411b-86d6-380d2281652f",
+   "id": "da20421e-4e9d-411f-b4c7-7966f76e60a9",
    "name": "Assert Expected Pack (before signals write)",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -324,7 +324,7 @@
    }
   },
   {
-   "id": "305d8a24-e73a-4e1d-8de1-6d5c912ac768",
+   "id": "d3d412e6-41da-46ca-bea5-cd08d2fa7cc8",
    "name": "Call OpenClaw Signals",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,
@@ -359,7 +359,7 @@
    }
   },
   {
-   "id": "0a604867-77f7-4197-b383-f15c25bc0354",
+   "id": "d6a6ff85-d412-4194-87b8-b10f24a41974",
    "name": "Assert Expected Pack (before upsert signals)",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -372,7 +372,7 @@
    }
   },
   {
-   "id": "47eb1c4c-fcb7-44dc-885c-c880e52d69da",
+   "id": "20701e3a-dec3-46da-ae89-34a08e433772",
    "name": "Upsert Signals",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,
@@ -416,7 +416,7 @@
    }
   },
   {
-   "id": "f78a7678-ed6c-41d3-8288-258380c573e6",
+   "id": "cc8331d2-2932-41ca-a3be-e0ec0c4f26ce",
    "name": "Assert Expected Pack (before account update)",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -429,7 +429,7 @@
    }
   },
   {
-   "id": "00140167-8beb-4186-ba37-176fd7087ed3",
+   "id": "d912eb78-1c2d-4bf1-a363-49bedcb7d65d",
    "name": "Update Account Signals Checked",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,

@@ -2,7 +2,7 @@
  "name": "Atacama Labs — 03 Qualification (TEST)",
  "nodes": [
   {
-   "id": "aedef8a0-9344-41ea-991e-4abc8956edfd",
+   "id": "86dfd8ce-d782-457b-bfb7-607fd364e725",
    "name": "Manual Test Trigger",
    "type": "n8n-nodes-base.manualTrigger",
    "typeVersion": 1,
@@ -13,7 +13,7 @@
    "parameters": {}
   },
   {
-   "id": "10d8050c-ef56-4aca-b6a6-2c9d739d2068",
+   "id": "796a3a36-1fc8-47c3-9dac-ab4fa8e4ac40",
    "name": "When Executed by Another Workflow",
    "type": "n8n-nodes-base.executeWorkflowTrigger",
    "typeVersion": 1.1,
@@ -21,10 +21,31 @@
     -1180,
     140
    ],
-   "parameters": {}
+   "parameters": {
+    "workflowInputs": {
+     "values": [
+      {
+       "name": "icp_pack_id",
+       "type": "string"
+      },
+      {
+       "name": "icp_pack_slug",
+       "type": "string"
+      },
+      {
+       "name": "limit",
+       "type": "number"
+      },
+      {
+       "name": "account_ids",
+       "type": "array"
+      }
+     ]
+    }
+   }
   },
   {
-   "id": "a9d0c20b-f939-4842-940d-3f9eb26d3a40",
+   "id": "ceb15db8-3972-4b93-80c5-5e20210de32f",
    "name": "Init ICP Config",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -37,7 +58,7 @@
    }
   },
   {
-   "id": "e6d4765f-8635-4501-a232-326582b11637",
+   "id": "b0eb9e6e-cbd9-4bc3-bd6a-86b65efc2250",
    "name": "Fetch ICP Pack",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,
@@ -68,7 +89,7 @@
    }
   },
   {
-   "id": "9eb96607-5cc9-4259-8fba-6c84b7c713b7",
+   "id": "42532675-a002-4bda-9454-c330831fb3f1",
    "name": "Parse ICP Pack",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -81,7 +102,7 @@
    }
   },
   {
-   "id": "a5a0046a-db8e-42d2-90c2-a18e6b16175b",
+   "id": "9f6364a8-8aa7-49d4-a448-d7fe120fa056",
    "name": "Assert Expected Pack",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -94,7 +115,7 @@
    }
   },
   {
-   "id": "2d312b90-b0dd-4b0e-b6e0-a4951ee7d481",
+   "id": "d6a5484b-9182-4507-9af2-14145228c591",
    "name": "Init Configuration",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -107,7 +128,7 @@
    }
   },
   {
-   "id": "ec28b87a-1b50-466e-a5af-71713b8c5a82",
+   "id": "496d1203-c180-4024-b97a-d94179f50ede",
    "name": "Fetch Eligible Accounts",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,
@@ -138,7 +159,7 @@
    }
   },
   {
-   "id": "519523d5-7448-47a4-b8d1-438ba0207752",
+   "id": "71ce0206-968e-47ce-83cd-9069dda32ad6",
    "name": "Build Eligible Accounts",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -151,7 +172,7 @@
    }
   },
   {
-   "id": "8c40e144-4609-493a-8390-9c714908883f",
+   "id": "7723ad92-26c8-47ca-8930-d34055d7e5ac",
    "name": "No Work?",
    "type": "n8n-nodes-base.if",
    "typeVersion": 2,
@@ -169,7 +190,7 @@
      },
      "conditions": [
       {
-       "id": "2bafb6f8-4932-4704-a4d8-9a20160a72bc",
+       "id": "7679ec32-2ffd-4e0a-ad0a-423c63237812",
        "leftValue": "={{ $json._no_work === true }}",
        "rightValue": "",
        "operator": {
@@ -185,7 +206,7 @@
    }
   },
   {
-   "id": "8e206a38-4464-499a-b83f-422c7fd2ac10",
+   "id": "11085711-9bcf-4f5e-a88d-9cab28c20a89",
    "name": "No Work Summary",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -198,7 +219,7 @@
    }
   },
   {
-   "id": "0f6353dd-e393-4efe-b983-e124caf2148f",
+   "id": "c9a5ae6f-7c9f-4e7a-926b-75c0221d764a",
    "name": "Build Prospect Seeds",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -211,7 +232,7 @@
    }
   },
   {
-   "id": "95955a3e-6506-4fc4-9b06-a7f14aac9116",
+   "id": "69d90ca4-7cb1-408f-9b4f-99b1de4cbc38",
    "name": "Loop Over Accounts",
    "type": "n8n-nodes-base.splitInBatches",
    "typeVersion": 3,
@@ -225,7 +246,7 @@
    }
   },
   {
-   "id": "0589c9be-b358-4195-9b81-f2a679c790e7",
+   "id": "58b3a07b-e86a-41a2-9ab5-6d15dd0d907e",
    "name": "Run Summary",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -238,7 +259,7 @@
    }
   },
   {
-   "id": "34aff5cc-5ec6-49ff-ab7e-76203337755f",
+   "id": "32e39f6f-3495-463d-98f0-1d678044488f",
    "name": "Assert Expected Pack (before fetch)",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -252,7 +273,7 @@
    }
   },
   {
-   "id": "f998be87-5830-49ab-8068-b1a8afc62e5e",
+   "id": "949fb627-701f-4d7b-85b5-cc3a73e031ff",
    "name": "Fetch Research",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,
@@ -283,7 +304,7 @@
    }
   },
   {
-   "id": "734cd320-06a3-44ff-8f5f-ab226e272de6",
+   "id": "c42c3094-e70c-4137-bf79-4a44d3d46270",
    "name": "Fetch Contacts",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,
@@ -314,7 +335,7 @@
    }
   },
   {
-   "id": "c97aa986-d700-4ac1-b710-4fa17a6e7d8c",
+   "id": "fe76af20-f456-4b69-b110-d55f0b24df4e",
    "name": "Score Factors (7-factor model)",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -327,7 +348,7 @@
    }
   },
   {
-   "id": "4ef5f154-dd8d-4c83-862a-8df6bfbe6fc0",
+   "id": "96a914f5-9318-43f4-b8ca-9d0153faf8a0",
    "name": "Classification (Gates A/B/C)",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -340,7 +361,7 @@
    }
   },
   {
-   "id": "07a6f576-70dc-48cf-b55e-602ad9d37837",
+   "id": "37fec02c-d022-4f70-8c94-d13f6dc33de2",
    "name": "Assert Expected Pack (before write)",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -353,7 +374,7 @@
    }
   },
   {
-   "id": "5356a766-492a-4896-81c8-d1cf8e1ff900",
+   "id": "29204661-36bb-49fe-8d03-ee0a96982329",
    "name": "Build Prospect Payload",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -362,11 +383,11 @@
     -60
    ],
    "parameters": {
-    "jsCode": "const s = $json;\nconst cfg = $('Init Configuration').first().json;\nconst EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nconst factorSummary = Object.entries(s.factors).map(([k, f]) => `${k}=${f.level}(${f.points}pt)${f.unknown ? '?' : ''}`).join(', ');\nconst reason = `classification=${s.classification_letter}; raw=${s.raw_score}; final=${s.final_score}; factors: ${factorSummary}${s.gate_reason ? '; ' + s.gate_reason : ''}${s.uncertainty_codes.length ? '; uncertainty=' + s.uncertainty_codes.join('|') : ''}`;\nconst angle = s.factors.pain.evidence?.finding || s.factors.fit.evidence?.finding || 'Sin angulo comercial especifico detectado todavia.';\n\nconst payload = {\n  prospect_key: 'account:' + s.account.id,\n  icp_pack_id: EXPECTED_ICP_PACK_ID,\n  account_id: s.account.id,\n  primary_contact_id: s.primary_contact?.id || null,\n  classification: s.classification,\n  score: Math.round(s.final_score),\n  raw_score: Math.round(s.raw_score),\n  final_score: Math.round(s.final_score),\n  operator_confirmed: false,\n  operator_required: false,\n  operation_current: null,\n  pain_verified: s.pain_verified,\n  contact_verified: s.contact_verified,\n  commercial_angle: angle.slice(0, 500),\n  qualification_reason: reason.slice(0, 2000),\n  status: 'new',\n  crm_candidate: s.classification_letter === 'A',\n  metadata: {\n    human_review_required: cfg.human_review_required,\n    factors: s.factors,\n    uncertainty_codes: s.uncertainty_codes,\n    qualification_version: cfg.qualification_version,\n    scored_at: new Date().toISOString(),\n  },\n};\nreturn [{ json: { ...s, prospect_payload: payload } }];"
+    "jsCode": "const s = $json;\nconst cfg = $('Init Configuration').first().json;\nconst EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nconst factorSummary = Object.entries(s.factors).map(([k, f]) => `${k}=${f.level}(${f.points}pt)${f.unknown ? '?' : ''}`).join(', ');\nconst reason = `classification=${s.classification_letter}; raw=${s.raw_score}; final=${s.final_score}; factors: ${factorSummary}${s.gate_reason ? '; ' + s.gate_reason : ''}${s.uncertainty_codes.length ? '; uncertainty=' + s.uncertainty_codes.join('|') : ''}`;\nconst angle = s.factors.pain.evidence?.finding || s.factors.fit.evidence?.finding || 'Sin angulo comercial especifico detectado todavia.';\n\nconst payload = {\n  prospect_key: 'account:' + s.account.id,\n  icp_pack_id: EXPECTED_ICP_PACK_ID,\n  account_id: s.account.id,\n  primary_contact_id: s.primary_contact?.id || null,\n  classification: s.classification,\n  score: Math.round(s.final_score),\n  raw_score: Math.round(s.raw_score),\n  final_score: Math.round(s.final_score),\n  operator_confirmed: false,\n  operator_required: false,\n  operation_current: s.company_verified === true,\n  pain_verified: s.pain_verified,\n  contact_verified: s.contact_verified,\n  commercial_angle: angle.slice(0, 500),\n  qualification_reason: reason.slice(0, 2000),\n  status: 'new',\n  crm_candidate: s.classification_letter === 'A',\n  metadata: {\n    human_review_required: cfg.human_review_required,\n    factors: s.factors,\n    uncertainty_codes: s.uncertainty_codes,\n    qualification_version: cfg.qualification_version,\n    scored_at: new Date().toISOString(),\n  },\n};\nreturn [{ json: { ...s, prospect_payload: payload } }];"
    }
   },
   {
-   "id": "df04cf02-c2f8-412b-ba01-f1f283736126",
+   "id": "99ca9786-e647-4751-9cb3-742f9105ca69",
    "name": "Deduplicate Upsert Prospect",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,
@@ -410,7 +431,7 @@
    }
   },
   {
-   "id": "5c6b11fb-b458-495c-9fa9-909adc525846",
+   "id": "0950833f-f3a4-4889-bf67-0d1ee69f51ef",
    "name": "Validate Prospect Upsert",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -423,7 +444,7 @@
    }
   },
   {
-   "id": "7dc5c552-b887-4806-93d7-88cd94e276d4",
+   "id": "0f264d62-a583-47ba-bcff-c542cb0f900b",
    "name": "Build Iteration Result",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,

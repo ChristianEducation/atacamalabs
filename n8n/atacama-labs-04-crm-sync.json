@@ -2,7 +2,7 @@
  "name": "Atacama Labs — 04 CRM Sync (TEST)",
  "nodes": [
   {
-   "id": "0d6837ed-decc-4b47-aa5d-a657a26785e1",
+   "id": "242d9f01-c419-4bf2-afc1-c38e10d6f273",
    "name": "Manual Trigger",
    "type": "n8n-nodes-base.manualTrigger",
    "typeVersion": 1,
@@ -13,7 +13,7 @@
    "parameters": {}
   },
   {
-   "id": "6ef89818-4fb3-4a58-aabc-4d714092b39e",
+   "id": "a6b39b67-d5c0-4d7e-888e-24417c9abb91",
    "name": "When Executed by Another Workflow",
    "type": "n8n-nodes-base.executeWorkflowTrigger",
    "typeVersion": 1.1,
@@ -21,10 +21,31 @@
     -1180,
     140
    ],
-   "parameters": {}
+   "parameters": {
+    "workflowInputs": {
+     "values": [
+      {
+       "name": "icp_pack_id",
+       "type": "string"
+      },
+      {
+       "name": "icp_pack_slug",
+       "type": "string"
+      },
+      {
+       "name": "limit",
+       "type": "number"
+      },
+      {
+       "name": "account_ids",
+       "type": "array"
+      }
+     ]
+    }
+   }
   },
   {
-   "id": "d3686c59-33a2-426e-ad6d-93b511157dc1",
+   "id": "df684d91-7489-4ff2-b212-fd899eef78f1",
    "name": "Init ICP Config",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -37,7 +58,7 @@
    }
   },
   {
-   "id": "32d0aaec-b540-448d-85ac-737998f67031",
+   "id": "f8b06572-776c-4155-9c0f-8daa4f2de982",
    "name": "Fetch ICP Pack",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,
@@ -68,7 +89,7 @@
    }
   },
   {
-   "id": "06d41d5e-1bff-4657-964f-b49d0896dd9d",
+   "id": "bdaf40cc-c459-4085-b04a-504ae29b6d53",
    "name": "Parse ICP Pack",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -81,7 +102,7 @@
    }
   },
   {
-   "id": "3bf9715a-9f5c-4429-92e8-ae20a2c019e8",
+   "id": "23f20b6b-a0ba-47ef-81dd-95e0834b4d86",
    "name": "Assert Expected Pack",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -94,7 +115,7 @@
    }
   },
   {
-   "id": "0014d621-b816-4e17-8cfb-e7463bbc032e",
+   "id": "d299ce9f-9408-4402-a27e-30a1564ab3a4",
    "name": "Fetch Approved Prospects",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,
@@ -125,7 +146,7 @@
    }
   },
   {
-   "id": "39e78a68-397f-4fbe-bf7a-6920eceba72a",
+   "id": "3fc1c0ef-a778-4024-a68f-e7824dd0f17f",
    "name": "Build Approved List",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -138,7 +159,7 @@
    }
   },
   {
-   "id": "2335169a-095e-491b-a00a-5d0662777575",
+   "id": "16fbf173-21c2-4cf0-afb6-e0d2ecdb36c1",
    "name": "Assert Expected Pack (before enqueue)",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -152,7 +173,7 @@
    }
   },
   {
-   "id": "0743bbaf-ce54-4ac3-9ed7-a9bb97837d98",
+   "id": "e0a4ff5d-3c4a-4a73-98fd-08d6efa32785",
    "name": "Enqueue Prospect Sync",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,
@@ -178,6 +199,13 @@
     "specifyBody": "json",
     "jsonBody": "={{ { p_prospect_id: $json.id } }}",
     "options": {
+     "response": {
+      "response": {
+       "fullResponse": true,
+       "neverError": true,
+       "responseFormat": "text"
+      }
+     },
      "timeout": 15000
     }
    },
@@ -189,7 +217,7 @@
    }
   },
   {
-   "id": "cbbe755d-14e5-448c-999b-49ed86cfc868",
+   "id": "06920fa6-7057-42d9-8c51-b827248ada51",
    "name": "Claim Sync Jobs",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,
@@ -226,7 +254,7 @@
    }
   },
   {
-   "id": "89fbaed3-a325-4c10-80b4-d266d20c3c9a",
+   "id": "0bcc366c-d40f-4bae-afb2-d9022172f155",
    "name": "Already Has GHL IDs?",
    "type": "n8n-nodes-base.if",
    "typeVersion": 2,
@@ -264,7 +292,7 @@
    }
   },
   {
-   "id": "3e8f4eb4-5453-4230-9fb8-2ec0f0d2fb3c",
+   "id": "da87b942-93c7-4d66-94d6-fa7462ac18d0",
    "name": "Upsert GHL Contact",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,
@@ -305,7 +333,7 @@
    }
   },
   {
-   "id": "7a63e5fe-0392-416b-b056-7ce759c794f3",
+   "id": "6419c901-5df5-4083-9d3e-9cfead125366",
    "name": "Contact OK?",
    "type": "n8n-nodes-base.if",
    "typeVersion": 2,
@@ -335,7 +363,7 @@
    }
   },
   {
-   "id": "733c8fff-92b4-4d01-85cf-082ffa82c087",
+   "id": "96e1a02f-7643-4bf4-9d56-a5b6b1ffc273",
    "name": "Create GHL Opportunity",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,
@@ -376,7 +404,7 @@
    }
   },
   {
-   "id": "4b7ea31e-e33d-4728-ac52-4dcf9c147ca9",
+   "id": "5414c032-5c32-456f-8c04-e1b11c4afbdd",
    "name": "Opportunity OK?",
    "type": "n8n-nodes-base.if",
    "typeVersion": 2,
@@ -406,7 +434,7 @@
    }
   },
   {
-   "id": "a4591e89-7657-4c29-9b16-963ba2169186",
+   "id": "368e008e-2b49-4416-b1b2-794562b502c4",
    "name": "Complete Success",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,
@@ -443,7 +471,7 @@
    }
   },
   {
-   "id": "5c04fe2f-0daa-4dc0-9fa4-832dc05dcb6f",
+   "id": "eb81d3dd-fb29-4e77-8a39-125dec088f7f",
    "name": "Complete Failure (Contact)",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,
@@ -480,7 +508,7 @@
    }
   },
   {
-   "id": "bd30f03b-23a1-4956-a055-b4a80b1be319",
+   "id": "1785855e-2e14-4946-9577-9b43db385665",
    "name": "Complete Failure (Opportunity)",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,

@@ -2,7 +2,7 @@
  "name": "Atacama Labs — 05 Outreach Draft (TEST)",
  "nodes": [
   {
-   "id": "9f354d5c-51f8-4e8c-986c-d1921c854537",
+   "id": "efbd9874-b203-49d9-8796-27898bc76e53",
    "name": "Manual Trigger",
    "type": "n8n-nodes-base.manualTrigger",
    "typeVersion": 1,
@@ -13,7 +13,7 @@
    "parameters": {}
   },
   {
-   "id": "b3e8faf7-7a39-4151-9710-7357394a6a8d",
+   "id": "5a3f242a-d8ce-47fd-a924-93cd5a6306a8",
    "name": "When Executed by Another Workflow",
    "type": "n8n-nodes-base.executeWorkflowTrigger",
    "typeVersion": 1.1,
@@ -21,10 +21,31 @@
     -1180,
     140
    ],
-   "parameters": {}
+   "parameters": {
+    "workflowInputs": {
+     "values": [
+      {
+       "name": "icp_pack_id",
+       "type": "string"
+      },
+      {
+       "name": "icp_pack_slug",
+       "type": "string"
+      },
+      {
+       "name": "limit",
+       "type": "number"
+      },
+      {
+       "name": "account_ids",
+       "type": "array"
+      }
+     ]
+    }
+   }
   },
   {
-   "id": "c2d6fa66-986d-4c4d-bca3-654ccff63638",
+   "id": "3a9b707f-6b2d-4f83-b894-7418606185c8",
    "name": "Init ICP Config",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -37,7 +58,7 @@
    }
   },
   {
-   "id": "57ce4e8e-c98d-4257-9de8-c6dd54e6fcd0",
+   "id": "dd422242-3381-4f68-9de9-cb78bda7fd92",
    "name": "Fetch ICP Pack",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,
@@ -68,7 +89,7 @@
    }
   },
   {
-   "id": "dc5a0dbc-0c7b-42df-bea4-88ea482ec74e",
+   "id": "846ccf7d-1e9e-491a-8b52-1bb325d02a3d",
    "name": "Parse ICP Pack",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -81,7 +102,7 @@
    }
   },
   {
-   "id": "60cdcdc5-9324-4390-bddc-05bc89a11ea1",
+   "id": "f45ecabc-1e3e-41ae-a441-2c8bc85b2863",
    "name": "Assert Expected Pack",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -94,7 +115,7 @@
    }
   },
   {
-   "id": "14b89c86-96ba-4466-b355-5115770104f7",
+   "id": "4d28f583-f189-402c-880b-be0e872fe1d2",
    "name": "Fetch Draftable Prospects",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,
@@ -125,7 +146,7 @@
    }
   },
   {
-   "id": "b09bb7f3-563e-4fde-984f-8cf5fe143035",
+   "id": "2963a10d-49f4-4925-ae2b-621b8fbf5b43",
    "name": "Build Prospect List",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -138,7 +159,7 @@
    }
   },
   {
-   "id": "557512de-44e4-45e9-9c15-9d238b01bb8b",
+   "id": "04cdaccb-a73a-4ac2-b5a4-b0500a635cc8",
    "name": "No Work?",
    "type": "n8n-nodes-base.if",
    "typeVersion": 2,
@@ -156,7 +177,7 @@
      },
      "conditions": [
       {
-       "id": "dd1363e8-0544-48f7-ab96-45d2c9045f3a",
+       "id": "c240d717-af32-4a5e-8c64-d60c42b9bd77",
        "leftValue": "={{ $json._no_work === true }}",
        "rightValue": "",
        "operator": {
@@ -172,7 +193,7 @@
    }
   },
   {
-   "id": "ca87e953-f294-4ad0-a3d4-519d4effb718",
+   "id": "5d6ff569-b9f5-46e4-a6bb-107f1b0f90f8",
    "name": "No Work Summary",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -185,7 +206,7 @@
    }
   },
   {
-   "id": "0e35ba5c-1d90-425f-9e4a-ed968aa62472",
+   "id": "e85354dc-33d4-4e9f-baa6-d879695f8284",
    "name": "Assert Expected Pack (before fetch)",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -199,7 +220,7 @@
    }
   },
   {
-   "id": "6aec06d5-2de0-49e2-b087-1e683625ef02",
+   "id": "6e904fa1-daaf-40d9-ae41-ef68d79dc832",
    "name": "Fetch Existing Drafts",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,
@@ -230,7 +251,7 @@
    }
   },
   {
-   "id": "5cbc445c-79b3-4bd7-991d-8e4513152b59",
+   "id": "ecb14ce6-5dc4-41ba-b723-1a84d7fa9408",
    "name": "Has Draft?",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -243,7 +264,7 @@
    }
   },
   {
-   "id": "e8763bb3-4daa-4881-8f1f-ef5d4298eb39",
+   "id": "a34e253b-c244-40b0-9ad1-e61abe600c4f",
    "name": "Needs Draft?",
    "type": "n8n-nodes-base.if",
    "typeVersion": 2,
@@ -261,7 +282,7 @@
      },
      "conditions": [
       {
-       "id": "3bd66e5a-14cb-4d9e-835a-eb470bee2171",
+       "id": "0dc56926-885b-4111-8112-583ba81719d6",
        "leftValue": "={{ $json.has_draft === false }}",
        "rightValue": "",
        "operator": {
@@ -277,7 +298,7 @@
    }
   },
   {
-   "id": "7e3f06c6-b4ae-4c9f-b5ae-fa3900d88faf",
+   "id": "f030ace4-af69-4aab-aebe-6f0f0eaa9b4d",
    "name": "Fetch Account And Research",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,
@@ -308,7 +329,7 @@
    }
   },
   {
-   "id": "71cc2891-6b56-4aa9-9ac4-b52fb6dcc6ab",
+   "id": "ca989726-5bcd-40bc-af2d-e1cfd83b15fb",
    "name": "Fetch Research For Draft",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,
@@ -339,7 +360,7 @@
    }
   },
   {
-   "id": "7853e6ef-f3dc-4ce7-9c35-4759b00d63d9",
+   "id": "d2bd2290-8d39-4ea2-b6a8-2fba04e91ea6",
    "name": "Build Draft Prompt",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -352,7 +373,7 @@
    }
   },
   {
-   "id": "041c6c3c-c2a4-45f3-9ac2-899df34e54b3",
+   "id": "4fdc8599-90e7-4134-a951-8d70feab7376",
    "name": "Has Evidence?",
    "type": "n8n-nodes-base.if",
    "typeVersion": 2,
@@ -370,7 +391,7 @@
      },
      "conditions": [
       {
-       "id": "d33208fb-dcff-4f99-8725-82c56f42a4c8",
+       "id": "17bd891d-6543-4891-8fe9-dd370d227c5d",
        "leftValue": "={{ $json.skip === true }}",
        "rightValue": "",
        "operator": {
@@ -386,7 +407,7 @@
    }
   },
   {
-   "id": "53282fc1-167a-4bc3-99fb-8ff25548df20",
+   "id": "34317914-f030-4c84-98a8-f6dad13cecf5",
    "name": "Skipped (No Evidence)",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -399,7 +420,7 @@
    }
   },
   {
-   "id": "d5acace5-d679-427d-a763-403deda4b768",
+   "id": "4f5d2848-93f1-4cfa-85a3-6c0620a3b80d",
    "name": "Call OpenClaw Draft",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,
@@ -434,7 +455,7 @@
    }
   },
   {
-   "id": "cabf74d3-82d4-4ef2-8afa-b7d300348232",
+   "id": "f5127148-54c2-47f9-ab32-450095e2b2d8",
    "name": "Parse Draft Result",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -443,11 +464,11 @@
     -60
    ],
    "parameters": {
-    "jsCode": "const base = $('Build Draft Prompt').item.json;\nconst res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nconst errors = [];\nif (status < 200 || status >= 300) errors.push(`OpenClaw HTTP ${status || 'unknown'}`);\nlet content = body?.choices?.[0]?.message?.content;\nif (typeof content !== 'string') errors.push('OpenClaw response missing content');\nlet parsed = null;\nif (typeof content === 'string') {\n  let cleaned = content.trim().replace(/^```json\\s*/i, '').replace(/^```\\s*/, '').replace(/\\s*```$/, '').trim();\n  const first = cleaned.indexOf('{'), last = cleaned.lastIndexOf('}');\n  if (first >= 0 && last > first) cleaned = cleaned.slice(first, last + 1);\n  try { parsed = JSON.parse(cleaned); } catch (e) { errors.push(`Invalid JSON: ${e.message}`); }\n}\nif (!parsed || typeof parsed !== 'object') parsed = {};\nconst subject = typeof parsed.subject === 'string' ? parsed.subject.trim().slice(0, 200) : null;\nconst message = typeof parsed.message === 'string' ? parsed.message.trim().slice(0, 3000) : null;\nconst valid = errors.length === 0 && subject && message;\nreturn [{ json: { ...base, valid, parse_errors: errors, subject, message } }];"
+    "jsCode": "const base = $('Build Draft Prompt').item.json;\nconst res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nconst errors = [];\nif (status < 200 || status >= 300) errors.push(`OpenClaw HTTP ${status || 'unknown'}`);\nlet content = body?.choices?.[0]?.message?.content;\nif (typeof content !== 'string') errors.push('OpenClaw response missing content');\nlet parsed = null;\nif (typeof content === 'string') {\n  let cleaned = content.trim().replace(/^```json\\s*/i, '').replace(/^```\\s*/, '').replace(/\\s*```$/, '').trim();\n  const first = cleaned.indexOf('{'), last = cleaned.lastIndexOf('}');\n  if (first >= 0 && last > first) cleaned = cleaned.slice(first, last + 1);\n  try { parsed = JSON.parse(cleaned); } catch (e) { errors.push(`Invalid JSON: ${e.message}`); }\n}\nif (!parsed || typeof parsed !== 'object') parsed = {};\nconst subject = typeof parsed.subject === 'string' ? parsed.subject.trim().slice(0, 200) : null;\nconst message = typeof parsed.message === 'string' ? parsed.message.trim().slice(0, 3000) : null;\nconst valid = Boolean(errors.length === 0 && subject && message);\nreturn [{ json: { ...base, valid, parse_errors: errors, subject, message } }];"
    }
   },
   {
-   "id": "bc9490ba-fa89-42b1-9a56-6cc464ed18e5",
+   "id": "b5642887-9020-441b-9e02-dd692d9317c7",
    "name": "Draft Valid?",
    "type": "n8n-nodes-base.if",
    "typeVersion": 2,
@@ -465,7 +486,7 @@
      },
      "conditions": [
       {
-       "id": "6502d651-7af6-4620-8774-fde479ecf383",
+       "id": "d679513e-7549-48b5-b51f-2ae9639304e4",
        "leftValue": "={{ $json.valid === true }}",
        "rightValue": "",
        "operator": {
@@ -481,7 +502,7 @@
    }
   },
   {
-   "id": "75f7db0a-828c-420b-bc21-b0ad715eedb0",
+   "id": "7bb78757-358a-4fde-a2bd-9a3185883919",
    "name": "Assert Expected Pack (before insert draft)",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -494,7 +515,7 @@
    }
   },
   {
-   "id": "78863cac-2227-4967-b6e2-3a2548bdfed3",
+   "id": "51777b2c-835e-4c86-a675-9e4ce317c7b3",
    "name": "Insert Draft (never sent)",
    "type": "n8n-nodes-base.httpRequest",
    "typeVersion": 4.2,
@@ -538,7 +559,7 @@
    }
   },
   {
-   "id": "5087d5b5-7df4-467b-8bf4-8454decda7d8",
+   "id": "a0df6315-aa82-4c0f-bf3a-c8d6de0ed22e",
    "name": "Build Iteration Result",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -551,7 +572,7 @@
    }
   },
   {
-   "id": "608d9875-bad3-4ad1-be99-b2b9239cf9d0",
+   "id": "ebb998e3-9c72-48ff-bbae-06f7a85f1989",
    "name": "Draft Invalid (skip)",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -564,7 +585,7 @@
    }
   },
   {
-   "id": "3b171d69-2c69-4112-a865-dd16d997b967",
+   "id": "7127d014-6a93-4254-bb55-cd20e9585cec",
    "name": "Skip (has draft)",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,
@@ -577,7 +598,7 @@
    }
   },
   {
-   "id": "d5f3fcbb-30e8-4f46-bbbf-b337aea97578",
+   "id": "e4c14b92-7276-4222-a1bd-e8e84db4db41",
    "name": "Run Summary",
    "type": "n8n-nodes-base.code",
    "typeVersion": 2,

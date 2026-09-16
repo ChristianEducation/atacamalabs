@@ -18,7 +18,15 @@ Tras el incidente de abajo, Christian decidió: entorno de prueba aislado dentro
 
 **Validado con este protocolo, 2026-09-15**: "01 Discovery" y "02 Research" (v2, con las validaciones de arriba) probados cada uno con una copia desechable contra `atacama-labs-test`, una sola ejecución cada uno, sin tocar EnBandeja (conteos idénticos antes/después), copias eliminadas después. Detalle en `execution/EVIDENCE.md`.
 
-**Promoción a `atacama-labs` real**: pendiente hasta que 02b/03/04/05/06 también pasen bajo `atacama-labs-test`. Cuando se promueva, se genera una copia con las constantes cambiadas a `atacama-labs` (mismo protocolo de copia desechable) y se corre una única prueba final supervisada, antes de dejar cualquier workflow activo en producción.
+**Promoción a `atacama-labs` real — completa, 2026-09-15/16**: los 6 workflows probables (01/02/02b/03/04/05) pasaron bajo `atacama-labs-test`. Se generaron las versiones `real` (mismo script de build con `MODE=real`, constantes fijadas a `atacama-labs`/`0ba54785-bff0-4a2d-a397-64e697d34e38`) y se corrió una prueba final supervisada de la cadena completa **contra el ICP real** con una cuenta ficticia claramente rotulada (`PRUEBA FINAL SUPERVISADA (borrar despues)`, borrada al terminar): 03 Qualification (score 83, clasificación hot/A) → aprobación humana simulada (`status='ready_to_contact'`) → 04 CRM Sync (contacto+oportunidad reales creados en GHL, pipeline/etapa correctos, luego eliminados) → 05 Outreach Draft (`outreach.status='draft'`, nunca enviado). Todo limpiado después; conteos de EnBandeja verificados idénticos antes/después en cada paso.
+
+Durante esta ronda se encontraron y corrigieron 3 bugs reales más (ninguno de aislamiento de pack):
+1. **`workflowInputs` faltante**: el nodo `executeWorkflowTrigger` de n8n (typeVersion 1.1) requiere `parameters.workflowInputs.values` explícito o la activación falla con HTTP 400 — afectaba a 03/04/05/06 (construidos desde cero, no clonados).
+2. **Constraint `hot_requires_v1_gates` de `prospects`** (de EnBandeja, no tocado): ya tiene una vía para verticales sin operador (`operator_required=false`), pero exige `operation_current IS TRUE` — un campo genérico ("¿empresa real operando?") que 03 Qualification dejaba en `null`. Corregido: `operation_current = company_verified`.
+3. **Bug de JS en `Parse Draft Result`** (05): `const valid = errors.length===0 && subject && message` devolvía el string del mensaje (no un booleano) por el encadenamiento `&&` de JS, y `$json.valid === true` fallaba silenciosamente. Corregido con `Boolean(...)`.
+4. **`Enqueue Prospect Sync`** (04): la RPC devuelve un escalar (uuid o `null`), y `responseFormat:'json'` de n8n fallaba al parsearlo pese a `neverError:true` (esa opción solo cubre errores HTTP, no de parseo). Corregido a `responseFormat:'text'` — el nodo no necesita el body parseado.
+
+Los JSON versionados en este directorio quedan en modo `test` (el seguro por defecto para seguir iterando/probando). La promoción a `real` es un proceso repetible y ya probado (mismo script, `MODE=real`) — no se dejó ningún workflow activo permanentemente en n8n; todo se ejecuta vía copias desechables bajo demanda hasta que exista un orquestador (`00`) que decida cuándo correr cada uno en producción.
 
 ## Atacama Labs - 01 Lead Sync
 
@@ -76,7 +84,7 @@ Corregido el código y verificado por inspección directa (`GET` del workflow). 
 - Fuente: [`atacama-labs-02b-signals.json`](atacama-labs-02b-signals.json), modo `test`.
 - Clonado de "02b - Signals Engine" de EnBandeja (`q4zOm2QckejUodh2`, solo lectura). Este workflow ya era **100% genérico** en el original (sin ningún concepto de operador/colegio) — reutilizado casi sin cambios, solo el protocolo de seguridad (sin defaults, `Assert Expected Pack` ×2, `icp_pack_id` hardcodeado en `Init Configuration`/`Fetch Accounts For Signals`/`Upsert Signals`/`Update Account Signals Checked`). Lee `icp_packs.atacama-labs.signals.{types,search_guidance}` (agregado `search_guidance`, faltaba). Solo corre sobre `accounts` con `research_status='complete'` (después de 02 Research).
 - Credencial OpenClaw compartida temporalmente (mismo pendiente que 02 Research, U17).
-- Aún no probado (construido, sin ejecutar todavía).
+- **Probado 2026-09-15/16** (copia desechable, `atacama-labs-test`, 1 ejecución): mecánica correcta, sin errores, sin señales inventadas (agente reportó `signals_found:0` para el sitio ficticio `example.com`, correcto — no forzó una señal falsa). No promovido con prueba real dedicada (mecánica idéntica a 01/02, ya validada dos veces bajo el pack real).
 
 ## Atacama Labs — 03 Qualification
 
@@ -84,21 +92,21 @@ Corregido el código y verificado por inspección directa (`GET` del workflow). 
 - **Construido desde cero** (NO clonado de EnBandeja): el `03` real está profundamente acoplado a conceptos de operador/colegio/plataforma-incumbente (`operator_relation`, `manual_process_count`, `platform_status`, `Hard Gates`/`Raw Score`/`Caps Penalties` específicos de casino-escolar) que Christian pidió explícitamente no reutilizar ("no inventar criterios nuevos" también implica no heredar los de otro vertical). Se reutilizó solo la forma general de orquestación (resolución de ICP, fetch de cuentas elegibles, loop, upsert).
 - Implementa **exactamente** `contracts/PROSPECTING.md` + `contracts/prospecting-policy.json`: 7 factores (pain/budgetProxy/volume/automation/access/urgency/fit), nivel 0/1/2 por factor leído de `research.research_type='factor:<clave>'` (poblado por 02 Research), puntos = peso×nivel/2, score 0-100 con medios puntos. Gate A (score≥80 + empresa verificada + dolor≥1 + contacto verificable + evidencia vigente) degrada a B si falla, con motivo registrado. Evidencia de urgencia >30 días se trata como no vigente (nivel→0), otras evidencias >90 días quedan marcadas como `_evidence_aged` en `uncertainty_codes` sin forzar el nivel a 0.
 - Escribe en `prospects` (`account_id`, sin `school_id`/`operator_id`), `prospect_key='account:<id>'`, `classification` mapeada A→hot/B→warm/C→cold (mismo enum ya existente), `crm_candidate=true` solo para clasificación A, `status='new'` (nunca `ready_to_contact` automáticamente — **la revisión humana de las primeras 2-3 cohortes es quien cambia el status a `ready_to_contact`**, no este workflow). `metadata` guarda el desglose completo por factor (auto-score, evidencia usada, versión) para calibración futura.
-- Aún no probado (construido, sin ejecutar todavía).
+- **Probado 2026-09-15/16, bajo `atacama-labs-test` y bajo `atacama-labs` real** (2 copias desechables): con 7 evidencias ficticias (4 factores nivel 2, 3 nivel 1), calculó `raw=82.5→83`, `classification=hot`, `crm_candidate=true`, `status='new'` — correcto. Encontrado y corregido en el camino: el constraint `hot_requires_v1_gates` de `prospects` (de EnBandeja) exige `operation_current IS TRUE` incluso con `operator_required=false`; se corrigió a `operation_current = company_verified` (ver detalle arriba, "Promoción a real").
 
 ## Atacama Labs — 04 CRM Sync
 
 - Fuente: [`atacama-labs-04-crm-sync.json`](atacama-labs-04-crm-sync.json), modo `test`.
 - Sincroniza **únicamente** `prospects` con `status='ready_to_contact'` AND `crm_candidate=true` (o sea, solo lo que un humano ya aprobó) — nunca lee por clasificación/score directamente. Reutiliza el patrón contact-upsert→opportunity-upsert de "01 Lead Sync" y las RPCs generalizadas de 003: `enqueue_prospect_sync` (encola aprobados no encolados aún) + `claim_sync_jobs(..., p_source_type:'prospect')` (reclama solo jobs de origen prospect, nunca compite con "01 Lead Sync") + `complete_sync_job`. Campos personalizados de GHL (Fuente/Solución de interés/Lead ID) tomados de `icp_packs.crm.fields`, ya creados en 002.
 - Sin trigger de schedule (a diferencia de "01 Lead Sync") — se dispara manualmente o por el futuro orquestador, consistente con que el gate de revisión humana es manual por ahora.
-- Aún no probado (construido, sin ejecutar todavía).
+- **Probado 2026-09-15/16, bajo `atacama-labs-test` y bajo `atacama-labs` real** (2 copias desechables): prospect `ready_to_contact` → contacto + oportunidad reales creados en GHL (pipeline/etapa correctos, verificado, luego eliminados) → `prospects.status='contacted'` con IDs de GHL reales. Encontrado y corregido: `Enqueue Prospect Sync` fallaba por `responseFormat` (la RPC devuelve un escalar, no un objeto/array) — corregido a `text`.
 
 ## Atacama Labs — 05 Outreach Draft
 
 - Fuente: [`atacama-labs-05-outreach-draft.json`](atacama-labs-05-outreach-draft.json), modo `test`.
 - Genera **solo borradores** (`outreach.status='draft'`) — no existe ningún nodo que llame a un proveedor de email/WhatsApp, es estructuralmente imposible que este workflow envíe algo. Si un prospect no tiene evidencia real en `research`, se salta explícitamente (`skip_reason`) en vez de inventar un ángulo — consistente con "no inventar dolores ni información". El prompt exige citar al menos una evidencia real con su URL.
 - Alcance: `prospects.crm_candidate=true` sin un draft/envío previo activo. Usa OpenClaw (credencial compartida temporal, mismo pendiente U17) para redactar, citando evidencia de `research`.
-- Aún no probado (construido, sin ejecutar todavía).
+- **Probado 2026-09-15/16, bajo `atacama-labs-test` y bajo `atacama-labs` real** (2 copias desechables): generó un draft real citando evidencia real ("procesos manuales de despacho por planilla Excel", "no cuentan con sistema de seguimiento"), `outreach.status='draft'` confirmado, nunca enviado. Encontrado y corregido: bug de JS en `Parse Draft Result` (`errors.length===0 && subject && message` devolvía el string del mensaje en vez de un booleano — `$json.valid === true` fallaba siempre) — corregido con `Boolean(...)`.
 
 ## Atacama Labs — 06 Gmail Sync
 
