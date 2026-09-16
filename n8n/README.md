@@ -96,7 +96,18 @@ Se ejecutó 2 veces contra el ICP real (`atacama-labs`). En **ambas** ejecucione
 
 **1er intento** (`skip_discovery=false`): Discovery falló las 4 áreas (scraper bloqueado, 4ta vez en la sesión). Research/Signals/Qualification correctamente no hicieron nada (`no_work`) en vez de inventar datos. Run completado limpio en ~10 min, lock liberado.
 
-**2do intento** (`skip_discovery=true`, tras sembrar 25 cuentas reales manualmente — ver abajo): Research encontró 0 pendientes (correcto, ya estaban `research_status='complete'`), Signals y Qualification procesaron las 25 cuentas reales. Resultado detallado en la tabla de revisión de la Cohorte 1.
+**2do intento** (`skip_discovery=true`, tras sembrar 25 cuentas reales manualmente — ver abajo): Research encontró 0 pendientes (correcto, ya estaban `research_status='complete'`), Signals empezó a procesar las 25 cuentas reales.
+
+### Cierre de sesión 2026-09-16: cohorte 1 interrumpida a las 2/25 (por instrucción explícita de Christian)
+
+El ritmo real observado en 02b Signals (llamadas OpenClaw reales contra contenido real, no simulado) fue de **~7 minutos por empresa** — extrapolado a las 25, ~3 horas totales, incompatible con la ventana de cierre de la sesión. Christian instruyó terminar únicamente la ejecución en curso sin iniciar cohortes nuevas.
+
+- Detenida con `POST /executions/386/stop` (ejecución padre del orquestador) → n8n confirmó `status:"canceled"`.
+- **Hallazgo**: la ejecución hija de 02b Signals (`388`, invocada por el padre vía `executeWorkflow`) siguió `status:"running"` después de detener al padre — detener un padre `executeWorkflow` no detiene automáticamente a sus hijos ya en curso. Se detuvo aparte con `POST /executions/388/stop`, también confirmado `canceled`.
+- `runs` id `a9357d03-4e23-4437-ac55-2a60a0d9d1ee` cerrado manualmente: `status='cancelled'`, `finished_at=now()`, `result` con checkpoint completo — 2 empresas procesadas (Logística FG, EXPPRO), 23 pendientes por nombre y orden exacto, `qualification.status='not_started'` (nunca se invocó 03 en este run), y un `resume_procedure` explícito para retomar mañana.
+- Verificación de cierre: `GET /executions?status=running` → 0 en toda la instancia n8n; `accounts`/`sync_jobs` sin nada en `researching`/`processing` para `atacama-labs`; sin locks activos.
+- **Limpieza adicional**: 2 copias pre-PROD ya superadas eliminadas (`HvLcNkmL8Fo1hePi` "01 Discovery", `oVNNvuRye4pp0Kz0` "02 Research" — ambas del 2026-09-15, previas a la convención `(PROD)`). Se encontró y retiró un trigger de prueba olvidado dentro de este mismo orquestador (`TEST Trigger (disposable)`, cron `*/1 * * * *`, nunca limpiado tras una prueba anterior) — el workflow quedó en 25 nodos, `active:false`, sin cron automático.
+- **Para retomar**: crear una copia nueva del orquestador (nunca reactivar una ya ejecutada), invocar con `{icp_pack_id: '0ba54785-bff0-4a2d-a397-64e697d34e38', skip_discovery: true, cohort_limit: 25, run_label: 'cohorte-1-2026-09-16-resume'}`. Idempotente por diseño — las 2 cuentas ya procesadas no se repiten.
 
 ## Atacama Labs — 02b Signals
 
