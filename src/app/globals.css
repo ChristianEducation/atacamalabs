@@ -1424,3 +1424,7 @@ h4 {
 .warm-section .text-action {
   color: var(--color-action-hover);
 }
+
+/* Maintain control/text contrast over the actual landscape at every crop. */
+.home-hero .hero-buttons > a:last-child { background:var(--color-background); }
+.hero-side-note { background:#faf6f0e6; padding:12px; }

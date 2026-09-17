@@ -1,0 +1,14 @@
+{
+  "validation": "PASS",
+  "states": [
+    409,
+    429,
+    503,
+    422,
+    201
+  ],
+  "requestContract": "unchanged",
+  "planIntent": "PASS",
+  "longPrice320": "PASS",
+  "externalWrites": 0
+}

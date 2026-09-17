@@ -1,0 +1,101 @@
+[
+  {
+    "route": "/",
+    "config": "Lighthouse default mobile simulated throttling / production localhost",
+    "runs": [
+      {
+        "performance": 92,
+        "accessibility": 100,
+        "LCP": 3393.254,
+        "CLS": 0,
+        "failedAccessibility": []
+      },
+      {
+        "performance": 91,
+        "accessibility": 100,
+        "LCP": 3383.8774000000003,
+        "CLS": 0,
+        "failedAccessibility": []
+      },
+      {
+        "performance": 91,
+        "accessibility": 100,
+        "LCP": 3385.2729,
+        "CLS": 0,
+        "failedAccessibility": []
+      }
+    ],
+    "median": {
+      "performance": 91,
+      "accessibility": 100,
+      "LCP": 3385.2729,
+      "CLS": 0
+    }
+  },
+  {
+    "route": "/agentes",
+    "config": "Lighthouse default mobile simulated throttling / production localhost",
+    "runs": [
+      {
+        "performance": 97,
+        "accessibility": 100,
+        "LCP": 2689.6494000000002,
+        "CLS": 0,
+        "failedAccessibility": []
+      },
+      {
+        "performance": 96,
+        "accessibility": 100,
+        "LCP": 2697.5328,
+        "CLS": 0,
+        "failedAccessibility": []
+      },
+      {
+        "performance": 96,
+        "accessibility": 100,
+        "LCP": 2686.9775,
+        "CLS": 0,
+        "failedAccessibility": []
+      }
+    ],
+    "median": {
+      "performance": 96,
+      "accessibility": 100,
+      "LCP": 2689.6494000000002,
+      "CLS": 0
+    }
+  },
+  {
+    "route": "/soluciones/integraciones",
+    "config": "Lighthouse default mobile simulated throttling / production localhost",
+    "runs": [
+      {
+        "performance": 97,
+        "accessibility": 100,
+        "LCP": 2627.9719999999998,
+        "CLS": 0,
+        "failedAccessibility": []
+      },
+      {
+        "performance": 97,
+        "accessibility": 100,
+        "LCP": 2616.0313,
+        "CLS": 0,
+        "failedAccessibility": []
+      },
+      {
+        "performance": 97,
+        "accessibility": 100,
+        "LCP": 2614.5936,
+        "CLS": 0,
+        "failedAccessibility": []
+      }
+    ],
+    "median": {
+      "performance": 97,
+      "accessibility": 100,
+      "LCP": 2616.0313,
+      "CLS": 0
+    }
+  }
+]

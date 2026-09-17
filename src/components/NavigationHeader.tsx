@@ -87,7 +87,7 @@ export function NavigationHeader({
                 Acceso clientes
               </a>
             )}
-            <Link href="/contacto" className="header-cta">
+          <Link href="/contacto" className="header-cta" aria-current={pathname === "/contacto" ? "page" : undefined}>
               Conversemos <span aria-hidden>→</span>
             </Link>
             <button
@@ -116,7 +116,7 @@ export function NavigationHeader({
                   {item.label}
                 </Link>
               ))}
-              <Link href="/contacto" onClick={() => setOpen(false)}>
+              <Link href="/contacto" aria-current={pathname === "/contacto" ? "page" : undefined} onClick={() => setOpen(false)}>
                 Contacto
               </Link>
               {clientUrl && <a href={clientUrl}>Acceso clientes</a>}

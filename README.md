@@ -21,3 +21,7 @@ Abrir http://localhost:3000.
 ```bash
 npm run build
 ```
+
+## Preview 006
+
+Home V2 y landing de Agentes: npm run build; npm run start; abrir http://localhost:3000/ y /agentes. Evidencia y límites: [reporte](evidence/visual-006/REPORT.md), [pendientes](docs/USER-ACTIONS.md). No hay deployment de producción.

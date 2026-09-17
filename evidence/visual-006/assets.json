@@ -1,0 +1,37 @@
+[
+  {
+    "file": "public/visual/home/hero-atacama-wide.webp",
+    "bytes": 213450,
+    "sha256": "7856b60d59c391157ad81694ec59ac47d9a406761e197385482db50a7194056c"
+  },
+  {
+    "file": "public/visual/home/hero-atacama-mobile.webp",
+    "bytes": 120296,
+    "sha256": "b00264e0be580172070e214cb3a79576dfc083d5f51661564a36136c4dcaabda"
+  },
+  {
+    "file": "public/fonts/newsreader.woff2",
+    "bytes": 26096,
+    "sha256": "fc6e41b0ba76e4a5cb506030d5272508bc04ff372f34299f75734ecf2c253c9c"
+  },
+  {
+    "file": "public/fonts/inter.woff2",
+    "bytes": 71748,
+    "sha256": "ac15141431c263d4d8b431883986a218448ac5ee70d828a06c633eab145712ca"
+  },
+  {
+    "file": "public/fonts/manrope.woff2",
+    "bytes": 28124,
+    "sha256": "d1ca716b63a5d671b6027e03fafe0f434d687d6634f4a26350fb6a9c8d903475"
+  },
+  {
+    "file": "public/brand/logo-horizontal.svg",
+    "bytes": 4757,
+    "sha256": "8d2f69b1ea3037303d74235f91badcd1fd865dcbd972d294b94ba54a94293bf8"
+  },
+  {
+    "file": "public/brand/logo-horizontal-light.svg",
+    "bytes": 4757,
+    "sha256": "d963e8e83c61678be4ea851b4207a124327f8dedc528cb57f81c3b8b4147dbcc"
+  }
+]

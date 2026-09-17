@@ -1,0 +1,11 @@
+{
+  "reference": "PASS",
+  "confirmed": "PASS",
+  "null": "PASS",
+  "promoOff": "PASS",
+  "promoTermsRequired": "PASS",
+  "promoSetupOnly": "PASS",
+  "long": "PASS",
+  "allowlist": "PASS",
+  "demoMissing": "PASS"
+}
