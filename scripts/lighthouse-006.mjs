@@ -16,9 +16,14 @@ const browser = await chromium.launch({
   args: ["--remote-debugging-port=9222"],
 });
 const origin = process.env.PREVIEW_URL || "http://127.0.0.1:3000";
+const evidence = process.env.EVIDENCE_DIR || "evidence/visual-006";
+fs.mkdirSync(evidence, { recursive: true });
+const routes = process.env.QA_ROUTES
+  ? process.env.QA_ROUTES.split(",")
+  : ["/", "/agentes", "/soluciones/integraciones"];
 const results = [];
 try {
-  for (const route of ["/", "/agentes", "/soluciones/integraciones"]) {
+  for (const route of routes) {
     const runs = [];
     for (let i = 0; i < 3; i++) {
       const r = await lighthouse(origin + route, {
@@ -43,7 +48,7 @@ try {
       });
       if (i === 2)
         fs.writeFileSync(
-          `evidence/visual-006/lighthouse-${route === "/" ? "home" : route.slice(1).replaceAll("/", "-")}.html`,
+          `${evidence}/lighthouse-${route === "/" ? "home" : route.slice(1).replaceAll("/", "-")}.html`,
           r.report,
         );
       console.log(
@@ -69,7 +74,7 @@ try {
       },
     });
     fs.writeFileSync(
-      "evidence/visual-006/lighthouse-results.json",
+      `${evidence}/lighthouse-results.json`,
       JSON.stringify(results, null, 2),
     );
   }

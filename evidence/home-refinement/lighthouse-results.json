@@ -1,0 +1,35 @@
+[
+  {
+    "route": "/",
+    "config": "Lighthouse default mobile simulated throttling / production localhost",
+    "runs": [
+      {
+        "performance": 90,
+        "accessibility": 100,
+        "LCP": 3680.877,
+        "CLS": 0,
+        "failedAccessibility": []
+      },
+      {
+        "performance": 90,
+        "accessibility": 100,
+        "LCP": 3686.3885,
+        "CLS": 0,
+        "failedAccessibility": []
+      },
+      {
+        "performance": 89,
+        "accessibility": 100,
+        "LCP": 3684.5474999999997,
+        "CLS": 0,
+        "failedAccessibility": []
+      }
+    ],
+    "median": {
+      "performance": 90,
+      "accessibility": 100,
+      "LCP": 3684.5474999999997,
+      "CLS": 0
+    }
+  }
+]

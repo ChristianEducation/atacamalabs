@@ -25,3 +25,5 @@ npm run build
 ## Preview 006
 
 Home V2 y landing de Agentes: npm run build; npm run start; abrir http://localhost:3000/ y /agentes. Evidencia y límites: [reporte](evidence/visual-006/REPORT.md), [pendientes](docs/USER-ACTIONS.md). No hay deployment de producción.
+
+Segunda pasada editorial de Home: [capturas, assets, pruebas e instrucciones del preview](evidence/home-refinement/REPORT.md). Rama `codex/home-editorial-refinement`; contenido comercial y backend conservados.

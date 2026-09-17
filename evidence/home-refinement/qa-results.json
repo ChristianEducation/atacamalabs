@@ -1,0 +1,931 @@
+{
+  "browser": "151.0.7922.34",
+  "origin": "http://127.0.0.1:3000",
+  "routes": [
+    {
+      "route": "/",
+      "width": 1920,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 3870
+    },
+    {
+      "route": "/soluciones",
+      "width": 1920,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1234
+    },
+    {
+      "route": "/soluciones/atencion-y-seguimiento",
+      "width": 1920,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1537
+    },
+    {
+      "route": "/soluciones/automatizacion-de-procesos",
+      "width": 1920,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1323
+    },
+    {
+      "route": "/soluciones/sistemas-a-medida",
+      "width": 1920,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1499
+    },
+    {
+      "route": "/soluciones/integraciones",
+      "width": 1920,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1447
+    },
+    {
+      "route": "/proyectos",
+      "width": 1920,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 2093
+    },
+    {
+      "route": "/proyectos/pedidos-de-almuerzos",
+      "width": 1920,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1611
+    },
+    {
+      "route": "/proyectos/pedidos-por-turno",
+      "width": 1920,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1579
+    },
+    {
+      "route": "/proyectos/registro-de-entregas",
+      "width": 1920,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1559
+    },
+    {
+      "route": "/proyectos/tienda-online",
+      "width": 1920,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1611
+    },
+    {
+      "route": "/como-trabajamos",
+      "width": 1920,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1287
+    },
+    {
+      "route": "/precios",
+      "width": 1920,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 979
+    },
+    {
+      "route": "/sobre-el-estudio",
+      "width": 1920,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 900
+    },
+    {
+      "route": "/contacto",
+      "width": 1920,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1280
+    },
+    {
+      "route": "/agenda",
+      "width": 1920,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 900
+    },
+    {
+      "route": "/agentes",
+      "width": 1920,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 6064
+    },
+    {
+      "route": "/",
+      "width": 1440,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 3791
+    },
+    {
+      "route": "/soluciones",
+      "width": 1440,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1234
+    },
+    {
+      "route": "/soluciones/atencion-y-seguimiento",
+      "width": 1440,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1537
+    },
+    {
+      "route": "/soluciones/automatizacion-de-procesos",
+      "width": 1440,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1321
+    },
+    {
+      "route": "/soluciones/sistemas-a-medida",
+      "width": 1440,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1499
+    },
+    {
+      "route": "/soluciones/integraciones",
+      "width": 1440,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1447
+    },
+    {
+      "route": "/proyectos",
+      "width": 1440,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 2093
+    },
+    {
+      "route": "/proyectos/pedidos-de-almuerzos",
+      "width": 1440,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1611
+    },
+    {
+      "route": "/proyectos/pedidos-por-turno",
+      "width": 1440,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1579
+    },
+    {
+      "route": "/proyectos/registro-de-entregas",
+      "width": 1440,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1559
+    },
+    {
+      "route": "/proyectos/tienda-online",
+      "width": 1440,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1611
+    },
+    {
+      "route": "/como-trabajamos",
+      "width": 1440,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1287
+    },
+    {
+      "route": "/precios",
+      "width": 1440,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 979
+    },
+    {
+      "route": "/sobre-el-estudio",
+      "width": 1440,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 900
+    },
+    {
+      "route": "/contacto",
+      "width": 1440,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1280
+    },
+    {
+      "route": "/agenda",
+      "width": 1440,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 900
+    },
+    {
+      "route": "/agentes",
+      "width": 1440,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 6056
+    },
+    {
+      "route": "/",
+      "width": 1366,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 3732
+    },
+    {
+      "route": "/soluciones",
+      "width": 1366,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1234
+    },
+    {
+      "route": "/soluciones/atencion-y-seguimiento",
+      "width": 1366,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1537
+    },
+    {
+      "route": "/soluciones/automatizacion-de-procesos",
+      "width": 1366,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1300
+    },
+    {
+      "route": "/soluciones/sistemas-a-medida",
+      "width": 1366,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1499
+    },
+    {
+      "route": "/soluciones/integraciones",
+      "width": 1366,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1447
+    },
+    {
+      "route": "/proyectos",
+      "width": 1366,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 2093
+    },
+    {
+      "route": "/proyectos/pedidos-de-almuerzos",
+      "width": 1366,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1611
+    },
+    {
+      "route": "/proyectos/pedidos-por-turno",
+      "width": 1366,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1579
+    },
+    {
+      "route": "/proyectos/registro-de-entregas",
+      "width": 1366,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1559
+    },
+    {
+      "route": "/proyectos/tienda-online",
+      "width": 1366,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1611
+    },
+    {
+      "route": "/como-trabajamos",
+      "width": 1366,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1287
+    },
+    {
+      "route": "/precios",
+      "width": 1366,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 975
+    },
+    {
+      "route": "/sobre-el-estudio",
+      "width": 1366,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 900
+    },
+    {
+      "route": "/contacto",
+      "width": 1366,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1277
+    },
+    {
+      "route": "/agenda",
+      "width": 1366,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 900
+    },
+    {
+      "route": "/agentes",
+      "width": 1366,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 6024
+    },
+    {
+      "route": "/",
+      "width": 768,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 5048
+    },
+    {
+      "route": "/soluciones",
+      "width": 768,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1716
+    },
+    {
+      "route": "/soluciones/atencion-y-seguimiento",
+      "width": 768,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1949
+    },
+    {
+      "route": "/soluciones/automatizacion-de-procesos",
+      "width": 768,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1703
+    },
+    {
+      "route": "/soluciones/sistemas-a-medida",
+      "width": 768,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 2028
+    },
+    {
+      "route": "/soluciones/integraciones",
+      "width": 768,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 2056
+    },
+    {
+      "route": "/proyectos",
+      "width": 768,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 2496
+    },
+    {
+      "route": "/proyectos/pedidos-de-almuerzos",
+      "width": 768,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1930
+    },
+    {
+      "route": "/proyectos/pedidos-por-turno",
+      "width": 768,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1822
+    },
+    {
+      "route": "/proyectos/registro-de-entregas",
+      "width": 768,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1822
+    },
+    {
+      "route": "/proyectos/tienda-online",
+      "width": 768,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1882
+    },
+    {
+      "route": "/como-trabajamos",
+      "width": 768,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1478
+    },
+    {
+      "route": "/precios",
+      "width": 768,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1096
+    },
+    {
+      "route": "/sobre-el-estudio",
+      "width": 768,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1024
+    },
+    {
+      "route": "/contacto",
+      "width": 768,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1366
+    },
+    {
+      "route": "/agenda",
+      "width": 768,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1024
+    },
+    {
+      "route": "/agentes",
+      "width": 768,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 8796
+    },
+    {
+      "route": "/",
+      "width": 390,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 6625
+    },
+    {
+      "route": "/soluciones",
+      "width": 390,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 2003
+    },
+    {
+      "route": "/soluciones/atencion-y-seguimiento",
+      "width": 390,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 2398
+    },
+    {
+      "route": "/soluciones/automatizacion-de-procesos",
+      "width": 390,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 2616
+    },
+    {
+      "route": "/soluciones/sistemas-a-medida",
+      "width": 390,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 2739
+    },
+    {
+      "route": "/soluciones/integraciones",
+      "width": 390,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 2607
+    },
+    {
+      "route": "/proyectos",
+      "width": 390,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 3741
+    },
+    {
+      "route": "/proyectos/pedidos-de-almuerzos",
+      "width": 390,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 2423
+    },
+    {
+      "route": "/proyectos/pedidos-por-turno",
+      "width": 390,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 2391
+    },
+    {
+      "route": "/proyectos/registro-de-entregas",
+      "width": 390,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 2391
+    },
+    {
+      "route": "/proyectos/tienda-online",
+      "width": 390,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 2423
+    },
+    {
+      "route": "/como-trabajamos",
+      "width": 390,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1673
+    },
+    {
+      "route": "/precios",
+      "width": 390,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1445
+    },
+    {
+      "route": "/sobre-el-estudio",
+      "width": 390,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1196
+    },
+    {
+      "route": "/contacto",
+      "width": 390,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1625
+    },
+    {
+      "route": "/agenda",
+      "width": 390,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1046
+    },
+    {
+      "route": "/agentes",
+      "width": 390,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 11552
+    },
+    {
+      "route": "/",
+      "width": 320,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 7013
+    },
+    {
+      "route": "/soluciones",
+      "width": 320,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 2148
+    },
+    {
+      "route": "/soluciones/atencion-y-seguimiento",
+      "width": 320,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 2542
+    },
+    {
+      "route": "/soluciones/automatizacion-de-procesos",
+      "width": 320,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 2876
+    },
+    {
+      "route": "/soluciones/sistemas-a-medida",
+      "width": 320,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 2942
+    },
+    {
+      "route": "/soluciones/integraciones",
+      "width": 320,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 2710
+    },
+    {
+      "route": "/proyectos",
+      "width": 320,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 4056
+    },
+    {
+      "route": "/proyectos/pedidos-de-almuerzos",
+      "width": 320,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 2648
+    },
+    {
+      "route": "/proyectos/pedidos-por-turno",
+      "width": 320,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 2482
+    },
+    {
+      "route": "/proyectos/registro-de-entregas",
+      "width": 320,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 2459
+    },
+    {
+      "route": "/proyectos/tienda-online",
+      "width": 320,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 2479
+    },
+    {
+      "route": "/como-trabajamos",
+      "width": 320,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1848
+    },
+    {
+      "route": "/precios",
+      "width": 320,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1594
+    },
+    {
+      "route": "/sobre-el-estudio",
+      "width": 320,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1303
+    },
+    {
+      "route": "/contacto",
+      "width": 320,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1677
+    },
+    {
+      "route": "/agenda",
+      "width": 320,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 1102
+    },
+    {
+      "route": "/agentes",
+      "width": 320,
+      "status": 200,
+      "overflow": false,
+      "h1": 1,
+      "font": "Newsreader, Georgia, serif",
+      "height": 11945
+    }
+  ],
+  "keyboard": "PASS",
+  "alias": "308 /proyectos",
+  "commercial": "PASS UI / real integrations pending",
+  "studioFont": "Manrope, Arial, sans-serif",
+  "motion": "1e-05s",
+  "externalLeadWrites": 0,
+  "interceptedLeadRequests": 0
+}

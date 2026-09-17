@@ -11,3 +11,5 @@ Fuente del paquete vigente: ../../atacama-labs-spec/openspec/changes/006-visual-
 - V006-U07: screenshot A10 real, anonimizado y autorizado.
 
 Revisión visual de logo/composición pendiente. LCP móvil de laboratorio supera 2,5s; detalle en ../evidence/visual-006/REPORT.md. UI lista para revisión; experiencia comercial no verificada. No se desplegó producción.
+
+Segunda pasada de Home (2026-09-17): composición, aire, relieve generado y franja de cinco marcas ya incluidas en la oferta. No introduce nuevos inputs pendientes ni verifica integraciones externas. Capturas A10/A17 y revisión visual siguen pendientes. LCP final de laboratorio: 3,685s; [reporte de refinamiento](../evidence/home-refinement/REPORT.md).

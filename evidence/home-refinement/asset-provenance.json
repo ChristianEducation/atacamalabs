@@ -1,0 +1,68 @@
+{
+  "date": "2026-09-17",
+  "generated": {
+    "path": "public/visual/home/desert-relief-editorial.webp",
+    "tool": "image_gen.imagegen (built-in)",
+    "nativeDimensions": [
+      1536,
+      1024
+    ],
+    "webDimensions": [
+      1400,
+      933
+    ],
+    "use": "Decorative supporting landscape, not documentary imagery or case evidence",
+    "prompt": "Use case: photorealistic-natural. Asset type: supporting landscape texture for the existing Atacama Labs editorial website, NOT a hero or finished webpage. Create a premium realistic photograph of a sculptural weathered rocky desert ridge inspired by northern Chile, wide landscape composition, 3:2 or wider. The ridge emerges only in the lower-right half, with exquisite layered geological detail in sand, muted copper and warm brown. The upper-left two thirds are a luminous hazy ivory empty sky that softly blends into #FAF6F0, no hard horizon. Soft warm late afternoon side light, refined natural texture, restrained contrast, airy calm atmosphere. It will sit behind small conceptual UI illustrations and be faded on its left edge. No text, no logos, no buildings, no people, no devices, no UI, no vegetation, no invented case study, no watermark. Keep a natural photographic finish, no orange oversaturation. Produce high-resolution landscape."
+  },
+  "icons": {
+    "directory": "public/visual/integrations",
+    "sourcePattern": "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/{slug}.svg",
+    "slugs": [
+      "whatsapp",
+      "googlecalendar",
+      "googlesheets",
+      "calendly",
+      "hubspot"
+    ],
+    "presentation": "Original SVG geometry; CSS monochrome treatment",
+    "distributionLicensePath": "public/visual/integrations/LICENSE.md",
+    "distributionLicenseSource": "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/LICENSE.md"
+  },
+  "files": [
+    {
+      "path": "public/visual/home/desert-relief-editorial.webp",
+      "bytes": 80732,
+      "sha256": "e5d1815d3b4121dd2947bdeecbd7606222f1cfd3ba28789706930e445a427269"
+    },
+    {
+      "path": "public/visual/integrations/whatsapp.svg",
+      "bytes": 1216,
+      "sha256": "8fb209a53a61618c3483594b3e070481a35575d6aaecbe00a6fe386670c8fb1c"
+    },
+    {
+      "path": "public/visual/integrations/googlecalendar.svg",
+      "bytes": 1210,
+      "sha256": "39b434d3264d123629a12509e9f5bdf57bf9e5ed9a6eafffb714cff5f05f032f"
+    },
+    {
+      "path": "public/visual/integrations/googlesheets.svg",
+      "bytes": 444,
+      "sha256": "5f28308c62e37d7d5533f52bbff5b48dc8630189d1c9d9dcbd8d7821f50d877f"
+    },
+    {
+      "path": "public/visual/integrations/calendly.svg",
+      "bytes": 1890,
+      "sha256": "c0a33894137a1da91ca8dfee17c0d91cbb8ba70ddaa74a8eabc474d258e52cba"
+    },
+    {
+      "path": "public/visual/integrations/hubspot.svg",
+      "bytes": 663,
+      "sha256": "f96cfb6bba27c8e70a03e782f07d4d649e9f39d2fb8bea7136b370ab2c3f04a9"
+    },
+    {
+      "path": "public/visual/integrations/LICENSE.md",
+      "bytes": 6569,
+      "sha256": "9046848b63a5c92bff14e4accca80bd987e0623b74adf9226ce5198d312b79d5"
+    }
+  ]
+}
