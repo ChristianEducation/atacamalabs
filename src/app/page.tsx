@@ -7,17 +7,21 @@ import {
   PrimaryLink,
   SecondaryLink,
 } from "@/components/ui";
+import { PortalMotif, LandscapeCta } from "@/components/PublicVisuals";
 import {
-  PortalMotif,
-  CaseVisual,
-  LandscapeCta,
-} from "@/components/PublicVisuals";
+  IntegrationStrip,
+  Topography,
+  ProcessIcon,
+  HomeCaseShowcase,
+  HomeConnectionsVisual,
+} from "@/components/HomeDetails";
 import site, { publicCase } from "@/lib/content";
+import "./home-refinement.css";
 
 export default function Home() {
   const c = publicCase(site.cases[0]);
   return (
-    <div className="public-site flex flex-col flex-1 bg-background">
+    <div className="public-site home-refinement flex flex-col flex-1 bg-background">
       <SiteHeader />
       <main id="contenido" className="flex-1" tabIndex={-1}>
         <section className="home-hero">
@@ -51,6 +55,17 @@ export default function Home() {
                 {site.hero.secondaryCta.label}
               </SecondaryLink>
             </div>
+            <div className="hero-credentials">
+              <p>
+                <span aria-hidden="true">↗</span> Implementación por etapas
+              </p>
+              <p>
+                <span aria-hidden="true">⌁</span> Integración con tus sistemas
+              </p>
+              <p>
+                <span aria-hidden="true">△</span> Desde Antofagasta
+              </p>
+            </div>
           </Container>
           <p className="hero-side-note">
             DESDE EL NORTE
@@ -58,16 +73,26 @@ export default function Home() {
             PARA EMPRESAS REALES
           </p>
         </section>
-        <section className="section">
+        <IntegrationStrip />
+        <section className="section home-solutions">
           <Container>
-            <Eyebrow>Tecnología con propósito</Eyebrow>
-            <h2 className="mt-3">Lo que hacemos</h2>
-            <p className="section-lead">
-              Agentes, sistemas y automatización para empresas.
-            </p>
+            <div className="home-section-heading">
+              <div>
+                <Eyebrow>Tecnología con propósito</Eyebrow>
+                <h2 className="mt-3">Lo que hacemos</h2>
+              </div>
+              <p className="section-lead">
+                Agentes, sistemas y automatización para empresas.
+              </p>
+            </div>
             <div className="portal-grid">
               {site.portals.map((portal, i) => (
-                <article key={portal.href} className="service-portal">
+                <article
+                  key={portal.href}
+                  className="service-portal"
+                  data-motif={portal.motif}
+                >
+                  <Topography />
                   <div className="portal-copy">
                     <span className="portal-number">0{i + 1}</span>
                     <h3>{portal.title}</h3>
@@ -78,38 +103,15 @@ export default function Home() {
                     </Link>
                   </div>
                   <div className="portal-visual">
-                    <PortalMotif motif={portal.motif} />
+                    {portal.motif === "connections" ? (
+                      <HomeConnectionsVisual />
+                    ) : (
+                      <PortalMotif motif={portal.motif} />
+                    )}
                   </div>
                 </article>
               ))}
             </div>
-          </Container>
-        </section>
-        <div className="credibility">
-          <Container className="credibility-inner">
-            <p>
-              <span aria-hidden>↗</span> Implementación por etapas
-            </p>
-            <p>
-              <span aria-hidden>⌁</span> Integración con tus sistemas
-            </p>
-            <p>
-              <span aria-hidden>△</span> Desde Antofagasta
-            </p>
-          </Container>
-        </div>
-        <section className="section">
-          <Container className="featured-grid">
-            <div>
-              <Eyebrow>Una solución construida</Eyebrow>
-              <h2 className="mt-4">{c.title}</h2>
-              <p>{c.situation}</p>
-              <p>{c.solution}</p>
-              <Link className="text-link" href={`/proyectos/${c.slug}`}>
-                Ver el caso completo →
-              </Link>
-            </div>
-            <CaseVisual steps={c.diagramSteps} />
           </Container>
         </section>
         <section className="home-process">
@@ -129,6 +131,9 @@ export default function Home() {
             <ol>
               {site.process.map((step, i) => (
                 <li key={step.title}>
+                  <span className="home-process-icon">
+                    <ProcessIcon index={i} />
+                  </span>
                   <span className="step-number">0{i + 1}</span>
                   <h3>
                     {
@@ -153,6 +158,20 @@ export default function Home() {
                 </li>
               ))}
             </ol>
+          </Container>
+        </section>
+        <section className="section home-featured">
+          <Container className="featured-grid">
+            <div>
+              <Eyebrow>Una solución construida</Eyebrow>
+              <h2 className="mt-4">{c.title}</h2>
+              <p>{c.situation}</p>
+              <p>{c.solution}</p>
+              <Link className="text-link" href={`/proyectos/${c.slug}`}>
+                Ver el caso completo →
+              </Link>
+            </div>
+            <HomeCaseShowcase steps={c.diagramSteps} />
           </Container>
         </section>
         <LandscapeCta />
