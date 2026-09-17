@@ -14,9 +14,9 @@ export default function Agenda() {
   const bookingUrl = site.publicSettings.bookingUrl;
 
   return (
-    <div className="flex flex-col flex-1 bg-background">
+    <div className="public-site flex flex-col flex-1 bg-background">
       <SiteHeader />
-      <main className="flex-1 py-16 md:py-20">
+      <main id="contenido" tabIndex={-1} className="flex-1 py-16 md:py-20">
         <Container className="max-w-[70ch]">
           <h1 className="text-4xl font-semibold text-ink md:text-5xl">
             {site.contact.meetingTitle}
@@ -33,8 +33,8 @@ export default function Agenda() {
             <Card className="mt-10">
               <p className="text-base leading-7 text-ink">
                 La agenda en línea todavía no está conectada. Escríbenos
-                contándonos tu proceso y coordinamos un horario por el canal
-                que prefieras — esto no reserva la reunión automáticamente.
+                contándonos tu proceso y coordinamos un horario por el canal que
+                prefieras — esto no reserva la reunión automáticamente.
               </p>
               <div className="mt-5">
                 <PrimaryLink href="/contacto">Escribir un mensaje</PrimaryLink>

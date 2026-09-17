@@ -1,0 +1,356 @@
+{
+  "product": {
+    "brand": "Atacama Labs",
+    "positioning": "Agentes como producto principal; sistemas, automatización e integraciones como expansión; desarrollo a medida para necesidades adicionales.",
+    "agentDefinition": "Un agente se configura para una función o proceso principal de tu empresa.",
+    "commercialStatus": "offered_by_atacama",
+    "connectorsAvailableAcrossPlans": true
+  },
+  "homeHero": {
+    "eyebrow": "Desde Antofagasta",
+    "title": "Agentes que trabajan dentro de tu empresa.",
+    "body": "Implementamos agentes que atienden, ayudan a vender, agendan, hacen seguimiento y ejecutan tareas conectados a tus herramientas.",
+    "supportingLine": "Agentes, sistemas y automatización para empresas.",
+    "primaryCta": {
+      "label": "Ver agentes",
+      "href": "/agentes"
+    },
+    "secondaryCta": {
+      "label": "Hablemos",
+      "href": "/contacto"
+    }
+  },
+  "landing": {
+    "hero": {
+      "title": "Un agente para cada proceso de tu empresa.",
+      "body": "Agentes que conversan, consultan información, agendan, registran datos y ejecutan acciones conectados con las herramientas de tu empresa.",
+      "readyPrimaryCta": {
+        "label": "Probar un agente",
+        "href": "#demo"
+      },
+      "readySecondaryCta": {
+        "label": "Conversemos",
+        "href": "/contacto"
+      },
+      "pendingPrimaryCta": {
+        "label": "Solicitar demo",
+        "href": "/contacto"
+      },
+      "pendingSecondaryCta": {
+        "label": "Ver planes",
+        "href": "#planes"
+      }
+    },
+    "sectionOrder": [
+      "hero",
+      "capacidades",
+      "procesos",
+      "integraciones",
+      "como-funciona",
+      "demo",
+      "plataforma",
+      "planes",
+      "a-medida",
+      "cta-final"
+    ],
+    "capabilities": [
+      {
+        "name": "Atender",
+        "description": "Responde consultas y orienta a tus clientes."
+      },
+      {
+        "name": "Calificar",
+        "description": "Reúne información para identificar oportunidades."
+      },
+      {
+        "name": "Vender",
+        "description": "Acompaña la conversación comercial y sus próximos pasos."
+      },
+      {
+        "name": "Agendar",
+        "description": "Consulta disponibilidad y coordina reservas."
+      },
+      {
+        "name": "Hacer seguimiento",
+        "description": "Retoma oportunidades y registra las respuestas."
+      },
+      {
+        "name": "Recordar",
+        "description": "Envía recordatorios según el proceso acordado."
+      },
+      {
+        "name": "Registrar",
+        "description": "Guarda la información donde tu equipo la necesita."
+      },
+      {
+        "name": "Ejecutar",
+        "description": "Realiza acciones conectadas a tus herramientas."
+      },
+      {
+        "name": "Derivar",
+        "description": "Entrega la conversación a una persona cuando corresponde."
+      }
+    ],
+    "processExamples": [
+      {
+        "id": "ventas",
+        "name": "Agente de ventas",
+        "steps": [
+          "Lead",
+          "Conversación",
+          "Calificación",
+          "Seguimiento",
+          "Agenda"
+        ]
+      },
+      {
+        "id": "atencion",
+        "name": "Agente de atención",
+        "steps": [
+          "Pregunta",
+          "Consulta conocimiento",
+          "Respuesta",
+          "Registro",
+          "Humano si corresponde"
+        ]
+      },
+      {
+        "id": "agenda",
+        "name": "Agente de agenda",
+        "steps": [
+          "Consulta",
+          "Disponibilidad",
+          "Reserva",
+          "Confirmación"
+        ]
+      },
+      {
+        "id": "seguimiento",
+        "name": "Agente de seguimiento",
+        "steps": [
+          "Oportunidad",
+          "Seguimiento",
+          "Respuesta",
+          "Derivación"
+        ]
+      }
+    ],
+    "onboardingSteps": [
+      "Entendemos tu proceso",
+      "Configuramos el agente",
+      "Conectamos canales y herramientas",
+      "Probamos y lanzamos",
+      "Mejoramos"
+    ],
+    "implementationClaim": "Implementación en días, no meses.",
+    "implementationQualifier": "El plazo depende del alcance, los accesos y las integraciones.",
+    "custom": {
+      "title": "¿Tu proceso necesita algo más?",
+      "body": "Puedes comenzar con un agente y ampliar la solución con software, dashboards, sistemas internos, APIs, integraciones especiales y automatizaciones a medida.",
+      "cta": {
+        "label": "Ver soluciones a medida",
+        "href": "/soluciones"
+      }
+    },
+    "finalCta": {
+      "title": "¿Qué proceso te gustaría dejar de hacer manualmente?",
+      "primary": {
+        "label": "Conversemos",
+        "href": "/contacto"
+      },
+      "readySecondary": {
+        "label": "Probar agente",
+        "href": "#demo"
+      }
+    }
+  },
+  "integrations": {
+    "title": "Trabajan con las herramientas que ya usa tu empresa.",
+    "channels": [
+      "WhatsApp",
+      "Instagram",
+      "Facebook Messenger",
+      "Web"
+    ],
+    "tools": [
+      "Google Calendar",
+      "Google Sheets",
+      "Calendly",
+      "HubSpot",
+      "Salesforce",
+      "CRM"
+    ],
+    "connectionClaim": {
+      "publicCopy": "Más de 900 conexiones disponibles.",
+      "countFloor": 900,
+      "operator": "more_than",
+      "sourceStatus": "user_provided",
+      "providedAt": "2026-09-17",
+      "catalogVerifiedAt": null
+    },
+    "commonAvailability": "Conectores estándar disponibles en todos los planes; configuración según el proceso.",
+    "apiCopy": "Para necesidades especiales, diseñamos integraciones mediante API."
+  },
+  "pricing": {
+    "currency": "CLP",
+    "locale": "es-CL",
+    "priceMode": "reference",
+    "referenceLabel": "Valores referenciales; alcance y condiciones se confirman en la propuesta.",
+    "taxTreatment": null,
+    "promoEnabled": false,
+    "promoTerms": null,
+    "agentAdditionalPrice": null,
+    "agentAdditionalPeriod": null,
+    "agentAdditionalLabel": "Agente adicional: consultar.",
+    "usageNote": "Los planes están sujetos a condiciones de uso. Consumos extraordinarios pueden generar cargos adicionales.",
+    "extraUsageRates": null,
+    "plans": [
+      {
+        "id": "esencial",
+        "name": "Esencial",
+        "description": "Para comenzar con un proceso principal.",
+        "agentLimit": 1,
+        "monthlyPrice": 299000,
+        "setupPrice": 490000,
+        "setupFrom": false,
+        "promoSetupPrice": 249000,
+        "promoSetupFrom": false,
+        "promoLabel": null,
+        "agentAdditionalPrice": null,
+        "supportLevel": null,
+        "serviceDetailsStatus": "USER_ACTION_REQUIRED",
+        "features": [
+          "1 agente para una función o proceso principal.",
+          "Configuración inicial según el alcance acordado."
+        ],
+        "featured": false,
+        "cta": {
+          "label": "Consultar Esencial",
+          "href": "/contacto?servicio=agentes&plan=esencial"
+        }
+      },
+      {
+        "id": "growth",
+        "name": "Growth",
+        "description": "Para ampliar el trabajo de agentes en tu empresa.",
+        "agentLimit": 3,
+        "monthlyPrice": 499000,
+        "setupPrice": 790000,
+        "setupFrom": false,
+        "promoSetupPrice": 399000,
+        "promoSetupFrom": false,
+        "promoLabel": null,
+        "agentAdditionalPrice": null,
+        "supportLevel": null,
+        "serviceDetailsStatus": "USER_ACTION_REQUIRED",
+        "features": [
+          "Hasta 3 agentes para procesos principales.",
+          "Configuración inicial según el alcance acordado."
+        ],
+        "featured": true,
+        "featuredLabel": "Destacado",
+        "cta": {
+          "label": "Consultar Growth",
+          "href": "/contacto?servicio=agentes&plan=growth"
+        }
+      },
+      {
+        "id": "pro",
+        "name": "Pro",
+        "description": "Para coordinar más procesos con agentes.",
+        "agentLimit": 6,
+        "monthlyPrice": 799000,
+        "setupPrice": 1190000,
+        "setupFrom": true,
+        "promoSetupPrice": 599000,
+        "promoSetupFrom": true,
+        "promoLabel": null,
+        "agentAdditionalPrice": null,
+        "supportLevel": null,
+        "serviceDetailsStatus": "USER_ACTION_REQUIRED",
+        "features": [
+          "Hasta 6 agentes para procesos principales.",
+          "Configuración inicial según el alcance acordado."
+        ],
+        "featured": false,
+        "cta": {
+          "label": "Consultar Pro",
+          "href": "/contacto?servicio=agentes&plan=pro"
+        }
+      }
+    ]
+  },
+  "demo": {
+    "title": "Prueba un agente de Atacama Labs.",
+    "status": "INTEGRATION_REQUIRED",
+    "mode": null,
+    "publicScriptUrl": null,
+    "publicWidgetId": null,
+    "iframeUrl": null,
+    "allowedOrigins": [],
+    "brandVerified": false,
+    "dataNoticeReady": false,
+    "testEnvironmentVerified": false,
+    "fallbackTitle": "Solicita una demostración para tu proceso.",
+    "fallbackCta": {
+      "label": "Conversemos",
+      "href": "/contacto"
+    },
+    "goals": [
+      "Explicar Atacama Labs",
+      "Responder consultas",
+      "Conocer la empresa",
+      "Identificar procesos automatizables",
+      "Capturar datos voluntarios",
+      "Derivar a reunión o contacto"
+    ],
+    "dataNotice": null
+  },
+  "platform": {
+    "title": "Tus agentes y conversaciones en un solo lugar.",
+    "body": "Tu empresa contará con su propia subcuenta para trabajar con sus agentes y conversaciones bajo la marca Atacama Labs.",
+    "screenshotStatus": "ASSET_REQUIRED",
+    "screenshotPath": null,
+    "brandingGoals": [
+      "Dominio propio",
+      "Logo Atacama Labs",
+      "Colores de marca",
+      "Idioma",
+      "Portal bajo marca Atacama Labs"
+    ]
+  },
+  "navigation": {
+    "items": [
+      {
+        "label": "Inicio",
+        "href": "/"
+      },
+      {
+        "label": "Agentes",
+        "href": "/agentes"
+      },
+      {
+        "label": "Soluciones",
+        "href": "/soluciones"
+      },
+      {
+        "label": "Casos",
+        "href": "/casos"
+      },
+      {
+        "label": "Nosotros",
+        "href": "/sobre-el-estudio"
+      },
+      {
+        "label": "Contacto",
+        "href": "/contacto"
+      }
+    ],
+    "clientPortal": {
+      "label": "Acceso clientes",
+      "status": "USER_ACTION_REQUIRED",
+      "url": null,
+      "brandVerified": false
+    }
+  }
+}

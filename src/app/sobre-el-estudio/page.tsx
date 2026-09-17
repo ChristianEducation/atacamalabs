@@ -11,21 +11,25 @@ export const metadata: Metadata = {
 
 export default function SobreElEstudio() {
   return (
-    <div className="flex flex-col flex-1 bg-background">
+    <div className="public-site flex flex-col flex-1 bg-background">
       <SiteHeader />
-      <main className="flex-1 py-16 md:py-20">
+      <main id="contenido" tabIndex={-1} className="flex-1 py-16 md:py-20">
         <Container className="max-w-[70ch]">
-          <p className="text-sm font-medium uppercase tracking-[0.16em] text-copper">
+          <p className="text-sm font-medium uppercase tracking-[0.16em] text-action">
             {site.brand.origin}
           </p>
           <h1 className="mt-3 text-4xl font-semibold text-ink md:text-5xl">
             {site.about.title}
           </h1>
           <p className="mt-6 text-lg leading-8 text-muted">{site.about.body}</p>
-          <p className="mt-6 text-lg leading-8 text-ink">{site.about.founderText}</p>
+          <p className="mt-6 text-lg leading-8 text-ink">
+            {site.about.founderText}
+          </p>
 
           <div className="mt-12">
-            <PrimaryLink href="/contacto">Conversemos sobre tu proceso</PrimaryLink>
+            <PrimaryLink href="/contacto">
+              Conversemos sobre tu proceso
+            </PrimaryLink>
           </div>
         </Container>
       </main>

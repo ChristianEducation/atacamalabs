@@ -23,16 +23,20 @@
   },
   "navigation": [
     {
+      "label": "Inicio",
+      "href": "/"
+    },
+    {
+      "label": "Agentes",
+      "href": "/agentes"
+    },
+    {
       "label": "Soluciones",
       "href": "/soluciones"
     },
     {
       "label": "Casos",
-      "href": "/proyectos"
-    },
-    {
-      "label": "Cómo trabajamos",
-      "href": "/como-trabajamos"
+      "href": "/casos"
     },
     {
       "label": "Nosotros",
@@ -41,15 +45,16 @@
   ],
   "hero": {
     "eyebrow": "Desde Antofagasta",
-    "title": "Soluciones que mueven tu negocio.",
-    "body": "Ayudamos a empresas a mejorar sus procesos comerciales y operativos con software, integraciones y automatización a medida.",
+    "title": "Agentes que trabajan dentro de tu empresa.",
+    "body": "Implementamos agentes que atienden, ayudan a vender, agendan, hacen seguimiento y ejecutan tareas conectados a tus herramientas.",
+    "supportingLine": "Agentes, sistemas y automatización para empresas.",
     "primaryCta": {
-      "label": "Conversemos sobre tu proceso",
-      "href": "/contacto"
+      "label": "Ver agentes",
+      "href": "/agentes"
     },
     "secondaryCta": {
-      "label": "Ver casos",
-      "href": "/proyectos"
+      "label": "Hablemos",
+      "href": "/contacto"
     }
   },
   "solutions": [
@@ -348,6 +353,10 @@
     {
       "path": "/privacidad",
       "kind": "privacy"
+    },
+    {
+      "path": "/agentes",
+      "kind": "agents"
     }
   ],
   "process": [
@@ -409,6 +418,36 @@
     {
       "q": "¿El soporte está incluido?",
       "a": "Cada propuesta define la entrega, el soporte y los costos recurrentes que correspondan."
+    }
+  ],
+  "portals": [
+    {
+      "title": "Agentes para ventas, atención y seguimiento",
+      "summary": "Atienden, califican, agendan, hacen seguimiento y ejecutan acciones conectadas a tus procesos.",
+      "href": "/agentes",
+      "cta": "Ver agentes",
+      "motif": "agents"
+    },
+    {
+      "title": "Sistemas e integraciones",
+      "summary": "Software a medida y conexiones entre las herramientas que tu empresa ya utiliza.",
+      "href": "/soluciones",
+      "cta": "Ver soluciones",
+      "motif": "connections"
+    },
+    {
+      "title": "Automatización de procesos",
+      "summary": "Menos tareas manuales. Más control operativo.",
+      "href": "/como-trabajamos",
+      "cta": "Ver cómo trabajamos",
+      "motif": "automation"
+    },
+    {
+      "title": "Casos reales y soluciones construidas",
+      "summary": "Conoce procesos y soluciones que ya hemos implementado.",
+      "href": "/casos",
+      "cta": "Ver casos",
+      "motif": "cases"
     }
   ]
 }

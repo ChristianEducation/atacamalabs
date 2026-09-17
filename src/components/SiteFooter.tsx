@@ -1,35 +1,56 @@
 import Image from "next/image";
 import Link from "next/link";
 import site from "@/lib/content";
+import { Container } from "@/components/ui";
 
 export function SiteFooter() {
+  const socials = [
+    { label: "LinkedIn", url: site.publicSettings.linkedinCompanyUrl },
+    { label: "Instagram", url: site.publicSettings.instagramUrl },
+    { label: "GitHub", url: site.publicSettings.githubUrl },
+  ].filter((x) => x.url);
   return (
-    <footer className="mt-auto border-t border-border/60 bg-surface-warm">
-      <div className="mx-auto flex max-w-[var(--container-max)] flex-col gap-6 px-5 py-10 sm:px-8 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-3">
+    <footer className="site-footer">
+      <Container className="footer-top">
+        <div>
           <Image
-            src="/brand/logo-mark.svg"
-            alt=""
-            width={28}
-            height={19}
-            aria-hidden
+            src="/brand/logo-horizontal-light.svg"
+            alt="Atacama Labs"
+            width={196}
+            height={39}
           />
-          <div>
-            <p className="text-sm font-semibold text-ink">{site.brand.name}</p>
-            <p className="text-sm text-muted">{site.brand.origin}</p>
-          </div>
+          <p className="mt-4 text-sm">
+            Desde Antofagasta, Chile.
+            <br />
+            Tecnología que parte del proceso real.
+          </p>
         </div>
-        <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">
+        <nav aria-label="Pie de página">
           {site.navigation.map((item) => (
-            <Link key={item.href} href={item.href} className="hover:text-ink">
+            <Link key={item.href} href={item.href}>
               {item.label}
             </Link>
           ))}
-          <Link href="/contacto" className="hover:text-ink">
-            Contacto
-          </Link>
+          <Link href="/como-trabajamos">Cómo trabajamos</Link>
+          <Link href="/agentes#planes">Planes</Link>
+          <Link href="/contacto">Contacto</Link>
         </nav>
-      </div>
+        {socials.length > 0 && (
+          <div>
+            {socials.map((item) => (
+              <a key={item.label} href={item.url!}>
+                {item.label}
+              </a>
+            ))}
+          </div>
+        )}
+      </Container>
+      <Container>
+        <div className="footer-bottom">
+          © {new Date().getFullYear()} Atacama Labs.
+          <span>{site.brand.origin}</span>
+        </div>
+      </Container>
     </footer>
   );
 }

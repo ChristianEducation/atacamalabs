@@ -1,3 +1,4 @@
+import { AutomationVisual } from "@/components/PublicVisuals";
 import type { Metadata } from "next";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -11,25 +12,32 @@ export const metadata: Metadata = {
 
 export default function ComoTrabajamos() {
   return (
-    <div className="flex flex-col flex-1 bg-background">
+    <div className="public-site flex flex-col flex-1 bg-background">
       <SiteHeader />
-      <main className="flex-1 py-16 md:py-20">
+      <main id="contenido" tabIndex={-1} className="flex-1 py-16 md:py-20">
         <Container>
-          <h1 className="max-w-[32ch] text-4xl font-semibold text-ink md:text-5xl">
-            Cómo trabajamos
-          </h1>
-          <p className="mt-4 max-w-[60ch] text-lg leading-8 text-muted">
-            Cuatro etapas, de principio a operación continua.
-          </p>
+          <div className="internal-hero">
+            <div>
+              <h1 className="max-w-[32ch] text-4xl font-semibold text-ink md:text-5xl">
+                Cómo trabajamos
+              </h1>
+              <p className="mt-4 max-w-[60ch] text-lg leading-8 text-muted">
+                Cuatro etapas, de principio a operación continua.
+              </p>
+            </div>
+            <AutomationVisual />
+          </div>
 
           <ol className="mt-12 space-y-10">
             {site.process.map((step, i) => (
               <li key={step.title} className="flex gap-6">
-                <span className="text-2xl font-semibold text-copper">
+                <span className="text-2xl font-semibold text-action">
                   {String(i + 1).padStart(2, "0")}
                 </span>
                 <div>
-                  <h2 className="text-xl font-semibold text-ink">{step.title}</h2>
+                  <h2 className="text-xl font-semibold text-ink">
+                    {step.title}
+                  </h2>
                   <p className="mt-2 max-w-[60ch] text-base leading-7 text-muted">
                     {step.body}
                   </p>
@@ -39,7 +47,9 @@ export default function ComoTrabajamos() {
           </ol>
 
           <div className="mt-16">
-            <PrimaryLink href="/contacto">Conversemos sobre tu proceso</PrimaryLink>
+            <PrimaryLink href="/contacto">
+              Conversemos sobre tu proceso
+            </PrimaryLink>
           </div>
         </Container>
       </main>

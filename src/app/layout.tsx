@@ -1,26 +1,17 @@
 import type { Metadata } from "next";
-import { Manrope, Inter } from "next/font/google";
 import "./globals.css";
 import site from "@/lib/content";
 import { SITE_URL } from "@/lib/site-url";
 
-const manrope = Manrope({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-});
-
-const inter = Inter({
-  variable: "--font-body",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-});
-
-const title = "Atacama Labs — Software, sistemas y automatización para empresas";
+const title = "Atacama Labs — Agentes, sistemas y automatización para empresas";
 const description =
-  "Atacama Labs: software, sistemas y automatización para empresas, desde Antofagasta.";
+  "Atacama Labs: agentes, sistemas y automatización para empresas, desde Antofagasta.";
 
 export const metadata: Metadata = {
+  robots:
+    !site.publicSettings.canonicalOrigin || process.env.VERCEL_ENV === "preview"
+      ? { index: false, follow: false }
+      : undefined,
   metadataBase: new URL(SITE_URL),
   title,
   description,
@@ -70,14 +61,29 @@ function organizationJsonLd() {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="es"
-      className={`${manrope.variable} ${inter.variable} h-full antialiased`}
-    >
+    <html lang="es" className="h-full antialiased">
+      <head>
+        <link
+          rel="preload"
+          href="/fonts/newsreader.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="preload"
+          href="/fonts/inter.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd()) }}
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(organizationJsonLd()),
+          }}
         />
         {children}
       </body>

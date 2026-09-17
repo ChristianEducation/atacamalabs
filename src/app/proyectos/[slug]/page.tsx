@@ -1,3 +1,4 @@
+import { CaseVisual } from "@/components/PublicVisuals";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -35,34 +36,44 @@ export default async function CaseDetail({
   const c = publicCase(raw);
 
   return (
-    <div className="flex flex-col flex-1 bg-background">
+    <div className="public-site flex flex-col flex-1 bg-background">
       <ViewBeacon event={{ name: "case_view", props: { caseSlug: c.slug } }} />
       <SiteHeader />
-      <main className="flex-1 py-16 md:py-20">
+      <main id="contenido" tabIndex={-1} className="flex-1 py-16 md:py-20">
         <Container>
-          <Eyebrow>{c.sector}</Eyebrow>
-          <h1 className="mt-3 max-w-[32ch] text-4xl font-semibold text-ink md:text-5xl">
-            {c.title}
-          </h1>
+          <div className="internal-hero">
+            <div>
+              <Eyebrow>{c.sector}</Eyebrow>
+              <h1 className="mt-3 max-w-[32ch] text-4xl font-semibold text-ink md:text-5xl">
+                {c.title}
+              </h1>
+            </div>
+            <CaseVisual steps={c.diagramSteps} />
+          </div>
 
           <div className="mt-10 grid gap-10 md:grid-cols-[1.4fr_1fr]">
             <div className="space-y-10">
               <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-copper">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-action">
                   Situación
                 </h2>
                 <p className="mt-2 text-lg leading-8 text-ink">{c.situation}</p>
               </div>
 
               <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-copper">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-action">
                   Solución
                 </h2>
                 <p className="mt-2 text-lg leading-8 text-ink">{c.solution}</p>
                 <ul className="mt-4 space-y-2">
                   {c.features.map((f) => (
-                    <li key={f} className="flex gap-3 text-base leading-7 text-ink">
-                      <span aria-hidden className="text-copper">—</span>
+                    <li
+                      key={f}
+                      className="flex gap-3 text-base leading-7 text-ink"
+                    >
+                      <span aria-hidden className="text-action">
+                        —
+                      </span>
                       {f}
                     </li>
                   ))}
@@ -70,7 +81,7 @@ export default async function CaseDetail({
               </div>
 
               <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-copper">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-action">
                   Esquema del flujo
                 </h2>
                 <p className="mt-1 text-sm text-muted">
@@ -82,27 +93,31 @@ export default async function CaseDetail({
                       key={step}
                       className="rounded-lg border border-border bg-surface p-4"
                     >
-                      <span className="text-xs font-semibold text-copper">
+                      <span className="text-xs font-semibold text-action">
                         {String(i + 1).padStart(2, "0")}
                       </span>
-                      <p className="mt-1 text-sm font-medium text-ink">{step}</p>
+                      <p className="mt-1 text-sm font-medium text-ink">
+                        {step}
+                      </p>
                     </li>
                   ))}
                 </ol>
               </div>
 
               <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-copper">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-action">
                   Rol
                 </h2>
                 <p className="mt-2 text-base leading-7 text-ink">{c.role}</p>
               </div>
 
               <div>
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-copper">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-action">
                   Evidencia
                 </h2>
-                <p className="mt-2 text-base leading-7 text-muted">{c.evidenceLabel}</p>
+                <p className="mt-2 text-base leading-7 text-muted">
+                  {c.evidenceLabel}
+                </p>
               </div>
             </div>
 

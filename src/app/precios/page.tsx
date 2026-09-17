@@ -11,9 +11,9 @@ export const metadata: Metadata = {
 
 export default function Precios() {
   return (
-    <div className="flex flex-col flex-1 bg-background">
+    <div className="public-site flex flex-col flex-1 bg-background">
       <SiteHeader />
-      <main className="flex-1 py-16 md:py-20">
+      <main id="contenido" tabIndex={-1} className="flex-1 py-16 md:py-20">
         <Container>
           <h1 className="max-w-[32ch] text-4xl font-semibold text-ink md:text-5xl">
             {site.pricing.title}
@@ -21,6 +21,16 @@ export default function Precios() {
           <p className="mt-4 max-w-[60ch] text-lg leading-8 text-muted">
             {site.pricing.body}
           </p>
+
+          <div className="mt-8">
+            <PrimaryLink href="/agentes#planes">
+              Ver planes de agentes
+            </PrimaryLink>
+            <p className="mt-6 text-muted">
+              Para sistemas, integraciones y proyectos a medida, acordamos la
+              inversión según el alcance.
+            </p>
+          </div>
 
           <div className="mt-12 grid gap-6 sm:grid-cols-3">
             {site.pricing.options.map((option) => (

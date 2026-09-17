@@ -10,6 +10,7 @@ import { SITE_URL } from "@/lib/site-url";
  */
 const IMPLEMENTED_KINDS = new Set([
   "home",
+  "agents",
   "solutions-index",
   "solution",
   "cases-index",

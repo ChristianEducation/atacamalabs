@@ -9,7 +9,9 @@ export function Container({
   children: ReactNode;
 }) {
   return (
-    <div className={`mx-auto max-w-[var(--container-max)] px-5 sm:px-8 ${className}`}>
+    <div
+      className={`mx-auto max-w-[var(--container-max)] w-full px-5 sm:px-8 lg:px-10 ${className}`}
+    >
       {children}
     </div>
   );
@@ -17,7 +19,7 @@ export function Container({
 
 export function Eyebrow({ children }: { children: ReactNode }) {
   return (
-    <p className="text-sm font-medium uppercase tracking-[0.16em] text-copper">
+    <p className="text-xs font-medium uppercase tracking-[0.16em] text-action">
       {children}
     </p>
   );
@@ -33,7 +35,7 @@ export function PrimaryLink({
   return (
     <Link
       href={href}
-      className="inline-flex h-11 items-center justify-center rounded-lg bg-action px-6 text-sm font-medium text-white hover:bg-action-hover transition-colors"
+      className="inline-flex min-h-12 items-center justify-center rounded-full bg-action px-6 text-base font-medium text-white hover:bg-action-hover transition-colors"
     >
       {children}
     </Link>
@@ -50,7 +52,7 @@ export function SecondaryLink({
   return (
     <Link
       href={href}
-      className="inline-flex h-11 items-center justify-center rounded-lg border border-border-control px-6 text-sm font-medium text-ink hover:bg-surface-warm transition-colors"
+      className="inline-flex min-h-12 items-center justify-center rounded-full border border-border-control px-6 text-base font-medium text-ink hover:bg-surface-warm transition-colors"
     >
       {children}
     </Link>

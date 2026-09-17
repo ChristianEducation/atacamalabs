@@ -1,15 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="atacama-favicon-title">
-<title id="atacama-favicon-title">Atacama Labs</title>
-<defs>
-  <linearGradient id="atacamaFaviconBg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
-    <stop offset="0" stop-color="#B87656"/>
-    <stop offset="1" stop-color="#4E2E1E"/>
-  </linearGradient>
-</defs>
-<rect width="64" height="64" rx="14" fill="url(#atacamaFaviconBg)"/>
-<g fill="none" stroke="#FAF6F0" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
-  <path d="M8 44 C18 39 21 28 30 29 C39 30 42 19 51 21 C56 22 59 27 62 30"/>
-  <path d="M11 51 C21 46 24 36 33 37 C42 38 46 30 54 32 C58 33 60 36 62 38"/>
-  <path d="M14 33 C22 30 26 21 34 22 C41 23 46 15 53 16 C57 17 59 20 62 23"/>
-</g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#4E2E1E"/><g transform="translate(2,9) scale(.097)" fill="none" stroke="#FAF6F0" stroke-width="6" stroke-linejoin="round"><path d="M 5 102.0 C 47 88 65 51.0 88 54 C 103 54 112 58 123 60 L 163 17.0 Q 174 10.0 182 18.0 L 217 57.0 C 237 78.0 250 68.0 264 79.0 L 282 114.0"/><path d="M 17 103.2 C 47 94 65 67.5 88 69 C 103 69 112 70 123 72 L 163 40.1 Q 174 33.1 182 41.1 L 217 71.1 C 237 87.6 250 80.6 264 88.6 L 282 116.1"/><path d="M 29 104.4 C 47 100 65 84.0 88 84 C 103 84 112 82 123 84 L 163 63.2 Q 174 56.2 182 64.2 L 217 85.2 C 237 97.2 250 93.2 264 98.2 L 282 118.2"/></g></svg>
