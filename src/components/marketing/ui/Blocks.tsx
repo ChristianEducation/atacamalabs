@@ -97,8 +97,10 @@ export function CTABlock({
 export function RelatedServices({
   ids,
   extra,
+  limit = 3,
 }: {
   ids: readonly string[];
+  limit?: number;
   extra?: readonly { label: string; blurb: string; href: string }[];
 }) {
   const fromServices = SERVICES.filter((s) => ids.includes(s.id)).map((s) => ({
@@ -106,7 +108,7 @@ export function RelatedServices({
     blurb: s.blurb,
     href: s.href,
   }));
-  const items = [...fromServices, ...(extra ?? [])].slice(0, 3);
+  const items = [...fromServices, ...(extra ?? [])].slice(0, limit);
   return (
     <section className="mk-section--sm mk-related" aria-labelledby="related-title">
       <div className="mk-container">
