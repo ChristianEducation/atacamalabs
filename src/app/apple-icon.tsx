@@ -1,26 +1,17 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { ImageResponse } from "next/og";
 
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
+const svg = () =>
+  `data:image/svg+xml;base64,${readFileSync(join(process.cwd(), "public/brand/app-icon-claro.svg")).toString("base64")}`;
+
 export default function AppleIcon() {
   return new ImageResponse(
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#0767F2",
-        color: "#FFFFFF",
-        fontSize: 84,
-        fontWeight: 700,
-        letterSpacing: -2,
-      }}
-    >
-      AL
-    </div>,
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={svg()} width={180} height={180} alt="" />,
     { ...size },
   );
 }

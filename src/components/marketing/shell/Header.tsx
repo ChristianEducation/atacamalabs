@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -131,7 +132,7 @@ export function Header({ portalUrl }: { portalUrl: string | null }) {
     <header ref={headerRef} className={cn("mk-header", scrolled && "is-scrolled")}>
       <div className="mk-container mk-header__inner">
         <Link href="/" className="mk-wordmark" aria-label="Atacama Labs — inicio">
-          {BRAND.wordmark}
+          <Image src="/brand/logo-horizontal.svg" alt="Atacama Labs" width={1768} height={169} priority unoptimized />
         </Link>
 
         <nav className="mk-nav" aria-label="Principal">

@@ -1,24 +1,18 @@
 /* Header (N1) y footer (N2) — spec/06-SHELL-UTILITY.md */
 
 .mk-wordmark {
-  font-family: var(--font-sans);
-  font-weight: 600;
-  font-size: 17px;
-  line-height: 24px;
-  letter-spacing: 0.04em;
-  color: var(--ink);
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  white-space: nowrap;
 }
-.mk-wordmark--dark {
-  color: var(--dark-text);
+.mk-wordmark img {
+  display: block;
+  width: 150px;
+  height: auto;
 }
 @media (min-width: 1200px) {
-  .mk-wordmark {
-    font-size: 20px;
-    line-height: 28px;
+  .mk-wordmark img {
+    width: 220px;
   }
 }
 

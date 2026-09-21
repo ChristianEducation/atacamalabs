@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { BRAND, INDUSTRIES, SERVICES } from "@/content/marketing/nav";
 import { PRIVACY_APPROVED, clientPortalUrl, directContact, socialLinks } from "@/lib/marketing/public-config";
@@ -19,7 +20,9 @@ export function Footer() {
       <div className="mk-container">
         <div className="mk-footer__grid">
           <div className="mk-footer__brand">
-            <p className="mk-wordmark mk-wordmark--dark">{BRAND.wordmark}</p>
+            <p className="mk-wordmark">
+              <Image src="/brand/logo-horizontal-fondo-oscuro.svg" alt="Atacama Labs" width={1768} height={169} unoptimized />
+            </p>
             <p className="mk-footer__tag">{BRAND.tagline}</p>
             <p className="mk-footer__origin">{BRAND.origin}</p>
             {contact.email ? (
