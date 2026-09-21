@@ -7,12 +7,12 @@
 }
 .mk-wordmark img {
   display: block;
-  width: 150px;
+  width: 220px;
   height: auto;
 }
 @media (min-width: 1200px) {
   .mk-wordmark img {
-    width: 220px;
+    width: 264px;
   }
 }
 

@@ -243,3 +243,14 @@
   padding-top: 72px;
   border-top: 1px solid var(--line);
 }
+
+/* ---------- Producto del héroe: sin vacío, contenido al ritmo de la demo ---------- */
+@media (min-width: 1024px) {
+  .mk-frame--hero,
+  .mk-frame--ag-hero {
+    min-height: 0;
+  }
+}
+.mk-chat__body {
+  min-height: 190px;
+}

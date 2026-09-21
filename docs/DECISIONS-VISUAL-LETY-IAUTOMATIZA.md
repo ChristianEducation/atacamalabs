@@ -12,3 +12,12 @@ Autoriza: Christian. Regla: ante duda de densidad o estructura, manda IAutomatiz
 | D-V06 | Sin cursor-glow ni contadores de MRR de Lety. | Requieren JS continuo; el spec prohíbe métricas comerciales inventadas. | Ninguno. |
 
 Pendiente: repetir la compactación en `/comercial`, `/cobranza` y `/administrativo-financiero`, y la revisión pantalla a pantalla.
+
+## Segunda pasada (2026-09-21)
+
+| ID | Decisión | Por qué |
+| --- | --- | --- |
+| D-V07 | Rubros: el héroe muestra directamente el agente del rubro trabajando (chat + recibo), eyebrow «AGENTE PARA {rubro}». Dolores → flujo del agente + panel → «Empiezas con un agente. Con Atacama Labs puedes seguir creciendo» (agente, automatización, a medida) → FAQ → CTA. | Como IAutomatiza: primero un agente concreto; crecer con Atacama después. Sustituye el orden K1–K8 del spec (contenido intacto). |
+| D-V08 | Logo: el wordmark oficial sube a 220 px (móvil) y 264 px (escritorio). Las letras son trazo fino con B y S abiertas en el archivo maestro; a tamaños menores se leen mal. Sin deformar ni recolorear. | Legibilidad. Si se quiere otra forma de B/S, es un cambio en el archivo maestro de marca. |
+| D-V09 | Héroes sin altura mínima artificial (menos vacío en el marco de la demo). | Menor densidad. |
+| D-V10 | `/comercial`: implementación (V6) dentro de integraciones (V5). `/administrativo-financiero`: control y seguridad (Y6) dentro de conexiones (Y4). | Menos secciones. |

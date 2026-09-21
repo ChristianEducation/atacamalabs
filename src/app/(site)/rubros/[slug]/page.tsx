@@ -7,7 +7,6 @@ import {
   IndustryAgentDemo,
   IndustryDashboard,
   IndustryFlow,
-  IndustryHeroPanel,
 } from "@/components/marketing/demos/IndustryDemos";
 import { CTABlock, FAQ, SectionHeading } from "@/components/marketing/ui/Blocks";
 import { Reveal } from "@/components/marketing/motion/Reveal";
@@ -36,7 +35,7 @@ export default async function IndustryPage({ params }: { params: Promise<{ slug:
   if (!industry) notFound();
   const q = `industria=${industry.slug}`;
   const blocks = [
-    { icon: Bot, ...industry.agent, href: "/agentes", label: "Ver agentes" },
+    { icon: Bot, ...industry.agent, href: "/agentes", label: "Ver el agente" },
     { icon: Workflow, ...industry.automation, href: "/a-medida#flujos", label: "Ver automatizaciones" },
     { icon: LayoutDashboard, ...industry.custom, href: "/a-medida#software", label: "Ver soluciones a medida" },
   ];
@@ -44,7 +43,7 @@ export default async function IndustryPage({ params }: { params: Promise<{ slug:
   return (
     <>
       <PageHero
-        eyebrow={`SOLUCIONES PARA ${industry.name.toUpperCase()}`}
+        eyebrow={`AGENTE PARA ${industry.name.toUpperCase()}`}
         title={industry.h1}
         lead={industry.lead}
         actions={[
@@ -52,7 +51,7 @@ export default async function IndustryPage({ params }: { params: Promise<{ slug:
           { label: "Ver ejemplo", href: "#agente-en-accion", variant: "secondary" },
         ]}
       >
-        <IndustryHeroPanel industry={industry} />
+        <IndustryAgentDemo industry={industry} />
       </PageHero>
 
       <section className="mk-section--md mk-paper" aria-labelledby="pains-title">
@@ -73,45 +72,9 @@ export default async function IndustryPage({ params }: { params: Promise<{ slug:
         </div>
       </section>
 
-      <section className="mk-section--md mk-paper mk-ind-connect" aria-labelledby="connect-title">
+      <section className="mk-section--md" aria-labelledby="flow-title">
         <div className="mk-container">
-          <SectionHeading id="connect-title" center title="Atención, automatización y una operación conectada." />
-          <ul className="mk-ind-blocks">
-            {blocks.map((b, i) => (
-              <Reveal as="li" key={b.title} delay={i * 70}>
-                <span className="mk-features__icon" aria-hidden>
-                  <b.icon size={22} />
-                </span>
-                <h3 className="mk-h5">{b.title}</h3>
-                <p>{b.body}</p>
-                <Link href={b.href} className="mk-link">
-                  {b.label}
-                </Link>
-              </Reveal>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      <section className="mk-section--md" aria-labelledby="agent-title">
-        <div className="mk-container">
-          <SectionHeading
-            id="agent-title"
-            title="Una conversación que deja el siguiente paso claro."
-            lead="El agente obtiene contexto, consulta lo necesario y deja un registro útil para tu equipo."
-          />
-          <IndustryAgentDemo industry={industry} />
-          <p className="mk-ag-cta">
-            <Link href="/agentes" className="mk-link">
-              Ver capacidades de agentes
-            </Link>
-          </p>
-        </div>
-      </section>
-
-      <section className="mk-section--md mk-paper" aria-labelledby="flow-title">
-        <div className="mk-container">
-          <SectionHeading id="flow-title" title="Así puede recorrer tu operación." />
+          <SectionHeading id="flow-title" title="Así trabaja tu agente, paso a paso." lead="Del primer mensaje al registro que recibe tu equipo." />
           <IndustryFlow industry={industry} />
           <p className="mk-ag-cta">
             <ButtonLink href={`/diagnostico?${q}`} variant="secondary" arrow>
@@ -142,7 +105,27 @@ export default async function IndustryPage({ params }: { params: Promise<{ slug:
         </div>
       </section>
 
-      <section className="mk-section--md" aria-labelledby="faq-title">
+      <section className="mk-section--md mk-paper mk-ind-connect" aria-labelledby="connect-title">
+        <div className="mk-container">
+          <SectionHeading id="connect-title" center lead="Cuando tu operación lo pida, sumamos más agentes, automatizaciones y software a medida sobre la misma base." title="Empiezas con un agente. Con Atacama Labs puedes seguir creciendo." />
+          <ul className="mk-ind-blocks">
+            {blocks.map((b, i) => (
+              <Reveal as="li" key={b.title} delay={i * 70}>
+                <span className="mk-features__icon" aria-hidden>
+                  <b.icon size={22} />
+                </span>
+                <h3 className="mk-h5">{b.title}</h3>
+                <p>{b.body}</p>
+                <Link href={b.href} className="mk-link">
+                  {b.label}
+                </Link>
+              </Reveal>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <section className="mk-section--md mk-paper" aria-labelledby="faq-title">
         <div className="mk-container mk-ind-faq">
           <SectionHeading id="faq-title" title="Preguntas sobre tu operación." />
           <FAQ items={[...industry.faqs, INDUSTRY_COMMON_FAQ]} />

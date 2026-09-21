@@ -77,11 +77,7 @@ export default function CommercialPage() {
           </ul>
         </div>
         <IntegrationMarquee items={marquee.items} preview={marquee.preview} />
-      </section>
-
-      <section className="mk-section--md mk-paper" aria-labelledby="impl-title">
-        <div className="mk-container">
-          <SectionHeading id="impl-title" title="Implementación." />
+        <div className="mk-container mk-ag-subblock">
           <StandardImplementationNote />
         </div>
       </section>

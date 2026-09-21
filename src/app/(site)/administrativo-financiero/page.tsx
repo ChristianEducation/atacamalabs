@@ -68,6 +68,12 @@ export default function FinancePage() {
           </ul>
         </div>
         <IntegrationMarquee items={marquee.items} preview={marquee.preview} />
+        <div className="mk-container mk-ag-subblock">
+          <SectionHeading id="ctl-title" title="Control y seguridad." />
+          <FeatureGrid
+            items={FINANCE.principles.map((p) => ({ icon: <Check size={20} />, title: p.title, body: p.body }))}
+          />
+        </div>
       </section>
 
       <section className="mk-section--md mk-paper" aria-labelledby="flow-title">
@@ -81,15 +87,6 @@ export default function FinancePage() {
             title="De consulta a acción"
             nodes={FINANCE.flow as unknown as BuilderScenario["nodes"]}
             instance="fin-y5"
-          />
-        </div>
-      </section>
-
-      <section className="mk-section--md" aria-labelledby="ctl-title">
-        <div className="mk-container">
-          <SectionHeading id="ctl-title" title="Control y seguridad." />
-          <FeatureGrid
-            items={FINANCE.principles.map((p) => ({ icon: <Check size={20} />, title: p.title, body: p.body }))}
           />
         </div>
       </section>
