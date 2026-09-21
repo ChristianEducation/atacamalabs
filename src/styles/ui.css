@@ -407,7 +407,12 @@
   border-radius: var(--r-28);
   padding: 28px;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 32px;
+}
+.mk-cta__actions .mk-btn {
+  white-space: normal;
+  text-align: center;
 }
 .mk-cta__title {
   color: #fff;

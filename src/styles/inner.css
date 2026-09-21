@@ -653,7 +653,7 @@
 .mk-cm-blocks > li.is-off {
   opacity: 0.35;
 }
-@media (min-width: 1024px) {
+@media (min-width: 1280px) {
   .mk-cm-blocks {
     grid-template-columns: repeat(3, 1fr);
     gap: 24px;

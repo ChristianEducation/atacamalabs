@@ -532,7 +532,7 @@ export function getIndustry(slug: string): Industry | undefined {
 
 /** K9: detalle de nodos derivado del guion y del recibo, sin texto generado al vuelo. */
 export function industryNodes(industry: Industry) {
-  const [m1, m2, m3, m4] = industry.script;
+  const [m1, m2, m3] = industry.script;
   const { receipt } = industry;
   const w = industry.workflow;
   return [
