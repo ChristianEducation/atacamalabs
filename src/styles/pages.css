@@ -1,0 +1,261 @@
+/* Composición de páginas — spec/pages/*.md (F, G, H, I, ...) */
+
+/* ---------- F1 Hero Home ---------- */
+.mk-hero {
+  padding: 32px 0 40px;
+  /* El halo estático (480px) no debe generar desplazamiento horizontal en móvil. */
+  overflow-x: clip;
+}
+.mk-hero__grid {
+  display: grid;
+  gap: 32px;
+}
+.mk-hero__copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.mk-hero__title {
+  margin-top: 20px;
+  max-width: 600px;
+}
+.mk-hero__visual-title {
+  display: block;
+}
+.mk-hero__line {
+  display: block;
+}
+.mk-rotor {
+  display: grid;
+  font-style: italic;
+  color: var(--blue-text);
+}
+.mk-rotor__word {
+  grid-area: 1 / 1;
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 240ms var(--ease-standard),
+    transform 240ms var(--ease-standard);
+}
+.mk-rotor__word.is-active {
+  opacity: 1;
+  transform: none;
+}
+.mk-hero__lead {
+  margin-top: 24px;
+}
+.mk-hero__actions {
+  margin-top: 28px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.mk-hero__note {
+  margin-top: 16px;
+  max-width: 54ch;
+}
+.mk-hero__product {
+  position: relative;
+  min-width: 0;
+}
+.mk-hero__product::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 480px;
+  height: 480px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(7 103 242 / 8%), rgb(7 103 242 / 0%) 70%);
+  z-index: var(--z-ornament);
+  pointer-events: none;
+}
+.mk-frame--hero {
+  min-height: 440px;
+}
+@media (max-width: 479px) {
+  .mk-hero__actions .mk-btn {
+    width: 100%;
+  }
+}
+@media (min-width: 768px) {
+  .mk-hero {
+    padding: 48px 0 56px;
+  }
+  .mk-hero__grid {
+    gap: 40px;
+  }
+}
+@media (min-width: 1024px) {
+  .mk-hero__grid {
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    gap: 40px;
+  }
+  .mk-frame--hero {
+    min-height: 560px;
+  }
+}
+@media (min-width: 1200px) {
+  .mk-hero {
+    padding: 64px 0 72px;
+  }
+  .mk-hero__grid {
+    gap: 56px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mk-rotor__word {
+    transition: none;
+  }
+}
+
+/* ---------- F3 Selector de servicios ---------- */
+.mk-services__head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 720px;
+}
+.mk-services__head .mk-eyebrow {
+  margin-bottom: 12px;
+}
+.mk-services__rector {
+  margin-top: 16px;
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: 22px;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+.mk-services__head .mk-lead {
+  margin-top: 16px;
+}
+@media (min-width: 768px) {
+  .mk-services__rector {
+    font-size: 26px;
+  }
+}
+.mk-services__panel {
+  margin-top: 24px;
+  min-height: 520px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-28);
+  padding: 20px;
+  transition: opacity 120ms var(--ease-standard);
+}
+.mk-services__panel[data-fading] {
+  opacity: 0;
+}
+.mk-services__content {
+  display: grid;
+  gap: 28px;
+  animation: mk-panel-in 220ms var(--ease-out) both;
+}
+@keyframes mk-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.mk-services__copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+.mk-services__message {
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.mk-services__demo {
+  min-width: 0;
+}
+.mk-services__note {
+  margin-top: 20px;
+  font-size: 14px;
+  color: var(--muted);
+  max-width: 70ch;
+}
+@media (min-width: 768px) {
+  .mk-services__panel {
+    padding: 32px;
+  }
+}
+@media (min-width: 1024px) {
+  .mk-services__content {
+    grid-template-columns: 4fr 6fr;
+    gap: 40px;
+    align-items: start;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mk-services__content {
+    animation: none;
+  }
+  .mk-services__panel {
+    transition: none;
+  }
+}
+
+/* ---------- F10 Plataforma breve ---------- */
+.mk-platform-block__grid {
+  display: grid;
+  gap: 28px;
+}
+.mk-platform-block__copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  max-width: 440px;
+}
+.mk-platform-block__demo {
+  min-width: 0;
+}
+.mk-platform-block__demo .mk-frame__body {
+  max-height: 340px;
+  overflow: hidden;
+}
+@media (min-width: 1024px) {
+  .mk-platform-block__grid {
+    grid-template-columns: 5fr 7fr;
+    gap: 40px;
+    align-items: center;
+  }
+}
+
+/* ---------- F7 Rubros compacto ---------- */
+.mk-industries-block__grid {
+  display: grid;
+  gap: 24px;
+}
+.mk-industries-block__copy .mk-h2 {
+  font-size: 28px;
+}
+@media (min-width: 1024px) {
+  .mk-industries-block__grid {
+    grid-template-columns: 5fr 7fr;
+    gap: 48px;
+    align-items: center;
+  }
+  .mk-industries-block__copy .mk-h2 {
+    font-size: 34px;
+  }
+}
+.mk-industries-block__more {
+  margin-top: 16px;
+}
+
+/* ---------- Bloques de cierre ---------- */
+.mk-cta-wrap {
+  background: var(--bg);
+}
