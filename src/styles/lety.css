@@ -237,3 +237,9 @@
     transition: none;
   }
 }
+
+.mk-ag-subblock {
+  margin-top: 72px;
+  padding-top: 72px;
+  border-top: 1px solid var(--line);
+}

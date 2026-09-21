@@ -83,27 +83,24 @@ export default function AgentsPage() {
             lead="Son ejemplos, no límites. El mismo agente puede combinar varias capacidades y acciones."
           />
           <CapabilityExplorer />
-        </div>
-      </section>
-
-      <section className="mk-section--md" aria-labelledby="actions-title">
-        <div className="mk-container">
-          <SectionHeading
-            id="actions-title"
-            title="Conversa. Consulta. Ejecuta."
-            lead="Un mismo agente puede realizar varias acciones dentro de un proceso principal."
-          />
-          <FeatureGrid
-            items={ACTIONS.map((a, i) => {
-              const Icon = ACTION_ICONS[i];
-              return { icon: <Icon size={20} />, title: a.title, body: a.body };
-            })}
-          />
-          <p className="mk-ag-cta">
-            <Link href="#demo" className="mk-link">
-              Explorar un ejemplo
-            </Link>
-          </p>
+          <div className="mk-ag-subblock">
+            <SectionHeading
+              id="actions-title"
+              title="Conversa. Consulta. Ejecuta."
+              lead="Un mismo agente puede realizar varias acciones dentro de un proceso principal."
+            />
+            <FeatureGrid
+              items={ACTIONS.map((a, i) => {
+                const Icon = ACTION_ICONS[i];
+                return { icon: <Icon size={20} />, title: a.title, body: a.body };
+              })}
+            />
+            <p className="mk-ag-cta">
+              <Link href="#demo" className="mk-link">
+                Explorar un ejemplo
+              </Link>
+            </p>
+          </div>
         </div>
       </section>
 
@@ -187,7 +184,7 @@ export default function AgentsPage() {
         </div>
       </section>
 
-      <section className="mk-section--md" aria-labelledby="setup-title">
+      <section id="preguntas" className="mk-section--md mk-paper" aria-labelledby="faq-title">
         <div className="mk-container">
           <SectionHeading id="setup-title" title="Lo ponemos a trabajar contigo." />
           <ProcessSteps steps={SETUP_STEPS} />
@@ -197,10 +194,7 @@ export default function AgentsPage() {
             </ButtonLink>
           </p>
         </div>
-      </section>
-
-      <section id="preguntas" className="mk-section--md mk-paper" aria-labelledby="faq-title">
-        <div className="mk-container mk-ag-split mk-ag-split--4-8">
+        <div className="mk-container mk-ag-split mk-ag-split--4-8 mk-ag-subblock">
           <Reveal className="mk-ag-copy">
             <h2 id="faq-title" className="mk-h2">
               Antes de empezar.
