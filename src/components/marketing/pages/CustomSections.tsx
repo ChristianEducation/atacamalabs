@@ -151,7 +151,7 @@ export function CustomModules() {
 
       <ol className="mk-cu-cards">
         {CUSTOM_MODULES.map((m, i) => (
-          <li key={m.id}>
+          <li key={m.id} id={m.anchor}>
             <button
               type="button"
               className={cn("mk-cu-card", active === m.id && "is-active")}
@@ -172,7 +172,7 @@ export function CustomModules() {
 
       <div id={panelId} className="mk-cu-module" aria-live="polite">
         {active === "flujos" ? (
-          <div id="flujos">
+          <div>
             <h3 className="mk-h3">Cada paso sabe qué viene después.</h3>
             <FlowPlayer
               key={scenarioId}
@@ -195,7 +195,7 @@ export function CustomModules() {
         ) : null}
 
         {active === "software" ? (
-          <div id="software">
+          <div>
             <h3 className="mk-h3">Construimos lo que el proceso necesita.</h3>
             <ol className="mk-cu-groups">
               {CUSTOM_GROUPS.map((g, i) => (
@@ -218,7 +218,7 @@ export function CustomModules() {
         ) : null}
 
         {active === "proceso" ? (
-          <div id="proceso">
+          <div>
             <h3 className="mk-h3">De entender el proceso a ponerlo en marcha.</h3>
             <ProcessSteps steps={CUSTOM_PROCESS} />
             <p className="mk-ag-cta">
@@ -230,7 +230,7 @@ export function CustomModules() {
         ) : null}
 
         {active === "interfaz" ? (
-          <div id="interfaz" className="mk-cu-panel">
+          <div className="mk-cu-panel">
             <div className="mk-ag-copy">
               <h3 className="mk-h3">El equipo ve lo que necesita hacer.</h3>
               <p>
