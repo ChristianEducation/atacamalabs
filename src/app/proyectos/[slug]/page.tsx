@@ -22,6 +22,9 @@ export async function generateMetadata({
   return {
     title: `${c.title} | Atacama Labs`,
     description: c.situation,
+    // 2026-09-17: fuera del flujo público/comercial (decisión de Christian).
+    // La ruta sigue existiendo, sin enlaces entrantes; no se indexa.
+    robots: { index: false, follow: false },
   };
 }
 

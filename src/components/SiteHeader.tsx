@@ -2,7 +2,7 @@ import site from "@/lib/content";
 import { agentsOffer } from "@/lib/agents-offer";
 import { NavigationHeader } from "@/components/NavigationHeader";
 
-export function SiteHeader() {
+export function SiteHeader({ overlay = false }: { overlay?: boolean }) {
   const portal = agentsOffer.navigation.clientPortal;
   let clientUrl: string | null = null;
   if (portal.brandVerified && portal.status === "READY" && portal.url) {
@@ -13,6 +13,10 @@ export function SiteHeader() {
     }
   }
   return (
-    <NavigationHeader navigation={site.navigation} clientUrl={clientUrl} />
+    <NavigationHeader
+      navigation={site.navigation}
+      clientUrl={clientUrl}
+      overlay={overlay}
+    />
   );
 }

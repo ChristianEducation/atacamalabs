@@ -10,6 +10,9 @@ export const metadata: Metadata = {
   title: "Casos | Atacama Labs",
   description: "Proyectos implementados: situación, solución y funcionamiento.",
   alternates: { canonical: "/proyectos" },
+  // 2026-09-17: fuera del flujo público/comercial (decisión de Christian).
+  // La ruta sigue existiendo, sin enlaces entrantes; no se indexa.
+  robots: { index: false, follow: false },
 };
 
 export default function ProyectosIndex() {

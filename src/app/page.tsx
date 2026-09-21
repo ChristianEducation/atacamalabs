@@ -1,181 +1,56 @@
-import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
-import {
-  Container,
-  Eyebrow,
-  PrimaryLink,
-  SecondaryLink,
-} from "@/components/ui";
-import { PortalMotif, LandscapeCta } from "@/components/PublicVisuals";
-import {
-  IntegrationStrip,
-  Topography,
-  ProcessIcon,
-  HomeCaseShowcase,
-  HomeConnectionsVisual,
-} from "@/components/HomeDetails";
-import site, { publicCase } from "@/lib/content";
-import "./home-refinement.css";
+import { HeroSection } from "@/components/halo/Hero";
+import { IntegrationsMarquee } from "@/components/halo/IntegrationsMarquee";
+import { MeetAtacamaLabsSection } from "@/components/halo/MeetAtacamaLabs";
+import { UseModesSection } from "@/components/halo/UseModes";
+import site from "@/lib/content";
+import { agentsOffer } from "@/lib/agents-offer";
 
+/**
+ * Home — migración visual Halo (docs/HALO-FASE0-MAP.md).
+ * Fase 1: Navbar + Hero + Marquee de integraciones.
+ * Fase 2: Meet Atacama Labs (bento, ex-"info.tsx") + Use modes (panel único,
+ * ex-"use-cases.tsx"). Pricing, Soluciones a medida y el CTA/footer
+ * fusionado quedan para las Fases 3-4 — no se recrean acá versiones a medio
+ * camino. Sin `.public-site` ni `home-refinement.css`: esta página usa
+ * Manrope como fuente base (igual que Halo), no el serif Newsreader de 006.
+ * El footer que se ve por ahora es el actual (sin rediseñar) — pasa a la
+ * gramática Halo recién en la Fase 4.
+ */
 export default function Home() {
-  const c = publicCase(site.cases[0]);
   return (
-    <div className="public-site home-refinement flex flex-col flex-1 bg-background">
-      <SiteHeader />
-      <main id="contenido" className="flex-1" tabIndex={-1}>
-        <section className="home-hero">
-          <picture className="hero-picture">
-            <source
-              media="(max-width:767px)"
-              srcSet="/visual/home/hero-atacama-mobile.webp"
-            />
-            {/* Art-directed source avoids loading both crops. */}
-            <img
-              src="/visual/home/hero-atacama-wide.webp"
-              alt=""
-              width={2400}
-              height={1350}
-              fetchPriority="high"
-            />
-          </picture>
-          <Container className="hero-content">
-            <Eyebrow>{site.hero.eyebrow}</Eyebrow>
-            <h1>{site.hero.title}</h1>
-            <p className="hero-body">{site.hero.body}</p>
-            <p className="hero-support">{site.hero.supportingLine}</p>
-            <div className="hero-buttons">
-              <PrimaryLink href={site.hero.primaryCta.href}>
-                {site.hero.primaryCta.label}{" "}
-                <span aria-hidden className="ml-3">
-                  →
-                </span>
-              </PrimaryLink>
-              <SecondaryLink href={site.hero.secondaryCta.href}>
-                {site.hero.secondaryCta.label}
-              </SecondaryLink>
-            </div>
-            <div className="hero-credentials">
-              <p>
-                <span aria-hidden="true">↗</span> Implementación por etapas
-              </p>
-              <p>
-                <span aria-hidden="true">⌁</span> Integración con tus sistemas
-              </p>
-              <p>
-                <span aria-hidden="true">△</span> Desde Antofagasta
-              </p>
-            </div>
-          </Container>
-          <p className="hero-side-note">
-            DESDE EL NORTE
-            <br />
-            PARA EMPRESAS REALES
-          </p>
-        </section>
-        <IntegrationStrip />
-        <section className="section home-solutions">
-          <Container>
-            <div className="home-section-heading">
-              <div>
-                <Eyebrow>Tecnología con propósito</Eyebrow>
-                <h2 className="mt-3">Lo que hacemos</h2>
-              </div>
-              <p className="section-lead">
-                Agentes, sistemas y automatización para empresas.
-              </p>
-            </div>
-            <div className="portal-grid">
-              {site.portals.map((portal, i) => (
-                <article
-                  key={portal.href}
-                  className="service-portal"
-                  data-motif={portal.motif}
-                >
-                  <Topography />
-                  <div className="portal-copy">
-                    <span className="portal-number">0{i + 1}</span>
-                    <h3>{portal.title}</h3>
-                    <p>{portal.summary}</p>
-                    <Link href={portal.href} className="portal-cta">
-                      {portal.cta}
-                      <span aria-hidden>→</span>
-                    </Link>
-                  </div>
-                  <div className="portal-visual">
-                    {portal.motif === "connections" ? (
-                      <HomeConnectionsVisual />
-                    ) : (
-                      <PortalMotif motif={portal.motif} />
-                    )}
-                  </div>
-                </article>
-              ))}
-            </div>
-          </Container>
-        </section>
-        <section className="home-process">
-          <Container className="process-grid">
-            <div>
-              <Eyebrow>Cómo trabajamos</Eyebrow>
-              <h2 className="mt-3">
-                Del proceso real a una solución concreta.
-              </h2>
-              <Link
-                href="/como-trabajamos"
-                className="text-link inline-block mt-4"
-              >
-                Ver cómo trabajamos →
-              </Link>
-            </div>
-            <ol>
-              {site.process.map((step, i) => (
-                <li key={step.title}>
-                  <span className="home-process-icon">
-                    <ProcessIcon index={i} />
-                  </span>
-                  <span className="step-number">0{i + 1}</span>
-                  <h3>
-                    {
-                      [
-                        "Entendemos",
-                        "Definimos",
-                        "Implementamos",
-                        "Acompañamos",
-                      ][i]
-                    }
-                  </h3>
-                  <p>
-                    {
-                      [
-                        "Revisamos el proceso y lo que necesitas mejorar.",
-                        "Acordamos alcance, entregables e inversión.",
-                        "Construimos y conectamos por etapas.",
-                        "Documentamos y acordamos el soporte.",
-                      ][i]
-                    }
-                  </p>
-                </li>
-              ))}
-            </ol>
-          </Container>
-        </section>
-        <section className="section home-featured">
-          <Container className="featured-grid">
-            <div>
-              <Eyebrow>Una solución construida</Eyebrow>
-              <h2 className="mt-4">{c.title}</h2>
-              <p>{c.situation}</p>
-              <p>{c.solution}</p>
-              <Link className="text-link" href={`/proyectos/${c.slug}`}>
-                Ver el caso completo →
-              </Link>
-            </div>
-            <HomeCaseShowcase steps={c.diagramSteps} />
-          </Container>
-        </section>
-        <LandscapeCta />
-      </main>
+    <div
+      className="flex flex-col flex-1 bg-background"
+      style={{ fontFamily: "var(--font-studio), Arial, sans-serif" }}
+    >
+      <div className="relative flex h-dvh flex-col overflow-hidden">
+        <SiteHeader overlay />
+        <HeroSection
+          eyebrow={site.hero.eyebrow}
+          title={site.hero.title}
+          body={site.hero.body}
+          primaryCta={site.hero.primaryCta}
+          secondaryCta={site.hero.secondaryCta}
+        />
+      </div>
+      <IntegrationsMarquee label={agentsOffer.integrations.title} />
+      <MeetAtacamaLabsSection
+        title="Conoce Atacama Labs."
+        ctaLabel="Conocer el estudio"
+        ctaHref="/sobre-el-estudio"
+        body={site.about.body}
+        portals={site.portals}
+      />
+      <UseModesSection
+        eyebrow="Atacama Labs en la práctica"
+        title="Modos de uso"
+        body="Ejemplos de procesos; el alcance se configura para tu empresa."
+        caseTitle="Ventas"
+        caseBody="Acompaña cada oportunidad hasta su próximo paso."
+        caseCtaLabel="Ver agentes"
+        caseCtaHref="/agentes#procesos"
+      />
       <SiteFooter />
     </div>
   );

@@ -1,34 +1,10 @@
 import { PortalMotif } from "@/components/PublicVisuals";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Container, Eyebrow, PrimaryLink, Card } from "@/components/ui";
-import site, { getSolution, getCase } from "@/lib/content";
-
-/**
- * Casos relacionados por solución — WEB-CONTENT.md:
- * "atención/seguimiento con proceso comercial descriptivo; automatización
- * con pedidos/registro; sistemas con los cuatro casos; integraciones con
- * pedidos/pagos/ecommerce." atención-y-seguimiento no tiene caso publicado
- * que calce (es proceso comercial, no un caso implementado) — se omite.
- */
-const RELATED_CASES: Record<string, string[]> = {
-  "atencion-y-seguimiento": [],
-  "automatizacion-de-procesos": [
-    "pedidos-de-almuerzos",
-    "pedidos-por-turno",
-    "registro-de-entregas",
-  ],
-  "sistemas-a-medida": [
-    "pedidos-de-almuerzos",
-    "pedidos-por-turno",
-    "registro-de-entregas",
-    "tienda-online",
-  ],
-  integraciones: ["tienda-online", "pedidos-de-almuerzos"],
-};
+import site, { getSolution } from "@/lib/content";
 
 export function generateStaticParams() {
   return site.solutions.map((s) => ({ slug: s.slug }));
@@ -56,10 +32,6 @@ export default async function SolutionDetail({
   const { slug } = await params;
   const solution = getSolution(slug);
   if (!solution) notFound();
-
-  const related = (RELATED_CASES[solution.slug] ?? [])
-    .map((slug) => getCase(slug))
-    .filter((c): c is NonNullable<typeof c> => Boolean(c));
 
   return (
     <div className="public-site flex flex-col flex-1 bg-background">
@@ -166,26 +138,6 @@ export default async function SolutionDetail({
                   </PrimaryLink>
                 </div>
               </Card>
-
-              {related.length > 0 && (
-                <div>
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-action">
-                    Caso relacionado
-                  </h2>
-                  <div className="mt-3 space-y-3">
-                    {related.map((c) => (
-                      <Link key={c.slug} href={`/proyectos/${c.slug}`}>
-                        <Card className="transition-colors hover:border-border-control">
-                          <p className="text-sm font-medium text-ink">
-                            {c.title}
-                          </p>
-                          <p className="mt-1 text-sm text-muted">{c.sector}</p>
-                        </Card>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
             </aside>
           </div>
         </Container>

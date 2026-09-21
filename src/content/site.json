@@ -35,10 +35,6 @@
       "href": "/soluciones"
     },
     {
-      "label": "Casos",
-      "href": "/casos"
-    },
-    {
       "label": "Nosotros",
       "href": "/sobre-el-estudio"
     }
@@ -441,13 +437,6 @@
       "href": "/como-trabajamos",
       "cta": "Ver cómo trabajamos",
       "motif": "automation"
-    },
-    {
-      "title": "Casos reales y soluciones construidas",
-      "summary": "Conoce procesos y soluciones que ya hemos implementado.",
-      "href": "/casos",
-      "cta": "Ver casos",
-      "motif": "cases"
     }
   ]
 }

@@ -65,7 +65,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <link
           rel="preload"
-          href="/fonts/newsreader.woff2"
+          href="/fonts/manrope.woff2"
           as="font"
           type="font/woff2"
           crossOrigin="anonymous"
@@ -73,6 +73,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <link
           rel="preload"
           href="/fonts/inter.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="preload"
+          href="/fonts/newsreader.woff2"
           as="font"
           type="font/woff2"
           crossOrigin="anonymous"
