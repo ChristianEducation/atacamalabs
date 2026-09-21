@@ -1,0 +1,239 @@
+/*
+ * Capa de refinamiento visual (referencias: IAutomatiza + Lety, adaptadas a Atacama Labs).
+ * Neutros claros y limpios, azul de marca como único acento, mucho aire, movimiento lento y fino.
+ * Va después del resto de estilos: se puede revertir quitando su import.
+ */
+:root {
+  --bg: #fafaf8;
+  --paper: #f5f4f0;
+  --surface: #ffffff;
+  --surface-alt: #eceae4;
+  --line: rgb(18 26 43 / 9%);
+  --line-strong: rgb(18 26 43 / 16%);
+  --control-border: rgb(18 26 43 / 28%);
+  --muted: #5b6270;
+  --shadow-sm: 0 1px 2px rgb(18 26 43 / 4%);
+  --shadow-md: 0 18px 40px -24px rgb(18 26 43 / 22%);
+  --shadow-product: 0 40px 80px -40px rgb(15 92 237 / 28%), 0 0 0 1px rgb(18 26 43 / 6%);
+  --blue-glow: rgb(15 92 237 / 22%);
+  --ease-soft: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ---------- Ritmo: más aire entre secciones ---------- */
+.mk-section {
+  padding-block: 72px;
+}
+.mk-section--md {
+  padding-block: 56px;
+}
+@media (min-width: 768px) {
+  .mk-section {
+    padding-block: 96px;
+  }
+  .mk-section--md {
+    padding-block: 72px;
+  }
+}
+@media (min-width: 1200px) {
+  .mk-section {
+    padding-block: 128px;
+  }
+  .mk-section--md {
+    padding-block: 96px;
+  }
+}
+.mk-paper {
+  border-block: 1px solid var(--line);
+}
+.mk-heading-block {
+  max-width: 720px;
+}
+.mk-heading-block + * {
+  margin-top: 40px;
+}
+@media (min-width: 1024px) {
+  .mk-heading-block + * {
+    margin-top: 64px;
+  }
+}
+
+/* ---------- Eyebrow con punto que respira ---------- */
+.mk-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--blue-text);
+}
+.mk-eyebrow::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 99px;
+  background: var(--blue);
+  box-shadow: 0 0 10px var(--blue);
+  animation: mk-eyebrow-pulse 2.4s ease-in-out infinite;
+}
+.mk-heading-block--center .mk-eyebrow,
+.mk-hero--center .mk-eyebrow {
+  justify-content: center;
+}
+@keyframes mk-eyebrow-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* ---------- Botones pill ---------- */
+.mk-btn {
+  border-radius: var(--r-pill);
+  height: 46px;
+  padding: 0 22px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  transition:
+    background-color 220ms var(--ease-soft),
+    border-color 220ms var(--ease-soft),
+    color 220ms var(--ease-soft),
+    box-shadow 220ms var(--ease-soft),
+    transform 220ms var(--ease-soft);
+}
+.mk-btn svg {
+  transition: transform 250ms var(--ease-soft);
+}
+.mk-btn:hover svg {
+  transform: translateX(3px);
+}
+.mk-btn--primary {
+  box-shadow: 0 8px 20px -10px var(--blue-glow);
+}
+.mk-btn--primary:hover {
+  box-shadow: 0 12px 26px -10px var(--blue-glow);
+  transform: translateY(-1px);
+}
+.mk-btn--secondary {
+  border-color: var(--line-strong);
+}
+.mk-btn--sm {
+  height: 44px;
+}
+.mk-pill {
+  border-radius: var(--r-pill);
+}
+
+/* ---------- Header de vidrio ---------- */
+.mk-header,
+.mk-header::before {
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+}
+.mk-header.is-scrolled::before {
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+}
+
+/* ---------- Superficies más planas: borde fino, sombra solo en el producto ---------- */
+.mk-card,
+.mk-plan,
+.mk-plat-card,
+.mk-col-card,
+.mk-cu-card,
+.mk-ind-card,
+.mk-plat-bento > * {
+  border-color: var(--line);
+  border-radius: 18px;
+  box-shadow: none;
+  transition:
+    border-color 300ms var(--ease-soft),
+    transform 300ms var(--ease-soft),
+    box-shadow 300ms var(--ease-soft);
+}
+.mk-plan:hover,
+.mk-plat-card:hover,
+.mk-col-card:hover,
+.mk-ind-card:hover {
+  border-color: var(--line-strong);
+}
+.mk-plan.is-highlighted {
+  border-color: rgb(15 92 237 / 45%);
+  background: linear-gradient(180deg, rgb(15 92 237 / 4%), transparent 40%), var(--surface);
+  box-shadow: 0 30px 70px -36px var(--blue-glow);
+}
+.mk-frame {
+  border-color: var(--line);
+  border-radius: 22px;
+}
+.mk-frame--product {
+  box-shadow: var(--shadow-product);
+}
+
+/* ---------- Héroe: cuadrícula tenue + resplandor azul ---------- */
+.mk-hero {
+  position: relative;
+  isolation: isolate;
+}
+.mk-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 70% 30%, #000 0%, transparent 75%);
+  mask-image: radial-gradient(ellipse 70% 60% at 70% 30%, #000 0%, transparent 75%);
+  opacity: 0.55;
+}
+.mk-hero::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 620px;
+  height: 620px;
+  right: -140px;
+  top: -160px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--blue-glow) 0%, transparent 65%);
+  filter: blur(20px);
+  pointer-events: none;
+}
+
+/* ---------- Revelado lento y fino ---------- */
+.mk-reveal[data-reveal="pending"] {
+  opacity: 0;
+  transform: translateY(24px);
+}
+.mk-reveal[data-reveal="in"] {
+  transition:
+    opacity 900ms var(--ease-soft),
+    transform 900ms var(--ease-soft);
+}
+
+/* ---------- Detalles ---------- */
+.mk-faq__item {
+  border-color: var(--line);
+}
+.mk-table th,
+.mk-table td {
+  border-color: var(--line);
+}
+::selection {
+  background: rgb(15 92 237 / 18%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .mk-eyebrow::before {
+    animation: none;
+  }
+  .mk-btn,
+  .mk-btn svg {
+    transition: none;
+  }
+}
