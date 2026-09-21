@@ -116,10 +116,12 @@ export function DashboardDemo({
   scenario,
   compact,
   visibleCount = 3,
+  receivedLabel = "Recibidas",
 }: {
   scenario: BuilderScenario;
   compact?: boolean;
   visibleCount?: number;
+  receivedLabel?: string;
 }) {
   const uid = useId();
   const [records, setRecords] = useState<readonly DemoRecord[]>(scenario.records);
@@ -165,7 +167,7 @@ export function DashboardDemo({
       </div>
       <KpiList
         items={[
-          { label: "Recibidas", value: records.length },
+          { label: receivedLabel, value: records.length },
           { label: "Pendientes", value: pending },
           { label: "Resueltas", value: resolved },
         ]}
