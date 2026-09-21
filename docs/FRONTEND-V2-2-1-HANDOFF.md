@@ -47,3 +47,24 @@ cuerpo conforme al contrato.
 ## Siguiente tarea
 
 Pasada visual manual a 1440/390 con Christian, cierre de gates FV-U*, y luego decidir push/preview.
+
+## Actualización: identidad visual y auditoría de aceptación (S2)
+
+**Identidad** (`Identidad visual AtacamaLabs.zip`, fuente de verdad de marca): logos oficiales en `public/brand/`
+(header, footer, favicon, apple-icon y OG los usan). Colores alineados: azul `#0F5CED`, tinta `#121A2B`, fondo oscuro `#041228`
+(sustituyen `#0767F2`, `#121212`, `#111923` del spec). El zip **no incluye tipografía**: se mantiene Newsreader + DM Sans del spec.
+El README de marca dice «sin tagline oficial»; el footer conserva la línea del spec N2 (a decidir).
+
+**Medido**
+- AC-43 enlaces: 442 enlaces internos/anclas revisados, todos válidos (se corrigieron los anclas `#software/#flujos` de A Medida).
+- AC-33 overflow: sin scroll horizontal a 320/390/768/1024/1200/1440 (1920 pendiente).
+- AC-32 targets: nav y controles ≥44 px; skip link presente; un `<h1>` por página.
+- AC-35 sin JS: H1, CTA y precios llegan en el HTML.
+- Q1 fuentes: DM Sans + Newsreader roman + cursiva ≈ 159 KiB (objetivo ≤180). JS: Home ≈ 213 KiB gz totales, de los cuales ≈ 195 KiB
+  son framework (`/precios` sin islas) → propio ≈ 20–30 KiB (objetivo ≤80).
+- AC-46 Home = 7 bloques (F1, F2, F3, F10, F7, F11, F9). AC-05/AC-52/AC-37 verificados por código y rutas.
+
+**Pendiente de evidencia (no medido aún)**
+Lighthouse móvil (3 corridas), 1920 px, zoom 200/400 %, reduced-motion en vivo (AC-31), teclado de menú/dropdowns (AC-06),
+timers fuera de viewport (AC-29/30), pruebas 409/429/503 del formulario con red interceptada (AC-25), pasada con lector de pantalla,
+comparación lado a lado con referencias (AC-45) y gates COMMERCIAL_READY (precios, integraciones, privacidad, dominio, agenda).
