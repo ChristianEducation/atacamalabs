@@ -34,7 +34,7 @@ export function WebHero() {
             </ButtonLink>
           </div>
 
-          <div className="mk-web-format" aria-live="polite">
+          <div id="tipos" className="mk-web-format" aria-live="polite">
             <h2 className="mk-h6">El formato depende de lo que necesitas lograr.</h2>
             <p className="mk-web-format__headline">{copy.headline}</p>
             <p className="mk-small">{copy.audience}</p>
