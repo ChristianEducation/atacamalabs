@@ -19,6 +19,9 @@ está convertida a paths. Geometría, tracking, proporciones y colores son los d
 ## Geometría
 - Isotipo: 130 × 64 · laderas a 45° exactos · grosor vertical 11/64
 - Wordmark: altura de mayúscula 100 u · grosor de trazo 7 u · tracking 35,4 u · espacio entre palabras 140,3 u
+- B (64 u): asta de 7 u; dos bols rectangulares con el extremo derecho redondeado — superior 58 u de ancho, radio 20 u; inferior 64 u, radio 23 u — que comparten un único trazo central de 7 u.
+- S (62 u): dos curvas elípticas abiertas en eje vertical unidas por una diagonal recta corta, tangente a ambas (sin quiebres). Corrección óptica: curva superior 25,5 × 20 u, menor que la inferior 27,5 × 22,5 u, mismo criterio que la B.
+- Espaciado: tracking 35,4 u; +4 u de aire óptico antes de la B y de la S.
 - Horizontal: altura del isotipo = 1,694 × altura de mayúscula · separación 47,22 u
 - Vertical: altura del isotipo = 2,885 × altura de mayúscula · separación 103,3 u
 - Sin tagline (Atacama Labs no tiene tagline oficial)
