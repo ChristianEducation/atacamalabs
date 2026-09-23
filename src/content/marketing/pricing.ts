@@ -88,7 +88,7 @@ export const AGENT_PLANS: readonly Plan<AgentPlanId>[] = [
     description: "Para empezar con un agente y un alcance inicial definido.",
     price: PENDING_PRICE,
     features: agentFeatures,
-    cta: { label: "Consultar Esencial", href: "/diagnostico?necesidad=agentes&plan=esencial" },
+    cta: { label: "Empezar con Esencial", href: "/diagnostico?necesidad=agentes&plan=esencial" },
   },
   {
     family: "agentes",
@@ -99,7 +99,7 @@ export const AGENT_PLANS: readonly Plan<AgentPlanId>[] = [
     features: agentFeatures,
     badge: "Para equipos en crecimiento",
     highlighted: true,
-    cta: { label: "Consultar Growth", href: "/diagnostico?necesidad=agentes&plan=growth" },
+    cta: { label: "Empezar con Growth", href: "/diagnostico?necesidad=agentes&plan=growth" },
   },
   {
     family: "agentes",
@@ -108,7 +108,7 @@ export const AGENT_PLANS: readonly Plan<AgentPlanId>[] = [
     description: "Para equipos con mayor volumen, complejidad o necesidades de soporte.",
     price: PENDING_PRICE,
     features: agentFeatures,
-    cta: { label: "Consultar Pro", href: "/diagnostico?necesidad=agentes&plan=pro" },
+    cta: { label: "Empezar con Pro", href: "/diagnostico?necesidad=agentes&plan=pro" },
   },
 ];
 
@@ -120,7 +120,7 @@ export const WEB_PLANS: readonly Plan<WebPlanId>[] = [
     description: "Una oferta y una acción principal.",
     price: PENDING_PRICE,
     features: webFeatures,
-    cta: { label: "Consultar Landing", href: "/diagnostico?necesidad=web&plan=landing" },
+    cta: { label: "Cotizar Landing", href: "/diagnostico?necesidad=web&plan=landing" },
   },
   {
     family: "web",
@@ -130,7 +130,7 @@ export const WEB_PLANS: readonly Plan<WebPlanId>[] = [
     price: PENDING_PRICE,
     features: webFeatures,
     highlighted: true,
-    cta: { label: "Consultar Corporativa", href: "/diagnostico?necesidad=web&plan=corporativa" },
+    cta: { label: "Cotizar Corporativa", href: "/diagnostico?necesidad=web&plan=corporativa" },
   },
   {
     family: "web",
@@ -139,7 +139,7 @@ export const WEB_PLANS: readonly Plan<WebPlanId>[] = [
     description: "Catálogo y recorrido de compra.",
     price: PENDING_PRICE,
     features: webFeatures,
-    cta: { label: "Consultar Ecommerce", href: "/diagnostico?necesidad=web&plan=ecommerce" },
+    cta: { label: "Cotizar Ecommerce", href: "/diagnostico?necesidad=web&plan=ecommerce" },
   },
 ];
 

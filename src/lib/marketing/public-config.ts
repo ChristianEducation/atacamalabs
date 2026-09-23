@@ -58,3 +58,20 @@ export function bookingUrl(): string | null {
     return null;
   }
 }
+
+/**
+ * Agente real de Atacama, operado en Lety (V3.0 §6). Sin snippet/credenciales
+ * todavía: `agentWidgetReady()` queda en false y el CTA usa el fallback
+ * aprobado por el spec §3.1 («Agendar diagnóstico» → /diagnostico). Nunca se
+ * simula un chat ni se fabrica un widget — cuando exista el embed real, esta
+ * función pasa a true y `agentCta()` cambia a «Habla con nuestro agente»
+ * apuntando al panel/modal real, sin tocar los lugares que la consumen.
+ */
+export function agentWidgetReady(): boolean {
+  return false;
+}
+
+export function agentCta(): { label: string; href: string } {
+  if (agentWidgetReady()) return { label: "Habla con nuestro agente", href: "/diagnostico" };
+  return { label: "Agendar diagnóstico", href: "/diagnostico" };
+}

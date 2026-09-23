@@ -1,0 +1,337 @@
+/*
+ * ATACAMA_LABS_FINAL_MINIMAL_WEB_SPEC_V3_0_1 — piezas nuevas: misiones,
+ * visual atmosférico del Home, selector de /agentes y ajustes de densidad.
+ * Va después de lety.css.
+ */
+
+/* ---------- Mission (persona → agente → herramienta → resultado) ---------- */
+.mk-mission {
+  position: relative;
+  padding: 40px 24px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+  min-height: 240px;
+  display: flex;
+  align-items: center;
+}
+.mk-mission__row {
+  width: 100%;
+  display: grid;
+  gap: 24px;
+  justify-items: center;
+  text-align: center;
+}
+.mk-mission__msg {
+  margin: 0;
+  max-width: 32ch;
+  font-family: var(--font-serif);
+  font-size: 20px;
+  line-height: 1.4;
+  color: var(--ink);
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 500ms var(--ease-soft),
+    transform 500ms var(--ease-soft);
+}
+.mk-mission__msg.is-in {
+  opacity: 1;
+  transform: none;
+}
+.mk-mission__flow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+.mk-mission__node {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line-strong);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+  transition:
+    border-color 400ms var(--ease-soft),
+    color 400ms var(--ease-soft);
+}
+.mk-mission__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--control-border);
+  transition:
+    background 400ms var(--ease-soft),
+    box-shadow 400ms var(--ease-soft);
+}
+.mk-mission__node.is-active {
+  border-color: var(--blue);
+  color: var(--blue-text);
+}
+.mk-mission__node.is-active .mk-mission__dot {
+  background: var(--blue);
+  box-shadow: 0 0 8px var(--blue-glow);
+}
+.mk-mission__line {
+  width: 64px;
+  height: 1.5px;
+  flex: none;
+  background: var(--line-strong);
+  position: relative;
+  overflow: hidden;
+}
+.mk-mission__line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--blue);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 650ms var(--ease-soft);
+}
+.mk-mission__line.is-out::after {
+  transform: scaleX(1);
+}
+.mk-mission__line.is-back::after {
+  transform-origin: right;
+}
+.mk-mission__result {
+  margin: 0;
+  min-height: 1.3em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--success);
+  opacity: 0;
+  transition: opacity 400ms var(--ease-soft);
+}
+.mk-mission__result.is-in {
+  opacity: 1;
+}
+.mk-mission__replay {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    color 160ms var(--ease-standard),
+    border-color 160ms var(--ease-standard);
+}
+.mk-mission__replay:hover {
+  color: var(--blue-text);
+  border-color: var(--blue);
+}
+@media (max-width: 640px) {
+  .mk-mission__flow {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  .mk-mission__line {
+    width: 32px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mk-mission__msg,
+  .mk-mission__result,
+  .mk-mission__line::after {
+    transition: none;
+  }
+}
+
+/* ---------- Atmósfera del Home (H1): SVG decorativo, sin dashboard ---------- */
+.mk-atmosphere {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 440px;
+}
+.mk-atmosphere__line {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+.mk-atmosphere__node {
+  fill: var(--control-border);
+  opacity: 0.55;
+}
+.mk-atmosphere__node--accent {
+  fill: var(--blue);
+  opacity: 0.9;
+}
+.mk-atmosphere__signal {
+  fill: var(--blue);
+}
+
+/* ---------- Home / páginas minimalistas: ideas cortas, mucho aire ---------- */
+.mk-ideas {
+  list-style: none;
+  margin: 40px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 20px;
+}
+.mk-ideas li {
+  padding: 20px 0 0;
+  border-top: 1px solid var(--line);
+  font-family: var(--font-serif);
+  font-size: 19px;
+  line-height: 1.4;
+  color: var(--ink);
+}
+@media (min-width: 900px) {
+  .mk-ideas {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+  }
+}
+
+/* Verbos grandes (A4): lista editorial separada por punto medio. */
+.mk-verbs {
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 0;
+  font-family: var(--font-serif);
+  font-size: 22px;
+  color: var(--ink);
+}
+.mk-verbs li::after {
+  content: "·";
+  margin: 0 14px;
+  color: var(--line-strong);
+}
+.mk-verbs li:last-child::after {
+  content: none;
+}
+@media (min-width: 768px) {
+  .mk-verbs {
+    font-size: 28px;
+  }
+}
+
+/* Categorías de conexión (A5), sin marquee ni «por confirmar». */
+.mk-categories {
+  list-style: none;
+  margin: 24px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Bloques de cuatro (H4): sin cards elevadas. */
+.mk-delegate {
+  list-style: none;
+  margin: 40px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 24px;
+}
+.mk-delegate li {
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.mk-delegate h3 {
+  margin: 0 0 8px;
+}
+.mk-delegate p {
+  margin: 0;
+  color: var(--muted);
+}
+@media (min-width: 768px) {
+  .mk-delegate {
+    grid-template-columns: repeat(2, 1fr);
+    column-gap: 40px;
+  }
+}
+
+/* Panel del agente (H5): estado honesto mientras no hay embed. */
+.mk-agent-panel {
+  margin-top: 32px;
+  padding: 40px 28px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--surface);
+  text-align: center;
+  display: grid;
+  gap: 16px;
+  justify-items: center;
+  max-width: 560px;
+  margin-inline: auto;
+}
+.mk-agent-panel p {
+  margin: 0;
+  color: var(--muted);
+  max-width: 42ch;
+}
+
+/* Selector de /agentes (A3): panel con copy + capacidades + misión. */
+.mk-agent-selector__panel {
+  margin-top: 40px;
+  display: grid;
+  gap: 32px;
+}
+.mk-agent-selector__copy {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+.mk-agent-selector__copy p {
+  margin: 0;
+  color: var(--muted);
+}
+.mk-agent-selector__caps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+}
+.mk-agent-selector__caps li {
+  padding-left: 16px;
+  position: relative;
+  color: var(--ink);
+}
+.mk-agent-selector__caps li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--blue);
+}
+@media (min-width: 1024px) {
+  .mk-agent-selector__panel {
+    grid-template-columns: 5fr 7fr;
+    gap: 48px;
+    align-items: center;
+  }
+}
+
+/* Franja azul del CTA final: sin fondo lleno de detalle, solo texto + acción. */
+.mk-close {
+  text-align: center;
+  max-width: 640px;
+  margin-inline: auto;
+}

@@ -23,6 +23,7 @@ export type CapabilityChoice =
   | "comercial"
   | "cobranza"
   | "administrativo-financiero"
+  | "atencion"
   | "agendamiento"
   | "integraciones";
 
@@ -47,9 +48,10 @@ export const INDUSTRY_OPTIONS: readonly { id: IndustryChoice; label: string }[] 
 ];
 
 export const CAPABILITY_LABEL: Record<CapabilityChoice, string> = {
-  comercial: "Agente Comercial",
-  cobranza: "Agente de Cobranza",
-  "administrativo-financiero": "Agente Administrativo/Financiero",
+  comercial: "Comercial",
+  cobranza: "Cobranza",
+  "administrativo-financiero": "Administrativo/Financiero",
+  atencion: "Atención",
   agendamiento: "Agendamiento",
   integraciones: "Integraciones",
 };

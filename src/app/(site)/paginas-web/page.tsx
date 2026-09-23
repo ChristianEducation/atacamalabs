@@ -1,13 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Code2, Globe2, LineChart, Mail, Plug, Smartphone } from "lucide-react";
-import { FeatureGrid, ProcessSteps } from "@/components/marketing/pages/Common";
-import { WebConnected, WebHero } from "@/components/marketing/pages/WebSections";
+import { PageHero, ProcessSteps } from "@/components/marketing/pages/Common";
 import { PricingGrid } from "@/components/marketing/ui/Pricing";
-import { FAQ, SectionHeading } from "@/components/marketing/ui/Blocks";
-import { Reveal } from "@/components/marketing/motion/Reveal";
+import { CTABlock, SectionHeading } from "@/components/marketing/ui/Blocks";
+import { WEB_META, WEB_STEPS } from "@/content/marketing/web";
 import { WEB_PLANS } from "@/content/marketing/pricing";
-import { WEB_BLOCKS, WEB_FAQ, WEB_META, WEB_STEPS } from "@/content/marketing/web";
 
 export const metadata: Metadata = {
   title: "Páginas Web — Atacama Labs",
@@ -15,71 +11,52 @@ export const metadata: Metadata = {
   alternates: { canonical: "/paginas-web" },
 };
 
-const ICONS = [Smartphone, Code2, Mail, LineChart, Globe2, Plug];
-
+/**
+ * /paginas-web (spec V3.0 §11, W1–W6). Puede tener personalidad propia, pero
+ * sin heredar la metáfora de misiones de /agentes. Sin galería de casos
+ * (todavía no hay ninguno aprobado) y sin precio inventado.
+ */
 export default function WebsitesPage() {
   return (
     <>
-      <WebHero />
+      <PageHero
+        eyebrow="PÁGINAS WEB"
+        title="Que tu web no sea solo bonita. Que haga su trabajo."
+        lead="Diseñamos landing pages, sitios corporativos y ecommerce claros, rápidos y pensados para llevar al visitante al siguiente paso."
+        actions={[{ label: "Cotizar mi web", href: "/diagnostico?necesidad=web" }]}
+        center
+      />
 
-      <section className="mk-section--md" aria-labelledby="blocks-title">
+      <section id="formatos" className="mk-section mk-paper" aria-labelledby="w2-title">
         <div className="mk-container">
-          <SectionHeading id="blocks-title" title="Diseño cuidado. Funcionamiento claro." />
-          <FeatureGrid
-            columns={2}
-            items={WEB_BLOCKS.map((b, i) => {
-              const Icon = ICONS[i];
-              return { icon: <Icon size={20} />, title: `${String(i + 1).padStart(2, "0")} · ${b.title}`, body: b.body };
-            })}
-          />
-          <p className="mk-ag-cta">
-            <Link href="#planes" className="mk-link">
-              Comparar planes
-            </Link>
-          </p>
+          <SectionHeading id="w2-title" title="Tres formatos." />
+          <PricingGrid plans={WEB_PLANS} featuresLimit={4} />
         </div>
       </section>
 
-      <section id="planes" className="mk-section mk-paper" aria-labelledby="plans-title">
+      <section className="mk-section--md" aria-labelledby="w4-title">
         <div className="mk-container">
+          <SectionHeading id="w4-title" title="Del contenido a una web publicada." />
+          <ProcessSteps steps={WEB_STEPS} columns={5} />
+        </div>
+      </section>
+
+      <section className="mk-section--md mk-paper" aria-labelledby="w5-title">
+        <div className="mk-container mk-close">
           <SectionHeading
-            id="plans-title"
-            title="Elige el punto de partida de tu web."
-            lead="Revisa el formato y conversemos sobre contenido, funciones e integraciones."
+            id="w5-title"
+            center
+            title="Puede ser el comienzo del proceso."
+            lead="Tu web puede iniciar un proceso: enviar un lead a un agente, una agenda, un CRM u otro sistema."
           />
-          <PricingGrid plans={WEB_PLANS} featuresLimit={6} />
         </div>
       </section>
 
-      <section className="mk-section--md" aria-labelledby="steps-title">
-        <div className="mk-container">
-          <SectionHeading id="steps-title" title="Del contenido a una web publicada." />
-          <ProcessSteps steps={WEB_STEPS} columns={4} />
-          <p className="mk-ag-cta">
-            <Link href="/diagnostico?necesidad=web" className="mk-link">
-              Planificar mi web
-            </Link>
-          </p>
-        </div>
-      </section>
-
-      <section className="mk-section--md mk-paper" aria-labelledby="faq-title">
-        <div className="mk-container mk-ag-split mk-ag-split--4-8">
-          <Reveal className="mk-ag-copy">
-            <h2 id="faq-title" className="mk-h2">
-              Lo que conviene aclarar antes.
-            </h2>
-            <p>
-              <Link href="/diagnostico?necesidad=web" className="mk-link">
-                Consultar mi caso
-              </Link>
-            </p>
-          </Reveal>
-          <FAQ items={WEB_FAQ} />
-        </div>
-      </section>
-
-      <WebConnected />
+      <CTABlock
+        title="Cotiza tu web."
+        body="Cuéntanos el objetivo y el contenido disponible; revisamos alcance y plazo contigo."
+        cta={{ label: "Cotizar mi web", href: "/diagnostico?necesidad=web" }}
+      />
     </>
   );
 }

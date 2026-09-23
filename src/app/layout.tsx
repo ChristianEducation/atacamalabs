@@ -10,6 +10,7 @@ import "../styles/demos.css";
 import "../styles/pages.css";
 import "../styles/inner.css";
 import "../styles/lety.css";
+import "../styles/v3.css";
 
 /**
  * Fuentes autoalojadas (spec C2): Newsreader (títulos, 500 roman; cursiva 500

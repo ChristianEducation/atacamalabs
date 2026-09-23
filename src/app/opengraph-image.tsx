@@ -27,7 +27,7 @@ export default function Image() {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={asset("logo-horizontal.svg")} width={420} height={40} alt="" />
       <div style={{ display: "flex", fontSize: 72, lineHeight: 1.08, maxWidth: 980, fontWeight: 600 }}>
-        Agentes que realmente trabajan en tu empresa.
+        Pon un agente a trabajar en tu empresa.
       </div>
       <div style={{ display: "flex", alignItems: "center" }}>
         {[0, 1, 2].map((i) => (

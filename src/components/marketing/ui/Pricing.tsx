@@ -25,12 +25,7 @@ export function PricingCard<Id extends string>({
   featuresLimit?: number;
 }) {
   const price = renderPrice(plan.price);
-  const ctaLabel =
-    price.cta === "request"
-      ? plan.cta.label.replace("Consultar", "Solicitar")
-      : price.cta === "alternatives"
-        ? "Consultar alternativas"
-        : plan.cta.label;
+  const ctaLabel = price.cta === "alternatives" ? "Consultar alternativas" : plan.cta.label;
   const headingId = `plan-${plan.family}-${plan.id}`;
   const setupText =
     plan.price.setupStatus === "included"

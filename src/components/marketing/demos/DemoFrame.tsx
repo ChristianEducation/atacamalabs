@@ -34,6 +34,8 @@ export function DemoFrame({
   headerExtra,
   footerExtra,
   label,
+  hideBadge,
+  hideLegend,
 }: {
   title: string;
   children: ReactNode;
@@ -50,6 +52,14 @@ export function DemoFrame({
   footerExtra?: ReactNode;
   /** Nombre accesible de la región (por defecto, el título). */
   label?: string;
+  /**
+   * V3.0 §5.7/§18: las vistas de producto minimalistas (una sola vista, sin
+   * narrativa escenificada) no llevan la insignia «Demo interactiva» ni la
+   * leyenda repetida. Por defecto se mantienen (compatibilidad con las demos
+   * narrativas existentes).
+   */
+  hideBadge?: boolean;
+  hideLegend?: boolean;
 }) {
   const playing = controls?.state === "playing";
   const complete = controls?.state === "complete";
@@ -64,14 +74,16 @@ export function DemoFrame({
         </span>
         <span className="mk-frame__title">{title}</span>
         {headerExtra}
-        <span className="mk-badge mk-badge--blue mk-frame__badge">{DEMO_BADGE}</span>
+        {hideBadge ? null : <span className="mk-badge mk-badge--blue mk-frame__badge">{DEMO_BADGE}</span>}
       </header>
       <div className={cn("mk-frame__body", bodyClassName)}>{children}</div>
       <footer className="mk-frame__foot">
-        <p className="mk-small mk-frame__legend">
-          {isConsole ? `${CONSOLE_LEGEND}. ` : ""}
-          {DEMO_LEGEND}
-        </p>
+        {hideLegend ? null : (
+          <p className="mk-small mk-frame__legend">
+            {isConsole ? `${CONSOLE_LEGEND}. ` : ""}
+            {DEMO_LEGEND}
+          </p>
+        )}
         <div className="mk-frame__controls">
           {controls ? (
             <>

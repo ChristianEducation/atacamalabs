@@ -1,19 +1,30 @@
 import type { NextConfig } from "next";
 
-/** Alias permanentes (spec B3). Contabilidad queda fuera: /industrias/contabilidad → 404 vía /rubros. */
+/**
+ * Alias permanentes — ATACAMA_LABS_FINAL_MINIMAL_WEB_SPEC_V3_0_1 §4.
+ * Comercial/Cobranza/Administrativo-Financiero ya no son páginas propias:
+ * viven dentro de /agentes (selector A3, por hash). Rubros queda fuera de la
+ * arquitectura comercial principal; sus rutas redirigen a /agentes.
+ */
 const ALIASES: readonly [string, string][] = [
-  ["/agendamiento", "/comercial#agendamiento"],
+  ["/comercial", "/agentes#comercial"],
+  ["/cobranza", "/agentes#cobranza"],
+  ["/administrativo-financiero", "/agentes#administrativo-financiero"],
+  ["/agendamiento", "/agentes#agendamiento"],
+  ["/rubros", "/agentes"],
+  ["/rubros/:slug", "/agentes"],
+  ["/industrias", "/agentes"],
+  ["/industrias/:slug", "/agentes"],
   ["/contacto", "/diagnostico"],
   ["/agenda", "/diagnostico#agenda"],
-  ["/sobre-el-estudio", "/nosotros"],
-  ["/como-trabajamos", "/nosotros#como-trabajamos"],
-  ["/casos", "/a-medida#software"],
-  ["/proyectos", "/a-medida#software"],
-  ["/proyectos/:slug", "/a-medida#software"],
+  ["/nosotros", "/conocenos"],
+  ["/sobre-el-estudio", "/conocenos"],
+  ["/como-trabajamos", "/conocenos"],
+  ["/casos", "/a-medida"],
+  ["/proyectos", "/a-medida"],
+  ["/proyectos/:slug", "/a-medida"],
   ["/soluciones", "/a-medida"],
   ["/soluciones/:slug", "/a-medida"],
-  ["/industrias", "/rubros"],
-  ["/industrias/:slug", "/rubros/:slug"],
 ];
 
 const nextConfig: NextConfig = {

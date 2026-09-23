@@ -1,24 +1,22 @@
 import Image from "next/image";
 import Link from "next/link";
-import { BRAND, INDUSTRIES, SERVICES } from "@/content/marketing/nav";
+import { BRAND, SERVICES } from "@/content/marketing/nav";
 import { PRIVACY_APPROVED, clientPortalUrl, directContact, socialLinks } from "@/lib/marketing/public-config";
 
 /**
- * N2 Footer global — fondo dark, 12 columnas: marca 4, Servicios 2, Rubros 4
- * (dos subcolumnas), Empresa 2. Todo legible sin JS. Solo enlaces reales:
- * sin `#` vacíos, sin redes personales, sin dirección ni razón social inventadas.
+ * Footer global — spec V3.0: tres columnas (marca, servicios, empresa). Sin
+ * Rubros (fuera de la navegación). Todo legible sin JS; solo enlaces reales.
  */
 export function Footer() {
   const portal = clientPortalUrl();
   const socials = socialLinks();
   const contact = directContact();
   const year = new Date().getFullYear();
-  const half = Math.ceil(INDUSTRIES.length / 2);
 
   return (
     <footer className="mk-footer mk-dark">
       <div className="mk-container">
-        <div className="mk-footer__grid">
+        <div className="mk-footer__grid mk-footer__grid--compact">
           <div className="mk-footer__brand">
             <p className="mk-wordmark">
               <Image src="/brand/logo-horizontal-fondo-oscuro.svg" alt="Atacama Labs" width={1768} height={169} unoptimized />
@@ -47,11 +45,6 @@ export function Footer() {
                 </li>
               ))}
               <li>
-                <Link className="mk-footer__link" href="/agentes#voz">
-                  Voz · Próximamente
-                </Link>
-              </li>
-              <li>
                 <Link className="mk-footer__link" href="/precios">
                   Precios
                 </Link>
@@ -59,40 +52,11 @@ export function Footer() {
             </ul>
           </nav>
 
-          <nav className="mk-footer__col mk-footer__industries" aria-label="Rubros">
-            <h2 className="mk-footer__h">Rubros</h2>
-            <div className="mk-footer__sub">
-              <ul>
-                {INDUSTRIES.slice(0, half).map((i) => (
-                  <li key={i.id}>
-                    <Link className="mk-footer__link" href={i.href}>
-                      {i.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-              <ul>
-                {INDUSTRIES.slice(half).map((i) => (
-                  <li key={i.id}>
-                    <Link className="mk-footer__link" href={i.href}>
-                      {i.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </nav>
-
           <nav className="mk-footer__col mk-footer__company" aria-label="Empresa">
             <h2 className="mk-footer__h">Empresa</h2>
             <ul>
               <li>
-                <Link className="mk-footer__link" href="/plataforma">
-                  Plataforma
-                </Link>
-              </li>
-              <li>
-                <Link className="mk-footer__link" href="/nosotros">
+                <Link className="mk-footer__link" href="/conocenos">
                   Conócenos
                 </Link>
               </li>

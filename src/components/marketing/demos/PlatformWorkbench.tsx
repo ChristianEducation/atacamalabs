@@ -17,7 +17,6 @@ import { CapabilitySelector } from "../ui/CapabilitySelector";
 import { DemoFrame } from "./DemoFrame";
 import { Bubble, ActionReceipt } from "./chat";
 import { KpiList } from "./records";
-import { controlsOf } from "./ScenarioDemos";
 import { useDemoClock } from "../motion/useDemoClock";
 import { PLATFORM_CONTACTS, type PlatformContact } from "@/content/marketing/fixtures";
 
@@ -226,7 +225,13 @@ export function PlatformWorkbench({ compact }: { compact?: boolean }) {
 
   if (compact) {
     return (
-      <DemoFrame title="Centro de operación · Ejemplo ilustrativo" console className="mk-frame--platform is-compact" label="Centro de operación (vista breve)">
+      <DemoFrame
+        title="Centro de operación"
+        className="mk-frame--platform is-compact"
+        label="Centro de operación (vista breve)"
+        hideBadge
+        hideLegend
+      >
         <div className="mk-platform is-compact">
           {list}
           {conversation}
@@ -238,12 +243,12 @@ export function PlatformWorkbench({ compact }: { compact?: boolean }) {
   return (
     <div ref={attach}>
       <DemoFrame
-        title="Centro de operación · Ejemplo ilustrativo"
-        console
+        title="Centro de operación"
         product
-        controls={controlsOf(clock)}
         className="mk-frame--platform"
-        label="Centro de operación de ejemplo"
+        label="Centro de operación"
+        hideBadge
+        hideLegend
       >
         <div className="mk-platform" data-detail={mobileDetail || undefined}>
           <nav className="mk-platform__rail" aria-label="Vistas del centro de operación">

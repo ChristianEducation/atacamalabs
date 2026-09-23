@@ -426,3 +426,24 @@
     grid-column: span 2;
   }
 }
+
+/* Footer sin columna de Rubros (spec V3.0): brand + servicios + empresa. */
+@media (min-width: 768px) {
+  .mk-footer__grid--compact {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 1024px) {
+  .mk-footer__grid--compact {
+    grid-template-columns: repeat(12, 1fr);
+  }
+  .mk-footer__grid--compact .mk-footer__brand {
+    grid-column: span 6;
+  }
+  .mk-footer__grid--compact .mk-footer__services {
+    grid-column: span 3;
+  }
+  .mk-footer__grid--compact .mk-footer__company {
+    grid-column: span 3;
+  }
+}

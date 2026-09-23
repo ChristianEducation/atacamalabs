@@ -1,15 +1,11 @@
 /**
- * Navegación comercial — spec/02-SITEMAP-ROUTES.md B2 y spec/06-SHELL-UTILITY.md N1/N2.
- * Las rutas y el menú salen de estos registries: no hay enlaces a páginas inexistentes.
+ * Navegación comercial — ATACAMA_LABS_FINAL_MINIMAL_WEB_SPEC_V3_0_1 §3.
+ * Topbar: Plataforma · Agentes · Servicios (A Medida, Páginas Web) · Precios · Conócenos.
+ * Rubros, Comercial, Cobranza y Administrativo/Financiero ya no son páginas
+ * principales ni aparecen en el topbar (viven dentro de /agentes o redirigen).
  */
 
-export type ServiceId =
-  | "agentes"
-  | "comercial"
-  | "cobranza"
-  | "administrativo-financiero"
-  | "a-medida"
-  | "web";
+export type ServiceId = "agentes" | "plataforma" | "a-medida" | "web";
 
 export interface ServiceNav {
   id: ServiceId;
@@ -18,35 +14,23 @@ export interface ServiceNav {
   blurb: string;
 }
 
-/** Orden exacto de B2. Comercial/Cobranza/Admin-Financiero son empaquetados, no límites técnicos. */
+/** Catálogo completo, usado por RelatedServices; el dropdown del topbar usa SERVICES_MENU. */
 export const SERVICES: readonly ServiceNav[] = [
   {
     id: "agentes",
-    label: "Agentes Inteligentes",
+    label: "Agentes",
     href: "/agentes",
     blurb: "Conversan, consultan información y ejecutan acciones en tus herramientas.",
   },
   {
-    id: "comercial",
-    label: "Agente Comercial",
-    href: "/comercial",
-    blurb: "Convierte conversaciones en oportunidades y siguientes pasos.",
-  },
-  {
-    id: "cobranza",
-    label: "Agente de Cobranza",
-    href: "/cobranza",
-    blurb: "Detecta pendientes, contacta con contexto y mantiene el seguimiento al día.",
-  },
-  {
-    id: "administrativo-financiero",
-    label: "Agente Administrativo/Financiero",
-    href: "/administrativo-financiero",
-    blurb: "Respuestas, alertas y tareas administrativas con contexto.",
+    id: "plataforma",
+    label: "Plataforma",
+    href: "/plataforma",
+    blurb: "Conversaciones, contactos y próximos pasos en un mismo lugar.",
   },
   {
     id: "a-medida",
-    label: "Automatizaciones a Medida",
+    label: "A Medida",
     href: "/a-medida",
     blurb: "Conectamos sistemas y construimos el flujo alrededor de tu proceso.",
   },
@@ -58,13 +42,21 @@ export const SERVICES: readonly ServiceNav[] = [
   },
 ] as const;
 
+/** Dropdown «Servicios» del topbar (spec V3.0 §3.1): solo A Medida y Páginas Web. */
+export const SERVICES_MENU: readonly ServiceNav[] = SERVICES.filter(
+  (s) => s.id === "a-medida" || s.id === "web",
+);
+
 export interface IndustryNav {
   id: string;
   label: string;
   href: string;
 }
 
-/** Siete rubros, en el orden del footer N2. Educación primero. */
+/**
+ * Rubros: retirados de la navegación (V3.0 §3.2/§4). Se conserva el registro
+ * por si se reactivan como landings de campaña; ningún componente activo lo usa.
+ */
 export const INDUSTRIES: readonly IndustryNav[] = [
   { id: "educacion", label: "Educación", href: "/rubros/educacion" },
   { id: "salud", label: "Clínicas/Salud", href: "/rubros/salud" },
@@ -83,15 +75,17 @@ export const NAV_TOP = {
   platform: { label: "Plataforma", href: "/plataforma" },
   agents: { label: "Agentes", href: "/agentes" },
   services: { label: "Servicios" },
-  industries: { label: "Rubros", href: "/rubros" },
-  about: { label: "Conócenos", href: "/nosotros" },
+  about: { label: "Conócenos", href: "/conocenos" },
   pricing: { label: "Precios", href: "/precios" },
-  cta: { label: "Agendar diagnóstico", href: "/diagnostico" },
 } as const;
 
-export const SERVICE_ROUTES: readonly string[] = SERVICES.filter(
-  (s) => s.id !== "agentes",
-).map((s) => s.href);
+/**
+ * CTA persistente del topbar (spec §3.1/§6): pasa a agentCta() en
+ * lib/marketing/public-config.ts, que decide entre «Habla con nuestro
+ * agente» (embed listo) o el fallback «Agendar diagnóstico».
+ */
+
+export const SERVICE_ROUTES: readonly string[] = SERVICES.map((s) => s.href);
 
 export const BRAND = {
   wordmark: "ATACAMA LABS",
@@ -99,7 +93,7 @@ export const BRAND = {
   origin: "Desde Antofagasta, para empresas de Chile.",
 } as const;
 
-/** CTA común B2. */
+/** CTA común. */
 export const COMMON_CTA = {
   title: "Cuéntanos qué proceso quieres mejorar.",
   body: "Lo revisamos contigo y definimos el siguiente paso.",
