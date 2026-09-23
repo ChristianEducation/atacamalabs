@@ -1,0 +1,134 @@
+/*
+ * ATACAMA_LABS_VISUAL_DIRECTION_SPEC_V3_3 — sistema de capítulos de color (§3–§5, §20).
+ * Cinco temas de sección + Hero Gradient. Cada tema reasigna el set completo
+ * de variables semánticas que ya consumen los componentes existentes
+ * (--ink, --muted, --line, --surface, --blue-text…), así que un mismo
+ * componente (botón, card, FAQ, FeatureGrid) se ve correcto sobre cualquier
+ * fondo sin CSS específico por componente — incluido anidar un tema claro
+ * dentro de uno oscuro (p. ej. el panel del selector de /agentes sobre
+ * Deep Tech, spec §11).
+ */
+:root {
+  --section-sand: var(--bg);
+  --section-paper: #fffdf9;
+  --section-blue-mist: #edf4ff;
+  --section-blue-soft: #dfebff;
+  --section-ink: var(--dark);
+  --section-ink-soft: var(--dark-surface);
+  --section-blue: var(--blue);
+  /* Azul de marca sobre fondo oscuro (kit de identidad). */
+  --blue-on-dark: #2e74f5;
+}
+
+.mk-t-sand,
+.mk-t-paper,
+.mk-t-mist,
+.mk-t-deep {
+  position: relative;
+}
+
+/* Reset claro completo: válido tanto en la raíz como anidado sobre Deep Tech. */
+.mk-t-sand,
+.mk-t-paper,
+.mk-t-mist {
+  --ink: #121a2b;
+  --muted: #62656b;
+  --subtle: #777a80;
+  --line: #ddd9d1;
+  --line-strong: rgb(18 26 43 / 16%);
+  --control-border: #85878b;
+  --blue: #0f5ced;
+  --blue-text: #0f5ced;
+  --blue-hover: #0b4bc4;
+  --blue-soft: #e9f0fd;
+  --blue-glow: rgb(15 92 237 / 22%);
+  --surface-alt: #efeae1;
+}
+
+.mk-t-sand {
+  background: var(--section-sand);
+  --bg: var(--section-sand);
+  --paper: #fbf8f2;
+  --surface: #ffffff;
+}
+.mk-t-paper {
+  background: var(--section-paper);
+  --bg: var(--section-paper);
+  --paper: var(--section-paper);
+  --surface: #ffffff;
+}
+.mk-t-mist {
+  background: var(--section-blue-mist);
+  --bg: var(--section-blue-mist);
+  --paper: var(--section-blue-soft);
+  --surface: #ffffff;
+}
+.mk-t-sand + .mk-t-paper,
+.mk-t-mist + .mk-t-paper,
+.mk-t-paper + .mk-t-sand,
+.mk-t-paper + .mk-t-mist,
+.mk-t-sand + .mk-t-mist,
+.mk-t-mist + .mk-t-sand {
+  border-top: 1px solid var(--line);
+}
+
+/* ---------- Deep Tech: reasigna el sistema de variables a su versión oscura ---------- */
+.mk-t-deep {
+  background: var(--section-ink);
+  color: var(--dark-text);
+  --bg: var(--section-ink);
+  --paper: var(--section-ink-soft);
+  --surface: var(--section-ink-soft);
+  --surface-alt: var(--dark-line);
+  --ink: var(--dark-text);
+  --muted: var(--dark-muted);
+  --subtle: var(--dark-muted);
+  --line: var(--dark-line);
+  --line-strong: rgb(255 255 255 / 22%);
+  --control-border: var(--dark-muted);
+  --blue: var(--blue-on-dark);
+  --blue-text: var(--blue-on-dark);
+  --blue-hover: #5a92ff;
+  --blue-soft: rgb(46 116 245 / 16%);
+  --blue-glow: rgb(46 116 245 / 32%);
+}
+.mk-t-deep :focus-visible {
+  outline-color: var(--focus-dark);
+}
+.mk-t-deep .mk-btn--primary {
+  color: var(--section-ink);
+}
+.mk-t-deep .mk-btn--secondary {
+  color: var(--dark-text);
+}
+.mk-t-deep + .mk-t-deep,
+.mk-t-sand + .mk-t-deep,
+.mk-t-paper + .mk-t-deep,
+.mk-t-mist + .mk-t-deep,
+.mk-t-deep + .mk-t-sand,
+.mk-t-deep + .mk-t-paper,
+.mk-t-deep + .mk-t-mist {
+  border-top: 1px solid var(--dark-line);
+}
+
+/* Isla clara flotando sobre una banda oscura (p. ej. panel del selector A3). */
+.mk-t-deep .mk-t-paper,
+.mk-t-deep .mk-t-mist {
+  border-radius: 24px;
+  border: 1px solid rgb(255 255 255 / 10%);
+}
+
+/* ---------- Statement H2 (§18): grandes momentos de una sola idea ---------- */
+.mk-statement {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  color: var(--ink);
+  text-wrap: balance;
+  font-size: clamp(40px, 5vw, 68px);
+  line-height: 1.06;
+  letter-spacing: -0.03em;
+  max-width: 16ch;
+}
+.mk-statement .mk-hero__accent {
+  color: var(--blue-text);
+}

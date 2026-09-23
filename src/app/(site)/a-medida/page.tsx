@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { FeatureGrid, PageHero, ProcessSteps } from "@/components/marketing/pages/Common";
+import { Blocks, LayoutGrid, Rows3, Workflow } from "lucide-react";
+import { FeatureGrid, ProcessSteps } from "@/components/marketing/pages/Common";
+import { HeroShell } from "@/components/marketing/pages/HeroShell";
 import { IntegrationFlow } from "@/components/marketing/pages/CustomSections";
 import { CTABlock, SectionHeading } from "@/components/marketing/ui/Blocks";
-import { Blocks, LayoutGrid, Rows3, Workflow } from "lucide-react";
 import { CUSTOM_GROUPS, CUSTOM_META, CUSTOM_PROCESS } from "@/content/marketing/custom";
 
 export const metadata: Metadata = {
@@ -14,22 +15,30 @@ export const metadata: Metadata = {
 const GROUP_ICONS = [Workflow, Rows3, LayoutGrid, Blocks];
 
 /**
- * /a-medida (spec V3.0 §10, M1–M6). Página editorial, sin dashboard ni
- * builder de escenarios: una sola animación de integración y cuatro
- * categorías. El precio siempre es a medida; no se muestra un plan estándar.
+ * /a-medida (V3.0.1 §10 + V3.3 §13, M1–M6). Hero Gradient → Problem (Deep
+ * Tech) → Flow (Blue Mist) → What we build (Paper) → Process (Sand) → CTA.
+ * Sin dashboard ni builder de escenarios: el diagrama abstracto explica
+ * integración, no se disfraza de interfaz real.
  */
 export default function CustomPage() {
   return (
     <>
-      <PageHero
+      <HeroShell
+        size="l"
         eyebrow="A MEDIDA"
-        title="Tu proceso no tiene que adaptarse al software."
+        title={
+          <>
+            Tu proceso primero.
+            <br />
+            El <span className="mk-hero__accent">software</span> después.
+          </>
+        }
         lead="Conectamos herramientas, automatizamos tareas y construimos alrededor de cómo trabaja tu empresa."
         actions={[{ label: "Revisar mi proceso", href: "/diagnostico?necesidad=a-medida" }]}
-        center
+        visual={<IntegrationFlow instance="a-medida-hero" result="Sistema en marcha" />}
       />
 
-      <section className="mk-section--md" aria-labelledby="m2-title">
+      <section className="mk-section--md mk-t-deep" aria-labelledby="m2-title">
         <div className="mk-container mk-close">
           <SectionHeading
             id="m2-title"
@@ -40,14 +49,14 @@ export default function CustomPage() {
         </div>
       </section>
 
-      <section className="mk-section mk-paper" aria-labelledby="m3-title">
+      <section className="mk-section mk-t-mist" aria-labelledby="m3-title">
         <div className="mk-container">
           <SectionHeading id="m3-title" center title="Así se conecta tu proceso." />
           <IntegrationFlow instance="a-medida" result="Registro actualizado en ambos sistemas" />
         </div>
       </section>
 
-      <section className="mk-section--md" aria-labelledby="m4-title">
+      <section className="mk-section--md mk-t-paper" aria-labelledby="m4-title">
         <div className="mk-container">
           <SectionHeading id="m4-title" title="Qué construimos." />
           <FeatureGrid
@@ -60,7 +69,7 @@ export default function CustomPage() {
         </div>
       </section>
 
-      <section className="mk-section--md mk-paper" aria-labelledby="m5-title">
+      <section className="mk-section--md mk-t-sand" aria-labelledby="m5-title">
         <div className="mk-container">
           <SectionHeading id="m5-title" title="De la idea al sistema." />
           <ProcessSteps steps={CUSTOM_PROCESS} />

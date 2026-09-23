@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { ShieldCheck, UserRound, History } from "lucide-react";
-import { FeatureGrid, PageHero, ProcessSteps, StandardImplementationNote } from "@/components/marketing/pages/Common";
+import { FeatureGrid, ProcessSteps, StandardImplementationNote } from "@/components/marketing/pages/Common";
+import { HeroShell } from "@/components/marketing/pages/HeroShell";
+import { AgentNetwork } from "@/components/marketing/pages/AgentNetwork";
 import { AgentSelector } from "@/components/marketing/pages/AgentsSections";
-import { Mission } from "@/components/marketing/demos/Mission";
 import { CTABlock, SectionHeading } from "@/components/marketing/ui/Blocks";
 import { agentCta } from "@/lib/marketing/public-config";
 import { AGENTS_CATEGORIES, AGENTS_CONTROL, AGENTS_META_DESCRIPTION, AGENTS_STEPS, AGENTS_VERBS } from "@/content/marketing/agents";
-import { AGENT_MISSIONS } from "@/content/marketing/missions";
 
 export const metadata: Metadata = {
   title: "Agentes — Atacama Labs",
@@ -17,28 +17,35 @@ export const metadata: Metadata = {
 const CONTROL_ICONS = [ShieldCheck, UserRound, History];
 
 /**
- * /agentes — página principal de producto (spec V3.0 §8, A1–A8). Comercial,
- * Cobranza, Administrativo/Financiero, Atención y Agendamiento ya no son
- * páginas propias: viven aquí, dentro del selector A3.
+ * /agentes — página principal de producto (V3.0.1 §8 + V3.3 §10–11, A1–A8).
+ * Comercial, Cobranza, Administrativo/Financiero, Atención y Agendamiento
+ * viven dentro del selector A3, que es el showcase más rico de la página
+ * (Deep Tech, con un panel claro flotando encima para el contraste que
+ * pide el spec).
  */
 export default function AgentsPage() {
   const cta = agentCta();
-  const hero = AGENT_MISSIONS[0];
   return (
     <>
-      <PageHero
+      <HeroShell
+        size="lPlus"
         eyebrow="AGENTES INTELIGENTES"
-        title="No solo responde. Hace el trabajo."
+        title={
+          <>
+            No solo responde.
+            <br />
+            Hace el <span className="mk-hero__accent">trabajo</span>.
+          </>
+        }
         lead="Conversa con tus clientes, consulta tus sistemas, actualiza información y ejecuta el siguiente paso. Tú decides hasta dónde llega."
         actions={[
           { label: "Verlo en acción", href: "#selector" },
           { label: cta.label, href: cta.href, variant: "secondary" },
         ]}
-      >
-        <Mission scene={hero.scene} instance="agentes-hero" />
-      </PageHero>
+        visual={<AgentNetwork />}
+      />
 
-      <section className="mk-section--md" aria-labelledby="a2-title">
+      <section className="mk-section--md mk-t-paper" aria-labelledby="a2-title">
         <div className="mk-container">
           <SectionHeading
             id="a2-title"
@@ -48,7 +55,7 @@ export default function AgentsPage() {
         </div>
       </section>
 
-      <section id="selector" className="mk-section mk-paper" aria-labelledby="selector-title">
+      <section id="selector" className="mk-section mk-t-deep" aria-labelledby="selector-title">
         <div className="mk-container">
           <SectionHeading
             id="selector-title"
@@ -59,7 +66,7 @@ export default function AgentsPage() {
         </div>
       </section>
 
-      <section className="mk-section--md" aria-labelledby="a4-title">
+      <section className="mk-section--md mk-t-sand" aria-labelledby="a4-title">
         <div className="mk-container">
           <SectionHeading
             id="a4-title"
@@ -74,7 +81,7 @@ export default function AgentsPage() {
         </div>
       </section>
 
-      <section className="mk-section--md mk-paper" aria-labelledby="a5-title">
+      <section className="mk-section--md mk-t-mist" aria-labelledby="a5-title">
         <div className="mk-container">
           <SectionHeading id="a5-title" title="Se conecta a lo que ya usas." />
           <ul className="mk-categories">
@@ -90,7 +97,7 @@ export default function AgentsPage() {
         </div>
       </section>
 
-      <section className="mk-section--md" aria-labelledby="a6-title">
+      <section className="mk-section--md mk-t-paper" aria-labelledby="a6-title">
         <div className="mk-container">
           <SectionHeading id="a6-title" title="Tú decides hasta dónde llega." />
           <FeatureGrid
@@ -102,7 +109,7 @@ export default function AgentsPage() {
         </div>
       </section>
 
-      <section className="mk-section--md mk-paper" aria-labelledby="a7-title">
+      <section className="mk-section--md mk-t-sand" aria-labelledby="a7-title">
         <div className="mk-container">
           <SectionHeading id="a7-title" title="De diagnóstico a agente trabajando." />
           <ProcessSteps steps={AGENTS_STEPS} />

@@ -1,32 +1,52 @@
 "use client";
 
-import { Check, RotateCcw } from "lucide-react";
+import { CalendarDays, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ActionReceipt, Bubble } from "./chat";
+import { CrmTable } from "./records";
+import { StatusChip } from "../ui/Badge";
 import { useDemoClock } from "../motion/useDemoClock";
+import type { MissionScene } from "@/content/marketing/missions";
 
-export interface MissionScene {
-  /** Mensaje de la persona, ya con comillas si corresponde. */
-  message: string;
-  /** Sistema/herramienta que el agente consulta o actualiza. */
-  tool: string;
-  /** Resultado final, breve. */
-  result: string;
+const T_MSG = 0;
+const T_REPLY = 600;
+const T_RESULT = 1400;
+const DURATION = 2000;
+
+function MissionResultCard({ scene }: { scene: MissionScene }) {
+  const { result } = scene;
+  if (result.kind === "crm") {
+    return <CrmTable rows={[result.row]} highlightId={result.row.id} caption={`Ejemplo: ${result.row.company}`} />;
+  }
+  if (result.kind === "calendar") {
+    return (
+      <div className="mk-mission-card">
+        <span className="mk-mission-card__icon" aria-hidden>
+          <CalendarDays size={20} />
+        </span>
+        <div className="mk-mission-card__body">
+          <p className="mk-mission-card__title">{result.title}</p>
+          <p className="mk-mission-card__meta">
+            {result.day} {result.date} · {result.time}
+          </p>
+        </div>
+        <StatusChip status="completado" label="Confirmada" />
+      </div>
+    );
+  }
+  return (
+    <ActionReceipt receipt={{ id: result.id, area: result.area, status: result.status }} className="is-new" />
+  );
 }
 
-const T_MESSAGE = 0;
-const T_AGENT = 500;
-const T_OUT = 1000;
-const T_TOOL = 1850;
-const T_BACK = 2450;
-const T_RESULT = 2950;
-const DURATION = 3400;
-
 /**
- * V3.0 §5 — una misión, no una demo: persona → agente → herramienta → acción →
- * resultado. Una sola reproducción al entrar en viewport o cambiar de escena,
- * sin loop, sin «Pausar»/«Repetir» textual; el replay es solo un icono
- * discreto y accesible. `useDemoClock` ya resuelve `prefers-reduced-motion`
- * mostrando el estado final de inmediato.
+ * V3.3 §11/§19 — misión real: burbuja de la persona, respuesta breve del
+ * agente y el resultado como pieza de producto (CRM, calendario o recibo),
+ * no un diagrama de nodos. Gramática de motion inspirada en IAutomatiza
+ * (bubbles escalonadas, panel enter opacity+y+scale), datos propios. Una
+ * sola reproducción al entrar en viewport, sin loop, sin controles de texto;
+ * el replay es solo un icono con `aria-label`. `prefers-reduced-motion`
+ * resuelve el estado final de inmediato vía `useDemoClock`.
  */
 export function Mission({ scene, instance }: { scene: MissionScene; instance: string }) {
   const [attach, clock] = useDemoClock<HTMLDivElement>({
@@ -37,36 +57,22 @@ export function Mission({ scene, instance }: { scene: MissionScene; instance: st
   const { t, state } = clock;
   const done = state === "complete";
 
-  const messageIn = t >= T_MESSAGE;
-  const agentOn = t >= T_AGENT;
-  const lineOut = t >= T_OUT;
-  const toolOn = t >= T_TOOL;
-  const lineBack = t >= T_BACK;
+  const msgIn = t >= T_MSG;
+  const replyIn = t >= T_REPLY;
   const resultIn = t >= T_RESULT || done;
 
   return (
     <div className="mk-mission" ref={attach}>
-      <div className="mk-mission__row">
-        <p className={cn("mk-mission__msg", messageIn && "is-in")}>{scene.message}</p>
-        <div className="mk-mission__flow">
-          <span className={cn("mk-mission__node", agentOn && "is-active")}>
-            <span className="mk-mission__dot" aria-hidden />
-            Agente
-          </span>
-          <span className={cn("mk-mission__line", lineOut && "is-out", lineBack && "is-back")} aria-hidden />
-          <span className={cn("mk-mission__node", toolOn && "is-active")}>
-            <span className="mk-mission__dot" aria-hidden />
-            {scene.tool}
-          </span>
+      <div className="mk-mission__chat">
+        <div className={cn("mk-mission__bubble", msgIn && "is-in")}>
+          <Bubble message={{ from: "person", text: scene.message }} />
         </div>
-        <p className={cn("mk-mission__result", resultIn && "is-in")} role="status">
-          {resultIn ? (
-            <>
-              <Check size={14} aria-hidden strokeWidth={2.4} />
-              {scene.result}
-            </>
-          ) : null}
-        </p>
+        <div className={cn("mk-mission__bubble", replyIn && "is-in")}>
+          <Bubble message={{ from: "agent", text: scene.reply }} />
+        </div>
+      </div>
+      <div className={cn("mk-mission__result", resultIn && "is-in")}>
+        {resultIn ? <MissionResultCard scene={scene} /> : null}
       </div>
       {done ? (
         <button type="button" className="mk-mission__replay" aria-label="Repetir la animación" onClick={clock.replay}>

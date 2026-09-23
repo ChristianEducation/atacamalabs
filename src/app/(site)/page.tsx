@@ -1,19 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Plug, ShieldCheck, Wrench } from "lucide-react";
-import { ButtonLink } from "@/components/marketing/ui/Button";
+import { HeroShell } from "@/components/marketing/pages/HeroShell";
 import { CTABlock, SectionHeading } from "@/components/marketing/ui/Blocks";
 import { FeatureGrid } from "@/components/marketing/pages/Common";
-import { Atmosphere } from "@/components/marketing/pages/Atmosphere";
+import { HomeAtmosphere } from "@/components/marketing/pages/HomeAtmosphere";
 import { AgentPanel } from "@/components/marketing/pages/AgentPanel";
 import { Mission } from "@/components/marketing/demos/Mission";
 import { Reveal } from "@/components/marketing/motion/Reveal";
 import { HOME_MISSION } from "@/content/marketing/missions";
+import { agentCta } from "@/lib/marketing/public-config";
 
 export const metadata: Metadata = {
   title: "Atacama Labs — Agentes que trabajan en tu empresa",
   description:
-    "Atiende, vende, cobra, consulta información y ejecuta tareas conectado a las herramientas que ya usas.",
+    "Agentes que atienden, venden, cobran, consultan información y ejecutan tareas conectados a las herramientas que ya usas.",
   alternates: { canonical: "/" },
 };
 
@@ -37,71 +38,61 @@ const CONNECTED = [
 ] as const;
 
 /**
- * Home (spec V3.0 §7, H1–H7). Deja de ser catálogo: una idea por sección,
- * una sola microanimación (H3) y el agente real de Atacama como demostración
- * principal (H5, con fallback honesto mientras no exista el embed de Lety).
- * Mientras el agente no esté listo, el CTA principal es «Ver agentes» (§7 H1/H7).
+ * Home — V3.3 §8–§9/§25. Ritmo Hero Gradient → Deep Tech → Blue Mist → Paper
+ * → Deep Tech → Sand → Blue (CTA). Una sola misión narrativa (H3), sin loop;
+ * el Home vende la idea, /agentes demuestra el producto. Nada de mega
+ * selector ni catálogo (§25).
  */
 export default function Home() {
+  const cta = agentCta();
   return (
     <>
-      <section className="mk-hero" aria-labelledby="hero-title">
-        <div className="mk-container mk-hero__grid">
-          <div className="mk-hero__copy">
-            <p className="mk-eyebrow">AGENTES PARA TU EMPRESA</p>
-            <h1 id="hero-title" className="mk-display mk-hero__title">
-              Pon un agente a trabajar en tu empresa.
-            </h1>
-            <p className="mk-lead mk-hero__lead">
-              Atiende, vende, cobra, consulta información y ejecuta tareas conectado a las herramientas que ya usas.
+      <HeroShell
+        size="xl"
+        eyebrow="AGENTES PARA TU EMPRESA"
+        title={
+          <>
+            Tu empresa, inteligente.
+            <br />
+            <span className="mk-hero__accent">Desde mañana.</span>
+          </>
+        }
+        lead="Agentes que atienden, venden, cobran, consultan información y ejecutan tareas conectados a las herramientas que ya usas."
+        trust="Tú defines las reglas, los permisos y cuándo entra una persona."
+        actions={[
+          { label: "Ver agentes", href: "/agentes" },
+          { label: "Agendar diagnóstico", href: "/diagnostico", variant: "secondary" },
+        ]}
+        visual={<HomeAtmosphere />}
+      />
+
+      <section className="mk-section--md mk-t-deep" aria-labelledby="pain-title">
+        <div className="mk-container mk-close">
+          <Reveal>
+            <p id="pain-title" className="mk-statement" style={{ marginInline: "auto" }}>
+              Responder es solo el comienzo.
             </p>
-            <div className="mk-hero__actions">
-              <ButtonLink href="/agentes" arrow>
-                Ver agentes
-              </ButtonLink>
-              <ButtonLink href="/diagnostico" variant="secondary">
-                Agendar diagnóstico
-              </ButtonLink>
-            </div>
-            <p className="mk-small mk-muted mk-hero__note">
-              Tú defines las reglas, los permisos y cuándo entra una persona.
+            <p className="mk-lead" style={{ marginTop: 20, marginInline: "auto" }}>
+              La parte difícil es lo que ocurre después: buscar información, coordinar, registrar, hacer seguimiento
+              y ejecutar.
             </p>
-          </div>
-          <div className="mk-hero__product" aria-hidden="true">
-            <Atmosphere />
-          </div>
+            <p className="mk-h4" style={{ marginTop: 28 }}>
+              Ahí empieza el <span className="mk-hero__accent">trabajo del agente</span>.
+            </p>
+          </Reveal>
         </div>
       </section>
 
-      <section className="mk-section--md" aria-labelledby="pain-title">
+      <section className="mk-section--md mk-t-mist" aria-labelledby="how-title">
         <div className="mk-container">
-          <SectionHeading
-            id="pain-title"
-            title="Responder es solo el comienzo."
-            lead="Un agente puede entender una solicitud, buscar la información necesaria y dejar el siguiente paso hecho."
-          />
-          <ul className="mk-ideas">
-            <Reveal as="li">Atiende sin dejar conversaciones esperando.</Reveal>
-            <Reveal as="li" delay={70}>
-              Trabaja con la información de tus sistemas.
-            </Reveal>
-            <Reveal as="li" delay={140}>
-              Deja a tu equipo las decisiones que sí necesitan criterio.
-            </Reveal>
-          </ul>
-        </div>
-      </section>
-
-      <section className="mk-section--md mk-paper" aria-labelledby="how-title">
-        <div className="mk-container">
-          <SectionHeading id="how-title" title="Le das una tarea. El agente va, trabaja y vuelve con el resultado." />
+          <SectionHeading id="how-title" title="Le das una tarea. Vuelve con el trabajo hecho." />
           <Mission scene={HOME_MISSION} instance="home" />
         </div>
       </section>
 
-      <section className="mk-section--md" aria-labelledby="delegate-title">
+      <section className="mk-section--md mk-t-paper" aria-labelledby="delegate-title">
         <div className="mk-container">
-          <SectionHeading id="delegate-title" title="Empieza por el trabajo que más tiempo te quita." />
+          <SectionHeading id="delegate-title" title="Empieza por lo que más tiempo te quita." />
           <ul className="mk-delegate">
             {DELEGATE.map((d, i) => (
               <Reveal as="li" key={d.title} delay={Math.min(i * 70, 210)}>
@@ -118,30 +109,30 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="agente" className="mk-section mk-paper" aria-labelledby="agent-title">
+      <section id="agente" className="mk-section mk-t-deep" aria-labelledby="agent-title">
         <div className="mk-container">
           <SectionHeading
             id="agent-title"
             center
-            title="Habla con nuestro agente"
+            title="Ahora pregúntaselo a uno."
             lead="Cuéntale qué quieres mejorar en tu empresa."
           />
           <AgentPanel />
         </div>
       </section>
 
-      <section className="mk-section--md" aria-labelledby="connected-title">
+      <section className="mk-section--md mk-t-sand" aria-labelledby="connected-title">
         <div className="mk-container">
-          <SectionHeading id="connected-title" title="Se conecta, tú controlas, lo ponemos a trabajar." />
+          <SectionHeading id="connected-title" title="Se conecta. Trabaja. Tú mantienes el control." />
           <FeatureGrid items={CONNECTED} />
         </div>
       </section>
 
       <CTABlock
-        title="¿Qué trabajo quieres sacar de tu equipo esta semana?"
+        title="¿Qué le delegarías mañana?"
         body="Cuéntanos cómo lo hacen hoy y te mostramos por dónde empezar."
-        cta={{ label: "Ver agentes", href: "/agentes" }}
-        secondary={{ label: "Agendar diagnóstico", href: "/diagnostico" }}
+        cta={cta}
+        secondary={cta.label === "Agendar diagnóstico" ? undefined : { label: "Agendar diagnóstico", href: "/diagnostico" }}
       />
     </>
   );

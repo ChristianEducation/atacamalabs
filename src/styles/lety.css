@@ -207,16 +207,6 @@
 }
 
 /* ---------- Revelado lento y fino ---------- */
-.mk-reveal[data-reveal="pending"] {
-  opacity: 0;
-  transform: translateY(24px);
-}
-.mk-reveal[data-reveal="in"] {
-  transition:
-    opacity 900ms var(--ease-soft),
-    transform 900ms var(--ease-soft);
-}
-
 /* ---------- Detalles ---------- */
 .mk-faq__item {
   border-color: var(--line);

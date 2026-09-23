@@ -75,3 +75,13 @@ export function agentCta(): { label: string; href: string } {
   if (agentWidgetReady()) return { label: "Habla con nuestro agente", href: "/diagnostico" };
   return { label: "Agendar diagnóstico", href: "/diagnostico" };
 }
+
+/**
+ * Video atmosférico del hero del Home (V3.3 §8). Sin archivo entregado
+ * todavía: devuelve `null` y `HomeAtmosphere` cae al fallback en SVG/CSS
+ * (`Atmosphere.tsx`). Cuando exista el MP4/WebM optimizado, colocarlo en
+ * `public/video/` y devolver su ruta aquí — es el único cambio necesario.
+ */
+export function homeVideoSrc(): { webm: string; mp4: string; poster: string } | null {
+  return null;
+}

@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import { FeatureGrid, PageHero } from "@/components/marketing/pages/Common";
+import { Layers, ListChecks, ShieldCheck } from "lucide-react";
+import { FeatureGrid } from "@/components/marketing/pages/Common";
+import { HeroShell } from "@/components/marketing/pages/HeroShell";
 import { PlatformWorkbench } from "@/components/marketing/demos/PlatformWorkbench";
 import { CTABlock, SectionHeading } from "@/components/marketing/ui/Blocks";
 import { agentCta } from "@/lib/marketing/public-config";
-import { Layers, ListChecks, ShieldCheck } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Plataforma — Atacama Labs",
@@ -18,32 +19,48 @@ const BENEFITS = [
   { icon: <ShieldCheck size={20} />, title: "Control", body: "Reglas, permisos y derivaciones cuando corresponde." },
 ] as const;
 
-/** /plataforma (spec V3.0 §9, P1–P5): una sola vista de producto, sin competir con /agentes. */
+/**
+ * /plataforma (V3.0.1 §9 + V3.3 §12): Hero Gradient → Product view (Paper,
+ * grande) → Benefits (Blue Mist) → Connections (Sand) → CTA. El hero muestra
+ * una vista compacta; la sección de producto es el momento grande.
+ */
 export default function PlatformPage() {
   const cta = agentCta();
   return (
     <>
-      <PageHero
+      <HeroShell
+        size="l"
         eyebrow="PLATAFORMA"
-        title="Tus agentes trabajan. Tú mantienes el control."
+        title={
+          <>
+            Tus agentes trabajan.
+            <br />
+            Tú mantienes el <span className="mk-hero__accent">control</span>.
+          </>
+        }
         lead="Conversaciones, contactos, tareas y próximos pasos reunidos para que tu equipo sepa qué pasó y qué sigue."
         actions={[{ label: cta.label, href: cta.href }]}
-        split="4-8"
-      >
-        <PlatformWorkbench />
-        <p className="mk-small mk-muted" style={{ marginTop: 12 }}>
-          Representación ilustrativa. Las vistas y funciones se configuran según tu solución.
-        </p>
-      </PageHero>
+        visual={<PlatformWorkbench compact />}
+      />
 
-      <section className="mk-section--md" aria-labelledby="p3-title">
+      <section className="mk-section mk-t-paper" aria-labelledby="p2-title">
         <div className="mk-container">
-          <SectionHeading id="p3-title" title="Desde aquí ves lo que están haciendo tus agentes." />
+          <SectionHeading id="p2-title" title="Desde aquí ves lo que están haciendo tus agentes." />
+          <PlatformWorkbench />
+          <p className="mk-small mk-muted" style={{ marginTop: 16 }}>
+            Representación ilustrativa. Las vistas y funciones se configuran según tu solución.
+          </p>
+        </div>
+      </section>
+
+      <section className="mk-section--md mk-t-mist" aria-labelledby="p3-title">
+        <div className="mk-container">
+          <SectionHeading id="p3-title" title="Todo el contexto, en un mismo lugar." />
           <FeatureGrid items={BENEFITS} />
         </div>
       </section>
 
-      <section className="mk-section--md mk-paper" aria-labelledby="p4-title">
+      <section className="mk-section--md mk-t-sand" aria-labelledby="p4-title">
         <div className="mk-container mk-close">
           <SectionHeading
             id="p4-title"

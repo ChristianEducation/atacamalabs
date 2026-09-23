@@ -4,116 +4,45 @@
  * Va después de lety.css.
  */
 
-/* ---------- Mission (persona → agente → herramienta → resultado) ---------- */
+/* ---------- Mission (V3.3 §11/§19): burbujas reales + resultado real ---------- */
 .mk-mission {
   position: relative;
-  padding: 40px 24px;
+  padding: 28px 24px;
   border: 1px solid var(--line);
   border-radius: 20px;
   background: var(--surface);
-  min-height: 240px;
+  min-height: 260px;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  gap: 20px;
 }
-.mk-mission__row {
-  width: 100%;
-  display: grid;
-  gap: 24px;
-  justify-items: center;
-  text-align: center;
+.mk-mission__chat {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
-.mk-mission__msg {
-  margin: 0;
-  max-width: 32ch;
-  font-family: var(--font-serif);
-  font-size: 20px;
-  line-height: 1.4;
-  color: var(--ink);
+.mk-mission__bubble {
   opacity: 0;
-  transform: translateY(6px);
+  transform: translateY(8px);
   transition:
-    opacity 500ms var(--ease-soft),
-    transform 500ms var(--ease-soft);
+    opacity 450ms var(--ease-soft),
+    transform 450ms var(--ease-soft);
 }
-.mk-mission__msg.is-in {
+.mk-mission__bubble.is-in {
   opacity: 1;
   transform: none;
 }
-.mk-mission__flow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-}
-.mk-mission__node {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  border-radius: var(--r-pill);
-  border: 1px solid var(--line-strong);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--muted);
-  white-space: nowrap;
-  transition:
-    border-color 400ms var(--ease-soft),
-    color 400ms var(--ease-soft);
-}
-.mk-mission__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--control-border);
-  transition:
-    background 400ms var(--ease-soft),
-    box-shadow 400ms var(--ease-soft);
-}
-.mk-mission__node.is-active {
-  border-color: var(--blue);
-  color: var(--blue-text);
-}
-.mk-mission__node.is-active .mk-mission__dot {
-  background: var(--blue);
-  box-shadow: 0 0 8px var(--blue-glow);
-}
-.mk-mission__line {
-  width: 64px;
-  height: 1.5px;
-  flex: none;
-  background: var(--line-strong);
-  position: relative;
-  overflow: hidden;
-}
-.mk-mission__line::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: var(--blue);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 650ms var(--ease-soft);
-}
-.mk-mission__line.is-out::after {
-  transform: scaleX(1);
-}
-.mk-mission__line.is-back::after {
-  transform-origin: right;
-}
 .mk-mission__result {
-  margin: 0;
-  min-height: 1.3em;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--success);
   opacity: 0;
-  transition: opacity 400ms var(--ease-soft);
+  transform: translateY(10px) scale(0.96);
+  transition:
+    opacity 480ms var(--ease-soft),
+    transform 480ms var(--ease-soft);
 }
 .mk-mission__result.is-in {
   opacity: 1;
+  transform: none;
 }
 .mk-mission__replay {
   position: absolute;
@@ -137,19 +66,46 @@
   color: var(--blue-text);
   border-color: var(--blue);
 }
-@media (max-width: 640px) {
-  .mk-mission__flow {
-    flex-wrap: wrap;
-    row-gap: 8px;
-  }
-  .mk-mission__line {
-    width: 32px;
-  }
+
+/* Tarjeta de calendario compacta (agendamiento / Home H3). */
+.mk-mission-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+}
+.mk-mission-card__icon {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--blue-soft);
+  color: var(--blue-text);
+}
+.mk-mission-card__body {
+  flex: 1;
+  min-width: 0;
+}
+.mk-mission-card__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.mk-mission-card__meta {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--muted);
 }
 @media (prefers-reduced-motion: reduce) {
-  .mk-mission__msg,
-  .mk-mission__result,
-  .mk-mission__line::after {
+  .mk-mission__bubble,
+  .mk-mission__result {
     transition: none;
   }
 }
@@ -288,6 +244,24 @@
   margin-top: 40px;
   display: grid;
   gap: 32px;
+  padding: 24px 20px;
+  animation: mk-panel-enter 480ms var(--ease-soft);
+}
+@keyframes mk-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mk-agent-selector__panel {
+    animation: none;
+  }
+}
+@media (min-width: 768px) {
+  .mk-agent-selector__panel {
+    padding: 32px;
+  }
 }
 .mk-agent-selector__copy {
   display: grid;
@@ -334,4 +308,295 @@
   text-align: center;
   max-width: 640px;
   margin-inline: auto;
+}
+
+/* ---------- Diagrama de flujo abstracto (A Medida M3) ---------- */
+.mk-flow-diagram {
+  position: relative;
+  padding: 40px 24px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+}
+.mk-flow-diagram__row {
+  width: 100%;
+  display: grid;
+  gap: 24px;
+  justify-items: center;
+  text-align: center;
+}
+.mk-flow-diagram__flow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+.mk-flow-diagram__node {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line-strong);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+  transition:
+    border-color 400ms var(--ease-soft),
+    color 400ms var(--ease-soft);
+}
+.mk-flow-diagram__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--control-border);
+  transition:
+    background 400ms var(--ease-soft),
+    box-shadow 400ms var(--ease-soft);
+}
+.mk-flow-diagram__node.is-active {
+  border-color: var(--blue);
+  color: var(--blue-text);
+}
+.mk-flow-diagram__node.is-active .mk-flow-diagram__dot {
+  background: var(--blue);
+  box-shadow: 0 0 8px var(--blue-glow);
+}
+.mk-flow-diagram__line {
+  width: 56px;
+  height: 1.5px;
+  flex: none;
+  background: var(--line-strong);
+  position: relative;
+  overflow: hidden;
+}
+.mk-flow-diagram__line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--blue);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 650ms var(--ease-soft);
+}
+.mk-flow-diagram__line.is-out::after {
+  transform: scaleX(1);
+}
+.mk-flow-diagram__result {
+  margin: 0;
+  min-height: 1.3em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--success);
+  opacity: 0;
+  transition: opacity 400ms var(--ease-soft);
+}
+.mk-flow-diagram__result.is-in {
+  opacity: 1;
+}
+@media (max-width: 640px) {
+  .mk-flow-diagram__line {
+    width: 28px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mk-flow-diagram__result,
+  .mk-flow-diagram__line::after {
+    transition: none;
+  }
+}
+
+/* ---------- Visual del hero del Home: fundido con la página (§8 overlay) ---------- */
+.mk-hero--xl .mk-hero__product {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 22%, #000 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 22%, #000 100%);
+}
+.mk-home-video {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 620px;
+  object-fit: cover;
+}
+@media (max-width: 1023px) {
+  .mk-hero--xl .mk-hero__product {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
+
+/* ---------- Red del agente (hero /agentes) ---------- */
+.mk-agent-network {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 560px;
+}
+.mk-agent-network__line {
+  stroke: var(--line-strong);
+  stroke-width: 1;
+  fill: none;
+}
+.mk-agent-network__ring {
+  fill: none;
+  stroke: var(--blue-glow, rgb(15 92 237 / 22%));
+  stroke-width: 1;
+}
+.mk-agent-network__node {
+  fill: var(--surface);
+  stroke: var(--control-border);
+  stroke-width: 1.2;
+}
+.mk-agent-network__center {
+  fill: var(--blue);
+}
+.mk-agent-network__signal {
+  fill: var(--blue);
+  filter: drop-shadow(0 0 4px var(--blue-glow, rgb(15 92 237 / 45%)));
+}
+.mk-agent-network__label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  fill: var(--muted);
+  letter-spacing: 0.02em;
+}
+.mk-agent-network__label--center {
+  fill: var(--ink);
+  font-weight: 600;
+}
+
+/* ---------- Navegador abstracto (hero /paginas-web) ---------- */
+.mk-web-abstract {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  margin-inline: auto;
+  padding: 14px;
+  border-radius: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-md, 0 18px 40px -24px rgb(18 26 43 / 22%));
+}
+.mk-web-abstract__chrome {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.mk-web-abstract__chrome span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line-strong);
+}
+.mk-web-abstract__body {
+  display: grid;
+  gap: 12px;
+}
+.mk-web-abstract__block {
+  height: 28px;
+  border-radius: 8px;
+  background: var(--blue-soft);
+}
+.mk-web-abstract__block--wide {
+  height: 64px;
+}
+.mk-web-abstract__block--tall {
+  height: 96px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+}
+.mk-web-abstract__row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.mk-web-abstract__depth {
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  z-index: -1;
+}
+.mk-web-abstract__depth--2 {
+  transform: translate(14px, 14px);
+  opacity: 0.7;
+}
+.mk-web-abstract__depth--3 {
+  transform: translate(28px, 28px);
+  opacity: 0.4;
+}
+
+/* ---------- Ghost cards (hero /precios) ---------- */
+.mk-pricing-ghost {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  height: 320px;
+  margin-inline: auto;
+}
+.mk-pricing-ghost__card {
+  position: absolute;
+  width: 190px;
+  height: 240px;
+  border-radius: 18px;
+  border: 1px solid var(--line-strong);
+  background: rgb(255 255 255 / 40%);
+}
+.mk-pricing-ghost__card--a {
+  left: 0;
+  top: 40px;
+  transform: rotate(-4deg);
+}
+.mk-pricing-ghost__card--b {
+  left: 130px;
+  top: 0;
+  border-color: var(--blue);
+  opacity: 0.7;
+}
+.mk-pricing-ghost__card--c {
+  left: 260px;
+  top: 50px;
+  transform: rotate(3deg);
+  opacity: 0.5;
+}
+.mk-pricing-ghost__line {
+  position: absolute;
+  background: var(--line-strong);
+}
+.mk-pricing-ghost__line--v {
+  width: 1px;
+  height: 100%;
+  left: 50%;
+  top: 0;
+}
+.mk-pricing-ghost__line--h {
+  height: 1px;
+  width: 100%;
+  top: 50%;
+  left: 0;
+}
+@media (max-width: 480px) {
+  .mk-pricing-ghost {
+    height: 240px;
+  }
+  .mk-pricing-ghost__card {
+    width: 140px;
+    height: 180px;
+  }
+  .mk-pricing-ghost__card--b {
+    left: 90px;
+  }
+  .mk-pricing-ghost__card--c {
+    left: 180px;
+    top: 40px;
+  }
 }

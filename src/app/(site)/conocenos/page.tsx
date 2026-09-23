@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import { PageHero, ProcessSteps } from "@/components/marketing/pages/Common";
+import { ProcessSteps } from "@/components/marketing/pages/Common";
+import { HeroShell } from "@/components/marketing/pages/HeroShell";
+import { Atmosphere } from "@/components/marketing/pages/Atmosphere";
 import { CTABlock, SectionHeading } from "@/components/marketing/ui/Blocks";
 import { Reveal } from "@/components/marketing/motion/Reveal";
 import { CUSTOM_PROCESS } from "@/content/marketing/custom";
@@ -19,29 +21,36 @@ const WHAT_WE_DO = [
 ] as const;
 
 /**
- * /conocenos (spec V3.0 §12, N1–N5). La página más de marca: aquí sí se
- * permite recuperar la sensación Atacama · norte · desierto · precisión, sin
- * clichés turísticos y sin demos de producto.
+ * /conocenos (V3.0.1 §12 + V3.3 §16, N1–N5). La página más de marca: aquí sí
+ * se permite recuperar la sensación Atacama · norte · desierto · precisión,
+ * sin clichés turísticos y sin demos de producto. Hero Gradient (Atmosphere
+ * quieta, sin protagonismo de producto) → Filosofía (Deep Tech) → Qué
+ * hacemos (Paper) → Cómo trabajamos (Blue Mist) → CTA.
  */
 export default function AboutPage() {
   return (
     <>
-      <PageHero
+      <HeroShell
+        size="m"
         eyebrow="ATACAMA LABS"
-        title="Tecnología para el trabajo real."
+        title={
+          <>
+            Tecnología para el trabajo <span className="mk-hero__accent">real</span>.
+          </>
+        }
         lead="Construimos agentes, automatizaciones y software alrededor de procesos que las empresas usan todos los días."
+        trust="Desde Antofagasta, para empresas que quieren trabajar mejor con tecnología."
         actions={[{ label: "Hablemos", href: "/diagnostico" }]}
-        note="Desde Antofagasta, para empresas que quieren trabajar mejor con tecnología."
-        center
+        visual={<Atmosphere />}
       />
 
-      <section className="mk-section--md mk-paper" aria-labelledby="n2-title">
+      <section className="mk-section--md mk-t-deep" aria-labelledby="n2-title">
         <div className="mk-container mk-close">
           <SectionHeading id="n2-title" center title="Primero entendemos el trabajo. Después elegimos la tecnología." />
         </div>
       </section>
 
-      <section className="mk-section--md" aria-labelledby="n3-title">
+      <section className="mk-section--md mk-t-paper" aria-labelledby="n3-title">
         <div className="mk-container">
           <SectionHeading id="n3-title" title="Qué hacemos." />
           <ul className="mk-ideas">
@@ -55,7 +64,7 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="mk-section--md mk-paper" aria-labelledby="n4-title">
+      <section className="mk-section--md mk-t-mist" aria-labelledby="n4-title">
         <div className="mk-container">
           <SectionHeading id="n4-title" title="Cómo trabajamos." />
           <ProcessSteps steps={CUSTOM_PROCESS} />

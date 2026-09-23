@@ -43,9 +43,10 @@ export function AgentSelector() {
       />
       <div
         id={PANEL_ID}
+        key={active}
         role="tabpanel"
         aria-labelledby={selectorTabId(ID_PREFIX, active)}
-        className="mk-agent-selector__panel"
+        className="mk-agent-selector__panel mk-t-paper"
       >
         <div className="mk-agent-selector__copy">
           <p className="mk-lead">{option.copy}</p>

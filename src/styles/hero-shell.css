@@ -1,0 +1,202 @@
+/*
+ * HeroShell — V3.3 §6–§7. Fondo Hero Gradient obligatorio en todo hero
+ * (`.mk-hero`), tamaños por tier (§6) y layout de dos columnas.
+ */
+
+/* ---------- Hero Gradient (T5, §4): arena → papel → celeste → glow azul ---------- */
+.mk-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: linear-gradient(
+    120deg,
+    var(--section-sand) 0%,
+    var(--section-paper) 38%,
+    var(--section-blue-mist) 68%,
+    var(--section-blue-soft) 100%
+  );
+}
+.mk-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(ellipse 75% 65% at 78% 30%, #000 0%, transparent 78%);
+  mask-image: radial-gradient(ellipse 75% 65% at 78% 30%, #000 0%, transparent 78%);
+  opacity: 0.5;
+}
+.mk-hero::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 62%;
+  aspect-ratio: 1;
+  right: -12%;
+  top: -18%;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--blue-glow, rgb(15 92 237 / 24%)) 0%, transparent 68%);
+  filter: blur(24px);
+  pointer-events: none;
+}
+
+/* ---------- Layout ---------- */
+.mk-hero__grid {
+  display: grid;
+  gap: 40px;
+  align-items: center;
+  position: relative;
+}
+.mk-hero__copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  position: relative;
+  z-index: 1;
+}
+.mk-hero__h1 {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  color: var(--ink);
+  text-wrap: balance;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  margin-top: 18px;
+}
+.mk-hero__accent {
+  color: var(--blue-text);
+}
+.mk-hero__lead {
+  margin-top: 22px;
+  max-width: 46ch;
+}
+.mk-hero__trust {
+  margin-top: 14px;
+}
+.mk-hero__actions {
+  margin-top: 30px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.mk-hero__product {
+  min-width: 0;
+  position: relative;
+}
+
+@media (min-width: 1024px) {
+  .mk-hero__grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 56px;
+  }
+}
+@media (min-width: 1200px) {
+  .mk-hero__grid {
+    gap: 72px;
+  }
+}
+
+/* ---------- Tamaños (§6) ---------- */
+.mk-hero--xl {
+  min-height: 600px;
+  padding: 96px 0 72px;
+}
+.mk-hero--xl .mk-hero__h1 {
+  font-size: clamp(44px, 10vw, 58px);
+  max-width: 12ch;
+}
+@media (min-width: 1024px) {
+  .mk-hero--xl {
+    min-height: 650px;
+  }
+  .mk-hero--xl .mk-hero__h1 {
+    font-size: clamp(64px, 7vw, 104px);
+    max-width: 11ch;
+  }
+}
+@media (min-width: 1200px) {
+  .mk-hero--xl {
+    min-height: 760px;
+    padding: 130px 0 96px;
+  }
+}
+
+.mk-hero--lPlus {
+  min-height: 560px;
+  padding: 88px 0 64px;
+}
+.mk-hero--lPlus .mk-hero__h1 {
+  font-size: clamp(40px, 9vw, 52px);
+  max-width: 11ch;
+}
+@media (min-width: 1024px) {
+  .mk-hero--lPlus {
+    min-height: 660px;
+  }
+  .mk-hero--lPlus .mk-hero__h1 {
+    font-size: 72px;
+    max-width: 9ch;
+  }
+}
+@media (min-width: 1200px) {
+  .mk-hero--lPlus {
+    min-height: 700px;
+  }
+  .mk-hero--lPlus .mk-hero__h1 {
+    font-size: clamp(72px, 6vw, 88px);
+  }
+}
+
+.mk-hero--l {
+  min-height: 500px;
+  padding: 80px 0 56px;
+}
+.mk-hero--l .mk-hero__h1 {
+  font-size: clamp(36px, 8vw, 48px);
+  max-width: 12ch;
+}
+@media (min-width: 1024px) {
+  .mk-hero--l {
+    min-height: 600px;
+  }
+  .mk-hero--l .mk-hero__h1 {
+    font-size: 64px;
+    max-width: 10ch;
+  }
+}
+@media (min-width: 1200px) {
+  .mk-hero--l {
+    min-height: 640px;
+  }
+  .mk-hero--l .mk-hero__h1 {
+    font-size: clamp(64px, 5.5vw, 80px);
+  }
+}
+
+.mk-hero--m {
+  min-height: 440px;
+  padding: 72px 0 48px;
+}
+.mk-hero--m .mk-hero__h1 {
+  font-size: clamp(32px, 7vw, 42px);
+  max-width: 14ch;
+}
+@media (min-width: 1024px) {
+  .mk-hero--m {
+    min-height: 520px;
+  }
+  .mk-hero--m .mk-hero__h1 {
+    font-size: 56px;
+    max-width: 12ch;
+  }
+}
+@media (min-width: 1200px) {
+  .mk-hero--m {
+    min-height: 580px;
+  }
+  .mk-hero--m .mk-hero__h1 {
+    font-size: clamp(60px, 5vw, 76px);
+  }
+}
