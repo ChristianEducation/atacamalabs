@@ -25,6 +25,7 @@ export function Header({ portalUrl }: { portalUrl: string | null }) {
   const [servicesExpandedMobile, setServicesExpandedMobile] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const servicesBtn = useRef<HTMLButtonElement>(null);
+  const closeTimer = useRef<number | null>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -32,6 +33,19 @@ export function Header({ portalUrl }: { portalUrl: string | null }) {
 
   const routeActive = (href: string) => (href === "/" ? pathname === "/" : pathname === href);
   const servicesActive = SERVICES_MENU.some((s) => pathname === s.href);
+
+  const cancelClose = useCallback(() => {
+    if (closeTimer.current) window.clearTimeout(closeTimer.current);
+    closeTimer.current = null;
+  }, []);
+
+  /** Con mouse: al salir del botón y del panel, el menú se guarda solo (con una pequeña tolerancia). */
+  const scheduleClose = useCallback(() => {
+    if (closeTimer.current) window.clearTimeout(closeTimer.current);
+    closeTimer.current = window.setTimeout(() => setServicesOpen(false), 220);
+  }, []);
+
+  useEffect(() => cancelClose, [cancelClose]);
 
   const closeMobile = useCallback((restoreFocus: boolean) => {
     setMobileOpen(false);
@@ -128,7 +142,14 @@ export function Header({ portalUrl }: { portalUrl: string | null }) {
           {navLink(NAV_TOP.platform.href, NAV_TOP.platform.label)}
           {navLink(NAV_TOP.agents.href, NAV_TOP.agents.label)}
 
-          <div className="mk-nav__group">
+          <div
+            className="mk-nav__group"
+            onMouseEnter={cancelClose}
+            onMouseLeave={scheduleClose}
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setServicesOpen(false);
+            }}
+          >
             <button
               ref={servicesBtn}
               type="button"
