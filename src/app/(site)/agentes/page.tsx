@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { ShieldCheck, UserRound, History } from "lucide-react";
-import { FeatureGrid, ProcessSteps, StandardImplementationNote } from "@/components/marketing/pages/Common";
 import { HeroShell } from "@/components/marketing/pages/HeroShell";
-import { AgentNetwork } from "@/components/marketing/pages/AgentNetwork";
-import { AgentSelector } from "@/components/marketing/pages/AgentsSections";
-import { CTABlock, SectionHeading } from "@/components/marketing/ui/Blocks";
-import { agentCta } from "@/lib/marketing/public-config";
-import { AGENTS_CATEGORIES, AGENTS_CONTROL, AGENTS_META_DESCRIPTION, AGENTS_STEPS, AGENTS_VERBS } from "@/content/marketing/agents";
+import { AgentHeroOffice } from "@/components/marketing/pages/AgentHeroOffice";
+import { AgentSelector } from "@/components/marketing/pages/AgentSelector";
+import { AgentOnboarding } from "@/components/marketing/pages/AgentOnboarding";
+import { AgentTools } from "@/components/marketing/pages/AgentTools";
+import { AgentControl } from "@/components/marketing/pages/AgentControl";
+import { SoftCTA } from "@/components/marketing/pages/HomeCTA";
+import { AGENTS_CTA, AGENTS_HERO, AGENTS_META_DESCRIPTION } from "@/content/marketing/agents";
 
 export const metadata: Metadata = {
   title: "Agentes — Atacama Labs",
@@ -14,113 +14,39 @@ export const metadata: Metadata = {
   alternates: { canonical: "/agentes" },
 };
 
-const CONTROL_ICONS = [ShieldCheck, UserRound, History];
-
 /**
- * /agentes — página principal de producto (V3.0.1 §8 + V3.3 §10–11, A1–A8).
- * Comercial, Cobranza, Administrativo/Financiero, Atención y Agendamiento
- * viven dentro del selector A3, que es el showcase más rico de la página
- * (Deep Tech, con un panel claro flotando encima para el contraste que
- * pide el spec).
+ * /agentes — ATACAMA_LABS_AGENTES_SPEC_V1. Una sola idea: incorporar a alguien
+ * que trabaja dentro de la empresa. Hero (la oficina donde el agente cambia de uniforme según el puesto; la pregunta que sigue es su remate), selector de
+ * puestos, su inducción, las herramientas que usa, hasta dónde puede llegar y
+ * cierre. Los enlaces del Home (`/agentes#cobranza`…) abren el puesto elegido.
  */
 export default function AgentsPage() {
-  const cta = agentCta();
   return (
     <>
       <HeroShell
         size="lPlus"
-        eyebrow="AGENTES INTELIGENTES"
+        eyebrow={AGENTS_HERO.eyebrow}
+        className="mk-hero--agents"
         title={
           <>
-            No solo responde.
-            <br />
-            Hace el <span className="mk-hero__accent">trabajo</span>.
+            <span className="mk-hero__line">No solo responde.</span>
+            <span className="mk-hero__line mk-hero__accent">Hace el trabajo.</span>
           </>
         }
-        lead="Conversa con tus clientes, consulta tus sistemas, actualiza información y ejecuta el siguiente paso. Tú decides hasta dónde llega."
-        actions={[
-          { label: "Verlo en acción", href: "#selector" },
-          { label: cta.label, href: cta.href, variant: "secondary" },
-        ]}
-        visual={<AgentNetwork />}
+        lead={AGENTS_HERO.lead}
+        actions={[AGENTS_HERO.primary, { ...AGENTS_HERO.secondary, variant: "secondary" }]}
+        visual={<AgentHeroOffice />}
       />
-
-      <section className="mk-section--md mk-t-paper" aria-labelledby="a2-title">
-        <div className="mk-container">
-          <SectionHeading
-            id="a2-title"
-            title="Un agente conectado a tu empresa."
-            lead="Puede conversar, consultar herramientas y ejecutar acciones dentro del mismo flujo. Empieza con una tarea y suma otras cuando las necesites."
-          />
-        </div>
-      </section>
-
-      <section id="selector" className="mk-section mk-t-deep" aria-labelledby="selector-title">
-        <div className="mk-container">
-          <SectionHeading
-            id="selector-title"
-            title="¿Qué quieres que haga tu agente?"
-            lead="Elige una forma de empezar y mira cómo trabaja."
-          />
-          <AgentSelector />
-        </div>
-      </section>
-
-      <section className="mk-section--md mk-t-sand" aria-labelledby="a4-title">
-        <div className="mk-container">
-          <SectionHeading
-            id="a4-title"
-            title="Habla con personas. Trabaja con sistemas."
-            lead="Lo importante no es el canal. Es que la conversación pueda terminar en una acción."
-          />
-          <ul className="mk-verbs">
-            {AGENTS_VERBS.map((v) => (
-              <li key={v}>{v}</li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      <section className="mk-section--md mk-t-mist" aria-labelledby="a5-title">
-        <div className="mk-container">
-          <SectionHeading id="a5-title" title="Se conecta a lo que ya usas." />
-          <ul className="mk-categories">
-            {AGENTS_CATEGORIES.map((c) => (
-              <li key={c} className="mk-badge mk-badge--neutral">
-                {c}
-              </li>
-            ))}
-          </ul>
-          <p className="mk-small mk-muted" style={{ marginTop: 16 }}>
-            Mediante conector, MCP, API o webhook, según lo que tu proceso necesite.
-          </p>
-        </div>
-      </section>
-
-      <section className="mk-section--md mk-t-paper" aria-labelledby="a6-title">
-        <div className="mk-container">
-          <SectionHeading id="a6-title" title="Tú decides hasta dónde llega." />
-          <FeatureGrid
-            items={AGENTS_CONTROL.map((c, i) => {
-              const Icon = CONTROL_ICONS[i];
-              return { icon: <Icon size={20} />, title: c.title, body: c.body };
-            })}
-          />
-        </div>
-      </section>
-
-      <section className="mk-section--md mk-t-sand" aria-labelledby="a7-title">
-        <div className="mk-container">
-          <SectionHeading id="a7-title" title="De diagnóstico a agente trabajando." />
-          <ProcessSteps steps={AGENTS_STEPS} />
-          <StandardImplementationNote />
-        </div>
-      </section>
-
-      <CTABlock
-        title="¿Qué sería lo primero que le delegarías?"
-        body="Cuéntanos el proceso y revisamos por dónde empezar."
-        cta={cta}
+      <AgentSelector />
+      <AgentOnboarding />
+      <AgentTools />
+      <AgentControl />
+      <SoftCTA
+        titleId="agents-cta-title"
+        title={AGENTS_CTA.title}
+        body={AGENTS_CTA.body}
+        primary={AGENTS_CTA.primary}
+        secondary={AGENTS_CTA.secondary}
       />
     </>
   );

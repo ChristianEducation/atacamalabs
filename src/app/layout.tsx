@@ -18,6 +18,7 @@ import "../styles/home-selector.css";
 import "../styles/web.css";
 import "../styles/custom.css";
 import "../styles/services-menu.css";
+import "../styles/agents.css";
 
 /**
  * Fuentes autoalojadas (spec C2): Newsreader (títulos, 500 roman; cursiva 500

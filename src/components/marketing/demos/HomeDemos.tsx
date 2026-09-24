@@ -26,7 +26,7 @@ import type { HomeSelectorId } from "@/content/marketing/home-selector";
 
 type Kind = "rise" | "slide" | "pop" | "fade" | "out" | "in" | "grow";
 
-function A({
+export function A({
   d,
   k = "rise",
   as,
@@ -49,7 +49,7 @@ function A({
   );
 }
 
-function ChatTop({ name }: { name: string }) {
+export function ChatTop({ name }: { name: string }) {
   return (
     <div className="mk-dm-top">
       <span className="mk-dm-av">
@@ -64,7 +64,7 @@ function ChatTop({ name }: { name: string }) {
 }
 
 /** Agente → herramienta: nodos, cable que crece y punto que viaja; el estado cambia al terminar. */
-function Tool({
+export function Tool({
   d,
   tool,
   icon,
@@ -103,7 +103,7 @@ function Tool({
   );
 }
 
-function Receipt({ d, title, sub }: { d: number; title: string; sub?: string }) {
+export function Receipt({ d, title, sub }: { d: number; title: string; sub?: string }) {
   return (
     <A d={d} k="pop" className="mk-receipt">
       <span className="mk-receipt__ic">
