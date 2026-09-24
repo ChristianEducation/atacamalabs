@@ -6,6 +6,7 @@ import { SnapCarousel } from "../ui/SnapCarousel";
 import { AgentBust } from "../pixel/AgentBust";
 import { PlatformPortal, PortalChrome } from "./PlatformPortal";
 import { PlatformInbox } from "./PlatformInbox";
+import { ToolsMarquee } from "./HomeIntegrations";
 import {
   CONTROL_CLOSING,
   CONTROL_HEADING,
@@ -15,7 +16,6 @@ import {
   FLOW_HEADING,
   HERO_STATS,
   INTEGRATION_COUNT,
-  INTEGRATION_PROTOCOLS,
   OMNI_HEADING,
   OMNI_NOTE,
   PLATFORM_AGENTS,
@@ -193,9 +193,9 @@ export function PlatformFlow() {
         </div>
         <div className="mk-pw__foot">
           <p className="mk-pw__count">{INTEGRATION_COUNT}</p>
-          <p className="mk-pw__proto">{INTEGRATION_PROTOCOLS}</p>
         </div>
       </div>
+      <ToolsMarquee className="mk-pw__strip" />
     </section>
   );
 }

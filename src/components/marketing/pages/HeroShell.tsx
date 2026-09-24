@@ -56,11 +56,11 @@ export function HeroShell({
               {actions.map((action, index) => {
                 const variant = action.variant ?? (index === 0 ? "primary" : "secondary");
                 return action.agent ? (
-                  <AgentCtaLink key={action.label} context={action.agent} variant={variant} arrow={index === 0}>
+                  <AgentCtaLink key={action.label} context={action.agent} variant={variant} arrow={index === 0 || variant === "tertiary"}>
                     {action.label}
                   </AgentCtaLink>
                 ) : (
-                  <ButtonLink key={action.href + action.label} href={action.href} variant={variant} arrow={index === 0}>
+                  <ButtonLink key={action.href + action.label} href={action.href} variant={variant} arrow={index === 0 || variant === "tertiary"}>
                     {action.label}
                   </ButtonLink>
                 );

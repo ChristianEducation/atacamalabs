@@ -58,15 +58,18 @@ export const CAPABILITY_LABEL: Record<CapabilityChoice, string> = {
 
 export const PLAN_LABEL: Record<string, string> = {
   esencial: "Esencial",
+  operacion: "Operación",
+  escala: "Escala",
   growth: "Growth",
   pro: "Pro",
   landing: "Landing",
+  profesional: "Web Profesional",
   corporativa: "Corporativa",
   ecommerce: "Ecommerce",
 };
 
-const AGENT_PLANS = new Set(["esencial", "growth", "pro"]);
-const WEB_PLANS = new Set(["landing", "corporativa", "ecommerce"]);
+const AGENT_PLANS = new Set(["esencial", "operacion", "escala", "growth", "pro"]);
+const WEB_PLANS = new Set(["landing", "profesional", "corporativa", "ecommerce"]);
 const NEEDS = new Set<string>(NEED_OPTIONS.map((n) => n.id));
 const INDUSTRIES = new Set<string>(INDUSTRY_OPTIONS.map((i) => i.id).filter(Boolean));
 const CAPABILITIES = new Set<string>(Object.keys(CAPABILITY_LABEL));

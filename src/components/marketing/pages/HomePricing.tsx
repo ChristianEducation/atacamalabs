@@ -5,14 +5,13 @@ import { ButtonLink } from "../ui/Button";
 import { SectionHeading } from "../ui/Blocks";
 import { Reveal } from "../motion/Reveal";
 import { SnapCarousel } from "../ui/SnapCarousel";
-import { AGENT_PLANS, renderPrice } from "@/content/marketing/pricing";
+import { AGENT_PLANS, OCTOBER_BENEFIT, agentPrice } from "@/content/marketing/pricing";
 
 /**
  * Precios del Home — HOME_SPEC_V1 §7. Tres planes resumidos (Esencial /
  * Operación / Escala), Operación destacado. Los importes salen del catálogo
- * comercial (`AGENT_PLANS`, hoy «Consultar»); aquí no se inventan valores ni
- * límites. Los ids del catálogo se conservan para el formulario; los nombres
- * públicos de la Home se alinearán con /precios al llegar a esa pantalla.
+ * comercial (`AGENT_PLANS`, el mismo de /precios): aquí no se escribe ninguna
+ * cifra. Los puntos y descripciones son un resumen; el detalle vive en /precios.
  */
 const HOME_PLANS = [
   {
@@ -52,14 +51,10 @@ export function HomePricing() {
           lead="Elige un alcance inicial y escala cuando tu operación lo necesite."
         />
 
-        <SnapCarousel
-          className="mk-home-plans"
-          label="Planes"
-          start={HOME_PLANS.findIndex((plan) => plan.featured)}
-        >
+        <SnapCarousel className="mk-home-plans" label="Planes" start={HOME_PLANS.findIndex((plan) => plan.featured)}>
           {HOME_PLANS.map((plan, index) => {
             const source = AGENT_PLANS[plan.catalog];
-            const price = renderPrice(source.price);
+            const price = agentPrice(source);
             return (
               <Reveal
                 as="article"
@@ -72,10 +67,14 @@ export function HomePricing() {
                   {plan.featured ? <Badge tone="blue">Para tu operación</Badge> : null}
                 </div>
                 <p className="mk-home-plan__desc">{plan.description}</p>
-                <p className="mk-home-plan__price" aria-label={price.accessibleLabel}>
-                  {price.headline}
+                <p className="mk-home-plan__price" aria-label={price.label}>
+                  {price.amount}
+                  <small>{price.unit}</small>
                 </p>
-                <p className="mk-home-plan__sub">{price.sub}</p>
+                <p className="mk-home-plan__sub">
+                  <s>{price.regular}</s> · {OCTOBER_BENEFIT.label}
+                </p>
+                <p className="mk-home-plan__sub">{price.setup}</p>
                 <ul className="mk-home-plan__points">
                   {plan.points.map((point) => (
                     <li key={point}>
@@ -84,7 +83,11 @@ export function HomePricing() {
                     </li>
                   ))}
                 </ul>
-                <ButtonLink href={source.cta.href} variant={plan.featured ? "primary" : "secondary"} block>
+                <ButtonLink
+                  href={`/diagnostico?necesidad=agentes&plan=${source.id}`}
+                  variant={plan.featured ? "primary" : "secondary"}
+                  block
+                >
                   {plan.cta}
                 </ButtonLink>
               </Reveal>

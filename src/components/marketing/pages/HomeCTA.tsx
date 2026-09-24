@@ -51,7 +51,11 @@ export function SoftCTA({
                 {primary.label}
               </ButtonLink>
             )}
-            {secondary ? (
+            {secondary?.agent ? (
+              <AgentCtaLink context={secondary.agent} variant="link" className="mk-home-cta__link">
+                {secondary.label}
+              </AgentCtaLink>
+            ) : secondary ? (
               <Link href={secondary.href} className="mk-home-cta__link">
                 {secondary.label}
               </Link>

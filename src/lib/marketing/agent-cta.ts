@@ -27,7 +27,10 @@ export function trackAgentCta(context: AgentCtaContext, opened: boolean) {
 /** Respaldo cuando el widget no está disponible: /diagnostico con el mismo contexto. */
 export function diagnosticFallback(context: AgentCtaContext): string {
   const params = new URLSearchParams();
-  params.set("servicio", context.service ?? "agentes");
+  const service = context.service ?? "agentes";
+  params.set("servicio", service);
+  // Compatibilidad con la preselección actual del formulario (`necesidad`); se retira con /diagnostico.
+  if (service === "agentes") params.set("necesidad", "agentes");
   params.set("source", context.source_page);
   params.set("section", context.source_section);
   if (context.interest) params.set("interes", context.interest);

@@ -200,3 +200,17 @@
     font-size: clamp(60px, 5vw, 76px);
   }
 }
+
+/* ---------- Móvil: el hero arranca casi pegado al header para que texto y visual convivan en pantalla ---------- */
+@media (max-width: 767px) {
+  .mk-hero--xl,
+  .mk-hero--lPlus,
+  .mk-hero--l,
+  .mk-hero--m {
+    min-height: 0;
+    padding: 24px 0 40px;
+  }
+  .mk-hero__grid {
+    gap: 28px;
+  }
+}

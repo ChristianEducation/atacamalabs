@@ -4,13 +4,13 @@ import { ButtonLink } from "../ui/Button";
 import { SectionHeading } from "../ui/Blocks";
 import { Reveal } from "../motion/Reveal";
 import { SnapCarousel } from "../ui/SnapCarousel";
-import { WEB_PLANS, renderPrice } from "@/content/marketing/pricing";
+import { WEB_PLANS, webPrice } from "@/content/marketing/pricing";
 import { WEB_FORMATS, WEB_FORMATS_HEADING } from "@/content/marketing/web-page";
 
 /**
  * Tres formatos — SPEC_WEB §5. Reúne qué construimos + cuánto cuesta en un
  * solo lugar; Web Profesional destacada. Los importes vienen del catálogo
- * (hoy «Consultar»): nunca se inventan cifras. Reveal al scroll con la
+ * compartido con /precios: nunca se escriben cifras aquí. Reveal al scroll con la
  * curva de la referencia (0,8 s, 20 px, una vez).
  */
 export function WebsitePlans() {
@@ -32,7 +32,7 @@ export function WebsitePlans() {
         >
           {WEB_FORMATS.map((format, index) => {
             const source = WEB_PLANS[format.catalog];
-            const price = renderPrice(source.price);
+            const price = webPrice(source);
             return (
               <Reveal
                 as="article"
@@ -43,10 +43,11 @@ export function WebsitePlans() {
                 <h3 className="mk-web-plan__name">{format.name}</h3>
                 <p className="mk-web-plan__msg">{format.message}</p>
                 {format.forWho ? <p className="mk-web-plan__for">{format.forWho}</p> : null}
-                <p className="mk-web-plan__price" aria-label={price.accessibleLabel}>
-                  {price.headline}
+                <p className="mk-web-plan__price" aria-label={price.label}>
+                  {price.amount}
+                  <small>{price.unit}</small>
                 </p>
-                <p className="mk-web-plan__sub">{price.sub}</p>
+                <p className="mk-web-plan__sub">{price.hosting}</p>
                 <p className="mk-web-plan__label">Incluye como base</p>
                 <ul className="mk-web-plan__list">
                   {format.includes.map((item) => (
@@ -56,7 +57,7 @@ export function WebsitePlans() {
                     </li>
                   ))}
                 </ul>
-                <ButtonLink href={source.cta.href} variant={format.featured ? "primary" : "secondary"} block>
+                <ButtonLink href={source.href} variant={format.featured ? "primary" : "secondary"} block>
                   {format.cta}
                 </ButtonLink>
               </Reveal>

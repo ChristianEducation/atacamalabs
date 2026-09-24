@@ -52,3 +52,17 @@ export function HomeIntegrations() {
     </section>
   );
 }
+
+/**
+ * Una sola fila del marquee del Home (mismas marcas, mismo movimiento lento),
+ * sin título ni sección propia: se coloca bajo un titular que ya la explica.
+ */
+export function ToolsMarquee({ className }: { className?: string }) {
+  return (
+    <div className={`mk-home-tools--slim ${className ?? ""}`}>
+      <div className="mk-home-tools__rows">
+        <Row tools={HOME_TOOLS} label="Herramientas conectables" />
+      </div>
+    </div>
+  );
+}

@@ -491,3 +491,47 @@
   text-decoration: underline;
   text-underline-offset: 4px;
 }
+
+.mk-home-plan__price small {
+  margin-left: 6px;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.mk-home-plan__sub + .mk-home-plan__sub {
+  margin-top: 6px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+/* Franja sutil (una sola fila) reutilizada fuera del Home. */
+.mk-home-tools--slim {
+  padding-block: clamp(30px, 4vw, 44px);
+}
+.mk-home-tools--slim .mk-home-tools__title {
+  font-family: var(--font-sans);
+  font-size: clamp(15px, 1.5vw, 17px);
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.mk-home-tools--slim .mk-home-tools__rows {
+  margin-top: 18px;
+}
+.mk-home-tools--slim .mk-home-tool {
+  padding: 6px 22px;
+  gap: 10px;
+}
+.mk-home-tools--slim .mk-home-tool__glyph {
+  width: 20px;
+  height: 20px;
+}
+.mk-home-tools--slim .mk-home-tool__name {
+  font-size: 15px;
+  font-weight: 500;
+}
+.mk-home-tools--slim .mk-home-tools__track {
+  animation-duration: 340s;
+}

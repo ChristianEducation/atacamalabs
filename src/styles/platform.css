@@ -1866,13 +1866,6 @@
   letter-spacing: -0.02em;
   color: var(--ink);
 }
-.mk-pw__proto {
-  margin: 10px 0 0;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  letter-spacing: 0.05em;
-  color: var(--blue-text);
-}
 
 @media (max-width: 1023px) {
   .mk-pl__card {
@@ -2025,4 +2018,13 @@
   .mk-hero--platform {
     padding: 44px 0 92px;
   }
+}
+
+/* La franja de herramientas cuelga bajo «+400 integraciones»: a sangre, sin título propio. */
+.mk-pw__strip.mk-home-tools--slim {
+  margin-top: 28px;
+  padding-block: 0;
+}
+.mk-pf-section:has(.mk-pw__strip) {
+  padding-bottom: clamp(48px, 6vw, 72px);
 }
