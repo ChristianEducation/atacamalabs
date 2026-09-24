@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { ButtonLink } from "../ui/Button";
 import { agentCta } from "@/lib/marketing/public-config";
+import { AgentTryButton } from "../shell/AgentTryButton";
 
 /**
  * Hero del Home — ATACAMA_LABS_HOME_SPEC_V1 §4. Video ambiental a pantalla
@@ -50,12 +50,12 @@ export function HomeHero() {
           </div>
         </div>
 
-        <Link href={agent.href} className="mk-home-hero__try">
+        <AgentTryButton href={agent.href} className="mk-home-hero__try">
           <span>Prueba al agente</span>
           <span className="mk-home-hero__try-icon" aria-hidden>
             <ArrowRight size={16} strokeWidth={2.2} />
           </span>
-        </Link>
+        </AgentTryButton>
       </section>
     </div>
   );

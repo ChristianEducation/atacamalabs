@@ -75,3 +75,14 @@ export function agentCta(): { label: string; href: string } {
   if (agentWidgetReady()) return { label: "Habla con nuestro agente", href: "/diagnostico" };
   return { label: "Agendar diagnóstico", href: "/diagnostico" };
 }
+
+/**
+ * ID público del widget del agente en Lety. Es público por diseño (lo restringen
+ * los dominios permitidos en Lety); se puede sobrescribir con
+ * NEXT_PUBLIC_LETY_WIDGET_ID. Devuelve null si se vacía explícitamente.
+ */
+export function letyWidgetId(): string | null {
+  const fromEnv = process.env.NEXT_PUBLIC_LETY_WIDGET_ID;
+  if (fromEnv !== undefined) return fromEnv.trim() || null;
+  return "w_6RrJRWrCxq3RNFnFtXujMX0e";
+}

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Header } from "@/components/marketing/shell/Header";
 import { Footer } from "@/components/marketing/shell/Footer";
+import { LetyWidget } from "@/components/marketing/shell/LetyWidget";
 import { clientPortalUrl } from "@/lib/marketing/public-config";
 
 /** Shell compartido de todas las rutas comerciales (N1/N2). Skip link, un único <main>. */
@@ -17,6 +18,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
         </main>
         <Footer />
       </div>
+      <LetyWidget />
     </>
   );
 }
