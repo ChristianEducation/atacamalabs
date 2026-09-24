@@ -13,6 +13,8 @@ import "../styles/lety.css";
 import "../styles/v3.css";
 import "../styles/section-themes.css";
 import "../styles/hero-shell.css";
+import "../styles/home.css";
+import "../styles/home-selector.css";
 
 /**
  * Fuentes autoalojadas (spec C2): Newsreader (títulos, 500 roman; cursiva 500

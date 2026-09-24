@@ -89,6 +89,52 @@ export const PREVIEW_PLACEHOLDERS: readonly string[] = [
   "ERP",
 ];
 
+export interface HomeTool {
+  id: string;
+  name: string;
+  logo: string;
+}
+
+/**
+ * Selección visual de la franja del Home (HOME_SPEC_V1 §5.3). Herramientas
+ * conectables desde nuestra arquitectura; la lista pública final se valida
+ * antes del deploy. Logos monocromos Simple Icons (CC0) en /visual/integrations.
+ */
+export const HOME_TOOLS: readonly HomeTool[] = [
+  { id: "whatsapp", name: "WhatsApp", logo: "/visual/integrations/whatsapp.svg" },
+  { id: "googlecalendar", name: "Google Calendar", logo: "/visual/integrations/googlecalendar.svg" },
+  { id: "hubspot", name: "HubSpot", logo: "/visual/integrations/hubspot.svg" },
+  { id: "gmail", name: "Gmail", logo: "/visual/integrations/gmail.svg" },
+  { id: "slack", name: "Slack", logo: "/visual/integrations/slack.svg" },
+  { id: "googlesheets", name: "Google Sheets", logo: "/visual/integrations/googlesheets.svg" },
+  { id: "salesforce", name: "Salesforce", logo: "/visual/integrations/salesforce.svg" },
+  { id: "microsoftoutlook", name: "Outlook", logo: "/visual/integrations/microsoftoutlook.svg" },
+  { id: "notion", name: "Notion", logo: "/visual/integrations/notion.svg" },
+  { id: "googledrive", name: "Google Drive", logo: "/visual/integrations/googledrive.svg" },
+  { id: "calendly", name: "Calendly", logo: "/visual/integrations/calendly.svg" },
+  { id: "microsoftteams", name: "Microsoft Teams", logo: "/visual/integrations/microsoftteams.svg" },
+  { id: "instagram", name: "Instagram", logo: "/visual/integrations/instagram.svg" },
+  { id: "zoom", name: "Zoom", logo: "/visual/integrations/zoom.svg" },
+  { id: "stripe", name: "Stripe", logo: "/visual/integrations/stripe.svg" },
+  { id: "googlemeet", name: "Google Meet", logo: "/visual/integrations/googlemeet.svg" },
+  { id: "shopify", name: "Shopify", logo: "/visual/integrations/shopify.svg" },
+  { id: "telegram", name: "Telegram", logo: "/visual/integrations/telegram.svg" },
+  { id: "zapier", name: "Zapier", logo: "/visual/integrations/zapier.svg" },
+  { id: "airtable", name: "Airtable", logo: "/visual/integrations/airtable.svg" },
+  { id: "woocommerce", name: "WooCommerce", logo: "/visual/integrations/woocommerce.svg" },
+  { id: "messenger", name: "Messenger", logo: "/visual/integrations/messenger.svg" },
+  { id: "n8n", name: "n8n", logo: "/visual/integrations/n8n.svg" },
+  { id: "trello", name: "Trello", logo: "/visual/integrations/trello.svg" },
+  { id: "mercadopago", name: "Mercado Pago", logo: "/visual/integrations/mercadopago.svg" },
+  { id: "asana", name: "Asana", logo: "/visual/integrations/asana.svg" },
+  { id: "zoho", name: "Zoho", logo: "/visual/integrations/zoho.svg" },
+  { id: "jira", name: "Jira", logo: "/visual/integrations/jira.svg" },
+  { id: "wordpress", name: "WordPress", logo: "/visual/integrations/wordpress.svg" },
+  { id: "mailchimp", name: "Mailchimp", logo: "/visual/integrations/mailchimp.svg" },
+  { id: "supabase", name: "Supabase", logo: "/visual/integrations/supabase.svg" },
+  { id: "postgresql", name: "PostgreSQL", logo: "/visual/integrations/postgresql.svg" },
+];
+
 export interface MarqueeEntry {
   id: string;
   name: string;

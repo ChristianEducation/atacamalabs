@@ -3,11 +3,9 @@
 import { useReducedMotion } from "../motion/reduced-motion";
 
 /**
- * Fallback del visual atmosférico del Home (V3.3 §8) mientras no exista el
- * video final: topografía abstracta, nodos discretos y una señal que viaja
- * lentamente. Decorativa, no un dashboard ni un chat. SVG/CSS puro; sin
- * señal cuando `prefers-reduced-motion`. Usar siempre a través de
- * `HomeAtmosphere`, que decide entre video real y este fallback.
+ * Visual atmosférico abstracto (topografía, nodos discretos y una señal que
+ * viaja lentamente). Decorativo, no un dashboard ni un chat. SVG/CSS puro;
+ * sin señal cuando `prefers-reduced-motion`.
  */
 export function Atmosphere() {
   const reduced = useReducedMotion();

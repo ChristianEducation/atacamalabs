@@ -1,0 +1,98 @@
+import { Check } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Badge } from "../ui/Badge";
+import { ButtonLink } from "../ui/Button";
+import { SectionHeading } from "../ui/Blocks";
+import { Reveal } from "../motion/Reveal";
+import { AGENT_PLANS, renderPrice } from "@/content/marketing/pricing";
+
+/**
+ * Precios del Home — HOME_SPEC_V1 §7. Tres planes resumidos (Esencial /
+ * Operación / Escala), Operación destacado. Los importes salen del catálogo
+ * comercial (`AGENT_PLANS`, hoy «Consultar»); aquí no se inventan valores ni
+ * límites. Los ids del catálogo se conservan para el formulario; los nombres
+ * públicos de la Home se alinearán con /precios al llegar a esa pantalla.
+ */
+const HOME_PLANS = [
+  {
+    catalog: 0,
+    name: "Esencial",
+    description: "Para empezar con un agente y un alcance inicial definido.",
+    points: ["Un proceso inicial a delegar", "Conexión a las herramientas del proceso", "Puesta en marcha acompañada"],
+    cta: "Empezar con Esencial",
+    featured: false,
+  },
+  {
+    catalog: 1,
+    name: "Operación",
+    description: "Para ampliar agentes, volumen y acompañamiento a medida que tu operación crece.",
+    points: ["Varios agentes o procesos", "Más volumen y canales", "Acompañamiento continuo"],
+    cta: "Empezar con Operación",
+    featured: true,
+  },
+  {
+    catalog: 2,
+    name: "Escala",
+    description: "Para equipos con mayor volumen, complejidad o necesidades de soporte.",
+    points: ["Operación en varias áreas", "Integraciones y acciones más complejas", "Soporte acordado según necesidad"],
+    cta: "Empezar con Escala",
+    featured: false,
+  },
+] as const;
+
+export function HomePricing() {
+  return (
+    <section id="precios" className="mk-section mk-t-sand" aria-labelledby="home-pricing-title">
+      <div className="mk-container">
+        <SectionHeading
+          id="home-pricing-title"
+          center
+          title="Empieza con lo que necesitas hoy."
+          lead="Elige un alcance inicial y escala cuando tu operación lo necesite."
+        />
+
+        <div className="mk-home-plans">
+          {HOME_PLANS.map((plan, index) => {
+            const source = AGENT_PLANS[plan.catalog];
+            const price = renderPrice(source.price);
+            return (
+              <Reveal
+                as="article"
+                key={plan.name}
+                delay={index * 70}
+                className={cn("mk-home-plan", plan.featured && "is-featured")}
+              >
+                <div className="mk-home-plan__top">
+                  <h3 className="mk-home-plan__name">{plan.name}</h3>
+                  {plan.featured ? <Badge tone="blue">Para tu operación</Badge> : null}
+                </div>
+                <p className="mk-home-plan__desc">{plan.description}</p>
+                <p className="mk-home-plan__price" aria-label={price.accessibleLabel}>
+                  {price.headline}
+                </p>
+                <p className="mk-home-plan__sub">{price.sub}</p>
+                <ul className="mk-home-plan__points">
+                  {plan.points.map((point) => (
+                    <li key={point}>
+                      <Check size={16} strokeWidth={2.2} aria-hidden />
+                      {point}
+                    </li>
+                  ))}
+                </ul>
+                <ButtonLink href={source.cta.href} variant={plan.featured ? "primary" : "secondary"} block>
+                  {plan.cta}
+                </ButtonLink>
+              </Reveal>
+            );
+          })}
+        </div>
+
+        <p className="mk-pricing-more">
+          <ButtonLink href="/precios" variant="tertiary" arrow>
+            Ver todos los precios
+          </ButtonLink>
+        </p>
+      </div>
+    </section>
+  );
+}
