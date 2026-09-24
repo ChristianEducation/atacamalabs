@@ -118,7 +118,6 @@ export const HOME_TOOLS: readonly HomeTool[] = [
   { id: "stripe", name: "Stripe", logo: "/visual/integrations/stripe.svg" },
   { id: "googlemeet", name: "Google Meet", logo: "/visual/integrations/googlemeet.svg" },
   { id: "shopify", name: "Shopify", logo: "/visual/integrations/shopify.svg" },
-  { id: "telegram", name: "Telegram", logo: "/visual/integrations/telegram.svg" },
   { id: "zapier", name: "Zapier", logo: "/visual/integrations/zapier.svg" },
   { id: "airtable", name: "Airtable", logo: "/visual/integrations/airtable.svg" },
   { id: "woocommerce", name: "WooCommerce", logo: "/visual/integrations/woocommerce.svg" },
