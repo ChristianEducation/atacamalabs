@@ -75,7 +75,8 @@ function MiniPage({ id }: { id: string }) {
  * hace el visitante en la web (formulario, compra o consulta) sale de «Tu web»
  * y activa herramientas conectadas, que responden con un resultado concreto.
  * El disparador rota cada ~5,6 s. Distinta del esquema «hub» de la referencia:
- * aquí hay causa → efecto de izquierda a derecha. Se pausa fuera de pantalla;
+ * aquí hay causa → efecto de izquierda a derecha (en móvil, de arriba abajo:
+ * una gota de luz baja por un eje central y enciende cada herramienta). Se pausa fuera de pantalla;
  * con reduced-motion queda el primer caso completo y estático.
  */
 export function WebsiteConnectionScene() {
@@ -126,6 +127,8 @@ export function WebsiteConnectionScene() {
   const current = WEB_CONNECT_STEPS[step];
   const animate = live && !reduced;
   const activeIds = WEB_CONNECT_TOOLS.filter((t) => current.results[t.id]).map((t) => t.id);
+  /** Última fila que se activa: en móvil la gota de luz baja hasta ahí (`--last`). */
+  const lastActive = WEB_CONNECT_TOOLS.reduce((last, t, i) => (current.results[t.id] ? i : last), 0);
 
   return (
     <section id="conexiones" className="mk-section--md mk-t-mist mk-conn" aria-labelledby="web-connect-title">
@@ -206,13 +209,17 @@ export function WebsiteConnectionScene() {
                 })}
               </svg>
 
-              <ul className="mk-cs__tools">
-                {WEB_CONNECT_TOOLS.map((tool) => {
+              <ul className="mk-cs__tools" style={{ ["--last" as string]: lastActive }}>
+                {WEB_CONNECT_TOOLS.map((tool, index) => {
                   const active = activeIds.indexOf(tool.id);
                   const result = current.results[tool.id];
                   const at = 2.35 + Math.max(active, 0) * 0.25;
                   return (
-                    <li key={tool.id} className={cn("mk-cs__row", result && "is-on")} style={d(at)}>
+                    <li
+                      key={tool.id}
+                      className={cn("mk-cs__row", result && "is-on")}
+                      style={{ ...d(at), ["--r" as string]: index }}
+                    >
                       <span className="mk-cs__tile">
                         <span
                           className="mk-cs__glyph"

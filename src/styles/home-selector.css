@@ -953,3 +953,34 @@
     transition: none;
   }
 }
+
+/* ---------- Móvil: texto del selector más compacto ---------- */
+@media (max-width: 639px) {
+  .mk-sel-copy {
+    padding: 26px 20px 24px;
+  }
+  .mk-sel-num {
+    margin-bottom: 12px;
+  }
+  .mk-sel-title {
+    max-width: none;
+    margin-bottom: 12px;
+    font-size: 30px;
+  }
+  .mk-sel-desc {
+    margin-bottom: 18px;
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  .mk-sel-features {
+    gap: 10px;
+    margin-bottom: 22px;
+  }
+  .mk-sel-features li {
+    gap: 10px;
+    font-size: 14px;
+  }
+  .mk-sel-visual {
+    padding: 22px 12px;
+  }
+}

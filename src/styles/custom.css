@@ -555,11 +555,13 @@
   stroke-linecap: round;
 }
 .mk-cst__signal {
+  /* Invisible hasta que su animación empieza; si no, queda un punto en la esquina del SVG. */
+  opacity: 0;
   fill: var(--blue);
   stroke: #fff;
   stroke-width: 1.2;
 }
-.mk-cst__arrow {
+.mk-cst__wires--v {
   display: none;
 }
 .mk-cst__hub {
@@ -658,58 +660,101 @@
   font-size: 13px;
   color: var(--muted);
 }
+@keyframes mk-cst-beat {
+  0%,
+  100% {
+    box-shadow:
+      0 0 28px rgb(15 92 237 / 20%),
+      0 24px 50px -24px rgb(18 26 43 / 40%);
+  }
+  50% {
+    box-shadow:
+      0 0 46px rgb(15 92 237 / 38%),
+      0 24px 50px -24px rgb(18 26 43 / 40%);
+  }
+}
+/* Móvil: embudo vertical. Lo que ya tienes entra por arriba, converge en la
+   montaña de Atacama y se abre en lo que construimos. Las columnas de las
+   fichas y del lienzo SVG comparten el mismo ancho para que los cables caigan
+   justo sobre cada ficha. */
 @media (max-width: 899px) {
   .mk-cst {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     justify-items: center;
     margin-top: 40px;
   }
-  .mk-cst__col {
+  .mk-cst__col,
+  .mk-cst__link {
     width: 100%;
+    max-width: 400px;
+  }
+  .mk-cst__link {
+    height: auto;
   }
   .mk-cst__side {
     position: static;
-    margin-bottom: 12px;
+    margin-bottom: 14px;
     text-align: center;
   }
   .mk-cst__list {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 14px 18px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-auto-rows: auto;
+    align-items: start;
   }
   .mk-cst__list li {
     flex-direction: column;
-    gap: 6px;
-    width: 92px;
+    gap: 7px;
   }
   .mk-cst__name {
-    font-size: 12px;
+    font-size: 11px;
+    line-height: 1.25;
     text-align: center;
   }
-  .mk-cst__link {
-    height: 44px;
-  }
-  .mk-cst__wires {
+  .mk-cst__wires--h {
     display: none;
   }
-  .mk-cst__arrow {
+  .mk-cst__wires--v {
     display: block;
-    width: 2px;
-    height: 100%;
-    margin-inline: auto;
-    border-radius: 2px;
-    background: linear-gradient(var(--blue), rgb(15 92 237 / 15%));
+    width: 100%;
+    height: auto;
+    margin-block: 4px;
+  }
+  .mk-cst__hub {
+    gap: 8px;
+    padding: 16px 26px 14px;
+    border-radius: 22px;
+    animation: mk-cst-beat 2.4s ease-in-out infinite;
+  }
+  .mk-cst__mark {
+    width: 84px;
   }
   .mk-cst__builds {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     grid-auto-rows: auto;
-    gap: 10px;
-    max-width: 360px;
-    margin-inline: auto;
+    gap: 0;
   }
   .mk-cst__builds li {
-    height: auto;
-    padding: 14px 16px;
+    flex-direction: column;
+    height: 100%;
+    margin-inline: 4px;
+    gap: 8px;
+    padding: 14px 8px;
+    border-radius: 16px;
+    text-align: center;
+  }
+  .mk-cst__b-ic {
+    width: 38px;
+    height: 38px;
+  }
+  .mk-cst__builds strong {
+    font-size: 12.5px;
+    line-height: 1.25;
+  }
+  .mk-cst__builds small {
+    font-size: 11px;
+  }
+  .mk-cst__also {
+    margin-top: 32px;
   }
 }
 
@@ -820,26 +865,74 @@
 .mk-cf[data-phase="play"] .mk-cf-it--grow {
   animation: mk-cp-grow 300ms ease calc(var(--t, 0) * 1ms) both;
 }
-@media (max-width: 859px) {
+/* Móvil: los cinco pasos siguen en una sola fila. Cada nodo toma su ancho natural
+   (sin partir palabras) y un riel continuo detrás de los íconos hace de conexión. */
+@keyframes mk-cf-rail {
+  from {
+    transform: scaleX(0);
+  }
+}
+@media (max-width: 639px) {
   .mk-cf {
-    padding: 28px 16px 32px;
+    padding: 24px 8px 28px;
+    border-radius: 20px;
+  }
+  .mk-cf__body {
+    min-height: 0;
+  }
+  .mk-cf__intro {
+    margin-bottom: 24px;
+    font-size: 14.5px;
+    line-height: 1.5;
   }
   .mk-cf__flow {
-    flex-direction: column;
-    align-items: center;
+    position: relative;
+    justify-content: space-between;
+    column-gap: 8px;
   }
-  .mk-cf__step {
-    flex-direction: column;
-    align-items: center;
+  .mk-cf__flow::before {
+    content: "";
+    position: absolute;
+    top: 17px;
+    right: 18px;
+    left: 18px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--blue);
+    transform-origin: left center;
+  }
+  .mk-cf[data-phase="armed"] .mk-cf__flow::before {
+    opacity: 0;
+  }
+  .mk-cf[data-phase="play"] .mk-cf__flow::before {
+    animation: mk-cf-rail 1800ms linear 300ms both;
   }
   .mk-cf__line {
-    width: 2px;
-    height: 20px;
-    margin: 6px 0;
-    transform-origin: top center;
+    display: none;
   }
-  .mk-cf[data-phase="play"] .mk-cf-it--grow {
-    animation-name: mk-cp-growy;
+  .mk-cf__node {
+    position: relative;
+    width: auto;
+    min-width: 36px;
+    gap: 8px;
+  }
+  .mk-cf__tile {
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+  }
+  .mk-cf__label {
+    font-size: 10px;
+    line-height: 1.25;
+  }
+  .mk-cf__result {
+    margin-top: 26px;
+    font-size: 13px;
+  }
+}
+@media (max-width: 359px) {
+  .mk-cf__label {
+    font-size: 9px;
   }
 }
 
@@ -919,6 +1012,7 @@
   .mk-cb__float,
   .mk-cb__star,
   .mk-cb__ping i,
+  .mk-cst__hub,
   .mk-cursor {
     animation: none;
   }
@@ -1255,3 +1349,159 @@
   }
 }
 
+/* ---------- Móvil: versión compacta de las piezas más altas ---------- */
+.mk-pc__now {
+  display: none;
+}
+@media (max-width: 639px) {
+  /* Hero: la tarjeta del constructor deja de ocupar una pantalla entera. */
+  .mk-cb {
+    padding: 14px 4px;
+  }
+  .mk-cb__float,
+  .mk-cb__star {
+    display: none;
+  }
+  .mk-cb__card {
+    padding: 18px;
+    border-radius: 22px;
+  }
+  .mk-cb__head {
+    padding-bottom: 12px;
+  }
+  .mk-cb__label {
+    margin: 14px 0 6px;
+  }
+  .mk-cb__prompt {
+    min-height: 0;
+    padding: 12px 13px;
+  }
+  .mk-cb__prompt p {
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  .mk-cb__row:last-child {
+    display: none;
+  }
+  .mk-cb__btn {
+    height: 44px;
+    margin-top: 14px;
+    font-size: 14px;
+  }
+
+  /* Proceso: los cuatro momentos pasan a una tira horizontal y el texto del momento actual queda debajo. */
+  .mk-pc {
+    gap: 16px;
+    margin-top: 36px;
+  }
+  .mk-pc__steps {
+    flex-direction: row;
+    gap: 0;
+  }
+  .mk-pc__steps > li {
+    position: relative;
+    display: flex;
+    flex: 1;
+    justify-content: center;
+  }
+  .mk-pc__steps > li:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: calc(50% + 26px);
+    width: calc(100% - 52px);
+    height: 2px;
+    margin-top: -1px;
+    border-radius: 2px;
+    background: rgb(15 92 237 / 18%);
+    transition: background 300ms ease;
+  }
+  .mk-pc__steps > li:has(.is-past)::after {
+    background: rgb(15 92 237 / 45%);
+  }
+  .mk-pc__step {
+    width: auto;
+    padding: 4px;
+    border-radius: 999px;
+  }
+  .mk-pc__step.is-current {
+    border-color: transparent;
+    background: transparent;
+  }
+  .mk-pc__num {
+    width: 36px;
+    height: 36px;
+  }
+  /* El texto sigue disponible para lectores de pantalla; a la vista queda en .mk-pc__now. */
+  .mk-pc__txt {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .mk-pc__now {
+    display: block;
+    min-height: 92px;
+    padding-inline: 4px;
+  }
+  .mk-pc__now strong {
+    display: block;
+    font-size: 15.5px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .mk-pc__now span {
+    display: block;
+    margin-top: 5px;
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--muted);
+  }
+
+  /* Implementación: número a la izquierda con un hilo que une los pasos. */
+  .mk-cu-steps {
+    gap: 0;
+    margin-top: 36px;
+  }
+  .mk-cu-steps__item {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    column-gap: 14px;
+    align-items: start;
+  }
+  .mk-cu-steps__head {
+    flex-direction: column;
+    grid-row: 1 / span 2;
+    align-self: stretch;
+    margin: 0;
+  }
+  .mk-cu-steps__num {
+    width: 40px;
+    height: 40px;
+  }
+  .mk-cu-steps__line {
+    display: block;
+    flex: 1;
+    width: 1px;
+    height: auto;
+    min-height: 10px;
+    margin-top: 8px;
+    background: linear-gradient(rgb(15 92 237 / 32%), transparent);
+  }
+  .mk-cu-steps__item h3 {
+    margin: 2px 0 4px;
+    font-size: 17px;
+  }
+  .mk-cu-steps__item p {
+    padding-bottom: 22px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .mk-cu-steps__item:last-child p {
+    padding-bottom: 0;
+  }
+}

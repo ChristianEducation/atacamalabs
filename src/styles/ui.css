@@ -867,3 +867,81 @@
   border-color: var(--blue);
   color: var(--blue-text);
 }
+
+/* ---------- Carrusel con snap (SnapCarousel) ---------- */
+/* El espacio superior lo define la grilla de cada uso, no la regla `.mk-heading-block + *`. */
+.mk-heading-block + .mk-snap {
+  margin-top: 0;
+}
+.mk-snap__dots {
+  display: none;
+}
+@media (max-width: 1023px) {
+  /* Doble clase: gana a la grilla propia de cada uso (.mk-home-plans, .mk-web-plans…). */
+  .mk-snap .mk-snap__track {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    gap: 14px;
+    max-width: none;
+    margin-inline: calc(var(--gutter) * -1);
+    margin-bottom: -40px;
+    padding: 14px var(--gutter) 68px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-padding-inline: var(--gutter);
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+  .mk-snap__track::-webkit-scrollbar {
+    display: none;
+  }
+  .mk-snap__track > * {
+    flex: 0 0 min(84%, 340px);
+    scroll-snap-align: center;
+  }
+  .mk-snap__dots {
+    display: flex;
+    justify-content: center;
+    gap: 2px;
+  }
+  .mk-snap__dot {
+    position: relative;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+  }
+  .mk-snap__dot::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 7px;
+    height: 7px;
+    margin: -3.5px 0 0 -3.5px;
+    border-radius: 999px;
+    background: rgb(18 26 43 / 22%);
+    transition:
+      width 260ms var(--ease-out),
+      margin 260ms var(--ease-out),
+      background 260ms ease;
+  }
+  .mk-snap__dot[aria-current="true"]::before {
+    width: 20px;
+    margin-left: -10px;
+    background: var(--blue);
+  }
+  .mk-snap__dot:focus-visible {
+    outline: 2px solid var(--blue);
+    outline-offset: -2px;
+    border-radius: 8px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mk-snap__dot::before {
+    transition: none;
+  }
+}

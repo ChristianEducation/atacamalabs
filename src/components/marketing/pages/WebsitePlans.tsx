@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { ButtonLink } from "../ui/Button";
 import { SectionHeading } from "../ui/Blocks";
 import { Reveal } from "../motion/Reveal";
+import { SnapCarousel } from "../ui/SnapCarousel";
 import { WEB_PLANS, renderPrice } from "@/content/marketing/pricing";
 import { WEB_FORMATS, WEB_FORMATS_HEADING } from "@/content/marketing/web-page";
 
@@ -24,7 +25,11 @@ export function WebsitePlans() {
           lead={WEB_FORMATS_HEADING.lead}
         />
 
-        <div className="mk-web-plans">
+        <SnapCarousel
+          className="mk-web-plans"
+          label="Formatos de web"
+          start={WEB_FORMATS.findIndex((format) => format.featured)}
+        >
           {WEB_FORMATS.map((format, index) => {
             const source = WEB_PLANS[format.catalog];
             const price = renderPrice(source.price);
@@ -57,7 +62,7 @@ export function WebsitePlans() {
               </Reveal>
             );
           })}
-        </div>
+        </SnapCarousel>
       </div>
     </section>
   );

@@ -7,11 +7,15 @@ import { Reveal } from "../motion/Reveal";
 import { useReducedMotion } from "../motion/reduced-motion";
 import { CUSTOM_STACK } from "@/content/marketing/custom-page";
 
+/** Escritorio: cables horizontales entre columnas. */
 const H = 360;
 const W = 110;
 const LEFT_ROW = H / CUSTOM_STACK.have.length;
 const RIGHT_ROW = H / CUSTOM_STACK.build.length;
 const MID = H / 2;
+/** Móvil: la misma idea en vertical (embudo), sobre un lienzo de 400 × 64 que escala con el ancho. */
+const VW = 400;
+const VH = 64;
 
 const HAVE_ICONS: Record<string, LucideIcon> = { mail: Mail, crm: Users, db: Database, erp: Server };
 const BUILD_ICONS: Record<string, LucideIcon> = { panel: LayoutDashboard, portal: Users, auto: Zap };
@@ -33,9 +37,35 @@ const fanOut = (j: number) => {
   return `M0 ${MID} C ${W / 2} ${MID}, ${W / 2} ${y}, ${W} ${y}`;
 };
 
-function Wires({ paths, offset, id }: { paths: string[]; offset: number; id: string }) {
+const columnX = (index: number, count: number) => (VW / count) * (index + 0.5);
+const funnelIn = (i: number) => {
+  const x = columnX(i, CUSTOM_STACK.have.length);
+  return `M${x} 0 C ${x} ${VH / 2}, ${VW / 2} ${VH / 2}, ${VW / 2} ${VH}`;
+};
+const funnelOut = (j: number) => {
+  const x = columnX(j, CUSTOM_STACK.build.length);
+  return `M${VW / 2} 0 C ${VW / 2} ${VH / 2}, ${x} ${VH / 2}, ${x} ${VH}`;
+};
+
+function Wires({
+  paths,
+  offset,
+  id,
+  vertical = false,
+}: {
+  paths: string[];
+  offset: number;
+  id: string;
+  vertical?: boolean;
+}) {
   return (
-    <svg className="mk-cst__wires" viewBox={`0 0 ${W} ${H}`} width={W} height={H} fill="none" aria-hidden="true">
+    <svg
+      className={vertical ? "mk-cst__wires mk-cst__wires--v" : "mk-cst__wires mk-cst__wires--h"}
+      viewBox={vertical ? `0 0 ${VW} ${VH}` : `0 0 ${W} ${H}`}
+      {...(vertical ? {} : { width: W, height: H })}
+      fill="none"
+      aria-hidden="true"
+    >
       <defs>
         <filter id={id} x="-80%" y="-80%" width="260%" height="260%">
           <feGaussianBlur stdDeviation="2.4" result="b" />
@@ -128,7 +158,7 @@ export function CustomStack() {
 
             <div className="mk-cst__link mk-cst__link--in">
               <Wires paths={CUSTOM_STACK.have.map((_, i) => fanIn(i))} offset={0} id="mk-cst-glow-a" />
-              <span className="mk-cst__arrow" aria-hidden />
+              <Wires paths={CUSTOM_STACK.have.map((_, i) => funnelIn(i))} offset={0} id="mk-cst-glow-av" vertical />
             </div>
 
             <div className="mk-cst__hub">
@@ -140,7 +170,7 @@ export function CustomStack() {
 
             <div className="mk-cst__link mk-cst__link--out">
               <Wires paths={CUSTOM_STACK.build.map((_, j) => fanOut(j))} offset={1.1} id="mk-cst-glow-b" />
-              <span className="mk-cst__arrow" aria-hidden />
+              <Wires paths={CUSTOM_STACK.build.map((_, j) => funnelOut(j))} offset={1.1} id="mk-cst-glow-bv" vertical />
             </div>
 
             <div className="mk-cst__col mk-cst__col--build">

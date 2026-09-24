@@ -185,6 +185,11 @@ export function CustomProcess() {
             ))}
           </ol>
 
+          <div className="mk-pc__now" aria-hidden="true">
+            <strong>{MOMENTS[step].title}</strong>
+            <span>{MOMENTS[step].body}</span>
+          </div>
+
           <div className="mk-pc__stage">
             <div className="mk-pc__flow">
               {FLOW.map((node, i) => {

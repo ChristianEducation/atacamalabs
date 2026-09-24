@@ -4,6 +4,7 @@ import { Badge } from "../ui/Badge";
 import { ButtonLink } from "../ui/Button";
 import { SectionHeading } from "../ui/Blocks";
 import { Reveal } from "../motion/Reveal";
+import { SnapCarousel } from "../ui/SnapCarousel";
 import { AGENT_PLANS, renderPrice } from "@/content/marketing/pricing";
 
 /**
@@ -51,7 +52,11 @@ export function HomePricing() {
           lead="Elige un alcance inicial y escala cuando tu operación lo necesite."
         />
 
-        <div className="mk-home-plans">
+        <SnapCarousel
+          className="mk-home-plans"
+          label="Planes"
+          start={HOME_PLANS.findIndex((plan) => plan.featured)}
+        >
           {HOME_PLANS.map((plan, index) => {
             const source = AGENT_PLANS[plan.catalog];
             const price = renderPrice(source.price);
@@ -85,7 +90,7 @@ export function HomePricing() {
               </Reveal>
             );
           })}
-        </div>
+        </SnapCarousel>
 
         <p className="mk-pricing-more">
           <ButtonLink href="/precios" variant="tertiary" arrow>
