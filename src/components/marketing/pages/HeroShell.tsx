@@ -1,11 +1,15 @@
 import type { ReactNode } from "react";
 import { ButtonLink } from "../ui/Button";
 import { cn } from "@/lib/utils";
+import type { AgentCtaContext } from "@/lib/marketing/agent-cta";
+import { AgentCtaLink } from "../shell/AgentCtaLink";
 
 export interface HeroAction {
   label: string;
   href: string;
   variant?: "primary" | "secondary" | "tertiary" | "white";
+  /** Si viene, el botón abre a Nayra con este contexto y `href` queda solo como respaldo. */
+  agent?: AgentCtaContext;
 }
 
 /**
@@ -49,16 +53,18 @@ export function HeroShell({
           {trust ? <p className="mk-small mk-muted mk-hero__trust">{trust}</p> : null}
           {actions && actions.length > 0 ? (
             <div className="mk-hero__actions">
-              {actions.map((action, index) => (
-                <ButtonLink
-                  key={action.href + action.label}
-                  href={action.href}
-                  variant={action.variant ?? (index === 0 ? "primary" : "secondary")}
-                  arrow={index === 0}
-                >
-                  {action.label}
-                </ButtonLink>
-              ))}
+              {actions.map((action, index) => {
+                const variant = action.variant ?? (index === 0 ? "primary" : "secondary");
+                return action.agent ? (
+                  <AgentCtaLink key={action.label} context={action.agent} variant={variant} arrow={index === 0}>
+                    {action.label}
+                  </AgentCtaLink>
+                ) : (
+                  <ButtonLink key={action.href + action.label} href={action.href} variant={variant} arrow={index === 0}>
+                    {action.label}
+                  </ButtonLink>
+                );
+              })}
             </div>
           ) : null}
         </div>

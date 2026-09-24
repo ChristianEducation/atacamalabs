@@ -1,12 +1,16 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import type { AgentCtaContext } from "@/lib/marketing/agent-cta";
 import { ButtonLink } from "../ui/Button";
+import { AgentCtaLink } from "../shell/AgentCtaLink";
 import { Reveal } from "../motion/Reveal";
 
 interface CtaLink {
   label: string;
   href: string;
+  /** Si viene, el botón abre a Nayra con este contexto y `href` queda solo como respaldo. */
+  agent?: AgentCtaContext;
 }
 
 /**
@@ -38,9 +42,15 @@ export function SoftCTA({
           </h2>
           <p className="mk-home-cta__body">{body}</p>
           <div className="mk-home-cta__actions">
-            <ButtonLink href={primary.href} arrow>
-              {primary.label}
-            </ButtonLink>
+            {primary.agent ? (
+              <AgentCtaLink context={primary.agent} arrow>
+                {primary.label}
+              </AgentCtaLink>
+            ) : (
+              <ButtonLink href={primary.href} arrow>
+                {primary.label}
+              </ButtonLink>
+            )}
             {secondary ? (
               <Link href={secondary.href} className="mk-home-cta__link">
                 {secondary.label}

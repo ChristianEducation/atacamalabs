@@ -1,36 +1,46 @@
 import type { Metadata } from "next";
-import { Layers, ListChecks, ShieldCheck } from "lucide-react";
-import { FeatureGrid } from "@/components/marketing/pages/Common";
 import { HeroShell } from "@/components/marketing/pages/HeroShell";
-import { PlatformWorkbench } from "@/components/marketing/demos/PlatformWorkbench";
-import { CTABlock, SectionHeading } from "@/components/marketing/ui/Blocks";
-import { agentCta } from "@/lib/marketing/public-config";
+import { SoftCTA } from "@/components/marketing/pages/HomeCTA";
+import {
+  PlatformControl,
+  PlatformDemo,
+  PlatformFlow,
+  PlatformHeroPortal,
+  PlatformOmni,
+} from "@/components/marketing/pages/PlatformSections";
+import {
+  PLATFORM_CTA,
+  PLATFORM_FINAL_CTA,
+  PLATFORM_HERO,
+  PLATFORM_HERO_CTA,
+  PLATFORM_META,
+} from "@/content/marketing/platform";
 
 export const metadata: Metadata = {
-  title: "Plataforma — Atacama Labs",
-  description:
-    "Conversaciones, contactos, tareas y próximos pasos reunidos para que tu equipo sepa qué pasó y qué sigue.",
-  alternates: { canonical: "/plataforma" },
+  title: { absolute: PLATFORM_META.title },
+  description: PLATFORM_META.description,
+  alternates: { canonical: PLATFORM_META.canonical },
+  openGraph: {
+    title: PLATFORM_META.title,
+    description: PLATFORM_META.description,
+    url: PLATFORM_META.canonical,
+    type: "website",
+  },
 };
 
-const BENEFITS = [
-  { icon: <Layers size={20} />, title: "Todo el contexto", body: "Conversaciones, contactos y actividad en un mismo lugar." },
-  { icon: <ListChecks size={20} />, title: "Trabajo visible", body: "Estados y próximos pasos claros para el equipo." },
-  { icon: <ShieldCheck size={20} />, title: "Control", body: "Reglas, permisos y derivaciones cuando corresponde." },
-] as const;
-
 /**
- * /plataforma (V3.0.1 §9 + V3.3 §12): Hero Gradient → Product view (Paper,
- * grande) → Benefits (Blue Mist) → Connections (Sand) → CTA. El hero muestra
- * una vista compacta; la sección de producto es el momento grande.
+ * /plataforma (PLATAFORMA_SPEC_V1): dónde el cliente ve y controla lo que
+ * hacen sus agentes. Hero con el portal en pequeño → demo principal de seis
+ * vistas (Paper) → bandeja omnicanal (Blue Mist) → control del cliente (Sand)
+ * → integraciones y trabajo real (Paper) → cierre suave. Los dos CTA abren a
+ * Nayra con contexto (CTA_SYSTEM_SPEC §2).
  */
 export default function PlatformPage() {
-  const cta = agentCta();
   return (
     <>
       <HeroShell
         size="l"
-        eyebrow="PLATAFORMA"
+        eyebrow={PLATFORM_HERO.eyebrow}
         title={
           <>
             Tus agentes trabajan.
@@ -38,43 +48,20 @@ export default function PlatformPage() {
             Tú mantienes el <span className="mk-hero__accent">control</span>.
           </>
         }
-        lead="Conversaciones, contactos, tareas y próximos pasos reunidos para que tu equipo sepa qué pasó y qué sigue."
-        actions={[{ label: cta.label, href: cta.href }]}
-        visual={<PlatformWorkbench compact />}
+        lead={PLATFORM_HERO.lead}
+        actions={[{ label: PLATFORM_HERO.cta, href: "/diagnostico", agent: PLATFORM_HERO_CTA }]}
+        visual={<PlatformHeroPortal />}
+        className="mk-hero--platform"
       />
-
-      <section className="mk-section mk-t-paper" aria-labelledby="p2-title">
-        <div className="mk-container">
-          <SectionHeading id="p2-title" title="Desde aquí ves lo que están haciendo tus agentes." />
-          <PlatformWorkbench />
-          <p className="mk-small mk-muted" style={{ marginTop: 16 }}>
-            Representación ilustrativa. Las vistas y funciones se configuran según tu solución.
-          </p>
-        </div>
-      </section>
-
-      <section className="mk-section--md mk-t-mist" aria-labelledby="p3-title">
-        <div className="mk-container">
-          <SectionHeading id="p3-title" title="Todo el contexto, en un mismo lugar." />
-          <FeatureGrid items={BENEFITS} />
-        </div>
-      </section>
-
-      <section className="mk-section--md mk-t-sand" aria-labelledby="p4-title">
-        <div className="mk-container mk-close">
-          <SectionHeading
-            id="p4-title"
-            center
-            title="Conectada al trabajo del agente."
-            lead="La plataforma acompaña el trabajo del agente y se conecta con las herramientas que el proceso necesita."
-          />
-        </div>
-      </section>
-
-      <CTABlock
-        title="Mira cómo podría funcionar en tu empresa."
-        body="Cuéntanos tu proceso y revisamos el alcance."
-        cta={cta}
+      <PlatformDemo />
+      <PlatformOmni />
+      <PlatformControl />
+      <PlatformFlow />
+      <SoftCTA
+        titleId="platform-cta-title"
+        title={PLATFORM_CTA.title}
+        body={PLATFORM_CTA.body}
+        primary={{ label: PLATFORM_CTA.label, href: "/diagnostico", agent: PLATFORM_FINAL_CTA }}
       />
     </>
   );
