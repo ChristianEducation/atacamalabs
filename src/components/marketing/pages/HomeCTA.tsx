@@ -1,4 +1,6 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 import { ButtonLink } from "../ui/Button";
 import { Reveal } from "../motion/Reveal";
 
@@ -18,15 +20,17 @@ export function SoftCTA({
   primary,
   secondary,
   titleId = "soft-cta-title",
+  wide,
 }: {
-  title: string;
+  title: ReactNode;
   body: string;
   primary: CtaLink;
   secondary?: CtaLink;
   titleId?: string;
+  wide?: boolean;
 }) {
   return (
-    <section className="mk-home-cta mk-t-mist" aria-labelledby={titleId}>
+    <section className={cn("mk-home-cta mk-t-mist", wide && "mk-home-cta--wide")} aria-labelledby={titleId}>
       <div className="mk-container">
         <Reveal className="mk-home-cta__inner">
           <h2 id={titleId} className="mk-home-cta__title">

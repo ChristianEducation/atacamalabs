@@ -32,13 +32,13 @@ export const SERVICES: readonly ServiceNav[] = [
     id: "a-medida",
     label: "A Medida",
     href: "/a-medida",
-    blurb: "Conectamos sistemas y construimos el flujo alrededor de tu proceso.",
+    blurb: "Sistemas, integraciones y automatizaciones alrededor de tu proceso.",
   },
   {
     id: "web",
     label: "Páginas Web",
     href: "/paginas-web",
-    blurb: "Experiencias web claras, rápidas y conectables.",
+    blurb: "Una web que trabaja: clara, rápida y conectable.",
   },
 ] as const;
 

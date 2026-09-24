@@ -8,6 +8,7 @@ import { ChevronDown, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { agentCta } from "@/lib/marketing/public-config";
 import { setGlobalPause } from "../motion/coordinator";
+import { ServicesPanel } from "./ServicesPanel";
 import { NAV_TOP, SERVICES_MENU } from "@/content/marketing/nav";
 
 /**
@@ -141,21 +142,7 @@ export function Header({ portalUrl }: { portalUrl: string | null }) {
             </button>
             {servicesOpen ? (
               <div id="mk-services-panel" className="mk-dropdown mk-dropdown--services">
-                <ul className="mk-dropdown__grid">
-                  {SERVICES_MENU.map((service) => (
-                    <li key={service.id}>
-                      <Link
-                        href={service.href}
-                        className="mk-dropdown__link"
-                        aria-current={routeActive(service.href) ? "page" : undefined}
-                        onClick={() => setServicesOpen(false)}
-                      >
-                        <span className="mk-dropdown__title">{service.label}</span>
-                        <span className="mk-dropdown__blurb">{service.blurb}</span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
+                <ServicesPanel activePath={pathname} onNavigate={() => setServicesOpen(false)} />
               </div>
             ) : null}
           </div>
@@ -235,6 +222,7 @@ export function Header({ portalUrl }: { portalUrl: string | null }) {
                     <li key={s.id}>
                       <Link href={s.href} onClick={() => closeMobile(false)} aria-current={routeActive(s.href) ? "page" : undefined}>
                         {s.label}
+                        <span className="mk-mobile__blurb">{s.blurb}</span>
                       </Link>
                     </li>
                   ))}

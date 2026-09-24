@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
-import { Blocks, LayoutGrid, Rows3, Workflow } from "lucide-react";
-import { FeatureGrid, ProcessSteps } from "@/components/marketing/pages/Common";
 import { HeroShell } from "@/components/marketing/pages/HeroShell";
-import { IntegrationFlow } from "@/components/marketing/pages/CustomSections";
-import { CTABlock, SectionHeading } from "@/components/marketing/ui/Blocks";
-import { CUSTOM_GROUPS, CUSTOM_META, CUSTOM_PROCESS } from "@/content/marketing/custom";
+import { CustomHeroBuilder } from "@/components/marketing/pages/CustomHeroBuilder";
+import { CustomProcess } from "@/components/marketing/pages/CustomProcess";
+import { CustomStack } from "@/components/marketing/pages/CustomStack";
+import { CustomCases } from "@/components/marketing/pages/CustomCases";
+import { CustomSteps } from "@/components/marketing/pages/CustomSteps";
+import { SoftCTA } from "@/components/marketing/pages/HomeCTA";
+import { CUSTOM_META } from "@/content/marketing/custom";
+import { CUSTOM_CTA, CUSTOM_HERO } from "@/content/marketing/custom-page";
 
 export const metadata: Metadata = {
   title: "A Medida — Atacama Labs",
@@ -12,74 +15,49 @@ export const metadata: Metadata = {
   alternates: { canonical: "/a-medida" },
 };
 
-const GROUP_ICONS = [Workflow, Rows3, LayoutGrid, Blocks];
-
 /**
- * /a-medida (V3.0.1 §10 + V3.3 §13, M1–M6). Hero Gradient → Problem (Deep
- * Tech) → Flow (Blue Mist) → What we build (Paper) → Process (Sand) → CTA.
- * Sin dashboard ni builder de escenarios: el diagrama abstracto explica
- * integración, no se disfraza de interfaz real.
+ * /a-medida — ATACAMA_LABS_A_MEDIDA_SPEC_V1 §3. Orden: Hero (builder) →
+ * Muéstranos cómo trabajas hoy (una pieza en 4 momentos) → Integraciones (lo que ya tienes → Atacama → lo que construimos) → Casos →
+ * Implementación → CTA. Sin pricing ni selector de agentes.
  */
 export default function CustomPage() {
   return (
     <>
       <HeroShell
         size="l"
-        eyebrow="A MEDIDA"
+        className="mk-hero--custom"
+        eyebrow={CUSTOM_HERO.eyebrow}
         title={
           <>
             Tu proceso primero.
             <br />
-            El <span className="mk-hero__accent">software</span> después.
+            <span className="mk-hero__accent">El software después.</span>
           </>
         }
-        lead="Conectamos herramientas, automatizamos tareas y construimos alrededor de cómo trabaja tu empresa."
-        actions={[{ label: "Revisar mi proceso", href: "/diagnostico?necesidad=a-medida" }]}
-        visual={<IntegrationFlow instance="a-medida-hero" result="Sistema en marcha" />}
+        lead={CUSTOM_HERO.lead}
+        trust={CUSTOM_HERO.trust}
+        actions={[
+          { label: CUSTOM_CTA.hero.label, href: CUSTOM_CTA.hero.href },
+          { label: "Ver cómo trabajamos", href: "#como-trabajas", variant: "secondary" },
+        ]}
+        visual={<CustomHeroBuilder />}
       />
-
-      <section className="mk-section--md mk-t-deep" aria-labelledby="m2-title">
-        <div className="mk-container mk-close">
-          <SectionHeading
-            id="m2-title"
-            center
-            title="Cuando el trabajo vive entre planillas, correos y sistemas separados."
-            lead="Cada sistema guarda una parte del proceso y alguien tiene que unir la información a mano."
-          />
-        </div>
-      </section>
-
-      <section className="mk-section mk-t-mist" aria-labelledby="m3-title">
-        <div className="mk-container">
-          <SectionHeading id="m3-title" center title="Así se conecta tu proceso." />
-          <IntegrationFlow instance="a-medida" result="Registro actualizado en ambos sistemas" />
-        </div>
-      </section>
-
-      <section className="mk-section--md mk-t-paper" aria-labelledby="m4-title">
-        <div className="mk-container">
-          <SectionHeading id="m4-title" title="Qué construimos." />
-          <FeatureGrid
-            columns={2}
-            items={CUSTOM_GROUPS.map((g, i) => {
-              const Icon = GROUP_ICONS[i];
-              return { icon: <Icon size={20} />, title: g.title, body: g.body };
-            })}
-          />
-        </div>
-      </section>
-
-      <section className="mk-section--md mk-t-sand" aria-labelledby="m5-title">
-        <div className="mk-container">
-          <SectionHeading id="m5-title" title="De la idea al sistema." />
-          <ProcessSteps steps={CUSTOM_PROCESS} />
-        </div>
-      </section>
-
-      <CTABlock
-        title="Cuéntanos el proceso. Diseñamos el sistema."
-        body="El alcance depende del proceso, las integraciones y la interfaz necesaria. Siempre a medida."
-        cta={{ label: "Revisar mi proceso", href: "/diagnostico?necesidad=a-medida" }}
+      <CustomProcess />
+      <CustomStack />
+      <CustomCases />
+      <CustomSteps />
+      <SoftCTA
+        wide
+        titleId="custom-cta-title"
+        title={
+          <>
+            {CUSTOM_CTA.titleA}
+            <br />
+            <span className="mk-hero__accent">{CUSTOM_CTA.titleB}</span>
+          </>
+        }
+        body={CUSTOM_CTA.body}
+        primary={CUSTOM_CTA.primary}
       />
     </>
   );
