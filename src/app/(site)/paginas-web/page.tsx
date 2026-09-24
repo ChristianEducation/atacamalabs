@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { ProcessSteps } from "@/components/marketing/pages/Common";
 import { HeroShell } from "@/components/marketing/pages/HeroShell";
-import { WebBrowserAbstract } from "@/components/marketing/pages/WebBrowserAbstract";
-import { PricingGrid } from "@/components/marketing/ui/Pricing";
-import { CTABlock, SectionHeading } from "@/components/marketing/ui/Blocks";
-import { WEB_META, WEB_STEPS } from "@/content/marketing/web";
-import { WEB_PLANS } from "@/content/marketing/pricing";
+import { WebsiteHeroBrowser } from "@/components/marketing/pages/WebsiteHeroBrowser";
+import { WebsitePlans } from "@/components/marketing/pages/WebsitePlans";
+import { WebsiteConnectionScene } from "@/components/marketing/pages/WebsiteConnectionScene";
+import { WebsiteFaq, WebsiteIncludes, WebsiteProcess } from "@/components/marketing/pages/WebsiteSections";
+import { SoftCTA } from "@/components/marketing/pages/HomeCTA";
+import { WEB_META } from "@/content/marketing/web";
+import { WEB_CTA } from "@/content/marketing/web-page";
 
 export const metadata: Metadata = {
   title: "Páginas Web — Atacama Labs",
@@ -14,16 +15,17 @@ export const metadata: Metadata = {
 };
 
 /**
- * /paginas-web (V3.0.1 §11 + V3.3 §14, W1–W6). Hero Gradient → Formatos
- * (Paper) → Proceso (Blue Mist) → Conexiones (Sand) → CTA (Deep Tech). Puede
- * tener personalidad propia, pero sin heredar la metáfora de misiones de
- * /agentes. Sin galería de casos y sin precio inventado.
+ * /paginas-web — ATACAMA_LABS_PAGINAS_WEB_SPEC_V1 §3. Orden: Hero (browser que
+ * se construye) → Tres formatos → Puede ser el comienzo del proceso → Qué
+ * incluye → Proceso → FAQ → CTA. «Trabajo real» (§9) queda fuera hasta contar
+ * con casos y capturas verificados.
  */
 export default function WebsitesPage() {
   return (
     <>
       <HeroShell
-        size="m"
+        size="l"
+        className="mk-hero--web"
         eyebrow="PÁGINAS WEB"
         title={
           <>
@@ -31,40 +33,18 @@ export default function WebsitesPage() {
           </>
         }
         lead="Diseñamos landing pages, sitios corporativos y ecommerce claros, rápidos y pensados para llevar al visitante al siguiente paso."
-        actions={[{ label: "Cotizar mi web", href: "/diagnostico?necesidad=web" }]}
-        visual={<WebBrowserAbstract />}
+        actions={[
+          { label: "Cotizar mi web", href: "/diagnostico?necesidad=web" },
+          { label: "Ver planes", href: "#formatos", variant: "secondary" },
+        ]}
+        visual={<WebsiteHeroBrowser />}
       />
-
-      <section id="formatos" className="mk-section mk-t-paper" aria-labelledby="w2-title">
-        <div className="mk-container">
-          <SectionHeading id="w2-title" title="Tres formatos." />
-          <PricingGrid plans={WEB_PLANS} featuresLimit={4} />
-        </div>
-      </section>
-
-      <section className="mk-section--md mk-t-mist" aria-labelledby="w4-title">
-        <div className="mk-container">
-          <SectionHeading id="w4-title" title="Del contenido a una web publicada." />
-          <ProcessSteps steps={WEB_STEPS} columns={5} />
-        </div>
-      </section>
-
-      <section className="mk-section--md mk-t-sand" aria-labelledby="w5-title">
-        <div className="mk-container mk-close">
-          <SectionHeading
-            id="w5-title"
-            center
-            title="Puede ser el comienzo del proceso."
-            lead="Tu web puede iniciar un proceso: enviar un lead a un agente, una agenda, un CRM u otro sistema."
-          />
-        </div>
-      </section>
-
-      <CTABlock
-        title="Cotiza tu web."
-        body="Cuéntanos el objetivo y el contenido disponible; revisamos alcance y plazo contigo."
-        cta={{ label: "Cotizar mi web", href: "/diagnostico?necesidad=web" }}
-      />
+      <WebsitePlans />
+      <WebsiteConnectionScene />
+      <WebsiteIncludes />
+      <WebsiteProcess />
+      <WebsiteFaq />
+      <SoftCTA titleId="web-cta-title" title={WEB_CTA.title} body={WEB_CTA.body} primary={WEB_CTA.cta} />
     </>
   );
 }

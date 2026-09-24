@@ -15,6 +15,7 @@ import "../styles/section-themes.css";
 import "../styles/hero-shell.css";
 import "../styles/home.css";
 import "../styles/home-selector.css";
+import "../styles/web.css";
 
 /**
  * Fuentes autoalojadas (spec C2): Newsreader (títulos, 500 roman; cursiva 500

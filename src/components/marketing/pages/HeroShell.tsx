@@ -25,6 +25,7 @@ export function HeroShell({
   trust,
   actions,
   visual,
+  className,
 }: {
   id?: string;
   size: "xl" | "lPlus" | "l" | "m";
@@ -34,9 +35,10 @@ export function HeroShell({
   trust?: ReactNode;
   actions?: readonly HeroAction[];
   visual: ReactNode;
+  className?: string;
 }) {
   return (
-    <section className={cn("mk-hero", `mk-hero--${size}`)} aria-labelledby={id}>
+    <section className={cn("mk-hero", `mk-hero--${size}`, className)} aria-labelledby={id}>
       <div className="mk-container mk-hero__grid">
         <div className="mk-hero__copy">
           <p className="mk-eyebrow">{eyebrow}</p>
