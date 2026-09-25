@@ -83,30 +83,43 @@
     justify-content: center;
   }
 }
-.mk-rb-nav__tabs li {
+.mk-rb-nav__list {
   display: flex;
-  flex: none;
+  gap: 4px;
 }
 .mk-rb-nav .mk-sel-tab {
   display: inline-flex;
   align-items: center;
+  flex: none;
   text-decoration: none;
   min-height: 40px;
   padding: 0 16px;
 }
-.mk-rb-nav .mk-sel-tab[aria-current="true"] {
-  color: var(--blue-text);
-  background: rgb(15 92 237 / 8%);
-}
-.mk-rb-nav .mk-sel-tab[aria-current="true"]::before {
-  opacity: 1;
-  transform: scaleX(1);
-}
 
 /* ---------- Sección de rubro ---------- */
 .mk-rb-sec {
-  padding-block: clamp(56px, 7vw, 96px);
-  scroll-margin-top: calc(var(--header-h) + 56px);
+  padding-block: clamp(40px, 5vw, 72px);
+}
+.mk-rb-sec[hidden] {
+  display: none;
+}
+.mk-rb-stagewrap {
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+.mk-rb-stagewrap[data-leaving] {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+.mk-rb-stagewrap.is-entering .mk-rb-sec:not([hidden]) {
+  animation: mk-rb-panel-in 260ms var(--ease-out) both;
+}
+@keyframes mk-rb-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
 }
 .mk-rb-grid {
   display: grid;
@@ -227,8 +240,31 @@
   background: #fff;
   box-shadow: 0 30px 70px -40px rgb(18 26 43 / 28%);
 }
+.mk-rb-demo__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.mk-rb-demo__avatar {
+  display: grid;
+  place-items: end center;
+  flex: none;
+  width: 72px;
+  height: 72px;
+  padding-top: 6px;
+  border: 1px solid rgb(15 92 237 / 18%);
+  border-radius: 16px;
+  background: linear-gradient(160deg, #eaf1ff, #dbe7ff);
+  overflow: hidden;
+}
+.mk-rb-demo__role {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
 .mk-rb-demo__label {
-  margin: 0 0 14px;
+  margin: 0;
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
@@ -736,6 +772,8 @@
   .mk-rb-demo .mk-rb-receipt,
   .mk-rb-demo .mk-rb-aside__wait,
   .mk-rb-demo .mk-rb-aside__done,
+  .mk-rb-stagewrap,
+  .mk-rb-stagewrap .mk-rb-sec,
   .mk-rbs__scene,
   .mk-rbs__scene .mk-rbs__copy,
   .mk-rbs__scene .mk-rbs__flow li {

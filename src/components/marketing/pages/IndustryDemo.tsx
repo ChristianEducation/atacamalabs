@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useReducedMotion } from "../motion/reduced-motion";
+import { IndustryBust, hasIndustryBust } from "../pixel/IndustryBust";
 import type { IndustryExperience } from "@/content/marketing/industries";
 
 type Phase = "static" | "armed" | "play";
@@ -53,7 +54,17 @@ export function IndustryDemo({ industry }: { industry: IndustryExperience }) {
       data-phase={phase}
       style={{ ["--msgs" as string]: beats } as React.CSSProperties}
     >
-      <p className="mk-rb-demo__label">Así trabaja tu agente</p>
+      <div className="mk-rb-demo__head">
+        {hasIndustryBust(industry.slug) ? (
+          <span className="mk-rb-demo__avatar">
+            <IndustryBust industry={industry.slug} size={64} />
+          </span>
+        ) : null}
+        <div>
+          <p className="mk-rb-demo__label">Así trabaja tu agente</p>
+          {hasIndustryBust(industry.slug) ? <p className="mk-rb-demo__role">Agente de {industry.shortLabel}</p> : null}
+        </div>
+      </div>
 
       <div className={cn("mk-rb-demo__body", aside && "has-aside")}>
         <div className="mk-rb-chatcol">

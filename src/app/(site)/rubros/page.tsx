@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { HeroShell } from "@/components/marketing/pages/HeroShell";
-import { IndustrySelectorBar } from "@/components/marketing/pages/IndustrySelectorBar";
-import { IndustrySections, OtherIndustry, RubrosHeroVisual } from "@/components/marketing/pages/IndustrySections";
+import { IndustryExplorer } from "@/components/marketing/pages/IndustryExplorer";
+import { OtherIndustry, RubrosHeroVisual } from "@/components/marketing/pages/IndustrySections";
 
 const TITLE = "Rubros e industrias para agentes de IA — Atacama Labs";
 const DESCRIPTION =
@@ -37,8 +37,7 @@ export default function RubrosPage() {
         className="mk-hero--rubros"
       />
       <div className="mk-rb">
-        <IndustrySelectorBar />
-        <IndustrySections />
+        <IndustryExplorer />
         <OtherIndustry />
       </div>
     </>

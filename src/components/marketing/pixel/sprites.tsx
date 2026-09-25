@@ -43,7 +43,7 @@ export type Pose = "stand" | "walk" | "read" | "point" | "hold" | "sit";
 export interface Outfit {
   shirt: string;
   shade: string;
-  gear: "base" | "tie" | "visor" | "glasses" | "headset" | "hard" | "none";
+  gear: "base" | "tie" | "visor" | "glasses" | "headset" | "hard" | "chef" | "none";
 }
 
 /** Uniforme de la inducción: azul Atacama con la montaña en la credencial. */
@@ -52,13 +52,39 @@ export const BASE_OUTFIT: Outfit = { shirt: PAL.shirt, shade: PAL.shirtShade, ge
 function gearOnHead(dy: number, outfit: Outfit): Rect[] {
   switch (outfit.gear) {
     case "visor":
-      return [[0, -24 + dy, 8, 2, outfit.shade], [7, -23 + dy, 2, 1, outfit.shade]];
+      return [
+        [0, -24 + dy, 8, 2, outfit.shade],
+        [7, -23 + dy, 2, 1, outfit.shade],
+      ];
     case "hard":
-      return [[0, -25 + dy, 8, 2, PAL.amber], [1, -26 + dy, 6, 1, PAL.amber], [3, -27 + dy, 2, 1, PAL.amber]];
+      return [
+        [0, -25 + dy, 8, 2, PAL.amber],
+        [1, -26 + dy, 6, 1, PAL.amber],
+        [3, -27 + dy, 2, 1, PAL.amber],
+      ];
     case "headset":
-      return [[1, -25 + dy, 6, 1, PAL.ink], [0, -22 + dy, 2, 3, PAL.ink], [6, -19 + dy, 3, 1, PAL.ink]];
+      return [
+        [1, -25 + dy, 6, 1, PAL.ink],
+        [0, -22 + dy, 2, 3, PAL.ink],
+        [6, -19 + dy, 3, 1, PAL.ink],
+      ];
     case "glasses":
       return [[4, -21 + dy, 4, 1, PAL.ink]];
+    case "chef":
+      // Gorro de cocina: banda, copa y un sombreado suave en la base de la copa.
+      return [
+        [1, -25 + dy, 6, 1, PAL.white],
+        [0, -28 + dy, 8, 3, PAL.white],
+        [0, -26 + dy, 8, 1, "#dfe4ee"],
+        // Contorno fino para que el gorro blanco se lea sobre fondos claros.
+        [1, -29 + dy, 6, 1, PAL.steelDark],
+        [0, -28 + dy, 1, 1, PAL.steelDark],
+        [7, -28 + dy, 1, 1, PAL.steelDark],
+        [-1, -27 + dy, 1, 2, PAL.steelDark],
+        [8, -27 + dy, 1, 2, PAL.steelDark],
+        [0, -25 + dy, 1, 1, PAL.steelDark],
+        [7, -25 + dy, 1, 1, PAL.steelDark],
+      ];
     default:
       return [];
   }
@@ -74,11 +100,19 @@ const upper = (dy: number, outfit: Outfit): Rect[] => [
   [1, -17 + dy, 2, 9, outfit.shade],
   ...(outfit.gear === "tie"
     ? ([[6, -17 + dy, 1, 6, PAL.amber]] as Rect[])
-    : ([
-        // credencial con la montaña
-        [5, -15 + dy, 2, 2, PAL.white],
-        [5, -14 + dy, 1, 1, PAL.shirt],
-      ] as Rect[])),
+    : outfit.gear === "chef"
+      ? // Delantal: pechera blanca con tirantes al cuello.
+        ([
+          [2, -14 + dy, 5, 6, PAL.white],
+          [2, -17 + dy, 1, 3, PAL.white],
+          [6, -17 + dy, 1, 3, PAL.white],
+          [3, -12 + dy, 3, 1, "#dfe4ee"],
+        ] as Rect[])
+      : ([
+          // credencial con la montaña
+          [5, -15 + dy, 2, 2, PAL.white],
+          [5, -14 + dy, 1, 1, PAL.shirt],
+        ] as Rect[])),
   ...(outfit.gear === "glasses" ? ([[3, -17 + dy, 4, 1, PAL.white]] as Rect[]) : []),
 ];
 
@@ -179,9 +213,29 @@ export function Character({ pose, frame = 0, outfit }: { pose: Pose; frame?: num
 
 /** Iconos de 4–5 píxeles que usa la pizarra de funciones. */
 export const GLYPHS = {
-  check: [[0, 2], [1, 3], [2, 2], [3, 1], [4, 0]],
-  cross: [[0, 0], [1, 1], [2, 2], [3, 3], [3, 0], [2, 1], [1, 2], [0, 3]],
-  bang: [[2, 0], [2, 1], [2, 2], [2, 4]],
+  check: [
+    [0, 2],
+    [1, 3],
+    [2, 2],
+    [3, 1],
+    [4, 0],
+  ],
+  cross: [
+    [0, 0],
+    [1, 1],
+    [2, 2],
+    [3, 3],
+    [3, 0],
+    [2, 1],
+    [1, 2],
+    [0, 3],
+  ],
+  bang: [
+    [2, 0],
+    [2, 1],
+    [2, 2],
+    [2, 4],
+  ],
 } as const satisfies Record<string, readonly (readonly [number, number])[]>;
 
 export function glyphRects(name: keyof typeof GLYPHS, ox: number, oy: number, fill: string): Rect[] {

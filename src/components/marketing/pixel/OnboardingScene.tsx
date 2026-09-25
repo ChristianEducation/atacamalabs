@@ -121,7 +121,12 @@ function tileArt(art: (typeof TILES)[number]["art"], x: number, y: number): Rect
         r(x + 4, y + 5, 2, 1, PAL.shirt),
       ];
     case "chat":
-      return [r(x, y, 7, 5, PAL.green), r(x + 1, y + 5, 2, 1, PAL.green), r(x + 1, y + 1, 5, 1, PAL.white), r(x + 1, y + 3, 3, 1, PAL.white)];
+      return [
+        r(x, y, 7, 5, PAL.green),
+        r(x + 1, y + 5, 2, 1, PAL.green),
+        r(x + 1, y + 1, 5, 1, PAL.white),
+        r(x + 1, y + 3, 3, 1, PAL.white),
+      ];
     case "db":
       return [
         r(x + 1, y, 5, 2, PAL.shirt),
@@ -131,7 +136,12 @@ function tileArt(art: (typeof TILES)[number]["art"], x: number, y: number): Rect
         r(x + 1, y + 5, 5, 2, PAL.shirt),
       ];
     default:
-      return [r(x + 2, y, 3, 2, PAL.amber), r(x, y + 2, 7, 3, PAL.amber), r(x + 1, y + 3, 5, 1, "#b8801f"), r(x + 2, y + 5, 3, 2, PAL.amber)];
+      return [
+        r(x + 2, y, 3, 2, PAL.amber),
+        r(x, y + 2, 7, 3, PAL.amber),
+        r(x + 1, y + 3, 5, 1, "#b8801f"),
+        r(x + 2, y + 5, 3, 2, PAL.amber),
+      ];
   }
 }
 
@@ -191,7 +201,9 @@ function MomentBubble({
   return (
     <g className={`mk-ao__bubble${final ? " is-final" : ""}`} key={label}>
       <rect x={x} y={y} width={width} height={BUBBLE_H} rx={3} />
-      <polygon points={`${tail - 1.6},${y + BUBBLE_H - 0.2} ${tail + 1.6},${y + BUBBLE_H - 0.2} ${tail},${y + BUBBLE_H + 2.4}`} />
+      <polygon
+        points={`${tail - 1.6},${y + BUBBLE_H - 0.2} ${tail + 1.6},${y + BUBBLE_H - 0.2} ${tail},${y + BUBBLE_H + 2.4}`}
+      />
       <text x={x + width / 2} y={y + BUBBLE_H / 2 + 1.05} textAnchor="middle">
         {label}
       </text>
@@ -224,7 +236,13 @@ export function OnboardingScene({ t, beat, narrow }: { t: number; beat: number; 
         TU EMPRESA
       </text>
 
-      <rect x={0} y={56} width={running ? WIDTH : Math.min(WIDTH, Math.max(1, worker.x + 4))} height={1} fill={PAL.shirt} />
+      <rect
+        x={0}
+        y={56}
+        width={running ? WIDTH : Math.min(WIDTH, Math.max(1, worker.x + 4))}
+        height={1}
+        fill={PAL.shirt}
+      />
       {STATION_X.map((_, i) => {
         const done = i === 3 ? running : stationDone(t, i);
         const state = done ? "done" : station === i ? "active" : "idle";

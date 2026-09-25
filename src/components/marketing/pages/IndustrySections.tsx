@@ -1,5 +1,4 @@
 import { Check } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { Reveal } from "../motion/Reveal";
 import { ButtonLink } from "../ui/Button";
 import { AgentCtaLink } from "../shell/AgentCtaLink";
@@ -7,21 +6,31 @@ import { IndustryDemo } from "./IndustryDemo";
 import { INDUSTRY_LIST, OTHER_INDUSTRY, type IndustryExperience } from "@/content/marketing/industries";
 import { diagnosticHref } from "@/lib/marketing/cta-context";
 
-/** Fondos que alternan para que el recorrido largo no se sienta plano. */
-const THEMES = ["mk-t-paper", "mk-t-sand"] as const;
-
-/** Una sección de rubro (§8): identificación → lo que pasa hoy → agente trabajando → capacidades → un CTA. */
-function IndustrySection({ industry, index }: { industry: IndustryExperience; index: number }) {
+/** Un rubro (§8): identificación → lo que pasa hoy → agente trabajando → capacidades → un CTA. */
+export function IndustryPanel({
+  industry,
+  index,
+  hidden,
+  replayKey,
+}: {
+  industry: IndustryExperience;
+  index: number;
+  hidden: boolean;
+  /** Cambia cada vez que se elige el rubro: la demo vuelve a correr desde el inicio. */
+  replayKey: number;
+}) {
   const total = INDUSTRY_LIST.length;
   const titleId = `${industry.slug}-title`;
   return (
     <section
       id={industry.slug}
-      className={cn("mk-section mk-rb-sec", THEMES[index % THEMES.length])}
-      aria-labelledby={titleId}
+      role="tabpanel"
+      aria-labelledby={`tab-${industry.slug}`}
+      hidden={hidden}
+      className="mk-section mk-t-paper mk-rb-sec"
     >
       <div className="mk-container mk-rb-grid">
-        <Reveal className="mk-rb-copy">
+        <div className="mk-rb-copy">
           <p className="mk-rb-eyebrow">
             <span>
               {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
@@ -63,11 +72,11 @@ function IndustrySection({ industry, index }: { industry: IndustryExperience; in
           >
             Quiero algo así
           </ButtonLink>
-        </Reveal>
+        </div>
 
-        <Reveal className="mk-rb-stage" delay={120}>
-          <IndustryDemo industry={industry} />
-        </Reveal>
+        <div className="mk-rb-stage">
+          <IndustryDemo key={replayKey} industry={industry} />
+        </div>
       </div>
     </section>
   );
@@ -91,16 +100,6 @@ export function RubrosHeroVisual() {
         </li>
       ))}
     </ol>
-  );
-}
-
-export function IndustrySections() {
-  return (
-    <>
-      {INDUSTRY_LIST.map((industry, index) => (
-        <IndustrySection key={industry.slug} industry={industry} index={index} />
-      ))}
-    </>
   );
 }
 
