@@ -3,12 +3,20 @@ import type { IndustrySlug } from "@/content/marketing/industries";
 
 /**
  * El mismo agente pixel de /agentes con un solo accesorio según el rubro: mismo
- * personaje, misma paleta, sin trajes completos. Empieza como prototipo con
- * Alimentación (gorro y delantal); los demás rubros se suman aquí, uno por línea,
- * si el resultado convence. Un rubro sin entrada simplemente no muestra busto.
+ * personaje, misma paleta, sin trajes completos. Un rubro sin entrada simplemente
+ * no muestra busto.
  */
+const BLUE = { shirt: "#0f5ced", shade: "#0a44b0" } as const;
 const OUTFITS: Partial<Record<IndustrySlug, Outfit>> = {
-  "alimentacion-casinos": { shirt: "#0f5ced", shade: "#0a44b0", gear: "chef" },
+  salud: { ...BLUE, gear: "headset" },
+  inmobiliarias: { ...BLUE, gear: "keys" },
+  educacion: { ...BLUE, gear: "cap" },
+  "retail-ecommerce": { ...BLUE, gear: "tag" },
+  "alimentacion-casinos": { ...BLUE, gear: "chef" },
+  gimnasios: { ...BLUE, gear: "band" },
+  "servicios-profesionales": { ...BLUE, gear: "tie" },
+  "b2b-industria": { ...BLUE, gear: "hard" },
+  "contabilidad-finanzas": { ...BLUE, gear: "glasses" },
 };
 
 export function hasIndustryBust(slug: IndustrySlug): boolean {

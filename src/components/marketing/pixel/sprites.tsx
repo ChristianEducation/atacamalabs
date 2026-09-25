@@ -43,7 +43,7 @@ export type Pose = "stand" | "walk" | "read" | "point" | "hold" | "sit";
 export interface Outfit {
   shirt: string;
   shade: string;
-  gear: "base" | "tie" | "visor" | "glasses" | "headset" | "hard" | "chef" | "none";
+  gear: "base" | "tie" | "visor" | "glasses" | "headset" | "hard" | "chef" | "keys" | "tag" | "cap" | "band" | "none";
 }
 
 /** Uniforme de la inducción: azul Atacama con la montaña en la credencial. */
@@ -70,6 +70,20 @@ function gearOnHead(dy: number, outfit: Outfit): Rect[] {
       ];
     case "glasses":
       return [[4, -21 + dy, 4, 1, PAL.ink]];
+    case "cap":
+      // Birrete: tablero plano, casquete y borla.
+      return [
+        [0, -26 + dy, 9, 1, PAL.rack],
+        [2, -27 + dy, 5, 1, PAL.rack],
+        [1, -25 + dy, 6, 1, PAL.rackDark],
+        [8, -25 + dy, 1, 3, PAL.amber],
+      ];
+    case "band":
+      // Cinta deportiva sobre la frente, con la cola al costado.
+      return [
+        [1, -22 + dy, 6, 1, PAL.red],
+        [0, -21 + dy, 1, 2, PAL.red],
+      ];
     case "chef":
       // Gorro de cocina: banda, copa y un sombreado suave en la base de la copa.
       return [
@@ -100,19 +114,21 @@ const upper = (dy: number, outfit: Outfit): Rect[] => [
   [1, -17 + dy, 2, 9, outfit.shade],
   ...(outfit.gear === "tie"
     ? ([[6, -17 + dy, 1, 6, PAL.amber]] as Rect[])
-    : outfit.gear === "chef"
-      ? // Delantal: pechera blanca con tirantes al cuello.
-        ([
-          [2, -14 + dy, 5, 6, PAL.white],
-          [2, -17 + dy, 1, 3, PAL.white],
-          [6, -17 + dy, 1, 3, PAL.white],
-          [3, -12 + dy, 3, 1, "#dfe4ee"],
-        ] as Rect[])
-      : ([
-          // credencial con la montaña
-          [5, -15 + dy, 2, 2, PAL.white],
-          [5, -14 + dy, 1, 1, PAL.shirt],
-        ] as Rect[])),
+    : outfit.gear === "keys" || outfit.gear === "tag"
+      ? ([] as Rect[])
+      : outfit.gear === "chef"
+        ? // Delantal: pechera blanca con tirantes al cuello.
+          ([
+            [2, -14 + dy, 5, 6, PAL.white],
+            [2, -17 + dy, 1, 3, PAL.white],
+            [6, -17 + dy, 1, 3, PAL.white],
+            [3, -12 + dy, 3, 1, "#dfe4ee"],
+          ] as Rect[])
+        : ([
+            // credencial con la montaña
+            [5, -15 + dy, 2, 2, PAL.white],
+            [5, -14 + dy, 1, 1, PAL.shirt],
+          ] as Rect[])),
   ...(outfit.gear === "glasses" ? ([[3, -17 + dy, 4, 1, PAL.white]] as Rect[]) : []),
 ];
 
@@ -191,9 +207,33 @@ function arm(pose: Pose, frame: number, dy: number, outfit: Outfit): Rect[] {
 }
 
 /** Rectángulos del trabajador con los pies en (0, 0), mirando a la derecha. */
+/** Objetos que cuelgan por delante del brazo (llavero, etiqueta de precio). */
+function chestGear(dy: number, outfit: Outfit): Rect[] {
+  switch (outfit.gear) {
+    case "keys":
+      return [
+        [3, -16 + dy, 3, 3, PAL.amber],
+        [4, -15 + dy, 1, 1, PAL.ink],
+        [4, -13 + dy, 1, 4, PAL.amber],
+        [5, -11 + dy, 1, 1, PAL.amber],
+        [5, -9 + dy, 1, 1, PAL.amber],
+      ];
+    case "tag":
+      return [
+        [3, -15 + dy, 4, 5, PAL.white],
+        [4, -15 + dy, 1, 1, PAL.ink],
+        [3, -11 + dy, 4, 1, PAL.amber],
+        [3, -15 + dy, 4, 1, PAL.steelDark],
+        [3, -10 + dy, 4, 1, PAL.steelDark],
+      ];
+    default:
+      return [];
+  }
+}
+
 export function characterRects(pose: Pose, frame = 0, outfit: Outfit = BASE_OUTFIT): Rect[] {
   const dy = pose === "walk" && frame % 2 === 1 ? -1 : 0;
-  return [...legs(pose, frame, dy), ...upper(dy, outfit), ...arm(pose, frame, dy, outfit)];
+  return [...legs(pose, frame, dy), ...upper(dy, outfit), ...arm(pose, frame, dy, outfit), ...chestGear(dy, outfit)];
 }
 
 /** Pinta una lista de rectángulos como `<rect>` nítidos. */

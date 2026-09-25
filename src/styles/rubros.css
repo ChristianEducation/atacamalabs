@@ -52,40 +52,41 @@
   color: var(--muted);
 }
 
-/* ---------- Selector pegado ---------- */
+/* ---------- Selector pegado: pastilla de vidrio ---------- */
 .mk-rb {
   position: relative;
 }
 .mk-rb-nav {
   position: sticky;
-  top: var(--header-h);
+  top: calc(var(--header-h) + 10px);
   z-index: 20;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--paper) 92%, transparent);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  padding-block: 16px 4px;
+  pointer-events: none;
+}
+.mk-rb-nav .mk-container {
+  display: flex;
+  justify-content: center;
 }
 .mk-rb-nav__tabs {
+  pointer-events: auto;
+  width: fit-content;
+  max-width: 100%;
   margin: 0;
-  list-style: none;
-  border: 0;
+  padding: 6px;
+  gap: 2px;
+  border: 1px solid rgb(255 255 255 / 75%);
   border-radius: 999px;
-  background: transparent;
-  box-shadow: none;
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-  padding: 0;
-  justify-content: flex-start;
-}
-@media (min-width: 1100px) {
-  .mk-rb-nav__tabs {
-    justify-content: center;
-  }
+  background: linear-gradient(135deg, rgb(255 255 255 / 68%), rgb(255 255 255 / 36%));
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  backdrop-filter: blur(22px) saturate(170%);
+  box-shadow:
+    0 14px 36px -16px rgb(18 26 43 / 32%),
+    0 1px 3px rgb(18 26 43 / 8%),
+    inset 0 1px 0 rgb(255 255 255 / 90%);
 }
 .mk-rb-nav__list {
   display: flex;
-  gap: 4px;
+  gap: 2px;
 }
 .mk-rb-nav .mk-sel-tab {
   display: inline-flex;
@@ -93,7 +94,28 @@
   flex: none;
   text-decoration: none;
   min-height: 40px;
-  padding: 0 16px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border-color: transparent;
+  transition:
+    color 200ms ease,
+    background 200ms ease,
+    box-shadow 200ms ease;
+}
+.mk-rb-nav .mk-sel-tab::before {
+  display: none;
+}
+.mk-rb-nav .mk-sel-tab:hover {
+  transform: none;
+  border-color: transparent;
+  background: rgb(255 255 255 / 55%);
+}
+.mk-rb-nav .mk-sel-tab[aria-selected="true"] {
+  color: var(--blue-text);
+  background: rgb(255 255 255 / 94%);
+  box-shadow:
+    0 6px 16px -8px rgb(15 92 237 / 45%),
+    inset 0 0 0 1px rgb(15 92 237 / 14%);
 }
 
 /* ---------- Sección de rubro ---------- */
