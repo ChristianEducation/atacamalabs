@@ -450,8 +450,11 @@ export function DiagnosticFlow({ initial, agendaUrl }: { initial: DiagnosticCont
             <div className="mk-dg-agenda">
               {agendaUrl ? (
                 <p className="mk-dg-meeting">
-                  <CalendarCheck size={18} aria-hidden /> <strong>Reunión de activación</strong> · revisamos tu
-                  necesidad, validamos el alcance y resolvemos tus dudas.
+                  <CalendarCheck size={18} aria-hidden />
+                  <span>
+                    <strong>Reunión de activación</strong> · revisamos tu necesidad, validamos el alcance y resolvemos
+                    tus dudas.
+                  </span>
                 </p>
               ) : null}
               {agendaUrl ? (
