@@ -455,7 +455,11 @@ export function DiagnosticFlow({ initial, agendaUrl }: { initial: DiagnosticCont
                 </p>
               ) : null}
               {agendaUrl ? (
-                <iframe title="Agenda de la reunión de activación" src={agendaUrl} className="mk-dg-frame" />
+                <iframe
+                  title="Agenda de la reunión de activación"
+                  src={agendaSrc(agendaUrl, values)}
+                  className="mk-dg-frame"
+                />
               ) : (
                 <div className="mk-dg-fallback" role="status">
                   <h2>Recibimos tus datos.</h2>
@@ -471,6 +475,24 @@ export function DiagnosticFlow({ initial, agendaUrl }: { initial: DiagnosticCont
       </div>
     </div>
   );
+}
+
+/**
+ * Agenda de GHL con los datos que la persona ya dejó (nombre, email, WhatsApp):
+ * el contacto de la reserva es el mismo del lead y no hay que escribirlos otra vez.
+ */
+function agendaSrc(base: string, values: { name: string; email: string; phone: string }): string {
+  try {
+    const url = new URL(base);
+    const [first, ...rest] = values.name.trim().split(/\s+/);
+    if (first) url.searchParams.set("first_name", first);
+    if (rest.length) url.searchParams.set("last_name", rest.join(" "));
+    if (values.email.trim()) url.searchParams.set("email", values.email.trim());
+    if (values.phone.trim()) url.searchParams.set("phone", values.phone.trim());
+    return url.toString();
+  } catch {
+    return base;
+  }
 }
 
 function Field({ id, label, error, children }: { id: string; label: string; error?: string; children: ReactNode }) {

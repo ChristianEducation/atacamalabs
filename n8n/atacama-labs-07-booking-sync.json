@@ -1,0 +1,469 @@
+{
+  "name": "Atacama Labs - 07 Booking Sync",
+  "nodes": [
+    {
+      "id": "schedule",
+      "name": "Every 2 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "list-events",
+      "name": "List Booked Events",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "MIOyxnOFWOwL1Rvt",
+          "name": "Atacama Labs - GHL Calendars Auth"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://services.leadconnectorhq.com/calendars/events?locationId=pxHuOsiz2i3lM6BtC9IM&calendarId=D3CUkoKxRyze3Kpt8sa9&startTime=\" + (Date.now() - 3 * 86400000) + \"&endTime=\" + (Date.now() + 120 * 86400000) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "split-events",
+      "name": "Split Events",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Una salida por reserva vigente de «Reunión de activación» (se descartan las canceladas).\nconst events = ($json && $json.events) || [];\nconst skip = new Set(['cancelled', 'canceled', 'invalid', 'noshow']);\nreturn events\n  .filter((e) => e && e.id && e.contactId && !skip.has(String(e.appointmentStatus || '').toLowerCase()))\n  .map((e) => ({ json: { eventId: e.id, contactId: e.contactId, startTime: e.startTime, status: e.appointmentStatus || null } }));"
+      }
+    },
+    {
+      "id": "find-lead",
+      "name": "Find Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true,
+      "alwaysOutputData": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/lead_submissions?ghl_contact_id=eq.\" + $json.contactId + \"&select=id,ghl_opportunity_id,calendar_event_id&order=created_at.desc&limit=1\" }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "decide",
+      "name": "Decide",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Cruza la reserva con el lead. Solo procede si el lead ya está sincronizado con GHL\n// (tiene oportunidad) y esta reserva aún no quedó registrada: es idempotente y,\n// si el lead todavía no se sincroniza, se reintenta en la siguiente corrida.\nconst ev = $('Split Events').item.json;\nconst lead = $json && $json.id ? $json : null;\nconst ok = Boolean(lead && lead.ghl_opportunity_id && lead.calendar_event_id !== ev.eventId);\nreturn {\n  json: {\n    ok,\n    eventId: ev.eventId,\n    startTime: ev.startTime,\n    leadId: lead ? lead.id : null,\n    opportunityId: lead ? lead.ghl_opportunity_id : null,\n  },\n};"
+      }
+    },
+    {
+      "id": "needs-update",
+      "name": "Needs Update?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ ($json.ok) ? \"yes\" : \"no\" }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "get-opp",
+      "name": "Get Opportunity",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "MIOyxnOFWOwL1Rvt",
+          "name": "Atacama Labs - GHL Calendars Auth"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://services.leadconnectorhq.com/opportunities/\" + $json.opportunityId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "early-stage",
+      "name": "Still Early Stage?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ ([\"aad0ad01-bffd-4ea9-b00c-7ab11dc941f6\", \"b947fae7-0941-4296-a76b-e9a826dd47d0\"].includes($json.opportunity && $json.opportunity.pipelineStageId)) ? \"yes\" : \"no\" }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "move-opp",
+      "name": "Move To Diagnostico",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        -80
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "MIOyxnOFWOwL1Rvt",
+          "name": "Atacama Labs - GHL Calendars Auth"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ \"https://services.leadconnectorhq.com/opportunities/\" + $('Decide').item.json.opportunityId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { pipelineStageId: \"fec1e794-fb25-4242-806d-f3c13316df6e\" } }}"
+      }
+    },
+    {
+      "id": "move-ok",
+      "name": "Move OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        -80
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ ($json.opportunity && $json.opportunity.id) ? \"yes\" : \"no\" }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "update-lead",
+      "name": "Update Lead Meeting",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/lead_submissions?id=eq.\" + $('Decide').item.json.leadId }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { meeting_scheduled: true, meeting_start: $('Decide').item.json.startTime, calendar_event_id: $('Decide').item.json.eventId, calendar_provider: 'ghl' } }}"
+      }
+    }
+  ],
+  "connections": {
+    "Every 2 Minutes": {
+      "main": [
+        [
+          {
+            "node": "List Booked Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Booked Events": {
+      "main": [
+        [
+          {
+            "node": "Split Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Events": {
+      "main": [
+        [
+          {
+            "node": "Find Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Lead": {
+      "main": [
+        [
+          {
+            "node": "Decide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decide": {
+      "main": [
+        [
+          {
+            "node": "Needs Update?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Update?": {
+      "main": [
+        [
+          {
+            "node": "Get Opportunity",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Get Opportunity": {
+      "main": [
+        [
+          {
+            "node": "Still Early Stage?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Still Early Stage?": {
+      "main": [
+        [
+          {
+            "node": "Move To Diagnostico",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Lead Meeting",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move To Diagnostico": {
+      "main": [
+        [
+          {
+            "node": "Move OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move OK?": {
+      "main": [
+        [
+          {
+            "node": "Update Lead Meeting",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

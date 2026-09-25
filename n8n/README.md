@@ -28,6 +28,14 @@ Durante esta ronda se encontraron y corrigieron 3 bugs reales más (ninguno de a
 
 Los JSON versionados en este directorio quedan en modo `test` (el seguro por defecto para seguir iterando/probando). La promoción a `real` es un proceso repetible y ya probado (mismo script, `MODE=real`) — no se dejó ningún workflow activo permanentemente en n8n; todo se ejecuta vía copias desechables bajo demanda hasta que exista un orquestador (`00`) que decida cuándo correr cada uno en producción.
 
+## Atacama Labs - 07 Booking Sync (2026-09-25, ACTIVO: id `sw0xbhB91s5mhHCh`)
+
+- Archivo: [`atacama-labs-07-booking-sync.json`](atacama-labs-07-booking-sync.json). Cada 2 min lista las reservas del calendario GHL **«Reunión de activación»** (id `D3CUkoKxRyze3Kpt8sa9`, 30 min, Google Calendar de atacamalabs.cl) de los últimos 3 días y los próximos 120. GHL no ofrece webhooks para Private Integrations, por eso es *polling* por API.
+- Flujo: `List Booked Events` → `Split Events` (descarta canceladas/no-show) → `Find Lead` (por `ghl_contact_id` en Supabase) → `Decide` (solo si el lead ya tiene oportunidad y esa reserva no está registrada; si el lead aún no sincroniza, reintenta en la siguiente corrida) → `Get Opportunity` → si sigue en Nuevo/Contactado, `Move To Diagnostico` (etapa `fec1e794-…`; nunca retrocede una oportunidad que ya está en Propuesta/Seguimiento/Cerrado) → `Update Lead Meeting` (PATCH `meeting_scheduled`, `meeting_start`, `calendar_event_id`, `calendar_provider='ghl'`). Idempotente por `calendar_event_id`.
+- Credencial propia `Atacama Labs - GHL Calendars Auth` (`MIOyxnOFWOwL1Rvt`, httpHeaderAuth con el token de la Private Integration «Atacama Labs — Web», scopes de calendars/contacts/opportunities/customFields). El token vive solo en n8n y en `.env.local` (`GHL_ATACAMA_TOKEN`); no en el repo.
+- Probado end-to-end: lead de prueba → sync (Lead Sync v2) → reserva de prueba por API → en ≤2 min `meeting_scheduled=true`, `meeting_start` correcto y la oportunidad pasó a «Diagnóstico». Datos de prueba (reserva, oportunidad, contacto, lead, job) borrados.
+- Limitaciones: la reserva debe hacerse con el mismo email/teléfono del lead (el formulario de `/diagnostico` los pasa por URL a la agenda); las horas del calendario están en UTC en la API (la ubicación GHL está en UTC), por eso `openHours` se guardó como 13:00–21:00 UTC = 10:00–18:00 Chile en horario de verano (UTC-3); con el cambio de hora de abril de 2027 se corre 1 h: ajustar en GHL → Calendar → Availability.
+
 ## Atacama Labs - 01 Lead Sync
 
 - id n8n: `oKQujZqHy09dMJao` (activo).
