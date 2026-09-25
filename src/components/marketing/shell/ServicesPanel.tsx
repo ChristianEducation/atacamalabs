@@ -60,7 +60,7 @@ function MiniWeb() {
   );
 }
 
-const MINIS: Record<ServiceId, () => React.JSX.Element> = {
+export const MINIS: Record<ServiceId, () => React.JSX.Element> = {
   "a-medida": MiniCustom,
   web: MiniWeb,
   agentes: MiniCustom,

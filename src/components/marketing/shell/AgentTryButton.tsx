@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 const HOST = "[data-lety-widget]";
 
@@ -32,6 +32,16 @@ export function openAgent(): boolean {
  * burbuja flotante (sería redundante y taparía este mismo botón).
  */
 export function AgentTryButton({ href, className, children }: { href: string; className?: string; children: ReactNode }) {
+  // En celular el botón espera unos segundos para dejar ver el video; un scroll lo adelanta.
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const onScroll = () => {
+      if (window.scrollY > 24) setReady(true);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   useEffect(() => {
     const hero = document.querySelector(".mk-home-hero");
     if (!hero) return;
@@ -67,7 +77,7 @@ export function AgentTryButton({ href, className, children }: { href: string; cl
   return (
     <Link
       href={href}
-      className={className}
+      className={ready ? `${className ?? ""} is-ready`.trim() : className}
       onClick={(event) => {
         if (openAgent()) event.preventDefault();
       }}

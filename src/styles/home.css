@@ -19,7 +19,9 @@
   min-height: clamp(540px, calc(100svh - var(--header-h) - 48px), 900px);
   border-radius: 32px;
   background: #f8f7f3 url("/video/hero-poster.jpg") center / cover no-repeat;
-  box-shadow: 0 28px 80px rgb(30 54 79 / 9%), 0 4px 18px rgb(30 54 79 / 5%);
+  box-shadow:
+    0 28px 80px rgb(30 54 79 / 9%),
+    0 4px 18px rgb(30 54 79 / 5%);
 }
 .mk-home-hero__video {
   position: absolute;
@@ -101,24 +103,38 @@
   gap: 12px;
 }
 
-/* Entrada muy suave del copy al cargar (CSS puro; nunca oculto esperando JS). */
+/*
+ * Entrada en secuencia (~5 s, CSS puro; el texto nunca queda oculto esperando JS):
+ * primero el video solo; luego eyebrow, título por líneas, bajada, botones y,
+ * al final, «Prueba a Nayra».
+ */
 @keyframes mk-home-in {
   from {
     opacity: 0;
     transform: translateY(14px);
   }
 }
-.mk-home-hero__copy > * {
-  animation: mk-home-in 900ms var(--ease-out) both;
+.mk-home-hero__copy > *,
+.mk-home-hero__title > span {
+  animation: mk-home-in 800ms var(--ease-out) both;
 }
-.mk-home-hero__copy > :nth-child(2) {
-  animation-delay: 90ms;
+.mk-home-hero__copy > :nth-child(1) {
+  animation-delay: 400ms;
+}
+.mk-home-hero__copy > .mk-home-hero__title {
+  animation: none;
+}
+.mk-home-hero__title > span:nth-child(1) {
+  animation-delay: 1300ms;
+}
+.mk-home-hero__title > span:nth-child(2) {
+  animation-delay: 1900ms;
 }
 .mk-home-hero__copy > :nth-child(3) {
-  animation-delay: 180ms;
+  animation-delay: 2600ms;
 }
 .mk-home-hero__copy > :nth-child(4) {
-  animation-delay: 270ms;
+  animation-delay: 3100ms;
 }
 
 /* CTA flotante «Prueba al agente»: pill glass con la paleta de marca. */
@@ -151,6 +167,11 @@
     transform 180ms ease,
     box-shadow 180ms ease,
     background 180ms ease;
+  /* Llega al final de la secuencia; un scroll lo adelanta (`is-ready`). */
+  animation: mk-try-in 600ms var(--ease-out) 4.3s both;
+}
+.mk-home-hero__try.is-ready {
+  animation-delay: 0s;
 }
 .mk-home-hero__try:hover {
   transform: translateY(-2px);
@@ -182,26 +203,38 @@
   .mk-home-hero-wrap {
     padding: 0;
   }
+  /*
+   * Celular: una sola superficie. El video (horizontal) se ancla abajo en un
+   * cuadro donde se ve ~56 % de su ancho (antes ~28 %), centrado en el nodo y
+   * los pulsos, y su borde superior se funde con el papel: el texto queda
+   * encima de esa zona, sin capa crema que lo apague.
+   */
   .mk-home-hero {
     min-height: calc(100svh - var(--header-h));
     border-radius: 0;
     box-shadow: none;
+    background: var(--paper);
   }
   .mk-home-hero::before {
-    background: linear-gradient(
-      180deg,
-      rgb(250 249 246 / 96%) 0%,
-      rgb(250 249 246 / 88%) 52%,
-      rgb(250 249 246 / 18%) 78%,
-      rgb(250 249 246 / 0%) 100%
-    );
+    display: none;
   }
-  .mk-home-hero__video {
-    object-position: 66% center;
+  .mk-home-hero__video,
+  .mk-home-hero::after {
+    position: absolute;
+    inset: auto 0 0 0;
+    z-index: -3;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    object-position: 62% center;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, rgb(0 0 0 / 55%) 26%, #000 46%);
+    mask-image: linear-gradient(180deg, transparent 0, rgb(0 0 0 / 55%) 26%, #000 46%);
   }
   .mk-home-hero__inner {
-    align-items: flex-start;
-    padding: 56px 24px 130px;
+    min-height: inherit;
+    align-items: stretch;
+    padding: 28px 24px 84px;
   }
   .mk-home-hero__copy {
     width: 100%;
@@ -213,17 +246,61 @@
   .mk-home-hero__lead {
     font-size: 17px;
   }
+  /*
+   * Los dos botones bajan al borde inferior, en filas separadas (uno a la izquierda, Nayra a la derecha): el texto
+   * queda arriba, el video respira en el medio. «Ver cómo funciona» sobra aquí
+   * (la sección que abre es lo siguiente al hacer scroll).
+   */
+  .mk-home-hero__copy {
+    display: flex;
+    flex-direction: column;
+  }
+  .mk-home-hero__actions {
+    margin-top: auto;
+  }
+  .mk-home-hero__actions .mk-btn--secondary {
+    display: none;
+  }
   .mk-home-hero__try {
-    right: 14px;
-    bottom: 14px;
+    left: auto;
+    right: 24px;
+    bottom: 24px;
+    gap: 10px;
     min-width: 0;
-    min-height: 52px;
+    min-height: 44px;
+    padding: 0 6px 0 16px;
+    font-size: 14px;
+    background: linear-gradient(135deg, rgb(255 255 255 / 58%), rgb(255 255 255 / 30%));
+    box-shadow:
+      0 6px 18px rgb(15 92 237 / 10%),
+      inset 0 1px 0 rgb(255 255 255 / 80%);
+  }
+  .mk-home-hero__try-icon {
+    width: 32px;
+    height: 32px;
+  }
+}
+@keyframes mk-try-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .mk-home-hero__video {
     display: none;
+  }
+  .mk-home-hero__try,
+  .mk-home-hero__title > span {
+    animation: none;
+  }
+  /* Celular: el cuadro del video muestra el póster fijo. */
+  @media (max-width: 840px) {
+    .mk-home-hero::after {
+      content: "";
+      background: url("/video/hero-poster.jpg") 62% center / cover no-repeat;
+    }
   }
   .mk-home-hero__copy > * {
     animation: none;
@@ -447,8 +524,7 @@
   padding-block: clamp(88px, 12vw, 168px);
   border-top: 1px solid var(--line);
   background:
-    radial-gradient(ellipse 60% 80% at 50% 0%, rgb(15 92 237 / 10%), transparent 70%),
-    var(--section-blue-mist, #edf4ff);
+    radial-gradient(ellipse 60% 80% at 50% 0%, rgb(15 92 237 / 10%), transparent 70%), var(--section-blue-mist, #edf4ff);
   text-align: center;
 }
 .mk-home-cta__inner {

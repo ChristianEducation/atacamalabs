@@ -169,8 +169,7 @@
   border: 1px solid var(--line);
   border-radius: 12px;
   background:
-    radial-gradient(circle at 78% 30%, rgb(15 92 237 / 12%), transparent 60%),
-    linear-gradient(160deg, #fffdf9, #edf4ff);
+    radial-gradient(circle at 78% 30%, rgb(15 92 237 / 12%), transparent 60%), linear-gradient(160deg, #fffdf9, #edf4ff);
 }
 .mk-svm--custom {
   padding: 9px 12px;
@@ -328,8 +327,7 @@
   border: 1px solid var(--line);
   border-radius: 7px;
   background:
-    radial-gradient(circle at 60% 40%, rgb(15 92 237 / 32%), transparent 60%),
-    linear-gradient(135deg, #fdfaf3, #dfe9ff);
+    radial-gradient(circle at 60% 40%, rgb(15 92 237 / 32%), transparent 60%), linear-gradient(135deg, #fdfaf3, #dfe9ff);
 }
 
 /* Al pasar el mouse la miniatura se «arma» de nuevo. */
@@ -355,26 +353,6 @@
 /* Cierre y estado activo del topbar */
 .mk-nav__link::after {
   transform-origin: center;
-}
-
-/* Móvil: la misma idea, más liviana */
-.mk-mobile__sub a {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.mk-mobile__blurb {
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--muted);
-}
-.mk-mobile__demo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 6px;
-  color: var(--blue-text);
-  font-weight: 600;
 }
 
 @media (prefers-reduced-motion: reduce) {

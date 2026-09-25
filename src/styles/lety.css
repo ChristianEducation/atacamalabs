@@ -128,7 +128,14 @@
 }
 
 /* ---------- Header de vidrio ---------- */
-.mk-header,
+/*
+ * El vidrio va solo en ::before: un backdrop-filter sobre el propio .mk-header
+ * lo convierte en el bloque contenedor de sus hijos `fixed` y el menú móvil
+ * quedaría recortado a la altura de la barra.
+ */
+.mk-header {
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+}
 .mk-header::before {
   background: color-mix(in srgb, var(--bg) 78%, transparent);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
