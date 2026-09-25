@@ -11,7 +11,7 @@ export type IndustrySlug =
   | "educacion"
   | "retail-ecommerce"
   | "alimentacion-casinos"
-  | "fitness-bienestar"
+  | "gimnasios"
   | "servicios-profesionales"
   | "b2b-industria"
   | "contabilidad-finanzas";
@@ -27,8 +27,26 @@ export interface IndustryReceipt {
   chips: readonly string[];
   /** ID ficticio (`PED-DEMO-1042`). */
   id?: string;
-  /** Solo Alimentación: el pedido se ve como ticket que pasa de «Recibiendo» a «Registrado». */
-  ticket?: { lines: readonly string[]; when: string };
+}
+
+/**
+ * Pieza lateral de la demo que se va completando mientras el agente trabaja
+ * (ticket de un pedido, ficha de una solicitud, estado de un documento). Cada
+ * fila aparece cuando llega el mensaje `at` (0 = primero).
+ */
+export interface IndustryAside {
+  kind: "ticket" | "ficha" | "estado";
+  title: string;
+  rows: readonly { label?: string; value: string; at: number; muted?: boolean }[];
+  /** Estado mientras trabaja → estado final. */
+  wait: string;
+  done: string;
+}
+
+/** El agente toma la iniciativa: una señal del sistema abre la conversación. */
+export interface IndustryTrigger {
+  label: string;
+  detail: string;
 }
 
 export interface IndustryExperience {
@@ -42,6 +60,8 @@ export interface IndustryExperience {
   lead: string;
   pains: readonly [string, string, string];
   script: readonly IndustryMessage[];
+  trigger?: IndustryTrigger;
+  aside?: IndustryAside;
   receipt: IndustryReceipt;
   flow: readonly string[];
   capabilities: readonly string[];
@@ -59,7 +79,7 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
     pains: [
       "Las mismas consultas interrumpen al equipo durante todo el día.",
       "Coordinar una hora puede requerir varios mensajes.",
-      "Confirmaciones y reprogramaciones quedan repartidas entre conversaciones.",
+      "Confirmar y reprogramar depende de mensajes sueltos, y las horas sin confirmar terminan en no shows.",
     ],
     script: [
       { from: "person", text: "Hola, ¿tienen hora mañana en la tarde?" },
@@ -72,7 +92,7 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
     capabilities: [
       "Consultas administrativas",
       "Agendamiento y reprogramación",
-      "Confirmaciones y recordatorios",
+      "Confirmaciones, recordatorios y reconfirmación",
       "Derivación con contexto",
     ],
   },
@@ -183,12 +203,18 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
         text: "Perfecto. Dejé 2 menú A y 1 menú B registrados para mañana. Puedo continuar con el pago o confirmación según tu proceso.",
       },
     ],
-    receipt: {
-      title: "Pedido registrado",
-      id: "PED-DEMO-1042",
-      chips: ["Mañana"],
-      ticket: { lines: ["2 × Menú A", "1 × Menú B"], when: "Para mañana" },
+    aside: {
+      kind: "ticket",
+      title: "PED-DEMO-1042",
+      rows: [
+        { value: "2 × Menú A", at: 2 },
+        { value: "1 × Menú B", at: 2 },
+        { value: "Para mañana", at: 2, muted: true },
+      ],
+      wait: "Recibiendo…",
+      done: "Registrado",
     },
+    receipt: { title: "Pedido registrado", id: "PED-DEMO-1042", chips: ["Mañana"] },
     flow: ["WhatsApp", "Agente", "Menú / Catálogo", "Pedido", "Pago / Registro"],
     capabilities: [
       "Consultar menú y disponibilidad",
@@ -200,30 +226,34 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
     featured: true,
   },
   {
-    slug: "fitness-bienestar",
-    name: "Fitness & Bienestar",
-    shortLabel: "Fitness",
-    context: "Gimnasios, centros deportivos, estudios y centros de bienestar.",
-    headline: 'De "quiero una clase de prueba" a una reserva confirmada.',
-    lead: "Planes, horarios, clases y seguimiento pueden avanzar desde la misma conversación.",
+    slug: "gimnasios",
+    name: "Gimnasios",
+    shortLabel: "Gimnasios",
+    context: "Gimnasios, centros deportivos y estudios.",
+    headline: "De un socio que se aleja a una clase reservada.",
+    lead: "El agente hace el seguimiento que hoy nadie alcanza a hacer: reactiva a quien dejó de venir, recuerda clases y pagos, e invita a volver.",
     pains: [
-      "Las mismas preguntas sobre planes y horarios se repiten.",
-      "Los interesados quedan esperando respuesta.",
-      "Reservas y seguimientos quedan repartidos entre chats.",
+      "Socios que dejan de venir y nadie los contacta a tiempo.",
+      "Los pagos atrasados dependen de que alguien se acuerde de escribir.",
+      "Interesados y ex-socios quedan sin seguimiento.",
     ],
+    trigger: { label: "Señal", detail: "Socio sin asistir hace 14 días · CRM" },
     script: [
-      { from: "person", text: "¿Puedo probar una clase mañana?" },
-      { from: "agent", text: "Sí. Hay opciones a las 11:00 y 18:30. ¿Cuál prefieres?" },
-      { from: "person", text: "18:30." },
-      { from: "agent", text: "Perfecto. Dejé tu clase de prueba agendada para mañana a las 18:30." },
+      {
+        from: "agent",
+        text: "Hola Camila, hace un par de semanas que no te vemos. ¿Te reservo una clase esta semana?",
+      },
+      { from: "person", text: "Sí, el jueves en la tarde." },
+      { from: "agent", text: "Listo. Te dejé la clase del jueves a las 19:00 reservada y te lo recuerdo ese día." },
     ],
-    receipt: { title: "Clase de prueba", chips: ["Agenda", "Confirmada"] },
-    flow: ["WhatsApp", "Agente", "Horarios", "Calendar", "CRM"],
+    receipt: { title: "Clase reservada", chips: ["Socio reactivado", "Recordatorio programado"] },
+    flow: ["CRM", "Agente", "WhatsApp", "Calendar", "Seguimiento"],
     capabilities: [
+      "Reactivar a quienes dejaron de venir",
+      "Recordar clases y mensualidades pendientes",
+      "Invitar a volver o renovar",
       "Responder planes y horarios",
-      "Agendar clases",
-      "Confirmar y recordar",
-      "Hacer seguimiento a interesados",
+      "Registrar todo en el CRM",
     ],
   },
   {
@@ -244,6 +274,17 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
       { from: "person", text: "Una revisión inicial." },
       { from: "agent", text: "Perfecto. Registré tu consulta y puedo ayudarte a coordinar una reunión con el equipo." },
     ],
+    aside: {
+      kind: "ficha",
+      title: "Consulta",
+      rows: [
+        { label: "Necesidad", value: "Asesoría para la empresa", at: 0 },
+        { label: "Tipo", value: "Revisión inicial", at: 2 },
+        { label: "Próximo paso", value: "Reunión con el equipo", at: 3 },
+      ],
+      wait: "Recopilando…",
+      done: "Lista para el equipo",
+    },
     receipt: { title: "Consulta registrada", chips: ["Coordinación", "Próximo paso pendiente"] },
     flow: ["WhatsApp / Web", "Agente", "Calificación", "Calendar", "CRM"],
     capabilities: [
@@ -271,6 +312,18 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
       { from: "person", text: "Preventivo." },
       { from: "agent", text: "Perfecto. Dejé la solicitud registrada para revisión comercial con ese contexto." },
     ],
+    aside: {
+      kind: "ficha",
+      title: "Solicitud de cotización",
+      rows: [
+        { label: "Servicio", value: "Mantenimiento", at: 0 },
+        { label: "Tipo", value: "Preventivo", at: 2 },
+        { label: "Instalación", value: "Por confirmar", at: 2, muted: true },
+        { label: "Estado", value: "Revisión comercial", at: 3 },
+      ],
+      wait: "Recopilando…",
+      done: "Lista para comercial",
+    },
     receipt: { title: "Solicitud registrada", chips: ["Comercial", "Revisión requerida"] },
     flow: ["WhatsApp / Email", "Agente", "Alcance", "CRM", "Equipo"],
     capabilities: [
@@ -300,6 +353,17 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
         text: "En este ejemplo figura emitida. Puedo mostrarte la información disponible o derivar la gestión al equipo.",
       },
     ],
+    aside: {
+      kind: "estado",
+      title: "Estado de documentos",
+      rows: [
+        { label: "Consulta", value: "Factura del mes", at: 0 },
+        { label: "Sistema", value: "Conectado y consultado", at: 1 },
+        { label: "Estado", value: "Emitida", at: 2 },
+      ],
+      wait: "Consultando…",
+      done: "Sin acción sensible",
+    },
     receipt: { title: "Documento consultado", chips: ["Estado disponible", "Sin acción sensible"] },
     flow: ["WhatsApp / Email", "Agente", "Documentos / Datos", "Sistema", "Aprobación"],
     capabilities: [
@@ -332,7 +396,8 @@ export function getIndustry(slug: string): IndustryExperience | undefined {
 
 /** Slugs antiguos que aún pueden venir en enlaces o en `?industria=` (spec §20, §22). */
 const INDUSTRY_ALIAS: Record<string, IndustrySlug> = {
-  gimnasios: "fitness-bienestar",
+  "fitness-bienestar": "gimnasios",
+  fitness: "gimnasios",
   "servicios-b2b": "b2b-industria",
   alimentacion: "alimentacion-casinos",
   retail: "retail-ecommerce",

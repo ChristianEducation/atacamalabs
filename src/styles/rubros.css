@@ -241,7 +241,7 @@
   gap: 14px;
 }
 @media (min-width: 640px) {
-  .mk-rb-demo__body.has-ticket {
+  .mk-rb-demo__body.has-aside {
     grid-template-columns: minmax(0, 1.4fr) minmax(150px, 0.8fr);
     align-items: start;
   }
@@ -292,41 +292,94 @@
   color: var(--ink);
 }
 
-/* Ticket (Alimentación): el pedido pasa de «Recibiendo» a «Registrado». */
-.mk-rb-ticket {
+/* Señal del sistema: el agente toma la iniciativa (Gimnasios). */
+.mk-rb-chatcol {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mk-rb-trigger {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 9px 14px;
+  border: 1px dashed var(--line-strong, var(--line));
+  border-radius: 12px;
+  background: var(--paper);
+}
+.mk-rb-trigger__label {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--blue-text);
+}
+.mk-rb-trigger p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+/* Pieza lateral que se completa: ticket · ficha · estado. */
+.mk-rb-aside {
   padding: 14px 16px;
   border: 1px dashed var(--line-strong, var(--line));
   border-radius: 14px;
   background: var(--paper);
 }
-.mk-rb-ticket__id {
+.mk-rb-aside__title {
   margin: 0 0 8px;
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
   color: var(--ink);
 }
-.mk-rb-ticket ul {
+.mk-rb-aside ul {
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 14.5px;
-  line-height: 1.7;
+  font-size: 14px;
+  line-height: 1.5;
 }
-.mk-rb-ticket__when {
-  margin: 6px 0 12px;
-  font-size: 13px;
+.mk-rb-aside li {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+}
+.mk-rb-aside.is-ticket li {
+  flex-direction: row;
+  border-bottom: 0;
+  padding: 2px 0;
+  font-size: 14.5px;
+}
+.mk-rb-aside li:last-child {
+  border-bottom: 0;
+}
+.mk-rb-aside li span {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--subtle);
+}
+.mk-rb-aside li.is-muted {
   color: var(--muted);
 }
-.mk-rb-ticket__status {
+.mk-rb-aside__status {
   position: relative;
   display: grid;
-  margin: 0;
+  margin: 12px 0 0;
   font-size: 12.5px;
   font-weight: 600;
 }
-.mk-rb-ticket__wait,
-.mk-rb-ticket__done {
+.mk-rb-aside__wait,
+.mk-rb-aside__done {
   grid-area: 1 / 1;
   display: inline-flex;
   align-items: center;
@@ -335,12 +388,12 @@
   padding: 4px 10px;
   border-radius: 999px;
 }
-.mk-rb-ticket__wait {
+.mk-rb-aside__wait {
   background: rgb(18 26 43 / 7%);
   color: var(--muted);
   opacity: 0;
 }
-.mk-rb-ticket__done {
+.mk-rb-aside__done {
   background: rgb(19 116 86 / 12%);
   color: var(--success);
 }
@@ -446,6 +499,8 @@
  * movimiento el estado es `static`: todo visible, nada se mueve.
  */
 .mk-rb-demo[data-phase="armed"] .mk-rb-msg,
+.mk-rb-demo[data-phase="armed"] .mk-rb-trigger,
+.mk-rb-demo[data-phase="armed"] .mk-rb-aside li,
 .mk-rb-demo[data-phase="armed"] .mk-rb-receipt {
   opacity: 0;
   transform: translateY(8px);
@@ -456,16 +511,21 @@
   border-color: var(--line);
   color: var(--subtle);
 }
-.mk-rb-demo[data-phase="armed"] .mk-rb-ticket__wait {
+.mk-rb-demo[data-phase="armed"] .mk-rb-aside__wait {
   opacity: 1;
 }
-.mk-rb-demo[data-phase="armed"] .mk-rb-ticket__done {
+.mk-rb-demo[data-phase="armed"] .mk-rb-aside__done {
   opacity: 0;
 }
 
-.mk-rb-demo[data-phase="play"] .mk-rb-msg {
+.mk-rb-demo[data-phase="play"] .mk-rb-msg,
+.mk-rb-demo[data-phase="play"] .mk-rb-trigger {
   animation: mk-rb-in 420ms var(--ease-out) both;
   animation-delay: calc(180ms + var(--i, 0) * 650ms);
+}
+.mk-rb-demo[data-phase="play"] .mk-rb-aside li {
+  animation: mk-rb-in 380ms var(--ease-out) both;
+  animation-delay: calc(360ms + var(--at, 0) * 650ms);
 }
 .mk-rb-demo[data-phase="play"] .mk-rb-flow li {
   animation: mk-rb-lit 400ms ease both;
@@ -475,11 +535,11 @@
   animation: mk-rb-in 460ms var(--ease-out) both;
   animation-delay: calc(360ms + var(--msgs, 4) * 650ms);
 }
-.mk-rb-demo[data-phase="play"] .mk-rb-ticket__wait {
-  animation: mk-rb-wait 2600ms ease both;
+.mk-rb-demo[data-phase="play"] .mk-rb-aside__wait {
+  animation: mk-rb-wait calc(360ms + var(--msgs, 4) * 650ms) ease both;
   animation-delay: 300ms;
 }
-.mk-rb-demo[data-phase="play"] .mk-rb-ticket__done {
+.mk-rb-demo[data-phase="play"] .mk-rb-aside__done {
   animation: mk-rb-done 380ms ease both;
   animation-delay: calc(360ms + var(--msgs, 4) * 650ms);
 }
@@ -670,10 +730,12 @@
 
 @media (prefers-reduced-motion: reduce) {
   .mk-rb-demo .mk-rb-msg,
+  .mk-rb-demo .mk-rb-trigger,
+  .mk-rb-demo .mk-rb-aside li,
   .mk-rb-demo .mk-rb-flow li,
   .mk-rb-demo .mk-rb-receipt,
-  .mk-rb-demo .mk-rb-ticket__wait,
-  .mk-rb-demo .mk-rb-ticket__done,
+  .mk-rb-demo .mk-rb-aside__wait,
+  .mk-rb-demo .mk-rb-aside__done,
   .mk-rbs__scene,
   .mk-rbs__scene .mk-rbs__copy,
   .mk-rbs__scene .mk-rbs__flow li {
@@ -681,6 +743,8 @@
     transition: none !important;
   }
   .mk-rb-demo[data-phase] .mk-rb-msg,
+  .mk-rb-demo[data-phase] .mk-rb-trigger,
+  .mk-rb-demo[data-phase] .mk-rb-aside li,
   .mk-rb-demo[data-phase] .mk-rb-receipt {
     opacity: 1;
     transform: none;

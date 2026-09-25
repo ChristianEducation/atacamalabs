@@ -41,44 +41,61 @@ export function IndustryDemo({ industry }: { industry: IndustryExperience }) {
     };
   }, [reduced]);
 
-  const { receipt } = industry;
+  const { receipt, aside, trigger } = industry;
+  /* La señal del sistema (si hay) va primero: los mensajes se corren un turno. */
+  const offset = trigger ? 1 : 0;
+  const beats = industry.script.length + offset;
 
   return (
     <div
       ref={ref}
       className="mk-rb-demo"
       data-phase={phase}
-      style={{ ["--msgs" as string]: industry.script.length } as React.CSSProperties}
+      style={{ ["--msgs" as string]: beats } as React.CSSProperties}
     >
       <p className="mk-rb-demo__label">Así trabaja tu agente</p>
 
-      <div className={cn("mk-rb-demo__body", receipt.ticket && "has-ticket")}>
-        <ol className="mk-rb-chat" aria-label="Ejemplo de conversación">
-          {industry.script.map((message, index) => (
-            <li
-              key={index}
-              className={cn("mk-rb-msg", message.from === "agent" ? "is-agent" : "is-person")}
-              style={{ ["--i" as string]: index } as React.CSSProperties}
-            >
-              <span className="mk-rb-msg__who">{message.from === "agent" ? "Agente" : "Persona"}</span>
-              <p>{message.text}</p>
-            </li>
-          ))}
-        </ol>
+      <div className={cn("mk-rb-demo__body", aside && "has-aside")}>
+        <div className="mk-rb-chatcol">
+          {trigger ? (
+            <div className="mk-rb-trigger" style={{ ["--i" as string]: 0 } as React.CSSProperties}>
+              <span className="mk-rb-trigger__label">{trigger.label}</span>
+              <p>{trigger.detail}</p>
+            </div>
+          ) : null}
+          <ol className="mk-rb-chat" aria-label="Ejemplo de conversación">
+            {industry.script.map((message, index) => (
+              <li
+                key={index}
+                className={cn("mk-rb-msg", message.from === "agent" ? "is-agent" : "is-person")}
+                style={{ ["--i" as string]: index + offset } as React.CSSProperties}
+              >
+                <span className="mk-rb-msg__who">{message.from === "agent" ? "Agente" : "Persona"}</span>
+                <p>{message.text}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
 
-        {receipt.ticket ? (
-          <div className="mk-rb-ticket" aria-label="Pedido de ejemplo">
-            <p className="mk-rb-ticket__id">{receipt.id}</p>
+        {aside ? (
+          <div className={cn("mk-rb-aside", `is-${aside.kind}`)} aria-label={aside.title}>
+            <p className="mk-rb-aside__title">{aside.title}</p>
             <ul>
-              {receipt.ticket.lines.map((line) => (
-                <li key={line}>{line}</li>
+              {aside.rows.map((row) => (
+                <li
+                  key={row.value}
+                  className={row.muted ? "is-muted" : undefined}
+                  style={{ ["--at" as string]: row.at + offset } as React.CSSProperties}
+                >
+                  {row.label ? <span>{row.label}</span> : null}
+                  {row.value}
+                </li>
               ))}
             </ul>
-            <p className="mk-rb-ticket__when">{receipt.ticket.when}</p>
-            <p className="mk-rb-ticket__status">
-              <span className="mk-rb-ticket__wait">Recibiendo…</span>
-              <span className="mk-rb-ticket__done">
-                <Check size={13} strokeWidth={2.6} aria-hidden /> Registrado
+            <p className="mk-rb-aside__status">
+              <span className="mk-rb-aside__wait">{aside.wait}</span>
+              <span className="mk-rb-aside__done">
+                <Check size={13} strokeWidth={2.6} aria-hidden /> {aside.done}
               </span>
             </p>
           </div>
@@ -100,7 +117,7 @@ export function IndustryDemo({ industry }: { industry: IndustryExperience }) {
             <Check size={13} strokeWidth={2.6} />
           </span>
           {receipt.title}
-          {receipt.id && !receipt.ticket ? <span className="mk-rb-receipt__id">{receipt.id}</span> : null}
+          {receipt.id && !aside ? <span className="mk-rb-receipt__id">{receipt.id}</span> : null}
         </p>
         <ul>
           {receipt.chips.map((chip) => (

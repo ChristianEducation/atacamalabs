@@ -16,7 +16,7 @@ const ALIASES: readonly [string, string][] = [
   ["/rubros/inmobiliarias", "/rubros#inmobiliarias"],
   ["/rubros/educacion", "/rubros#educacion"],
   ["/rubros/retail-ecommerce", "/rubros#retail-ecommerce"],
-  ["/rubros/gimnasios", "/rubros#fitness-bienestar"],
+  ["/rubros/gimnasios", "/rubros#gimnasios"],
   ["/rubros/servicios-profesionales", "/rubros#servicios-profesionales"],
   ["/rubros/servicios-b2b", "/rubros#b2b-industria"],
   ["/rubros/:slug", "/rubros"],
