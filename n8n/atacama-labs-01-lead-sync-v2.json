@@ -1,0 +1,581 @@
+{
+  "name": "Atacama Labs - 01 Lead Sync v2 (contexto de diagnóstico)",
+  "nodes": [
+    {
+      "id": "schedule-trigger",
+      "name": "Every 2 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 2
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "claim-jobs",
+      "name": "Claim Sync Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/rpc/claim_sync_jobs",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { p_icp_pack_slug: \"atacama-labs\", p_limit: 5, p_source_type: \"lead_submission\" } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": false
+    },
+    {
+      "id": "has-ghl-ids",
+      "name": "Already Has GHL IDs?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.ghl_contact_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "leftValue": "={{ $json.ghl_opportunity_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "get-lead-context",
+      "name": "Get Lead Context",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        120
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true,
+      "alwaysOutputData": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/lead_submissions?id=eq.\" + $json.lead_id + \"&select=service,plan,interest,source_page,source_section,source_cta,campaign,diagnostic_data\" }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "build-ghl-payload",
+      "name": "Build GHL Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        120
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Une lo reclamado del job con el contexto del diagnóstico. Si el lead no trae\n// contexto (Nayra, leads antiguos) o la consulta falla, se conserva el\n// comportamiento previo: solution del job tal cual.\nconst claim = $('Claim Sync Jobs').item.json;\nconst raw = $json && !Array.isArray($json) ? $json : {};\nconst ctx = raw.service || raw.diagnostic_data ? raw : {};\n\nconst SERVICE = { agentes: 'Agentes', 'a-medida': 'A Medida', web: 'Página Web', general: 'No definido' };\nconst PLAN = { esencial: 'Esencial', operacion: 'Operación', escala: 'Escala', landing: 'Landing', profesional: 'Web Profesional', ecommerce: 'Ecommerce' };\nconst INTEREST = { comercial: 'Comercial', cobranza: 'Cobranza', 'administracion-finanzas': 'Administración / Finanzas', atencion: 'Atención', agendamiento: 'Agendamiento', procesos: 'Procesos', unsure: 'Por definir' };\nconst DATA = { agent_goal: 'Objetivo del agente', delegation_note: 'Qué quiere delegar', process_description: 'Proceso a mejorar', web_goal: 'Objetivo de la web', web_note: 'Comentario', general_note: 'Comentario', legacy_industry: 'Rubro' };\n\nconst service = ctx.service || null;\nconst plan = ctx.plan || null;\n\nlet solution = claim.solution || 'unsure';\nif (service) {\n  solution = service === 'web' && plan === 'ecommerce' ? 'Ecommerce' : (SERVICE[service] || 'No definido');\n}\n\nconst lines = [];\nif (service) {\n  lines.push('Diagnóstico desde la web');\n  lines.push('Servicio: ' + (SERVICE[service] || service));\n  if (plan) lines.push('Plan: ' + (PLAN[plan] || plan));\n  if (ctx.interest) lines.push('Interés: ' + (INTEREST[ctx.interest] || ctx.interest));\n  const origin = [ctx.source_page, ctx.source_section, ctx.source_cta].filter(Boolean).join(' > ');\n  if (origin) lines.push('Origen: ' + origin);\n  if (ctx.campaign) lines.push('Campaña: ' + ctx.campaign);\n  const data = ctx.diagnostic_data && typeof ctx.diagnostic_data === 'object' ? ctx.diagnostic_data : {};\n  for (const [key, label] of Object.entries(DATA)) {\n    if (data[key]) lines.push(label + ': ' + String(data[key]).slice(0, 900));\n  }\n} else {\n  lines.push('Contacto desde la web (sin contexto de diagnóstico)');\n  if (claim.message) lines.push('Mensaje: ' + String(claim.message).slice(0, 900));\n}\n\nreturn {\n  json: {\n    ...claim,\n    ghl_solution: solution,\n    ghl_note: lines.join('\\n').slice(0, 3000),\n  },\n};"
+      }
+    },
+    {
+      "id": "upsert-contact",
+      "name": "Upsert GHL Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        120
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/contacts/upsert",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { locationId: \"pxHuOsiz2i3lM6BtC9IM\", name: $json.name, email: $json.email || undefined, phone: $json.phone || undefined, companyName: $json.company || undefined, source: \"atacama-labs-web\" } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "8VKPDkZYHtODhRtk",
+          "name": "Atacama Labs - GHL Header Auth"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "contact-ok",
+      "name": "Contact OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        120
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "create-opportunity",
+      "name": "Create GHL Opportunity",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        60
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/opportunities/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { locationId: \"pxHuOsiz2i3lM6BtC9IM\", pipelineId: \"trSWhAcNDyUMmPlYIEib\", pipelineStageId: \"aad0ad01-bffd-4ea9-b00c-7ab11dc941f6\", name: $('Claim Sync Jobs').item.json.name + \" - \" + ($('Claim Sync Jobs').item.json.company || \"Atacama Labs\"), status: \"open\", contactId: $json.contact.id, customFields: [ { id: \"Vc1cfrhuq3KCiBdzzmnf\", field_value: $('Claim Sync Jobs').item.json.source || \"web_contact\" }, { id: \"yY5sqFov8GeXcx5G9vuy\", field_value: $('Build GHL Payload').item.json.ghl_solution }, { id: \"QWSU0Zop89wOamQwBeme\", field_value: $('Claim Sync Jobs').item.json.lead_id } ] } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "8VKPDkZYHtODhRtk",
+          "name": "Atacama Labs - GHL Header Auth"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "opportunity-ok",
+      "name": "Opportunity OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        60
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "add-ghl-note",
+      "name": "Add GHL Note",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1980,
+        120
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "8VKPDkZYHtODhRtk",
+          "name": "Atacama Labs - GHL Header Auth"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \"https://services.leadconnectorhq.com/contacts/\" + $json.opportunity.contactId + \"/notes\" }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { body: $('Build GHL Payload').item.json.ghl_note } }}",
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "complete-success",
+      "name": "Complete Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1980,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/rpc/complete_sync_job",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { p_job_id: $('Already Has GHL IDs?').item.json.job_id, p_success: true, p_ghl_contact_id: $json.opportunity ? $json.opportunity.contactId : $('Already Has GHL IDs?').item.json.ghl_contact_id, p_ghl_opportunity_id: $json.opportunity ? $json.opportunity.id : $('Already Has GHL IDs?').item.json.ghl_opportunity_id } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "complete-failure-contact",
+      "name": "Complete Failure (Contact)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        260
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/rpc/complete_sync_job",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { p_job_id: $('Already Has GHL IDs?').item.json.job_id, p_success: false, p_error: (\"ghl_contact_upsert_failed: \" + JSON.stringify($json.error || {}).slice(0, 200)) } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "complete-failure-opportunity",
+      "name": "Complete Failure (Opportunity)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        260
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/rpc/complete_sync_job",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { p_job_id: $('Already Has GHL IDs?').item.json.job_id, p_success: false, p_error: (\"ghl_opportunity_create_failed: \" + JSON.stringify($json.error || {}).slice(0, 200)) } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Every 2 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Claim Sync Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claim Sync Jobs": {
+      "main": [
+        [
+          {
+            "node": "Already Has GHL IDs?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Already Has GHL IDs?": {
+      "main": [
+        [
+          {
+            "node": "Complete Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Lead Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert GHL Contact": {
+      "main": [
+        [
+          {
+            "node": "Contact OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contact OK?": {
+      "main": [
+        [
+          {
+            "node": "Create GHL Opportunity",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Complete Failure (Contact)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create GHL Opportunity": {
+      "main": [
+        [
+          {
+            "node": "Opportunity OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Opportunity OK?": {
+      "main": [
+        [
+          {
+            "node": "Complete Success",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Add GHL Note",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Complete Failure (Opportunity)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Lead Context": {
+      "main": [
+        [
+          {
+            "node": "Build GHL Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build GHL Payload": {
+      "main": [
+        [
+          {
+            "node": "Upsert GHL Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

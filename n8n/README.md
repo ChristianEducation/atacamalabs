@@ -47,6 +47,15 @@ Los JSON versionados en este directorio quedan en modo `test` (el seguro por def
 2. **Camino de reintento** (ya tiene IDs de GHL de un intento previo): el workflow detectó los IDs ya guardados y fue directo a `complete_sync_job` **sin llamar a GHL** — verificado que los IDs no cambiaron.
 3. **Camino de fallo/backoff**: probado directo en SQL sobre `complete_sync_job` (no disparado por un error real de GHL en esta sesión) — `retry_wait`, `attempts=1`, `next_at` futuro, error sin PII. El workflow usa la misma función, así que hereda ese comportamiento; no se forzó un fallo real de la API de GHL para no arriesgar nada en producción sin necesidad.
 
+### 01 Lead Sync v2 — contexto del diagnóstico (2026-09-25, PENDIENTE de importar)
+
+- Archivo: [`atacama-labs-01-lead-sync-v2.json`](atacama-labs-01-lead-sync-v2.json) (13 nodos). No reemplaza al v1 hasta que se importe, pruebe y active.
+- Cambios sobre v1: tras `Already Has GHL IDs?` (rama "no") se agregan `Get Lead Context` (GET a `lead_submissions` por `lead_id`: service, plan, interest, source_*, campaign, diagnostic_data; **no se toca `claim_sync_jobs`**, que comparte cola con el pipeline de prospección) y `Build GHL Payload` (Code: arma "Solución de interés" y el texto de la nota). `Create GHL Opportunity` usa `ghl_solution` en vez de `solution`. Nuevo `Add GHL Note` (POST `/contacts/{id}/notes`, `continueOnFail`) cuelga de `Opportunity OK?` en paralelo a `Complete Success`: si la nota falla no falla el job.
+- Mapeo de "Solución de interés" (dropdown de la Opportunity, id `yY5sqFov8GeXcx5G9vuy`): `agentes`→**Agentes**, `a-medida`→**A Medida**, `web`→**Página Web**, `web`+plan `ecommerce`→**Ecommerce**, `general`→**No definido**. Sin contexto (Nayra, leads antiguos, error de la consulta) se conserva el comportamiento anterior (`solution` del job: `unsure`, `atencion-y-seguimiento`…).
+- **Requisito previo en GHL (manual):** el dropdown hoy solo tiene los slugs antiguos; hay que agregar las opciones `Agentes`, `A Medida`, `Página Web`, `Ecommerce`, `No definido` (exactamente esos textos) **antes** de activar v2, o la creación de la oportunidad falla y el job entra en reintentos.
+- Despliegue seguro (protocolo de arriba): importar como workflow nuevo, revisar credenciales, desactivar v1, activar v2, probar con un lead de prueba rotulado y borrarlo después (Supabase + GHL). Nunca editar in-place el v1 activo.
+- Lógica del Code node probada offline con casos: agentes, ecommerce, web, general, sin contexto, error de consulta, respuesta vacía.
+
 ## Atacama Labs — 01 Discovery
 
 - **v2 (protocolo seguro)**: sin id n8n fijo — cada prueba/uso crea una copia desechable desde el JSON versionado (ver protocolo arriba). Fuente/backup: [`atacama-labs-01-discovery.json`](atacama-labs-01-discovery.json), actualmente en modo `test` (constantes fijadas a `atacama-labs-test`); la versión `real` (fijada a `atacama-labs`) se genera solo al promover.
