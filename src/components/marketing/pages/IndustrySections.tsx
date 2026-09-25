@@ -82,27 +82,6 @@ export function IndustryPanel({
   );
 }
 
-/** Visual liviana del hero: el recorrido común de todos los rubros (§6.2). Estática. */
-export function RubrosHeroVisual() {
-  const steps = [
-    ["Persona", "Escribe por WhatsApp, correo o la web"],
-    ["Agente", "Entiende, consulta y decide el paso"],
-    ["Herramientas", "Calendar, CRM, catálogo, sistema"],
-    ["Resultado", "Acción registrada y equipo informado"],
-  ] as const;
-  return (
-    <ol className="mk-rb-hero" aria-label="Recorrido de un agente">
-      {steps.map(([title, body], index) => (
-        <li key={title}>
-          <span className="mk-rb-hero__n">{String(index + 1).padStart(2, "0")}</span>
-          <strong>{title}</strong>
-          <span>{body}</span>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
 /** «Otro rubro» (§19): cierra la página; no lleva otro CTA comercial encima del footer. */
 export function OtherIndustry() {
   return (

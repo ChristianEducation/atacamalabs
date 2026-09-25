@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import { HeroShell } from "@/components/marketing/pages/HeroShell";
 import { IndustryExplorer } from "@/components/marketing/pages/IndustryExplorer";
-import { OtherIndustry, RubrosHeroVisual } from "@/components/marketing/pages/IndustrySections";
+import { OtherIndustry } from "@/components/marketing/pages/IndustrySections";
 
 const TITLE = "Rubros e industrias para agentes de IA — Atacama Labs";
 const DESCRIPTION =
@@ -23,19 +22,24 @@ export const metadata: Metadata = {
 export default function RubrosPage() {
   return (
     <>
-      <HeroShell
-        size="l"
-        eyebrow="RUBROS"
-        title={
-          <>
-            Tu agente, <span className="mk-hero__accent">puesto en práctica</span>.
-          </>
-        }
-        lead="Mira cómo puede trabajar dentro de distintos rubros, conectado a los procesos, herramientas y reglas de cada operación."
-        trust="Cada implementación se adapta a tu empresa. Estos ejemplos muestran formas concretas de poner un agente a trabajar."
-        visual={<RubrosHeroVisual />}
-        className="mk-hero--rubros"
-      />
+      <section className="mk-hero mk-hero--rubros mk-hero--center" aria-labelledby="page-title">
+        <div className="mk-container">
+          <div className="mk-hero__copy">
+            <p className="mk-eyebrow">RUBROS</p>
+            <h1 id="page-title" className="mk-hero__h1">
+              Tu agente, <span className="mk-hero__accent">puesto en práctica</span>.
+            </h1>
+            <p className="mk-lead mk-hero__lead">
+              Mira cómo puede trabajar dentro de distintos rubros, conectado a los procesos, herramientas y reglas de
+              cada operación.
+            </p>
+            <p className="mk-small mk-muted mk-hero__trust">
+              Cada implementación se adapta a tu empresa. Estos ejemplos muestran formas concretas de poner un agente a
+              trabajar.
+            </p>
+          </div>
+        </div>
+      </section>
       <div className="mk-rb">
         <IndustryExplorer />
         <OtherIndustry />

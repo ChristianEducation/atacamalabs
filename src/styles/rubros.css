@@ -5,51 +5,37 @@
  * punto de partida cuando hay JS y no se pidió reducir movimiento.
  */
 
-/* ---------- Hero: recorrido común ---------- */
-.mk-rb-hero {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+/* ---------- Hero: solo texto y un buen degradé ---------- */
+.mk-hero--rubros {
+  padding: clamp(64px, 9vw, 112px) 0 clamp(72px, 9vw, 112px);
+  background:
+    radial-gradient(58% 90% at 86% -8%, rgb(15 92 237 / 26%), transparent 66%),
+    radial-gradient(44% 70% at 8% 12%, rgb(245 185 66 / 13%), transparent 68%),
+    radial-gradient(60% 55% at 50% 108%, rgb(15 92 237 / 12%), transparent 72%),
+    linear-gradient(
+      180deg,
+      var(--section-sand) 0%,
+      var(--section-paper) 42%,
+      var(--section-blue-mist) 82%,
+      var(--section-paper) 100%
+    );
 }
-.mk-rb-hero li {
-  position: relative;
-  display: grid;
-  grid-template-columns: 34px 1fr;
-  grid-template-rows: auto auto;
-  column-gap: 12px;
-  padding: 14px 16px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: #fff;
+.mk-hero--rubros .mk-hero__copy {
+  align-items: center;
+  max-width: 860px;
+  margin-inline: auto;
+  text-align: center;
 }
-.mk-rb-hero li + li::before {
-  content: "";
-  position: absolute;
-  left: 32px;
-  top: -11px;
-  width: 1px;
-  height: 10px;
-  background: rgb(15 92 237 / 35%);
+.mk-hero--rubros .mk-hero__h1 {
+  font-size: clamp(44px, 6.6vw, 84px);
+  line-height: 1.02;
 }
-.mk-rb-hero__n {
-  grid-row: span 2;
-  align-self: center;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--blue-text);
+.mk-hero--rubros .mk-hero__lead {
+  max-width: 54ch;
+  margin-inline: auto;
 }
-.mk-rb-hero strong {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ink);
-}
-.mk-rb-hero li > span:last-child {
-  font-size: 13.5px;
-  line-height: 1.45;
-  color: var(--muted);
+.mk-hero--rubros .mk-hero__trust {
+  max-width: 54ch;
 }
 
 /* ---------- Selector pegado: pastilla de vidrio ---------- */
@@ -104,6 +90,21 @@
 }
 .mk-rb-nav .mk-sel-tab::before {
   display: none;
+}
+.mk-rb-nav .mk-sel-tab {
+  gap: 6px;
+  padding-inline: 10px 13px;
+  font-size: 13.5px;
+}
+.mk-rb-nav__bust {
+  flex: none;
+  margin-block: -2px -3px;
+  opacity: 0.78;
+  transition: opacity 200ms ease;
+}
+.mk-rb-nav .mk-sel-tab:hover .mk-rb-nav__bust,
+.mk-rb-nav .mk-sel-tab[aria-selected="true"] .mk-rb-nav__bust {
+  opacity: 1;
 }
 .mk-rb-nav .mk-sel-tab:hover {
   transform: none;
