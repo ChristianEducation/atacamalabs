@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { FOOTER_BRAND } from "@/content/marketing/nav";
+import { INDUSTRY_LIST } from "@/content/marketing/industries";
 import { clientPortalUrl, directContact, socialLinks } from "@/lib/marketing/public-config";
 import { DiagnosticLink } from "./DiagnosticLink";
 
@@ -58,6 +59,19 @@ export function Footer() {
                 <li key={item.href}>
                   <Link className="mk-footer__link" href={item.href}>
                     {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <nav className="mk-footer__col mk-footer__col--rubros" aria-label="Rubros">
+            <h2 className="mk-footer__h">Rubros</h2>
+            <ul>
+              {INDUSTRY_LIST.map((industry) => (
+                <li key={industry.slug}>
+                  <Link className="mk-footer__link" href={`/rubros#${industry.slug}`}>
+                    {industry.shortLabel}
                   </Link>
                 </li>
               ))}

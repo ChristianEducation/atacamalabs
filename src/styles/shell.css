@@ -600,6 +600,11 @@
 .mk-footer__legal .mk-footer__link {
   font-size: 13px;
 }
+.mk-footer__col--rubros ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 20px;
+}
 @media (min-width: 768px) {
   .mk-footer {
     padding-top: 64px;
@@ -620,19 +625,21 @@
     grid-template-columns: repeat(12, minmax(0, 1fr));
     gap: 24px;
   }
+  /* Sin «Conecta»: marca 4 · Soluciones 2 · Rubros 4 · Atacama Labs 2 */
   .mk-footer__brand {
-    grid-column: span 6;
+    grid-column: span 4;
   }
   .mk-footer__grid > .mk-footer__col {
-    grid-column: span 3;
-  }
-  .mk-footer__grid--connect .mk-footer__brand {
-    grid-column: span 5;
-  }
-  .mk-footer__grid--connect > .mk-footer__col {
     grid-column: span 2;
   }
-  .mk-footer__grid--connect > .mk-footer__col:first-of-type {
+  .mk-footer__grid > .mk-footer__col--rubros {
+    grid-column: span 4;
+  }
+  /* Con «Conecta»: marca 3 · Soluciones 2 · Rubros 3 · Atacama Labs 2 · Conecta 2 */
+  .mk-footer__grid--connect .mk-footer__brand {
+    grid-column: span 3;
+  }
+  .mk-footer__grid--connect > .mk-footer__col--rubros {
     grid-column: span 3;
   }
 }
