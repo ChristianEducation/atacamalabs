@@ -40,20 +40,9 @@ function propArt(prop: Prop): Rect[] {
         ...grid(3, 3, (c, row) => r(108 + c * 2, 53 + row * 2, 1, 1, PAL.steel)),
       ];
     case "papers":
-      return [
-        r(106, 54, 9, 4, PAL.white),
-        r(106, 52, 9, 2, "#e5eaf4"),
-        r(107, 50, 7, 2, PAL.white),
-        r(113, 49, 1, 4, PAL.amber),
-      ];
+      return [r(106, 54, 9, 4, PAL.white), r(106, 52, 9, 2, "#e5eaf4"), r(107, 50, 7, 2, PAL.white), r(113, 49, 1, 4, PAL.amber)];
     case "headset":
-      return [
-        r(108, 50, 5, 1, PAL.ink),
-        r(107, 51, 1, 4, PAL.ink),
-        r(113, 51, 1, 4, PAL.ink),
-        r(106, 54, 2, 3, PAL.ink),
-        r(113, 54, 2, 3, PAL.ink),
-      ];
+      return [r(108, 50, 5, 1, PAL.ink), r(107, 51, 1, 4, PAL.ink), r(113, 51, 1, 4, PAL.ink), r(106, 54, 2, 3, PAL.ink), r(113, 54, 2, 3, PAL.ink)];
     case "calendar":
       return [
         r(107, 50, 8, 8, PAL.white),
@@ -69,33 +58,17 @@ function propArt(prop: Prop): Rect[] {
 function screenArt(prop: Prop): Rect[] {
   switch (prop) {
     case "case":
-      return [
-        r(92, 44, 6, 4, PAL.green),
-        r(93, 45, 4, 1, PAL.white),
-        r(93, 47, 2, 1, PAL.white),
-        r(96, 49, 6, 3, "#dfe9ff"),
-      ];
+      return [r(92, 44, 6, 4, PAL.green), r(93, 45, 4, 1, PAL.white), r(93, 47, 2, 1, PAL.white), r(96, 49, 6, 3, "#dfe9ff")];
     case "calc":
       return [0, 1, 2].flatMap((i) => [r(92, 44 + i * 3, 9, 1, PAL.steelDark), r(101, 44 + i * 3, 1, 1, PAL.amber)]);
     case "papers":
-      return [
-        r(92, 50, 2, 3, PAL.shirt),
-        r(95, 47, 2, 6, PAL.shirt),
-        r(98, 45, 2, 8, PAL.shirt),
-        r(101, 48, 1, 5, PAL.shirt),
-      ];
+      return [r(92, 50, 2, 3, PAL.shirt), r(95, 47, 2, 6, PAL.shirt), r(98, 45, 2, 8, PAL.shirt), r(101, 48, 1, 5, PAL.shirt)];
     case "headset":
       return [r(92, 44, 6, 3, "#dfe9ff"), r(96, 48, 6, 3, PAL.green), r(93, 52, 3, 1, PAL.steelDark)];
     case "calendar":
       return grid(3, 3, (c, row) => r(92 + c * 3, 44 + row * 3, 2, 2, row === 1 && c === 2 ? PAL.shirt : PAL.steel));
     default:
-      return [
-        r(92, 45, 3, 3, PAL.shirt),
-        r(98, 45, 3, 3, PAL.shirt),
-        r(95, 50, 3, 3, PAL.green),
-        r(93, 48, 1, 2, PAL.steelDark),
-        r(99, 48, 1, 2, PAL.steelDark),
-      ];
+      return [r(92, 45, 3, 3, PAL.shirt), r(98, 45, 3, 3, PAL.shirt), r(95, 50, 3, 3, PAL.green), r(93, 48, 1, 2, PAL.steelDark), r(99, 48, 1, 2, PAL.steelDark)];
   }
 }
 

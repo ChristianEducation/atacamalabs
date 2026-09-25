@@ -25,7 +25,12 @@ const ART: Record<ToolIconId, Rect[]> = {
     r(10, 11, 2, 2, PAL.shirt),
   ],
   // teléfono con globo de conversación
-  chat: [r(1, 2, 14, 9, PAL.green), r(3, 11, 3, 2, PAL.green), r(4, 5, 8, 1, PAL.white), r(4, 7, 5, 1, PAL.white)],
+  chat: [
+    r(1, 2, 14, 9, PAL.green),
+    r(3, 11, 3, 2, PAL.green),
+    r(4, 5, 8, 1, PAL.white),
+    r(4, 7, 5, 1, PAL.white),
+  ],
   // archivador del CRM
   crm: [
     r(3, 1, 10, 14, PAL.steel),
