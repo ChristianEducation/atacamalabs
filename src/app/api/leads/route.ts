@@ -8,10 +8,9 @@ export const runtime = "nodejs";
 const MAX_BODY_BYTES = 16 * 1024;
 const RATE_LIMIT_WINDOW_MIN = 10;
 const RATE_LIMIT_MAX = 5;
-// No hay /privacidad publicada todavía (WEB-CONTENT.md: dato pendiente de
-// Christian) — este es un marcador explícito de "sin aviso real todavía",
-// no una versión real de un aviso publicado.
-const NOTICE_VERSION = "unpublished-draft-v0";
+// Versión de la Política de Privacidad vigente al enviar (/privacidad,
+// actualizada el 24-sep-2026). Actualizar junto con el texto publicado.
+const NOTICE_VERSION = "privacidad-2026-09-24";
 
 const ALLOWED_SOLUTIONS = new Set([...site.solutions.map((s) => s.slug), "unsure"]);
 

@@ -16,6 +16,7 @@ const ALIASES: readonly [string, string][] = [
   ["/industrias", "/agentes"],
   ["/industrias/:slug", "/agentes"],
   ["/contacto", "/diagnostico"],
+  ["/privacy", "/privacidad"],
   ["/agenda", "/diagnostico#agenda"],
   ["/nosotros", "/conocenos"],
   ["/sobre-el-estudio", "/conocenos"],

@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { BRAND, SERVICES } from "@/content/marketing/nav";
 import { DiagnosticLink } from "./DiagnosticLink";
-import { PRIVACY_APPROVED, clientPortalUrl, directContact, socialLinks } from "@/lib/marketing/public-config";
+import { clientPortalUrl, directContact, socialLinks } from "@/lib/marketing/public-config";
 
 /**
  * Footer global — spec V3.0: tres columnas (marca, servicios, empresa). Sin
@@ -75,13 +75,6 @@ export function Footer() {
                   </a>
                 </li>
               ) : null}
-              {PRIVACY_APPROVED ? (
-                <li>
-                  <Link className="mk-footer__link" href="/privacidad">
-                    Privacidad
-                  </Link>
-                </li>
-              ) : null}
               {socials.map((s) => (
                 <li key={s.label}>
                   <a className="mk-footer__link" href={s.url} rel="noopener noreferrer">
@@ -94,6 +87,14 @@ export function Footer() {
         </div>
         <div className="mk-footer__bottom">
           <p>© {year} Atacama Labs</p>
+          <nav className="mk-footer__legal" aria-label="Legal">
+            <Link className="mk-footer__link" href="/privacidad">
+              Privacidad
+            </Link>
+            <Link className="mk-footer__link" href="/terminos">
+              Términos
+            </Link>
+          </nav>
         </div>
       </div>
     </footer>

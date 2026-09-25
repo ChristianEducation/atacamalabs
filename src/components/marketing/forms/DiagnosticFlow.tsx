@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { AlertCircle, ArrowLeft, CalendarCheck } from "lucide-react";
 import { Button } from "../ui/Button";
@@ -440,7 +441,11 @@ export function DiagnosticFlow({ initial, agendaUrl }: { initial: DiagnosticCont
                   Continuar y elegir horario
                 </Button>
                 <p className="mk-dg-privacy">
-                  Usaremos tus datos para responder tu solicitud y coordinar la conversación.
+                  Usaremos tus datos para responder tu solicitud y coordinar la conversación. Más en nuestra{" "}
+                  <Link href="/privacidad" className="mk-link" target="_blank" rel="noopener">
+                    Política de Privacidad
+                  </Link>
+                  .
                 </p>
               </form>
             </>

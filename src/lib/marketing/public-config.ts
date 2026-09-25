@@ -44,9 +44,6 @@ export function directContact(): { email: string | null; whatsapp: string | null
   };
 }
 
-/** ¿Existe contenido de privacidad aprobado? Mientras no exista, no se enlaza ni se lista. */
-export const PRIVACY_APPROVED = false;
-
 /** Agenda real (M3): solo con URL https validada; si no existe, no se muestra calendario alguno. */
 export function bookingUrl(): string | null {
   const settings: Record<string, string | null> = site.publicSettings;

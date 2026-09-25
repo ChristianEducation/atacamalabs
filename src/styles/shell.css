@@ -577,6 +577,21 @@
   border-top: 1px solid var(--dark-line);
   font-size: 13px;
   color: var(--dark-muted);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 24px;
+}
+.mk-footer__bottom p {
+  margin: 0;
+}
+.mk-footer__legal {
+  display: flex;
+  gap: 20px;
+}
+.mk-footer__legal .mk-footer__link {
+  font-size: 13px;
 }
 @media (min-width: 768px) {
   .mk-footer {

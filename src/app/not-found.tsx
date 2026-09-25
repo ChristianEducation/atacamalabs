@@ -1,6 +1,10 @@
+import type { Metadata } from "next";
 import { ButtonLink } from "@/components/marketing/ui/Button";
 import { diagnosticHref } from "@/lib/marketing/cta-context";
 import SiteLayout from "./(site)/layout";
+
+/** No se indexa (PAGINAS_AUXILIARES_SPEC_V1 §9). */
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default function NotFound() {
   return (
@@ -12,7 +16,7 @@ export default function NotFound() {
             No encontramos esa página.
           </h1>
           <p className="mk-lead">
-            Puede que el enlace haya cambiado. Vuelve al inicio o cuéntanos qué proceso buscas mejorar.
+            Puede que el enlace haya cambiado. Puedes volver al inicio o contarnos qué quieres mejorar.
           </p>
           <div className="mk-hero__actions">
             <ButtonLink href="/" arrow>

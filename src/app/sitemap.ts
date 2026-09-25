@@ -4,7 +4,7 @@ import { SITE_URL } from "@/lib/site-url";
 /**
  * Rutas públicas implementadas — spec V3.0 §4. Comercial/Cobranza/
  * Administrativo-Financiero y Rubros ya no son páginas propias (redirigen).
- * /privacidad no se lista hasta que exista contenido aprobado.
+ * /privacidad y /terminos son indexables pero no prioritarias.
  */
 const STATIC_ROUTES = [
   "/",
@@ -15,6 +15,8 @@ const STATIC_ROUTES = [
   "/precios",
   "/conocenos",
   "/diagnostico",
+  "/privacidad",
+  "/terminos",
 ] as const;
 
 export default function sitemap(): MetadataRoute.Sitemap {

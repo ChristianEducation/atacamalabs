@@ -1,0 +1,125 @@
+/*
+ * Páginas legales (/privacidad, /terminos): ancho de lectura 720–820 px, papel,
+ * tipografía clara. Sin demos, sin motion, sin CTAs en el cuerpo.
+ */
+.mk-lg {
+  padding-block: clamp(40px, 7vw, 88px);
+}
+.mk-lg-doc {
+  max-width: 760px;
+  margin-inline: auto;
+}
+.mk-lg-head {
+  padding-bottom: clamp(24px, 4vw, 40px);
+  border-bottom: 1px solid var(--line);
+}
+.mk-lg-title {
+  margin: 14px 0 0;
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: clamp(38px, 6vw, 56px);
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+.mk-lg-intro {
+  margin: 20px 0 0;
+  font-size: clamp(17px, 2.2vw, 19px);
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.mk-lg-toc {
+  margin: clamp(24px, 4vw, 36px) 0 0;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+}
+.mk-lg-toc__label {
+  margin: 0 0 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--subtle);
+}
+.mk-lg-toc ol {
+  margin: 0;
+  padding-left: 32px;
+  list-style: decimal;
+  columns: 2;
+  column-gap: 32px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.mk-lg-toc li {
+  break-inside: avoid;
+  padding: 3px 0;
+}
+.mk-lg-toc li::marker {
+  color: var(--blue-text);
+  font-size: 13px;
+}
+.mk-lg-toc a {
+  color: var(--ink);
+  text-decoration: none;
+}
+.mk-lg-toc a:hover,
+.mk-lg-toc a:focus-visible {
+  color: var(--blue-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.mk-lg-sec {
+  margin-top: clamp(32px, 5vw, 48px);
+  scroll-margin-top: calc(var(--header-h) + 24px);
+}
+.mk-lg-sec h2 {
+  margin: 0 0 14px;
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: clamp(24px, 3.4vw, 30px);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.mk-lg-sec h2 span {
+  margin-right: 4px;
+  color: var(--blue-text);
+}
+.mk-lg-sec p,
+.mk-lg-sec li {
+  font-size: 16.5px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+.mk-lg-sec p {
+  margin: 0 0 14px;
+}
+.mk-lg-sec ul {
+  margin: 0 0 14px;
+  padding-left: 22px;
+}
+.mk-lg-sec li {
+  padding-left: 4px;
+  margin-bottom: 6px;
+}
+.mk-lg-sec li::marker {
+  color: var(--blue);
+}
+.mk-lg-updated {
+  margin: clamp(40px, 6vw, 64px) 0 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  color: var(--subtle);
+}
+
+@media (max-width: 600px) {
+  .mk-lg-toc ol {
+    columns: 1;
+  }
+}
