@@ -173,6 +173,8 @@ export interface DiagnosticValues {
   webGoal: string;
   /** Respuesta abierta de la pregunta contextual. */
   answer: string;
+  /** Casilla opcional del paso de datos («¿Algo más que quieras contarnos?»). */
+  extra: string;
   name: string;
   company: string;
   email: string;
@@ -183,6 +185,8 @@ export const MESSAGE_MAX = 1200;
 export const MESSAGE_MIN = 20;
 /** Máximo de la respuesta abierta: deja espacio al encabezado que se antepone. */
 export const ANSWER_MAX = 900;
+/** Máximo de la nota opcional del paso de datos. */
+export const EXTRA_MAX = 500;
 
 /** Solución del contrato actual (lista permitida): lo demás viaja en los campos nuevos. */
 export function solutionFor(service: Service | "", interest: Interest | ""): string {
@@ -211,7 +215,9 @@ export function buildMessage(values: DiagnosticValues, source: string): string {
       body = "Quiere conversar sobre su caso.";
     }
   }
-  return `${header}\n${body}`.slice(0, MESSAGE_MAX);
+  const extra = values.extra.trim();
+  const note = extra ? `\nNota adicional: ${extra}` : "";
+  return `${header}\n${body}${note}`.slice(0, MESSAGE_MAX);
 }
 
 /** Respuestas estructuradas (van a `diagnostic_data` sin crear una columna por pregunta). */
@@ -228,6 +234,7 @@ export function buildDiagnosticData(values: DiagnosticValues, legacyIndustry: st
   } else if (values.answer.trim()) {
     data.general_note = values.answer.trim();
   }
+  if (values.extra.trim()) data.extra_note = values.extra.trim();
   if (legacyIndustry) data.legacy_industry = legacyIndustry;
   return data;
 }

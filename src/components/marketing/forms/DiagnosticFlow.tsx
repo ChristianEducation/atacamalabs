@@ -9,6 +9,7 @@ import type { Service } from "@/lib/marketing/cta-context";
 import {
   AGENT_GOAL_OPTIONS,
   ANSWER_MAX,
+  EXTRA_MAX,
   PLAN_LABEL,
   SERVICE_OPTIONS,
   WEB_GOAL_OPTIONS,
@@ -50,6 +51,7 @@ export function DiagnosticFlow({ initial, agendaUrl }: { initial: DiagnosticCont
     plan: initial.plan,
     webGoal: "",
     answer: "",
+    extra: "",
     name: "",
     company: "",
     email: "",
@@ -429,6 +431,17 @@ export function DiagnosticFlow({ initial, agendaUrl }: { initial: DiagnosticCont
                     />
                   </Field>
                 </div>
+
+                <Field id={`${uid}-extra`} label="¿Algo más que quieras contarnos? (opcional)">
+                  <textarea
+                    id={`${uid}-extra`}
+                    className="mk-dg-textarea"
+                    rows={3}
+                    maxLength={EXTRA_MAX}
+                    value={values.extra}
+                    onChange={(event) => patch({ extra: event.target.value })}
+                  />
+                </Field>
 
                 <div className="mk-dg-honeypot" aria-hidden="true">
                   <label>

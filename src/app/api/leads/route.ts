@@ -53,6 +53,7 @@ const DIAGNOSTIC_KEYS = new Set([
   "web_goal",
   "web_note",
   "general_note",
+  "extra_note",
   "legacy_industry",
 ]);
 const DIAGNOSTIC_VALUE_MAX = 900;
