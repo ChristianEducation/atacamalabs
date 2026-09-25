@@ -13,10 +13,7 @@ const RATE_LIMIT_MAX = 5;
 // no una versión real de un aviso publicado.
 const NOTICE_VERSION = "unpublished-draft-v0";
 
-const ALLOWED_SOLUTIONS = new Set([
-  ...site.solutions.map((s) => s.slug),
-  "unsure",
-]);
+const ALLOWED_SOLUTIONS = new Set([...site.solutions.map((s) => s.slug), "unsure"]);
 
 type Body = {
   requestId?: string;
@@ -28,7 +25,63 @@ type Body = {
   solution?: string;
   source?: string;
   website?: string; // honeypot
+  // Contexto comercial del diagnóstico (opcional: los llamadores antiguos no lo envían).
+  service?: string;
+  plan?: string;
+  interest?: string;
+  source_page?: string;
+  source_section?: string;
+  source_cta?: string;
+  campaign?: string;
+  diagnostic_data?: unknown;
 };
+
+const SERVICES = new Set(["agentes", "a-medida", "web", "general"]);
+const PLANS = new Set(["esencial", "operacion", "escala", "landing", "profesional", "ecommerce"]);
+const INTERESTS = new Set([
+  "comercial",
+  "cobranza",
+  "administracion-finanzas",
+  "atencion",
+  "agendamiento",
+  "procesos",
+  "unsure",
+]);
+const DIAGNOSTIC_KEYS = new Set([
+  "agent_goal",
+  "delegation_note",
+  "process_description",
+  "web_goal",
+  "web_note",
+  "general_note",
+  "legacy_industry",
+]);
+const DIAGNOSTIC_VALUE_MAX = 900;
+const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/** Identificador kebab-case corto o null: lo que no calza se descarta, no rompe el envío. */
+function cleanId(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const v = value.trim().toLowerCase();
+  return v.length > 0 && v.length <= 64 && ID_PATTERN.test(v) ? v : null;
+}
+
+function cleanEnum(value: unknown, allowed: Set<string>): string | null {
+  const v = cleanId(value);
+  return v && allowed.has(v) ? v : null;
+}
+
+/** Solo claves conocidas y valores de texto acotados. */
+function cleanDiagnosticData(value: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!value || typeof value !== "object" || Array.isArray(value)) return out;
+  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (!DIAGNOSTIC_KEYS.has(key) || typeof raw !== "string") continue;
+    const text = raw.trim().slice(0, DIAGNOSTIC_VALUE_MAX);
+    if (text) out[key] = text;
+  }
+  return out;
+}
 
 function fieldErrors(body: Body): Record<string, string> {
   const errors: Record<string, string> = {};
@@ -39,8 +92,7 @@ function fieldErrors(body: Body): Record<string, string> {
 
   const email = (body.email ?? "").trim();
   const phone = (body.phone ?? "").trim();
-  const emailValid =
-    email.length > 0 && email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const emailValid = email.length > 0 && email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const phoneValid = phone.length > 0 && phone.length <= 30 && phone.replace(/[^\d]/g, "").length >= 8;
   if (!emailValid && !phoneValid) {
     errors.email = "email_or_phone_required";
@@ -86,10 +138,7 @@ export async function POST(req: NextRequest) {
   // confirmación sin persistir nada. No afecta a usuarios reales (el campo
   // es invisible en la UI real).
   if (body.website && body.website.trim().length > 0) {
-    return NextResponse.json(
-      { status: "received", receiptId: randomUUID() },
-      { status: 201 },
-    );
+    return NextResponse.json({ status: "received", receiptId: randomUUID() }, { status: 201 });
   }
 
   const errors = fieldErrors(body);
@@ -106,10 +155,7 @@ export async function POST(req: NextRequest) {
     supabase = getSupabaseServerClient();
   } catch {
     // Credenciales de Supabase todavía no configuradas en este entorno.
-    return NextResponse.json(
-      { error: "server_not_configured" },
-      { status: 503 },
-    );
+    return NextResponse.json({ error: "server_not_configured" }, { status: 503 });
   }
 
   // Rate limit por IP hash, respaldado en la misma tabla (funciona igual
@@ -132,6 +178,16 @@ export async function POST(req: NextRequest) {
   }
 
   const solution = body.solution ?? "unsure";
+  const context = {
+    service: cleanEnum(body.service, SERVICES),
+    plan: cleanEnum(body.plan, PLANS),
+    interest: cleanEnum(body.interest, INTERESTS),
+    source_page: cleanId(body.source_page),
+    source_section: cleanId(body.source_section),
+    source_cta: cleanId(body.source_cta),
+    campaign: cleanId(body.campaign),
+    diagnostic_data: cleanDiagnosticData(body.diagnostic_data),
+  };
   const hash = payloadHash({
     name: body.name?.trim(),
     company: body.company?.trim() || null,
@@ -139,6 +195,7 @@ export async function POST(req: NextRequest) {
     phone: body.phone?.trim() || null,
     message: body.message?.trim(),
     solution,
+    context,
   });
 
   const { data, error } = await supabase.rpc("create_lead_submission", {
@@ -154,6 +211,14 @@ export async function POST(req: NextRequest) {
     p_notice_version: NOTICE_VERSION,
     p_source: body.source ?? "web",
     p_ip_hash: ipHash,
+    p_service: context.service,
+    p_plan: context.plan,
+    p_interest: context.interest,
+    p_source_page: context.source_page,
+    p_source_section: context.source_section,
+    p_source_cta: context.source_cta,
+    p_campaign: context.campaign,
+    p_diagnostic_data: context.diagnostic_data,
   });
 
   if (error) {
