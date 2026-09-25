@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ButtonLink } from "../ui/Button";
+import { AgentCtaLink } from "../shell/AgentCtaLink";
+import { interestForRole } from "@/lib/marketing/cta-context";
 import { SectionHeading } from "../ui/Blocks";
 import { AgentDemo } from "../demos/AgentDemos";
 import { useReducedMotion } from "../motion/reduced-motion";
@@ -11,6 +12,9 @@ import { AGENT_ROLES, AGENTS_FEATURES_LABEL, AGENTS_SELECTOR_HEADING } from "@/c
 
 const SWAP_MS = 300;
 const indexOfRole = (id: string) => AGENT_ROLES.findIndex((role) => role.id === id);
+
+/** Anclas del contrato de CTA que difieren del id interno del rol. */
+const ROLE_ALIAS: Record<string, string> = { "administracion-finanzas": "administrativo-financiero" };
 
 /**
  * Selector de puestos de /agentes (AGENTES_SPEC_V1 §4). Funciona igual que el
@@ -63,7 +67,11 @@ export function AgentSelector() {
     (index: number, options?: { instant?: boolean }) => {
       if (index === target) return;
       setTarget(index);
-      tabRefs.current[index]?.scrollIntoView({ inline: "center", block: "nearest", behavior: reduced ? "auto" : "smooth" });
+      tabRefs.current[index]?.scrollIntoView({
+        inline: "center",
+        block: "nearest",
+        behavior: reduced ? "auto" : "smooth",
+      });
       window.history.replaceState(null, "", `#${AGENT_ROLES[index].id}`);
       if (timer.current) window.clearTimeout(timer.current);
       if (reduced || options?.instant) {
@@ -89,10 +97,10 @@ export function AgentSelector() {
 
   useEffect(() => {
     const open = () => {
-      const index = indexOfRole(window.location.hash.slice(1));
+      const index = indexOfRole(ROLE_ALIAS[window.location.hash.slice(1)] ?? window.location.hash.slice(1));
       if (index < 0) return;
       selectRef.current(index, { instant: true });
-      document.getElementById("selector")?.scrollIntoView({ block: "start" });
+      document.getElementById("selector-agentes")?.scrollIntoView({ block: "start" });
     };
     const frame = requestAnimationFrame(open);
     window.addEventListener("hashchange", open);
@@ -119,7 +127,7 @@ export function AgentSelector() {
   const run = phase === "static" ? undefined : phase === "play" && visible ? "running" : "paused";
 
   return (
-    <section id="selector" className="mk-section mk-t-mist mk-sel" aria-labelledby="agents-selector-title">
+    <section id="selector-agentes" className="mk-section mk-t-mist mk-sel" aria-labelledby="agents-selector-title">
       <div className="mk-container">
         <SectionHeading
           id="agents-selector-title"
@@ -182,9 +190,18 @@ export function AgentSelector() {
               ))}
             </ul>
             <div>
-              <ButtonLink href={role.cta.href} arrow>
+              <AgentCtaLink
+                arrow
+                context={{
+                  source_page: "agentes",
+                  source_section: "selector",
+                  source_cta: `quiero-agente-${role.id}`,
+                  service: "agentes",
+                  interest: interestForRole(role.id),
+                }}
+              >
                 {role.cta.label}
-              </ButtonLink>
+              </AgentCtaLink>
             </div>
           </div>
           <div className="mk-sel-visual" key={`visual-${role.id}-${swaps}`}>

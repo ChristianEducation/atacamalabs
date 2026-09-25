@@ -32,7 +32,14 @@ export const WEB_FORMATS: readonly WebFormat[] = [
     name: "Landing",
     message: "Una oferta. Una acción principal.",
     forWho: "Campañas, captación de leads, lanzamiento de un servicio o validación de una oferta.",
-    includes: ["Una página", "Diseño responsive", "Formulario / CTA", "SEO técnico base", "Analítica esencial", "Publicación"],
+    includes: [
+      "Una página",
+      "Diseño responsive",
+      "Formulario / CTA",
+      "SEO técnico base",
+      "Analítica esencial",
+      "Publicación",
+    ],
     cta: "Cotizar Landing",
     featured: false,
   },
@@ -96,9 +103,24 @@ export const WEB_CONNECT_STEPS: readonly {
   trigger: string;
   results: Partial<Record<ConnectToolId, string>>;
 }[] = [
-  { key: "form", path: "/contacto", trigger: "Formulario enviado", results: { crm: "Contacto creado", agenda: "Reunión agendada" } },
-  { key: "shop", path: "/tienda", trigger: "Compra realizada", results: { pay: "Pago procesado", crm: "Pedido registrado" } },
-  { key: "ask", path: "/ayuda", trigger: "Consulta recibida", results: { agent: "Consulta respondida", agenda: "Visita agendada" } },
+  {
+    key: "form",
+    path: "/contacto",
+    trigger: "Formulario enviado",
+    results: { crm: "Contacto creado", agenda: "Reunión agendada" },
+  },
+  {
+    key: "shop",
+    path: "/tienda",
+    trigger: "Compra realizada",
+    results: { pay: "Pago procesado", crm: "Pedido registrado" },
+  },
+  {
+    key: "ask",
+    path: "/ayuda",
+    trigger: "Consulta recibida",
+    results: { agent: "Consulta respondida", agenda: "Visita agendada" },
+  },
 ];
 
 export const WEB_INCLUDES_HEADING = {
@@ -197,5 +219,8 @@ export const WEB_FAQ = [
 export const WEB_CTA = {
   title: "Construyamos una web que haga su trabajo.",
   body: "Cuéntanos qué necesitas vender, mostrar o conectar. Revisamos el alcance contigo y te proponemos el camino.",
-  cta: { label: "Cotizar mi web", href: "/diagnostico?necesidad=web" },
+  cta: {
+    label: "Cotizar mi web",
+    href: "/diagnostico?servicio=web&source=paginas-web&section=final-cta&cta=cotizar-mi-web",
+  },
 } as const;

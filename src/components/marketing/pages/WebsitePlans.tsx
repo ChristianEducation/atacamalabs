@@ -4,7 +4,7 @@ import { ButtonLink } from "../ui/Button";
 import { SectionHeading } from "../ui/Blocks";
 import { Reveal } from "../motion/Reveal";
 import { SnapCarousel } from "../ui/SnapCarousel";
-import { WEB_PLANS, webPrice } from "@/content/marketing/pricing";
+import { WEB_PLANS, webPlanHref, webPrice } from "@/content/marketing/pricing";
 import { WEB_FORMATS, WEB_FORMATS_HEADING } from "@/content/marketing/web-page";
 
 /**
@@ -57,7 +57,11 @@ export function WebsitePlans() {
                     </li>
                   ))}
                 </ul>
-                <ButtonLink href={source.href} variant={format.featured ? "primary" : "secondary"} block>
+                <ButtonLink
+                  href={webPlanHref(source, "paginas-web", "formatos")}
+                  variant={format.featured ? "primary" : "secondary"}
+                  block
+                >
                   {format.cta}
                 </ButtonLink>
               </Reveal>

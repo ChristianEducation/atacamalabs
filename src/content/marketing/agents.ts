@@ -14,19 +14,14 @@ export const AGENTS_META_DESCRIPTION =
 export const AGENTS_HERO = {
   eyebrow: "AGENTES INTELIGENTES",
   lead: "Agentes que conversan, consultan información y ejecutan procesos conectados a las herramientas de tu empresa.",
-  primary: { label: "Explorar agentes", href: "#selector" },
-  secondary: { label: "Agendar diagnóstico", href: "/diagnostico" },
+  primary: { label: "Explorar agentes", href: "#selector-agentes" },
+  secondary: { label: "Probar a Nayra", href: "/diagnostico" },
 } as const;
 
 /* ---------- Selector de puestos ---------- */
 
 export type AgentRoleId =
-  | "comercial"
-  | "cobranza"
-  | "administrativo-financiero"
-  | "atencion"
-  | "agendamiento"
-  | "procesos";
+  "comercial" | "cobranza" | "administrativo-financiero" | "atencion" | "agendamiento" | "procesos";
 
 export interface AgentRole {
   id: AgentRoleId;
@@ -35,7 +30,7 @@ export interface AgentRole {
   title: string;
   desc: string;
   features: readonly string[];
-  cta: { label: string; href: string };
+  cta: { label: string };
 }
 
 export const AGENTS_SELECTOR_HEADING = {
@@ -44,8 +39,6 @@ export const AGENTS_SELECTOR_HEADING = {
 } as const;
 
 export const AGENTS_FEATURES_LABEL = "Funciones";
-
-const agentesNeed = (capacidad: AgentRoleId) => `/diagnostico?necesidad=agentes&capacidad=${capacidad}`;
 
 export const AGENT_ROLES: readonly AgentRole[] = [
   {
@@ -58,31 +51,23 @@ export const AGENT_ROLES: readonly AgentRole[] = [
       "Califica oportunidades",
       "Agenda y actualiza el proceso comercial",
     ],
-    cta: { label: "Quiero un agente comercial", href: agentesNeed("comercial") },
+    cta: { label: "Quiero este agente" },
   },
   {
     id: "cobranza",
     tab: "Cobranza",
     title: "Agente de Cobranza",
     desc: "Hace seguimiento, recuerda, registra respuestas y mantiene cada cuenta en movimiento.",
-    features: [
-      "Seguimiento de cuentas",
-      "Recordatorios y respuestas",
-      "Actualización de estados y próximas acciones",
-    ],
-    cta: { label: "Quiero un agente de cobranza", href: agentesNeed("cobranza") },
+    features: ["Seguimiento de cuentas", "Recordatorios y respuestas", "Actualización de estados y próximas acciones"],
+    cta: { label: "Quiero este agente" },
   },
   {
     id: "administrativo-financiero",
     tab: "Finanzas",
     title: "Agente Administrativo / Financiero",
     desc: "Consulta información, cruza datos y ejecuta tareas administrativas bajo tus reglas.",
-    features: [
-      "Consulta sistemas y documentos",
-      "Cruza información",
-      "Genera o registra acciones administrativas",
-    ],
-    cta: { label: "Quiero un agente administrativo", href: agentesNeed("administrativo-financiero") },
+    features: ["Consulta sistemas y documentos", "Cruza información", "Genera o registra acciones administrativas"],
+    cta: { label: "Quiero este agente" },
   },
   {
     id: "atencion",
@@ -94,7 +79,7 @@ export const AGENT_ROLES: readonly AgentRole[] = [
       "Consulta contexto antes de actuar",
       "Deriva con la conversación completa cuando necesita intervención humana",
     ],
-    cta: { label: "Quiero un agente de atención", href: agentesNeed("atencion") },
+    cta: { label: "Quiero este agente" },
   },
   {
     id: "agendamiento",
@@ -102,7 +87,7 @@ export const AGENT_ROLES: readonly AgentRole[] = [
     title: "Agente de Agendamiento",
     desc: "Revisa disponibilidad, propone horarios y deja la cita registrada.",
     features: ["Consulta disponibilidad", "Propone y reprograma horarios", "Registra citas y próximos pasos"],
-    cta: { label: "Quiero un agente de agendamiento", href: agentesNeed("agendamiento") },
+    cta: { label: "Quiero este agente" },
   },
   {
     id: "procesos",
@@ -110,7 +95,7 @@ export const AGENT_ROLES: readonly AgentRole[] = [
     title: "Agente de Procesos",
     desc: "Coordina tareas entre sistemas cuando tu flujo no cabe en una plantilla.",
     features: ["Recibe una entrada", "Trabaja con varias herramientas", "Registra o ejecuta el resultado"],
-    cta: { label: "Quiero automatizar un proceso", href: "/diagnostico?necesidad=a-medida" },
+    cta: { label: "Quiero este agente" },
   },
 ];
 
@@ -122,14 +107,7 @@ export const AGENTS_ONBOARDING_HEADING = {
 } as const;
 
 /** Nombre de cada momento en una sola palabra: es el texto del globo sobre el trabajador. */
-export const AGENTS_MOMENTS = [
-  "Llegada",
-  "Inducción",
-  "Límites",
-  "Herramientas",
-  "Prueba",
-  "Operación",
-] as const;
+export const AGENTS_MOMENTS = ["Llegada", "Inducción", "Límites", "Herramientas", "Prueba", "Operación"] as const;
 
 export const AGENTS_STAGES = [
   {
@@ -205,7 +183,11 @@ export const AGENT_TOOL_GROUPS: readonly AgentToolGroup[] = [
     id: "calendar",
     name: "Calendarios",
     action: "Revisa disponibilidad y crea la cita",
-    logos: [logo("Google Calendar", "googlecalendar"), logo("Calendly", "calendly"), logo("Outlook", "microsoftoutlook")],
+    logos: [
+      logo("Google Calendar", "googlecalendar"),
+      logo("Calendly", "calendly"),
+      logo("Outlook", "microsoftoutlook"),
+    ],
   },
   {
     id: "chat",
@@ -278,6 +260,6 @@ export const AGENTS_CONTROL = {
 export const AGENTS_CTA = {
   title: "¿Qué trabajo le delegarías primero?",
   body: "Cuéntanos qué proceso quieres mejorar y diseñamos el agente alrededor de tu empresa.",
-  primary: { label: "Agendar diagnóstico", href: "/diagnostico" },
-  secondary: { label: "Ver precios", href: "/precios" },
+  primary: { label: "Hablar con Nayra", href: "/diagnostico" },
+  secondary: { label: "Ver precios", href: "/precios#agentes" },
 } as const;

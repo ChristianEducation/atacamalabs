@@ -34,8 +34,11 @@ export default function WebsitesPage() {
         }
         lead="Diseñamos landing pages, sitios corporativos y ecommerce claros, rápidos y pensados para llevar al visitante al siguiente paso."
         actions={[
-          { label: "Cotizar mi web", href: "/diagnostico?necesidad=web" },
-          { label: "Ver planes", href: "#formatos", variant: "secondary" },
+          {
+            label: "Cotizar mi web",
+            href: "/diagnostico?servicio=web&source=paginas-web&section=hero&cta=cotizar-mi-web",
+          },
+          { label: "Ver formatos", href: "#formatos", variant: "secondary" },
         ]}
         visual={<WebsiteHeroBrowser />}
       />

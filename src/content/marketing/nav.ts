@@ -79,12 +79,6 @@ export const NAV_TOP = {
   pricing: { label: "Precios", href: "/precios" },
 } as const;
 
-/**
- * CTA persistente del topbar (spec §3.1/§6): pasa a agentCta() en
- * lib/marketing/public-config.ts, que decide entre «Habla con nuestro
- * agente» (embed listo) o el fallback «Agendar diagnóstico».
- */
-
 export const SERVICE_ROUTES: readonly string[] = SERVICES.map((s) => s.href);
 
 export const BRAND = {

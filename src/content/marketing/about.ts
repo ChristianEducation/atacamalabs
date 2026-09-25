@@ -122,6 +122,8 @@ export const ABOUT_SEAL = {
 export const ABOUT_CTA = {
   title: "Hablemos de cómo trabaja tu empresa.",
   body: "Un trabajo repetitivo o un proceso que hoy se traba entre herramientas es un buen lugar para empezar.",
-  primary: { label: "Agendar diagnóstico", href: "/diagnostico" },
-  secondary: { label: "Ver agentes", href: "/agentes" },
+  primary: {
+    label: "Agendar diagnóstico",
+    href: "/diagnostico?source=conocenos&section=final-cta&cta=agendar-diagnostico",
+  },
 } as const;

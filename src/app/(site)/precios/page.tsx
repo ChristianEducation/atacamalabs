@@ -5,13 +5,7 @@ import { PricingReceipt } from "@/components/marketing/pages/PricingReceipt";
 import { PricingFaq } from "@/components/marketing/pages/PricingFaq";
 import { AgentPlansSection, BillingSection, WebPlansSection } from "@/components/marketing/pages/PricingSections";
 import { SectionHeading } from "@/components/marketing/ui/Blocks";
-import {
-  FAQ_HEADING,
-  PRICING_CTA,
-  PRICING_FINAL_NAYRA,
-  PRICING_HERO,
-  PRICING_META,
-} from "@/content/marketing/pricing-page";
+import { FAQ_HEADING, PRICING_CTA, PRICING_HERO, PRICING_META } from "@/content/marketing/pricing-page";
 
 export const metadata: Metadata = {
   title: { absolute: PRICING_META.title },
@@ -66,7 +60,6 @@ export default function PricingPage() {
         title={PRICING_CTA.title}
         body={PRICING_CTA.body}
         primary={PRICING_CTA.primary}
-        secondary={{ label: PRICING_CTA.secondary.label, href: "/diagnostico", agent: PRICING_FINAL_NAYRA }}
       />
     </>
   );

@@ -34,7 +34,28 @@ export type AnalyticsEvent =
         result: "success" | "validation" | "conflict" | "rate_limit" | "unavailable" | "unknown";
       };
     }
-  | { name: "booking_open"; props: { originSection: string; providerKey?: string } };
+  | { name: "booking_open"; props: { originSection: string; providerKey?: string } }
+  // CTA + Diagnóstico (spec final): nombres y propiedades canónicos.
+  | { name: "cta_clicked"; props: CtaEventProps }
+  | { name: "nayra_opened"; props: CtaEventProps }
+  | { name: "diagnostic_started"; props: CtaEventProps }
+  | { name: "diagnostic_service_selected"; props: CtaEventProps }
+  | { name: "diagnostic_step_completed"; props: CtaEventProps & { step: number } }
+  | { name: "diagnostic_submitted"; props: CtaEventProps }
+  | { name: "calendar_viewed"; props: CtaEventProps }
+  | { name: "meeting_scheduled"; props: CtaEventProps };
+
+/** Propiedades comunes de los eventos de CTA/Diagnóstico: solo IDs y categorías, nunca PII. */
+export interface CtaEventProps {
+  source_page?: string;
+  source_section?: string;
+  source_cta?: string;
+  service?: string;
+  interest?: string;
+  plan?: string;
+  campaign?: string;
+  destination?: string;
+}
 
 const ALLOWED_EVENT_NAMES = new Set<AnalyticsEvent["name"]>([
   "lead_form_view",
@@ -51,6 +72,14 @@ const ALLOWED_EVENT_NAMES = new Set<AnalyticsEvent["name"]>([
   "diagnostic_step",
   "lead_submit_result",
   "booking_open",
+  "cta_clicked",
+  "nayra_opened",
+  "diagnostic_started",
+  "diagnostic_service_selected",
+  "diagnostic_step_completed",
+  "diagnostic_submitted",
+  "calendar_viewed",
+  "meeting_scheduled",
 ]);
 
 const PII_LIKE_KEYS = ["email", "phone", "message", "name", "query", "querystring"];

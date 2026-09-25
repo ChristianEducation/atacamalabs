@@ -1,37 +1,36 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, type ReactNode } from "react";
-
-const HOST = "[data-lety-widget]";
-
-function widgetParts() {
-  const root = document.querySelector(HOST)?.shadowRoot;
-  return {
-    bubble: root?.querySelector<HTMLElement>(".lety-bubble") ?? null,
-    panel: root?.querySelector<HTMLElement>(".lety-panel") ?? null,
-  };
-}
+import { useEffect, useState, type ReactNode } from "react";
+import { cn } from "@/lib/utils";
+import type { AgentCtaContext } from "@/lib/marketing/agent-cta";
+import { AgentCtaLink } from "./AgentCtaLink";
+import { widgetParts } from "./nayra";
 
 /**
- * Abre el chat real del agente (widget de Lety) sin agregar una segunda
- * burbuja: el widget expone `mount/unmount` y su launcher vive en un shadow
- * DOM, así que se activa el mismo botón que usa un visitante. Devuelve false si
- * el widget aún no cargó (el llamador cae al enlace de respaldo).
+ * Botón «Prueba a Nayra» del hero del Home. Es un `AgentCtaLink` (abre el chat,
+ * registra el contexto y, si el widget no responde, cae a /diagnostico) que
+ * además oculta la burbuja flotante mientras el hero está a la vista: sería
+ * redundante y taparía este mismo botón.
  */
-export function openAgent(): boolean {
-  const { bubble, panel } = widgetParts();
-  if (!bubble || !panel) return false;
-  if (!panel.classList.contains("open")) bubble.click();
-  return true;
-}
+export function AgentTryButton({
+  context,
+  className,
+  children,
+}: {
+  context: AgentCtaContext;
+  className?: string;
+  children: ReactNode;
+}) {
+  // En celular el botón espera unos segundos para dejar ver el video; un scroll lo adelanta.
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const onScroll = () => {
+      if (window.scrollY > 24) setReady(true);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
-/**
- * Botón «Prueba al agente» del hero. Abre el chat si el widget está listo; si
- * no, navega al respaldo (`href`). Mientras el hero está a la vista oculta la
- * burbuja flotante (sería redundante y taparía este mismo botón).
- */
-export function AgentTryButton({ href, className, children }: { href: string; className?: string; children: ReactNode }) {
   useEffect(() => {
     const hero = document.querySelector(".mk-home-hero");
     if (!hero) return;
@@ -65,14 +64,8 @@ export function AgentTryButton({ href, className, children }: { href: string; cl
   }, []);
 
   return (
-    <Link
-      href={href}
-      className={className}
-      onClick={(event) => {
-        if (openAgent()) event.preventDefault();
-      }}
-    >
+    <AgentCtaLink context={context} variant="link" className={cn(className, ready && "is-ready")}>
       {children}
-    </Link>
+    </AgentCtaLink>
   );
 }

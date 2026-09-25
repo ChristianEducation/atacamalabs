@@ -34,7 +34,14 @@ export default function AgentsPage() {
           </>
         }
         lead={AGENTS_HERO.lead}
-        actions={[AGENTS_HERO.primary, { ...AGENTS_HERO.secondary, variant: "secondary" }]}
+        actions={[
+          AGENTS_HERO.primary,
+          {
+            ...AGENTS_HERO.secondary,
+            variant: "secondary",
+            agent: { source_page: "agentes", source_section: "hero", source_cta: "probar-a-nayra", service: "agentes" },
+          },
+        ]}
         visual={<AgentHeroOffice />}
       />
       <AgentSelector />
@@ -45,7 +52,15 @@ export default function AgentsPage() {
         titleId="agents-cta-title"
         title={AGENTS_CTA.title}
         body={AGENTS_CTA.body}
-        primary={AGENTS_CTA.primary}
+        primary={{
+          ...AGENTS_CTA.primary,
+          agent: {
+            source_page: "agentes",
+            source_section: "final-cta",
+            source_cta: "hablar-con-nayra",
+            service: "agentes",
+          },
+        }}
         secondary={AGENTS_CTA.secondary}
       />
     </>

@@ -1,4 +1,5 @@
 import { ButtonLink } from "@/components/marketing/ui/Button";
+import { diagnosticHref } from "@/lib/marketing/cta-context";
 import SiteLayout from "./(site)/layout";
 
 export default function NotFound() {
@@ -11,14 +12,16 @@ export default function NotFound() {
             No encontramos esa página.
           </h1>
           <p className="mk-lead">
-            Puede que el enlace haya cambiado. Vuelve al inicio o cuéntanos qué
-            proceso buscas mejorar.
+            Puede que el enlace haya cambiado. Vuelve al inicio o cuéntanos qué proceso buscas mejorar.
           </p>
           <div className="mk-hero__actions">
             <ButtonLink href="/" arrow>
               Volver al inicio
             </ButtonLink>
-            <ButtonLink href="/diagnostico" variant="secondary">
+            <ButtonLink
+              href={diagnosticHref({ source_page: "404", source_section: "error", source_cta: "agendar-diagnostico" })}
+              variant="secondary"
+            >
               Agendar diagnóstico
             </ButtonLink>
           </div>

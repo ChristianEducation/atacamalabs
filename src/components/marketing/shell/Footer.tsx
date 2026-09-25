@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { BRAND, SERVICES } from "@/content/marketing/nav";
+import { DiagnosticLink } from "./DiagnosticLink";
 import { PRIVACY_APPROVED, clientPortalUrl, directContact, socialLinks } from "@/lib/marketing/public-config";
 
 /**
@@ -19,7 +20,13 @@ export function Footer() {
         <div className="mk-footer__grid mk-footer__grid--compact">
           <div className="mk-footer__brand">
             <p className="mk-wordmark">
-              <Image src="/brand/logo-horizontal-fondo-oscuro.svg" alt="Atacama Labs" width={1768} height={169} unoptimized />
+              <Image
+                src="/brand/logo-horizontal-fondo-oscuro.svg"
+                alt="Atacama Labs"
+                width={1768}
+                height={169}
+                unoptimized
+              />
             </p>
             <p className="mk-footer__tag">{BRAND.tagline}</p>
             <p className="mk-footer__origin">{BRAND.origin}</p>
@@ -27,11 +34,7 @@ export function Footer() {
               <a className="mk-footer__link" href={`mailto:${contact.email}`}>
                 {contact.email}
               </a>
-            ) : (
-              <Link className="mk-footer__link" href="/diagnostico">
-                Hablemos
-              </Link>
-            )}
+            ) : null}
           </div>
 
           <nav className="mk-footer__col mk-footer__services" aria-label="Servicios">
@@ -61,9 +64,9 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link className="mk-footer__link" href="/diagnostico">
+                <DiagnosticLink className="mk-footer__link" section="footer" cta="diagnostico">
                   Diagnóstico
-                </Link>
+                </DiagnosticLink>
               </li>
               {portal ? (
                 <li>

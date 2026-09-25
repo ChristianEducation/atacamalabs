@@ -3,13 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronDown, Menu, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { ArrowRight, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { agentCta } from "@/lib/marketing/public-config";
+import { diagnosticHref, sourceFromPath } from "@/lib/marketing/cta-context";
 import { setGlobalPause } from "../motion/coordinator";
-import { ServicesPanel } from "./ServicesPanel";
+import { MINIS, ServicesPanel } from "./ServicesPanel";
 import { NAV_TOP, SERVICES_MENU } from "@/content/marketing/nav";
+
+const step = (index: number): CSSProperties => ({ ["--i" as string]: index });
 
 /**
  * Header global (spec V3.0 §3.1). Desktop ≥1200: sticky, wordmark | nav | CTA,
@@ -19,7 +21,16 @@ import { NAV_TOP, SERVICES_MENU } from "@/content/marketing/nav";
  */
 export function Header({ portalUrl }: { portalUrl: string | null }) {
   const pathname = usePathname() ?? "/";
-  const cta = agentCta();
+  // El CTA del header conserva la página de origen (spec final §7.1).
+  const cta = {
+    label: "Agendar diagnóstico",
+    href: diagnosticHref({
+      source_page: sourceFromPath(pathname),
+      source_section: "header",
+      source_cta: "agendar-diagnostico",
+      service: "general",
+    }),
+  };
   const [servicesOpen, setServicesOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [servicesExpandedMobile, setServicesExpandedMobile] = useState(false);
@@ -27,7 +38,6 @@ export function Header({ portalUrl }: { portalUrl: string | null }) {
   const servicesBtn = useRef<HTMLButtonElement>(null);
   const closeTimer = useRef<number | null>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
-  const closeRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLElement>(null);
 
@@ -51,6 +61,12 @@ export function Header({ portalUrl }: { portalUrl: string | null }) {
     setMobileOpen(false);
     if (restoreFocus) toggleRef.current?.focus();
   }, []);
+
+  const openMobile = () => {
+    // Si ya estás dentro de un servicio, el submenú abre mostrando dónde estás.
+    setServicesExpandedMobile(servicesActive);
+    setMobileOpen(true);
+  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 16);
@@ -85,7 +101,6 @@ export function Header({ portalUrl }: { portalUrl: string | null }) {
     document.documentElement.style.overflow = "hidden";
     page?.setAttribute("inert", "");
     setGlobalPause("menu", true);
-    const focusTimer = window.setTimeout(() => closeRef.current?.focus(), 0);
 
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -93,10 +108,13 @@ export function Header({ portalUrl }: { portalUrl: string | null }) {
         return;
       }
       if (event.key !== "Tab") return;
-      const focusables = dialogRef.current?.querySelectorAll<HTMLElement>("a[href], button:not([disabled])");
-      if (!focusables || focusables.length === 0) return;
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
+      // El botón del header sigue visible sobre el panel: forma parte del ciclo de foco.
+      const inside = dialogRef.current?.querySelectorAll<HTMLElement>(
+        "a[href]:not([inert] *), button:not([disabled]):not([inert] *)",
+      );
+      if (!inside || inside.length === 0 || !toggleRef.current) return;
+      const first = toggleRef.current;
+      const last = inside[inside.length - 1];
       if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
         last.focus();
@@ -111,7 +129,6 @@ export function Header({ portalUrl }: { portalUrl: string | null }) {
     document.addEventListener("keydown", onKey);
     window.addEventListener("resize", onResize);
     return () => {
-      window.clearTimeout(focusTimer);
       document.removeEventListener("keydown", onKey);
       window.removeEventListener("resize", onResize);
       document.documentElement.style.overflow = prevOverflow;
@@ -132,7 +149,7 @@ export function Header({ portalUrl }: { portalUrl: string | null }) {
   );
 
   return (
-    <header ref={headerRef} className={cn("mk-header", scrolled && "is-scrolled")}>
+    <header ref={headerRef} className={cn("mk-header", scrolled && "is-scrolled", mobileOpen && "is-menu-open")}>
       <div className="mk-container mk-header__inner">
         <Link href="/" className="mk-wordmark" aria-label="Atacama Labs — inicio">
           <Image src="/brand/logo-horizontal.svg" alt="Atacama Labs" width={1768} height={169} priority unoptimized />
@@ -179,13 +196,16 @@ export function Header({ portalUrl }: { portalUrl: string | null }) {
           <button
             ref={toggleRef}
             type="button"
-            className="mk-menu-btn"
+            className={cn("mk-menu-btn", mobileOpen && "is-open")}
             aria-expanded={mobileOpen}
             aria-controls="mk-mobile-menu"
-            onClick={() => setMobileOpen(true)}
+            onClick={() => (mobileOpen ? closeMobile(false) : openMobile())}
           >
-            <Menu size={22} aria-hidden />
-            <span className="mk-sr-only">Abrir menú</span>
+            <span className="mk-menu-btn__bars" aria-hidden>
+              <i />
+              <i />
+            </span>
+            <span className="mk-sr-only">{mobileOpen ? "Cerrar menú" : "Abrir menú"}</span>
           </button>
         </div>
       </div>
@@ -201,7 +221,7 @@ export function Header({ portalUrl }: { portalUrl: string | null }) {
           ))}
           <Link href="/precios">Precios</Link>
           <Link href="/conocenos">Conócenos</Link>
-          <Link href="/diagnostico">Agendar diagnóstico</Link>
+          <Link href="/diagnostico?source=noscript&section=header&cta=agendar-diagnostico">Agendar diagnóstico</Link>
         </nav>
       </noscript>
 
@@ -214,51 +234,82 @@ export function Header({ portalUrl }: { portalUrl: string | null }) {
           aria-modal="true"
           aria-label="Menú principal"
         >
-          <div className="mk-mobile__bar">
-            <button ref={closeRef} type="button" className="mk-menu-btn" onClick={() => closeMobile(true)}>
-              <X size={22} aria-hidden />
-              <span className="mk-sr-only">Cerrar menú</span>
-            </button>
-          </div>
           <nav aria-label="Menú móvil" className="mk-mobile__nav">
-            <Link href="/plataforma" onClick={() => closeMobile(false)} aria-current={routeActive("/plataforma") ? "page" : undefined}>
+            <Link
+              href="/plataforma"
+              style={step(0)}
+              onClick={() => closeMobile(false)}
+              aria-current={routeActive("/plataforma") ? "page" : undefined}
+            >
               Plataforma
+              <ArrowRight size={18} aria-hidden />
             </Link>
-            <Link href="/agentes" onClick={() => closeMobile(false)} aria-current={routeActive("/agentes") ? "page" : undefined}>
+            <Link
+              href="/agentes"
+              style={step(1)}
+              onClick={() => closeMobile(false)}
+              aria-current={routeActive("/agentes") ? "page" : undefined}
+            >
               Agentes
+              <ArrowRight size={18} aria-hidden />
             </Link>
 
-            <div className="mk-mobile__group">
+            <div className={cn("mk-mobile__group", servicesExpandedMobile && "is-open")} style={step(2)}>
               <button
                 type="button"
                 aria-expanded={servicesExpandedMobile}
                 aria-controls="mk-m-services"
+                className={servicesActive ? "is-group-active" : undefined}
                 onClick={() => setServicesExpandedMobile((v) => !v)}
               >
                 Servicios <ChevronDown size={20} aria-hidden />
               </button>
-              {servicesExpandedMobile ? (
-                <ul id="mk-m-services" className="mk-mobile__sub">
-                  {SERVICES_MENU.map((s) => (
-                    <li key={s.id}>
-                      <Link href={s.href} onClick={() => closeMobile(false)} aria-current={routeActive(s.href) ? "page" : undefined}>
-                        {s.label}
-                        <span className="mk-mobile__blurb">{s.blurb}</span>
-                      </Link>
-                    </li>
-                  ))}
+              <div id="mk-m-services" className="mk-mobile__sub" inert={!servicesExpandedMobile}>
+                <ul>
+                  {SERVICES_MENU.map((s, index) => {
+                    const Mini = MINIS[s.id];
+                    return (
+                      <li key={s.id} style={step(index)}>
+                        <Link
+                          href={s.href}
+                          className="mk-mobile__card"
+                          onClick={() => closeMobile(false)}
+                          aria-current={routeActive(s.href) ? "page" : undefined}
+                        >
+                          <Mini />
+                          <span className="mk-mobile__card-title">
+                            {s.label}
+                            <ArrowRight size={16} aria-hidden />
+                          </span>
+                          <span className="mk-mobile__blurb">{s.blurb}</span>
+                        </Link>
+                      </li>
+                    );
+                  })}
                 </ul>
-              ) : null}
+              </div>
             </div>
 
-            <Link href="/precios" onClick={() => closeMobile(false)} aria-current={routeActive("/precios") ? "page" : undefined}>
+            <Link
+              href="/precios"
+              style={step(3)}
+              onClick={() => closeMobile(false)}
+              aria-current={routeActive("/precios") ? "page" : undefined}
+            >
               Precios
+              <ArrowRight size={18} aria-hidden />
             </Link>
-            <Link href="/conocenos" onClick={() => closeMobile(false)} aria-current={routeActive("/conocenos") ? "page" : undefined}>
+            <Link
+              href="/conocenos"
+              style={step(4)}
+              onClick={() => closeMobile(false)}
+              aria-current={routeActive("/conocenos") ? "page" : undefined}
+            >
               Conócenos
+              <ArrowRight size={18} aria-hidden />
             </Link>
           </nav>
-          <div className="mk-mobile__cta">
+          <div className="mk-mobile__cta" style={step(5)}>
             <Link href={cta.href} className="mk-btn mk-btn--primary mk-btn--block" onClick={() => closeMobile(false)}>
               {cta.label}
             </Link>

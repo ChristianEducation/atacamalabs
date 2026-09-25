@@ -22,6 +22,7 @@ import "../styles/agents.css";
 import "../styles/platform.css";
 import "../styles/precios.css";
 import "../styles/about.css";
+import "../styles/diagnostic.css";
 
 /**
  * Fuentes autoalojadas (spec C2): Newsreader (títulos, 500 roman; cursiva 500
@@ -75,8 +76,8 @@ export const metadata: Metadata = {
  */
 function organizationJsonLd() {
   const settings: Record<string, string | null> = site.publicSettings;
-  const sameAs = [settings.linkedinCompanyUrl, settings.instagramUrl, settings.githubUrl].filter(
-    (v): v is string => Boolean(v),
+  const sameAs = [settings.linkedinCompanyUrl, settings.instagramUrl, settings.githubUrl].filter((v): v is string =>
+    Boolean(v),
   );
   return {
     "@context": "https://schema.org",
@@ -92,10 +93,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es-CL" className={`${newsreader.variable} ${dmSans.variable}`}>
       <body>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd()) }}
-        />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd()) }} />
         {children}
       </body>
     </html>

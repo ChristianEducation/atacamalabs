@@ -26,7 +26,11 @@ export const HOME_SELECTOR: readonly HomeSelectorItem[] = [
     tab: "Comercial",
     title: "Agente Comercial",
     desc: "Conversa con quien pregunta, agenda la reunión en tu calendario y deja la oportunidad actualizada.",
-    features: ["Responde consultas y disponibilidad", "Agenda directo en tu calendario", "Actualiza la oportunidad en tu CRM"],
+    features: [
+      "Responde consultas y disponibilidad",
+      "Agenda directo en tu calendario",
+      "Actualiza la oportunidad en tu CRM",
+    ],
     cta: { label: "Ver Agente Comercial", href: "/agentes#comercial" },
   },
   {
@@ -34,7 +38,11 @@ export const HOME_SELECTOR: readonly HomeSelectorItem[] = [
     tab: "Cobranza",
     title: "Agente de Cobranza",
     desc: "Sigue cada cuenta pendiente, contacta a tiempo y deja registrada cada gestión.",
-    features: ["Revisa el estado de cada cuenta", "Envía recordatorios por WhatsApp o correo", "Registra cada gestión realizada"],
+    features: [
+      "Revisa el estado de cada cuenta",
+      "Envía recordatorios por WhatsApp o correo",
+      "Registra cada gestión realizada",
+    ],
     cta: { label: "Ver Agente de Cobranza", href: "/agentes#cobranza" },
   },
   {
@@ -42,8 +50,12 @@ export const HOME_SELECTOR: readonly HomeSelectorItem[] = [
     tab: "Administrativo / Financiero",
     title: "Agente Administrativo y Financiero",
     desc: "Consulta tus sistemas y te devuelve la información ordenada, lista para decidir.",
-    features: ["Consulta facturación y bases de datos", "Cruza y resume la información", "Responde bajo tus reglas y permisos"],
-    cta: { label: "Ver Agente Administrativo", href: "/agentes#administrativo-financiero" },
+    features: [
+      "Consulta facturación y bases de datos",
+      "Cruza y resume la información",
+      "Responde bajo tus reglas y permisos",
+    ],
+    cta: { label: "Ver Agente Administrativo", href: "/agentes#administracion-finanzas" },
   },
   {
     id: "atencion",
@@ -58,7 +70,11 @@ export const HOME_SELECTOR: readonly HomeSelectorItem[] = [
     tab: "Agendamiento",
     title: "Agente de Agendamiento",
     desc: "Revisa la disponibilidad real, propone horarios y confirma la cita.",
-    features: ["Lee la disponibilidad de tu calendario", "Propone horarios disponibles", "Confirma y deja el evento creado"],
+    features: [
+      "Lee la disponibilidad de tu calendario",
+      "Propone horarios disponibles",
+      "Confirma y deja el evento creado",
+    ],
     cta: { label: "Ver Agente de Agendamiento", href: "/agentes#agendamiento" },
   },
   {
@@ -66,7 +82,11 @@ export const HOME_SELECTOR: readonly HomeSelectorItem[] = [
     tab: "A Medida",
     title: "Soluciones a Medida",
     desc: "Conectamos tus sistemas y armamos el flujo alrededor de cómo trabaja tu empresa.",
-    features: ["Integra las herramientas que ya usas", "Automatiza el proceso completo", "Se diseña contigo, a tu medida"],
+    features: [
+      "Integra las herramientas que ya usas",
+      "Automatiza el proceso completo",
+      "Se diseña contigo, a tu medida",
+    ],
     cta: { label: "Ver A Medida", href: "/a-medida" },
   },
 ];

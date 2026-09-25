@@ -1,0 +1,313 @@
+/*
+ * /diagnostico — pantalla de conversión (CTA + DIAGNÓSTICO · SPEC FINAL V1).
+ * Un contenedor central de ~680px, una pregunta por pantalla, sin sidebar ni
+ * relleno. Prefijo `mk-dg-`. Transiciones cortas (fade + slide de 260 ms).
+ */
+.mk-dg {
+  padding-block: clamp(40px, 7vw, 96px) clamp(64px, 9vw, 120px);
+}
+.mk-dg-wrap {
+  max-width: 680px;
+  margin-inline: auto;
+}
+.mk-dg-head {
+  margin-bottom: 28px;
+}
+.mk-dg-title {
+  margin: 14px 0 0;
+  font-family: var(--font-serif);
+  font-size: clamp(34px, 5vw, 52px);
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.mk-dg-lead {
+  max-width: 54ch;
+  margin: 16px 0 0;
+  font-size: clamp(16px, 1.5vw, 18px);
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.mk-dg-card {
+  padding: clamp(22px, 4vw, 36px);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 30px 60px -44px rgb(18 26 43 / 32%);
+}
+
+/* Progreso: texto + tres marcas, nada más. */
+.mk-dg-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 26px;
+}
+.mk-dg-progress p {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--subtle);
+}
+.mk-dg-progress__plan {
+  color: var(--blue-text);
+}
+.mk-dg-progress__bar {
+  display: flex;
+  gap: 6px;
+}
+.mk-dg-progress__bar i {
+  width: 28px;
+  height: 4px;
+  border-radius: 999px;
+  background: #e4e9f4;
+  transition: background 260ms ease;
+}
+.mk-dg-progress__bar i.is-done {
+  background: var(--blue);
+}
+
+.mk-dg-step {
+  outline: none;
+  animation: mk-dg-in 260ms var(--ease-out) both;
+}
+@keyframes mk-dg-in {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+}
+
+.mk-dg-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  margin: -6px 0 14px -6px;
+  padding: 0 10px 0 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+.mk-dg-back:hover {
+  color: var(--ink);
+}
+
+.mk-dg-q {
+  display: block;
+  margin: 0 0 16px;
+  padding: 0;
+  font-size: clamp(19px, 2vw, 22px);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.mk-dg-fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+/* Opciones grandes: una pulsación y se avanza. */
+.mk-dg-choices {
+  display: grid;
+  gap: 10px;
+}
+@media (min-width: 560px) {
+  .mk-dg-choices--2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.mk-dg-choice {
+  display: flex;
+  align-items: center;
+  min-height: 58px;
+  padding: 0 20px;
+  border: 1px solid var(--line-strong, var(--line));
+  border-radius: 16px;
+  background: #fff;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  text-align: left;
+  color: var(--ink);
+  cursor: pointer;
+  transition:
+    border-color 200ms ease,
+    background 200ms ease,
+    transform 200ms var(--ease-out);
+}
+.mk-dg-choice:hover {
+  border-color: var(--blue);
+  background: var(--blue-soft);
+}
+.mk-dg-choice:active {
+  transform: scale(0.99);
+}
+.mk-dg-choice[aria-pressed="true"] {
+  border-color: var(--blue);
+  background: var(--blue-soft);
+  color: var(--blue-text);
+}
+
+/* Campos. */
+.mk-dg-form {
+  display: grid;
+  gap: 18px;
+}
+.mk-dg-pair {
+  display: grid;
+  gap: 18px;
+}
+@media (min-width: 560px) {
+  .mk-dg-pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.mk-dg-field label:not(.mk-dg-q) {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.mk-dg-input,
+.mk-dg-textarea {
+  width: 100%;
+  border: 1px solid var(--control-border, var(--line-strong));
+  border-radius: 14px;
+  background: #fff;
+  font: inherit;
+  font-size: 16px;
+  color: var(--ink);
+  transition:
+    border-color 200ms ease,
+    box-shadow 200ms ease;
+}
+.mk-dg-input {
+  height: 52px;
+  padding: 0 16px;
+}
+.mk-dg-textarea {
+  min-height: 120px;
+  padding: 14px 16px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.mk-dg-input:focus,
+.mk-dg-textarea:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgb(15 92 237 / 16%);
+}
+.mk-dg-input[aria-invalid="true"],
+.mk-dg-textarea[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+.mk-dg-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 7px 0 0;
+  font-size: 13.5px;
+  color: var(--danger);
+}
+.mk-dg-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--danger-bg);
+  font-size: 14.5px;
+  line-height: 1.45;
+  color: var(--danger);
+}
+.mk-dg-alert svg {
+  flex: none;
+  margin-top: 2px;
+}
+.mk-dg-privacy {
+  margin: 0;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--subtle);
+}
+.mk-dg-honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* Agenda. */
+.mk-dg-meeting {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--blue-soft);
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.mk-dg-meeting svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--blue);
+}
+.mk-dg-frame {
+  display: block;
+  width: 100%;
+  min-height: 640px;
+  border: 0;
+  border-radius: 16px;
+  background: #fff;
+}
+.mk-dg-fallback {
+  padding: 24px;
+  border: 1px dashed var(--line-strong, var(--line));
+  border-radius: 16px;
+}
+.mk-dg-fallback h2 {
+  margin: 0 0 8px;
+  font-family: var(--font-serif);
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.mk-dg-fallback p {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mk-dg-step {
+    animation: none;
+  }
+  .mk-dg-choice,
+  .mk-dg-progress__bar i,
+  .mk-dg-input,
+  .mk-dg-textarea {
+    transition: none;
+  }
+}

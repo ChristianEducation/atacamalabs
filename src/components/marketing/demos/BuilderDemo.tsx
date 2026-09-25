@@ -84,7 +84,12 @@ export function WorkflowFlow({
         })}
       </ol>
       {selected !== null ? (
-        <div id={`${uid}-detail-${selected}`} className="mk-flow__detail" role="region" aria-label={`Detalle: ${nodes[selected].title}`}>
+        <div
+          id={`${uid}-detail-${selected}`}
+          className="mk-flow__detail"
+          role="region"
+          aria-label={`Detalle: ${nodes[selected].title}`}
+        >
           <div>
             <p className="mk-eyebrow">Entrada</p>
             <p>{nodes[selected].input}</p>
@@ -96,9 +101,7 @@ export function WorkflowFlow({
           </div>
         </div>
       ) : null}
-      <p className="mk-sr-only">
-        Proceso: {nodes.map((n) => n.title).join(" → ")}.
-      </p>
+      <p className="mk-sr-only">Proceso: {nodes.map((n) => n.title).join(" → ")}.</p>
     </div>
   );
 }
@@ -137,7 +140,11 @@ export function DashboardDemo({
 
   function resolve(id: string) {
     setRecords((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, resolved: true, statusLabel: scenario.id === "solicitudes" ? "Resuelta" : "Resuelto" } : r)),
+      prev.map((r) =>
+        r.id === id
+          ? { ...r, resolved: true, statusLabel: scenario.id === "solicitudes" ? "Resuelta" : "Resuelto" }
+          : r,
+      ),
     );
   }
 
@@ -270,18 +277,31 @@ function BuilderRun({
   ctaHref: string;
   showCta: boolean;
 }) {
-  const [attach, clock] = useDemoClock<HTMLDivElement>({ id: `builder-${instance}-${scenario.id}`, duration: phaseMs * 5, autoplay: true });
+  const [attach, clock] = useDemoClock<HTMLDivElement>({
+    id: `builder-${instance}-${scenario.id}`,
+    duration: phaseMs * 5,
+    autoplay: true,
+  });
   const { t } = clock;
   const [selected, setSelected] = useState<number | null>(null);
   const states = nodeStates(t, phaseMs);
   const phaseIndex = Math.min(4, Math.floor(t / phaseMs));
   const showPanel = t >= phaseMs * 3;
   const ready = t >= phaseMs * 5 || clock.state === "complete";
-  const phaseText = ready ? scenario.final : t <= 0 ? "Necesidad seleccionada" : scenario.phases[Math.min(3, phaseIndex)];
+  const phaseText = ready
+    ? scenario.final
+    : t <= 0
+      ? "Necesidad seleccionada"
+      : scenario.phases[Math.min(3, phaseIndex)];
 
   return (
     <div ref={attach}>
-      <DemoFrame title="De la necesidad al sistema" controls={controlsOf(clock)} product className={compact ? "mk-frame--compact" : undefined}>
+      <DemoFrame
+        title="De la necesidad al sistema"
+        controls={controlsOf(clock)}
+        product
+        className={compact ? "mk-frame--compact" : undefined}
+      >
         <div className="mk-builder__run">
           <blockquote className="mk-builder__quote">
             <span className="mk-eyebrow">Necesidad</span>
@@ -369,7 +389,7 @@ export function BuilderDemo({
         phaseMs={phaseMs}
         instance={uid}
         compact={compact}
-        ctaHref="/diagnostico?necesidad=a-medida"
+        ctaHref="/diagnostico?servicio=a-medida&source=a-medida&section=hero&cta=cuentanos-tu-proceso"
         showCta={showCta}
       />
     </div>

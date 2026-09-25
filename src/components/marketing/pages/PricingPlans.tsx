@@ -5,7 +5,15 @@ import { ButtonLink } from "../ui/Button";
 import { Reveal } from "../motion/Reveal";
 import { SnapCarousel } from "../ui/SnapCarousel";
 import { AgentCtaLink } from "../shell/AgentCtaLink";
-import { OCTOBER_BENEFIT, agentPrice, webPrice, type AgentPlan, type WebPlan } from "@/content/marketing/pricing";
+import {
+  OCTOBER_BENEFIT,
+  agentPlanContext,
+  agentPrice,
+  webPlanHref,
+  webPrice,
+  type AgentPlan,
+  type WebPlan,
+} from "@/content/marketing/pricing";
 import { DETAILS_LABEL } from "@/content/marketing/pricing-page";
 
 type Plan = AgentPlan | WebPlan;
@@ -100,14 +108,18 @@ function PlanCard({ plan, index }: { plan: Plan; index: number }) {
       <div className="mk-pp-card__cta">
         {agent ? (
           <AgentCtaLink
-            context={agent.context}
+            context={agentPlanContext(agent, "precios", "agentes")}
             variant={agent.featured ? "primary" : "secondary"}
             className="mk-btn--block"
           >
             {agent.cta}
           </AgentCtaLink>
         ) : (
-          <ButtonLink href={(plan as WebPlan).href} variant={plan.featured ? "primary" : "secondary"} block>
+          <ButtonLink
+            href={webPlanHref(plan as WebPlan, "precios", "web")}
+            variant={plan.featured ? "primary" : "secondary"}
+            block
+          >
             {plan.cta}
           </ButtonLink>
         )}

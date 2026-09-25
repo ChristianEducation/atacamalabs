@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DiagnosticLink } from "./DiagnosticLink";
 import type { CSSProperties } from "react";
 import { ArrowRight, Check, Lock } from "lucide-react";
 import { SERVICES_MENU, type ServiceId } from "@/content/marketing/nav";
@@ -60,7 +61,7 @@ function MiniWeb() {
   );
 }
 
-const MINIS: Record<ServiceId, () => React.JSX.Element> = {
+export const MINIS: Record<ServiceId, () => React.JSX.Element> = {
   "a-medida": MiniCustom,
   web: MiniWeb,
   agentes: MiniCustom,
@@ -102,10 +103,10 @@ export function ServicesPanel({ activePath, onNavigate }: { activePath: string; 
       </div>
       <div className="mk-sv__foot">
         <span>¿No sabes cuál necesitas?</span>
-        <Link href="/diagnostico" onClick={onNavigate}>
-          Agenda una demo gratuita
+        <DiagnosticLink section="header" cta="no-se-cual-necesito" onClick={onNavigate}>
+          Agenda un diagnóstico
           <ArrowRight size={14} strokeWidth={2.2} aria-hidden />
-        </Link>
+        </DiagnosticLink>
       </div>
     </div>
   );

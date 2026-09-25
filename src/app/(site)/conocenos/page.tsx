@@ -31,7 +31,7 @@ export default function AboutPage() {
       <AboutPrinciples />
       <AboutCapabilities />
       <AboutSeal />
-      <CTABlock title={ABOUT_CTA.title} body={ABOUT_CTA.body} cta={ABOUT_CTA.primary} secondary={ABOUT_CTA.secondary} />
+      <CTABlock title={ABOUT_CTA.title} body={ABOUT_CTA.body} cta={ABOUT_CTA.primary} />
     </>
   );
 }

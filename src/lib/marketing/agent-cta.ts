@@ -1,40 +1,30 @@
+import { track } from "@/lib/analytics";
+import { diagnosticHref, type CtaContext } from "./cta-context";
+
 /**
- * Contexto comercial de un CTA que abre a Nayra (ATACAMA_LABS_CTA_SYSTEM_SPEC_V1).
- * Cada botón declara desde dónde se pulsó y qué interés muestra; el widget aún
- * no recibe metadatos, así que el contexto viaja en un evento propio (para el
- * análisis que se conectará después) y en el enlace de respaldo a /diagnostico.
+ * Contexto comercial de un CTA que abre a Nayra (CTA + DIAGNÓSTICO · SPEC FINAL
+ * V1 §17). El widget de Nayra no recibe metadatos ni mensaje inicial (su API
+ * pública es solo `mount`/`unmount`), así que el contexto viaja en los eventos
+ * de analítica y en el enlace de respaldo a /diagnostico, sin manipular el chat.
  */
-export interface AgentCtaContext {
-  source_page: string;
-  source_section: string;
-  source_cta: string;
-  service?: "agentes" | "paginas-web" | "a-medida" | "plataforma";
-  interest?: string;
-  plan?: string;
-  campaign?: string;
-}
+export type AgentCtaContext = CtaContext;
 
-/** Evento de pulsación: lo escuchará el análisis cuando se implemente. */
-export const CTA_EVENT = "atacama:cta-click";
-
+/** Registra el clic y, según el resultado, la apertura de Nayra o la caída al respaldo. */
 export function trackAgentCta(context: AgentCtaContext, opened: boolean) {
-  if (typeof window === "undefined") return;
-  window.dispatchEvent(
-    new CustomEvent(CTA_EVENT, { detail: { ...context, destination: opened ? "nayra" : "diagnostico" } }),
-  );
+  const props = {
+    source_page: context.source_page,
+    source_section: context.source_section,
+    source_cta: context.source_cta,
+    service: context.service,
+    interest: context.interest,
+    plan: context.plan,
+    campaign: context.campaign,
+  };
+  track({ name: "cta_clicked", props: { ...props, destination: opened ? "nayra" : "diagnostico" } });
+  if (opened) track({ name: "nayra_opened", props });
 }
 
-/** Respaldo cuando el widget no está disponible: /diagnostico con el mismo contexto. */
+/** Respaldo cuando el widget no está disponible: /diagnostico con el mismo contexto (incluye `cta`). */
 export function diagnosticFallback(context: AgentCtaContext): string {
-  const params = new URLSearchParams();
-  const service = context.service ?? "agentes";
-  params.set("servicio", service);
-  // Compatibilidad con la preselección actual del formulario (`necesidad`); se retira con /diagnostico.
-  if (service === "agentes") params.set("necesidad", "agentes");
-  params.set("source", context.source_page);
-  params.set("section", context.source_section);
-  if (context.interest) params.set("interes", context.interest);
-  if (context.plan) params.set("plan", context.plan);
-  if (context.campaign) params.set("campaign", context.campaign);
-  return `/diagnostico?${params.toString()}`;
+  return diagnosticHref({ ...context, service: context.service ?? "agentes" });
 }

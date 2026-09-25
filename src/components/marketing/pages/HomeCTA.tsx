@@ -73,8 +73,11 @@ export function HomeCTA() {
       titleId="home-cta-title"
       title="¿Qué le delegarías mañana?"
       body="Cuéntanos qué proceso quieres mejorar y te mostramos cómo podría trabajarlo un agente de Atacama Labs."
-      primary={{ label: "Agendar diagnóstico", href: "/diagnostico" }}
-      secondary={{ label: "Ver agentes", href: "/agentes" }}
+      primary={{
+        label: "Hablar con Nayra",
+        href: "/diagnostico",
+        agent: { source_page: "home", source_section: "final-cta", source_cta: "hablar-con-nayra", service: "agentes" },
+      }}
     />
   );
 }

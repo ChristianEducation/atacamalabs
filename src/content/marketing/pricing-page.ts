@@ -4,8 +4,6 @@
  * comparativas, el cobro de agentes y las preguntas frecuentes.
  */
 
-import type { AgentCtaContext } from "@/lib/marketing/agent-cta";
-
 export const PRICING_META = {
   title: "Precios de agentes de IA y páginas web | Atacama Labs",
   description:
@@ -380,13 +378,8 @@ export const FAQ_ITEMS: Record<FaqGroupId, readonly { question: string; answer: 
 export const PRICING_CTA = {
   title: "¿Qué necesitas poner a trabajar?",
   body: "Cuéntanos si buscas un agente, una web o una operación más conectada. Te ayudamos a definir el punto de partida.",
-  primary: { label: "Hablar con Atacama", href: "/diagnostico?source=precios" },
-  secondary: { label: "Probar a Nayra" },
+  primary: {
+    label: "Hablar con Atacama",
+    href: "/diagnostico?source=precios&section=final-cta&cta=hablar-con-atacama",
+  },
 } as const;
-
-export const PRICING_FINAL_NAYRA: AgentCtaContext = {
-  source_page: "precios",
-  source_section: "final_cta",
-  source_cta: "probar-nayra",
-  service: "agentes",
-};

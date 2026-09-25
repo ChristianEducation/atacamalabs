@@ -1,6 +1,5 @@
 import { ArrowRight } from "lucide-react";
 import { ButtonLink } from "../ui/Button";
-import { agentCta } from "@/lib/marketing/public-config";
 import { AgentTryButton } from "../shell/AgentTryButton";
 
 /**
@@ -10,7 +9,6 @@ import { AgentTryButton } from "../shell/AgentTryButton";
  * rotatorio, demos ni capas de animación sobre el video.
  */
 export function HomeHero() {
-  const agent = agentCta();
   return (
     <div className="mk-home-hero-wrap">
       <section className="mk-home-hero" aria-labelledby="hero-title">
@@ -50,8 +48,11 @@ export function HomeHero() {
           </div>
         </div>
 
-        <AgentTryButton href={agent.href} className="mk-home-hero__try">
-          <span>Prueba al agente</span>
+        <AgentTryButton
+          context={{ source_page: "home", source_section: "hero", source_cta: "prueba-a-nayra", service: "agentes" }}
+          className="mk-home-hero__try"
+        >
+          <span>Prueba a Nayra</span>
           <span className="mk-home-hero__try-icon" aria-hidden>
             <ArrowRight size={16} strokeWidth={2.2} />
           </span>

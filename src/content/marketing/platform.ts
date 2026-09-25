@@ -18,13 +18,13 @@ export const PLATFORM_META = {
 export const PLATFORM_HERO_CTA: AgentCtaContext = {
   source_page: "plataforma",
   source_section: "hero",
-  source_cta: "quiero_ver_como_funcionaria",
+  source_cta: "quiero-ver-como-funcionaria",
   service: "agentes",
 };
 export const PLATFORM_FINAL_CTA: AgentCtaContext = {
   source_page: "plataforma",
-  source_section: "final_cta",
-  source_cta: "quiero_verlo_en_mi_empresa",
+  source_section: "final-cta",
+  source_cta: "quiero-verlo-en-mi-empresa",
   service: "agentes",
 };
 

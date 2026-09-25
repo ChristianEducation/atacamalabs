@@ -9,6 +9,7 @@
  */
 
 import type { AgentCtaContext } from "@/lib/marketing/agent-cta";
+import { diagnosticHref } from "@/lib/marketing/cta-context";
 
 export type AgentPlanId = "esencial" | "operacion" | "escala";
 export type WebPlanId = "landing" | "profesional" | "ecommerce";
@@ -49,7 +50,6 @@ export interface AgentPlan extends PlanBase<AgentPlanId> {
   setupFrom?: boolean;
   agents: string;
   credit: string;
-  context: AgentCtaContext;
 }
 
 export interface WebPlan extends PlanBase<WebPlanId> {
@@ -57,16 +57,29 @@ export interface WebPlan extends PlanBase<WebPlanId> {
   /** Desarrollo, siempre «desde». */
   development: number;
   hosting: number;
-  href: string;
 }
 
-const agentContext = (plan: AgentPlanId): AgentCtaContext => ({
-  source_page: "precios",
-  source_section: "agentes",
-  source_cta: `quiero-${plan}`,
+/**
+ * El contexto de un CTA depende de dónde se pinta la tarjeta (Home, Agentes,
+ * Precios, Páginas Web): el catálogo guarda el plan y cada pantalla informa su
+ * página y su sección, así el mismo plan no viaja siempre como «precios».
+ */
+export const agentPlanContext = (plan: AgentPlan, page: string, section: string): AgentCtaContext => ({
+  source_page: page,
+  source_section: section,
+  source_cta: `quiero-${plan.id}`,
   service: "agentes",
-  plan,
+  plan: plan.id,
 });
+
+export const webPlanHref = (plan: WebPlan, page: string, section: string): string =>
+  diagnosticHref({
+    source_page: page,
+    source_section: section,
+    source_cta: `cotizar-${plan.id}`,
+    service: "web",
+    plan: plan.id,
+  });
 
 export const AGENT_PLANS: readonly AgentPlan[] = [
   {
@@ -115,7 +128,6 @@ export const AGENT_PLANS: readonly AgentPlan[] = [
       ],
     },
     cta: "Quiero este plan",
-    context: agentContext("esencial"),
   },
   {
     family: "agentes",
@@ -151,7 +163,6 @@ export const AGENT_PLANS: readonly AgentPlan[] = [
       "US$15 de crédito IA mensual",
     ],
     cta: "Quiero este plan",
-    context: agentContext("operacion"),
   },
   {
     family: "agentes",
@@ -181,7 +192,6 @@ export const AGENT_PLANS: readonly AgentPlan[] = [
     ],
     extra: { title: "Más de 5 agentes", items: ["Cotización a medida"] },
     cta: "Quiero este plan",
-    context: agentContext("escala"),
   },
 ];
 
@@ -229,7 +239,6 @@ export const WEB_PLANS: readonly WebPlan[] = [
       ],
     },
     cta: "Cotizar Landing",
-    href: "/diagnostico?necesidad=web&servicio=web&plan=landing&source=precios",
   },
   {
     family: "web",
@@ -259,7 +268,6 @@ export const WEB_PLANS: readonly WebPlan[] = [
       "Hasta 2 solicitudes menores de contenido al mes",
     ],
     cta: "Cotizar Web Profesional",
-    href: "/diagnostico?necesidad=web&servicio=web&plan=profesional&source=precios",
   },
   {
     family: "web",
@@ -304,7 +312,6 @@ export const WEB_PLANS: readonly WebPlan[] = [
       ],
     },
     cta: "Cotizar Ecommerce",
-    href: "/diagnostico?necesidad=web&servicio=web&plan=ecommerce&source=precios",
   },
 ];
 

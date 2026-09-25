@@ -1,10 +1,7 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 import { ButtonLink } from "../ui/Button";
 import { Reveal } from "../motion/Reveal";
-import { DiagnosticForm } from "../forms/DiagnosticForm";
 import { cn } from "@/lib/utils";
-import type { DiagnosticContext } from "@/lib/marketing/lead-adapter";
 
 /** Enlace/CTA descrito en la spec: etiqueta + destino. */
 export interface Action {
@@ -128,63 +125,12 @@ export function FeatureGrid({
   );
 }
 
-/**
- * E29 ContextContact — mismo formulario M2 y mismo adaptador reutilizados; cada
- * página monta UNA instancia con id único. Preselecciona necesidad/capacidad y es
- * siempre editable. Sin JS se ofrece el enlace a /diagnostico.
- */
-export function ContextContact({
-  id = "conversar",
-  title = "Conversemos sobre tu proceso.",
-  lead,
-  initial,
-}: {
-  id?: string;
-  title?: string;
-  lead: string;
-  initial: Partial<DiagnosticContext>;
-}) {
-  const context: DiagnosticContext = {
-    need: initial.need ?? "",
-    industry: initial.industry ?? "",
-    plan: initial.plan ?? "",
-    capability: initial.capability ?? "",
-  };
-  return (
-    <section id={id} className="mk-section--md mk-paper mk-context" aria-labelledby={`${id}-title`}>
-      <div className="mk-container mk-context__grid">
-        <Reveal className="mk-context__copy">
-          <h2 id={`${id}-title`} className="mk-h2">
-            {title}
-          </h2>
-          <p className="mk-lead">{lead}</p>
-          <noscript>
-            <p className="mk-body">
-              Este formulario necesita JavaScript.{" "}
-              <Link href="/diagnostico" className="mk-link">
-                Ir a la página de diagnóstico
-              </Link>
-              .
-            </p>
-          </noscript>
-        </Reveal>
-        <div className="mk-context__form">
-          <DiagnosticForm initial={context} layout="inline" />
-        </div>
-      </div>
-    </section>
-  );
-}
-
 /** Nota común de implementación 24–48 h (solo configuraciones estándar; DEC-24). */
 export function StandardImplementationNote() {
   return (
     <div className="mk-note-block">
       <p className="mk-h4">Configuraciones estándar pueden quedar operativas en 24–48 h.</p>
-      <p className="mk-muted">
-        Cuando requiere integraciones o desarrollo especial, definimos el plazo según alcance.
-      </p>
+      <p className="mk-muted">Cuando requiere integraciones o desarrollo especial, definimos el plazo según alcance.</p>
     </div>
   );
 }
-

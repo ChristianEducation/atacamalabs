@@ -2,10 +2,11 @@ import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "../ui/Badge";
 import { ButtonLink } from "../ui/Button";
+import { AgentCtaLink } from "../shell/AgentCtaLink";
 import { SectionHeading } from "../ui/Blocks";
 import { Reveal } from "../motion/Reveal";
 import { SnapCarousel } from "../ui/SnapCarousel";
-import { AGENT_PLANS, OCTOBER_BENEFIT, agentPrice } from "@/content/marketing/pricing";
+import { AGENT_PLANS, OCTOBER_BENEFIT, agentPlanContext, agentPrice } from "@/content/marketing/pricing";
 
 /**
  * Precios del Home — HOME_SPEC_V1 §7. Tres planes resumidos (Esencial /
@@ -83,20 +84,20 @@ export function HomePricing() {
                     </li>
                   ))}
                 </ul>
-                <ButtonLink
-                  href={`/diagnostico?necesidad=agentes&plan=${source.id}`}
+                <AgentCtaLink
+                  context={agentPlanContext(source, "home", "pricing")}
                   variant={plan.featured ? "primary" : "secondary"}
-                  block
+                  className="mk-btn--block"
                 >
-                  {plan.cta}
-                </ButtonLink>
+                  Quiero este plan
+                </AgentCtaLink>
               </Reveal>
             );
           })}
         </SnapCarousel>
 
         <p className="mk-pricing-more">
-          <ButtonLink href="/precios" variant="tertiary" arrow>
+          <ButtonLink href="/precios#agentes" variant="tertiary" arrow>
             Ver todos los precios
           </ButtonLink>
         </p>

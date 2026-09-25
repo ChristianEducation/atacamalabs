@@ -160,7 +160,8 @@ export const CUSTOM_CASES: readonly {
   {
     id: "panel",
     tab: "Panel o portal",
-    intro: "Una vista propia donde tu equipo o tus clientes consultan y gestionan lo que antes vivía en planillas y correos.",
+    intro:
+      "Una vista propia donde tu equipo o tus clientes consultan y gestionan lo que antes vivía en planillas y correos.",
     steps: [
       { icon: "db", label: "Planillas y sistemas" },
       { icon: "shield", label: "Reglas y permisos" },
@@ -215,6 +216,12 @@ export const CUSTOM_CTA = {
   titleA: "Cuéntanos qué ocurre hoy.",
   titleB: "Diseñamos cómo debería funcionar mañana.",
   body: "Nos cuentas tu proceso y te mostramos cómo lo resolveríamos. No necesitas llegar con una especificación técnica.",
-  hero: { label: "Cuéntanos tu proceso", href: "/diagnostico?necesidad=a-medida" },
-  primary: { label: "Agendar demo gratuita", href: "/diagnostico?necesidad=a-medida" },
+  hero: {
+    label: "Cuéntanos tu proceso",
+    href: "/diagnostico?servicio=a-medida&source=a-medida&section=hero&cta=cuentanos-tu-proceso",
+  },
+  primary: {
+    label: "Cuéntanos tu proceso",
+    href: "/diagnostico?servicio=a-medida&source=a-medida&section=final-cta&cta=cuentanos-tu-proceso",
+  },
 } as const;
