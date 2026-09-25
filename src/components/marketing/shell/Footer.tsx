@@ -1,23 +1,37 @@
 import Image from "next/image";
 import Link from "next/link";
-import { BRAND, SERVICES } from "@/content/marketing/nav";
-import { DiagnosticLink } from "./DiagnosticLink";
+import { FOOTER_BRAND } from "@/content/marketing/nav";
 import { clientPortalUrl, directContact, socialLinks } from "@/lib/marketing/public-config";
+import { DiagnosticLink } from "./DiagnosticLink";
+
+const SOLUTIONS = [
+  { label: "Agentes", href: "/agentes" },
+  { label: "Plataforma", href: "/plataforma" },
+  { label: "A medida", href: "/a-medida" },
+  { label: "Páginas web", href: "/paginas-web" },
+  { label: "Rubros", href: "/rubros" },
+  { label: "Precios", href: "/precios" },
+] as const;
 
 /**
- * Footer global — spec V3.0: tres columnas (marca, servicios, empresa). Sin
- * Rubros (fuera de la navegación). Todo legible sin JS; solo enlaces reales.
+ * Footer global (RUBROS_Y_FOOTER_SPEC_V1 §24–§29): cierre de marca, navegación
+ * secundaria, contacto, redes, acceso cliente y legal. SIN CTA comercial: cada
+ * página ya cierra con el suyo. Todo legible sin JS y solo con enlaces reales:
+ * el correo, las redes y el portal aparecen únicamente si están configurados
+ * (y la columna «Conecta» se omite si queda vacía).
  */
 export function Footer() {
   const portal = clientPortalUrl();
-  const socials = socialLinks();
+  // Solo Instagram y LinkedIn en el footer comercial (GitHub queda fuera de V1).
+  const socials = socialLinks().filter((s) => s.label === "Instagram" || s.label === "LinkedIn");
   const contact = directContact();
   const year = new Date().getFullYear();
+  const hasConnect = socials.length > 0 || Boolean(portal);
 
   return (
     <footer className="mk-footer mk-dark">
       <div className="mk-container">
-        <div className="mk-footer__grid mk-footer__grid--compact">
+        <div className={hasConnect ? "mk-footer__grid mk-footer__grid--connect" : "mk-footer__grid"}>
           <div className="mk-footer__brand">
             <p className="mk-wordmark">
               <Image
@@ -28,35 +42,30 @@ export function Footer() {
                 unoptimized
               />
             </p>
-            <p className="mk-footer__tag">{BRAND.tagline}</p>
-            <p className="mk-footer__origin">{BRAND.origin}</p>
+            <p className="mk-footer__tag">{FOOTER_BRAND.tagline}</p>
+            <p className="mk-footer__sub">{FOOTER_BRAND.sub}</p>
             {contact.email ? (
-              <a className="mk-footer__link" href={`mailto:${contact.email}`}>
+              <a className="mk-footer__link mk-footer__mail" href={`mailto:${contact.email}`}>
                 {contact.email}
               </a>
             ) : null}
           </div>
 
-          <nav className="mk-footer__col mk-footer__services" aria-label="Servicios">
-            <h2 className="mk-footer__h">Servicios</h2>
+          <nav className="mk-footer__col" aria-label="Soluciones">
+            <h2 className="mk-footer__h">Soluciones</h2>
             <ul>
-              {SERVICES.map((s) => (
-                <li key={s.id}>
-                  <Link className="mk-footer__link" href={s.href}>
-                    {s.label}
+              {SOLUTIONS.map((item) => (
+                <li key={item.href}>
+                  <Link className="mk-footer__link" href={item.href}>
+                    {item.label}
                   </Link>
                 </li>
               ))}
-              <li>
-                <Link className="mk-footer__link" href="/precios">
-                  Precios
-                </Link>
-              </li>
             </ul>
           </nav>
 
-          <nav className="mk-footer__col mk-footer__company" aria-label="Empresa">
-            <h2 className="mk-footer__h">Empresa</h2>
+          <nav className="mk-footer__col" aria-label="Atacama Labs">
+            <h2 className="mk-footer__h">Atacama Labs</h2>
             <ul>
               <li>
                 <Link className="mk-footer__link" href="/conocenos">
@@ -68,23 +77,32 @@ export function Footer() {
                   Diagnóstico
                 </DiagnosticLink>
               </li>
-              {portal ? (
-                <li>
-                  <a className="mk-footer__link" href={portal}>
-                    Acceso clientes
-                  </a>
-                </li>
-              ) : null}
-              {socials.map((s) => (
-                <li key={s.label}>
-                  <a className="mk-footer__link" href={s.url} rel="noopener noreferrer">
-                    {s.label}
-                  </a>
-                </li>
-              ))}
             </ul>
           </nav>
+
+          {hasConnect ? (
+            <nav className="mk-footer__col" aria-label="Conecta">
+              <h2 className="mk-footer__h">Conecta</h2>
+              <ul>
+                {socials.map((s) => (
+                  <li key={s.label}>
+                    <a className="mk-footer__link" href={s.url} rel="noopener noreferrer" target="_blank">
+                      {s.label} ↗
+                    </a>
+                  </li>
+                ))}
+                {portal ? (
+                  <li>
+                    <a className="mk-footer__link" href={portal}>
+                      Acceso clientes ↗
+                    </a>
+                  </li>
+                ) : null}
+              </ul>
+            </nav>
+          ) : null}
         </div>
+
         <div className="mk-footer__bottom">
           <p>© {year} Atacama Labs</p>
           <nav className="mk-footer__legal" aria-label="Legal">

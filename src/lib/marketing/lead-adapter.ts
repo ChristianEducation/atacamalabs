@@ -8,6 +8,7 @@
  *    contrato (20–1200 caracteres) más el contexto estructurado y `diagnostic_data`.
  */
 
+import { resolveIndustry, type IndustrySlug } from "@/content/marketing/industries";
 import {
   AGENT_PLAN_KEYS,
   WEB_PLAN_KEYS,
@@ -88,8 +89,8 @@ export interface DiagnosticContext {
   source_section: string;
   source_cta: string;
   campaign: string;
-  /** Rubro que llegue en enlaces antiguos: se conserva como metadata, no genera pregunta. */
-  legacy_industry: string;
+  /** Rubro de origen (`?industria=`): se conserva como contexto, no genera pregunta. Solo slugs del registro. */
+  industry: IndustrySlug | "";
 }
 
 type Raw = string | string[] | undefined;
@@ -150,7 +151,7 @@ export function parseDiagnosticQuery(query: Record<string, Raw>): DiagnosticCont
     source_section: cleanId(first(query.section)),
     source_cta: cleanId(first(query.cta)),
     campaign: cleanId(first(query.campaign)),
-    legacy_industry: cleanId(first(query.industria)),
+    industry: resolveIndustry(first(query.industria)),
   };
 }
 
@@ -221,7 +222,7 @@ export function buildMessage(values: DiagnosticValues, source: string): string {
 }
 
 /** Respuestas estructuradas (van a `diagnostic_data` sin crear una columna por pregunta). */
-export function buildDiagnosticData(values: DiagnosticValues, legacyIndustry: string): Record<string, string> {
+export function buildDiagnosticData(values: DiagnosticValues, industry: string): Record<string, string> {
   const data: Record<string, string> = {};
   if (values.service === "agentes") {
     if (values.interest) data.agent_goal = values.interest;
@@ -235,7 +236,7 @@ export function buildDiagnosticData(values: DiagnosticValues, legacyIndustry: st
     data.general_note = values.answer.trim();
   }
   if (values.extra.trim()) data.extra_note = values.extra.trim();
-  if (legacyIndustry) data.legacy_industry = legacyIndustry;
+  if (industry) data.industry = industry;
   return data;
 }
 
@@ -280,7 +281,7 @@ export async function submitDiagnostic(
         source_section: context.source_section || undefined,
         source_cta: context.source_cta || undefined,
         campaign: context.campaign || undefined,
-        diagnostic_data: buildDiagnosticData(values, context.legacy_industry),
+        diagnostic_data: buildDiagnosticData(values, context.industry),
         website: honeypot || undefined,
       }),
     });

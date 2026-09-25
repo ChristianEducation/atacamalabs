@@ -7,6 +7,8 @@
  * sección y CTA van siempre en kebab-case.
  */
 
+import type { IndustrySlug } from "@/content/marketing/industries";
+
 export type Service = "agentes" | "a-medida" | "web" | "general";
 
 export type Interest =
@@ -37,6 +39,8 @@ export interface CtaContext {
   interest?: Interest;
   plan?: string;
   campaign?: string;
+  /** Rubro de origen (slug del registro tipado; nunca texto libre). */
+  industry?: IndustrySlug;
 }
 
 const KEBAB = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -57,6 +61,7 @@ export function diagnosticHref(context: CtaContext): string {
   params.set("cta", context.source_cta);
   if (context.interest) params.set("interes", context.interest);
   if (context.plan) params.set("plan", context.plan);
+  if (context.industry) params.set("industria", context.industry);
   if (context.campaign) params.set("campaign", context.campaign);
   return `/diagnostico?${params.toString()}`;
 }

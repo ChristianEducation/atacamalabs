@@ -1,8 +1,8 @@
 /**
  * Navegación comercial — ATACAMA_LABS_FINAL_MINIMAL_WEB_SPEC_V3_0_1 §3.
- * Topbar: Plataforma · Agentes · Servicios (A Medida, Páginas Web) · Precios · Conócenos.
- * Rubros, Comercial, Cobranza y Administrativo/Financiero ya no son páginas
- * principales ni aparecen en el topbar (viven dentro de /agentes o redirigen).
+ * Topbar (RUBROS_Y_FOOTER_SPEC_V1 §3): Plataforma · Agentes · Servicios (A Medida,
+ * Páginas Web) · Rubros · Conócenos · Precios. Comercial, Cobranza y
+ * Administrativo/Financiero viven dentro de /agentes.
  */
 
 export type ServiceId = "agentes" | "plataforma" | "a-medida" | "web";
@@ -43,43 +43,24 @@ export const SERVICES: readonly ServiceNav[] = [
 ] as const;
 
 /** Dropdown «Servicios» del topbar (spec V3.0 §3.1): solo A Medida y Páginas Web. */
-export const SERVICES_MENU: readonly ServiceNav[] = SERVICES.filter(
-  (s) => s.id === "a-medida" || s.id === "web",
-);
-
-export interface IndustryNav {
-  id: string;
-  label: string;
-  href: string;
-}
-
-/**
- * Rubros: retirados de la navegación (V3.0 §3.2/§4). Se conserva el registro
- * por si se reactivan como landings de campaña; ningún componente activo lo usa.
- */
-export const INDUSTRIES: readonly IndustryNav[] = [
-  { id: "educacion", label: "Educación", href: "/rubros/educacion" },
-  { id: "salud", label: "Clínicas/Salud", href: "/rubros/salud" },
-  { id: "inmobiliarias", label: "Inmobiliarias", href: "/rubros/inmobiliarias" },
-  { id: "gimnasios", label: "Gimnasios", href: "/rubros/gimnasios" },
-  { id: "retail-ecommerce", label: "Retail/Ecommerce", href: "/rubros/retail-ecommerce" },
-  {
-    id: "servicios-profesionales",
-    label: "Abogados/Servicios profesionales",
-    href: "/rubros/servicios-profesionales",
-  },
-  { id: "servicios-b2b", label: "Servicios B2B", href: "/rubros/servicios-b2b" },
-] as const;
+export const SERVICES_MENU: readonly ServiceNav[] = SERVICES.filter((s) => s.id === "a-medida" || s.id === "web");
 
 export const NAV_TOP = {
   platform: { label: "Plataforma", href: "/plataforma" },
   agents: { label: "Agentes", href: "/agentes" },
   services: { label: "Servicios" },
+  industries: { label: "Rubros", href: "/rubros" },
   about: { label: "Conócenos", href: "/conocenos" },
   pricing: { label: "Precios", href: "/precios" },
 } as const;
 
 export const SERVICE_ROUTES: readonly string[] = SERVICES.map((s) => s.href);
+
+/** Footer global (RUBROS_Y_FOOTER_SPEC_V1 §25): cierre de marca, sin CTA comercial. */
+export const FOOTER_BRAND = {
+  tagline: "Agentes que trabajan.",
+  sub: "Conectados a tus herramientas, datos y procesos.",
+} as const;
 
 export const BRAND = {
   wordmark: "ATACAMA LABS",

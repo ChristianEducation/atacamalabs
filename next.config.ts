@@ -3,18 +3,25 @@ import type { NextConfig } from "next";
 /**
  * Alias permanentes — ATACAMA_LABS_FINAL_MINIMAL_WEB_SPEC_V3_0_1 §4.
  * Comercial/Cobranza/Administrativo-Financiero ya no son páginas propias:
- * viven dentro de /agentes (selector A3, por hash). Rubros queda fuera de la
- * arquitectura comercial principal; sus rutas redirigen a /agentes.
+ * viven dentro de /agentes (selector A3, por hash). Rubros es una sola
+ * página (/rubros); sus rutas antiguas redirigen a su ancla.
  */
 const ALIASES: readonly [string, string][] = [
   ["/comercial", "/agentes#comercial"],
   ["/cobranza", "/agentes#cobranza"],
   ["/administrativo-financiero", "/agentes#administrativo-financiero"],
   ["/agendamiento", "/agentes#agendamiento"],
-  ["/rubros", "/agentes"],
-  ["/rubros/:slug", "/agentes"],
-  ["/industrias", "/agentes"],
-  ["/industrias/:slug", "/agentes"],
+  // Rubros (RUBROS_Y_FOOTER_SPEC_V1 §22): una sola página; las rutas antiguas apuntan a su ancla.
+  ["/rubros/salud", "/rubros#salud"],
+  ["/rubros/inmobiliarias", "/rubros#inmobiliarias"],
+  ["/rubros/educacion", "/rubros#educacion"],
+  ["/rubros/retail-ecommerce", "/rubros#retail-ecommerce"],
+  ["/rubros/gimnasios", "/rubros#fitness-bienestar"],
+  ["/rubros/servicios-profesionales", "/rubros#servicios-profesionales"],
+  ["/rubros/servicios-b2b", "/rubros#b2b-industria"],
+  ["/rubros/:slug", "/rubros"],
+  ["/industrias", "/rubros"],
+  ["/industrias/:slug", "/rubros"],
   ["/contacto", "/diagnostico"],
   ["/privacy", "/privacidad"],
   ["/agenda", "/diagnostico#agenda"],

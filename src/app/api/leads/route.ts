@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHash, randomUUID } from "node:crypto";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 import site from "@/lib/content";
+import { isIndustrySlug } from "@/content/marketing/industries";
 
 export const runtime = "nodejs";
 
@@ -54,6 +55,7 @@ const DIAGNOSTIC_KEYS = new Set([
   "web_note",
   "general_note",
   "extra_note",
+  "industry",
   "legacy_industry",
 ]);
 const DIAGNOSTIC_VALUE_MAX = 900;
@@ -77,6 +79,7 @@ function cleanDiagnosticData(value: unknown): Record<string, string> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return out;
   for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
     if (!DIAGNOSTIC_KEYS.has(key) || typeof raw !== "string") continue;
+    if (key === "industry" && !isIndustrySlug(raw.trim())) continue;
     const text = raw.trim().slice(0, DIAGNOSTIC_VALUE_MAX);
     if (text) out[key] = text;
   }

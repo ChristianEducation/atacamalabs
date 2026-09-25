@@ -185,8 +185,9 @@ export function Header({ portalUrl }: { portalUrl: string | null }) {
             ) : null}
           </div>
 
-          {navLink(NAV_TOP.pricing.href, NAV_TOP.pricing.label)}
+          {navLink(NAV_TOP.industries.href, NAV_TOP.industries.label)}
           {navLink(NAV_TOP.about.href, NAV_TOP.about.label)}
+          {navLink(NAV_TOP.pricing.href, NAV_TOP.pricing.label)}
         </nav>
 
         <div className="mk-header__actions">
@@ -219,8 +220,9 @@ export function Header({ portalUrl }: { portalUrl: string | null }) {
               {s.label}
             </Link>
           ))}
-          <Link href="/precios">Precios</Link>
+          <Link href="/rubros">Rubros</Link>
           <Link href="/conocenos">Conócenos</Link>
+          <Link href="/precios">Precios</Link>
           <Link href="/diagnostico?source=noscript&section=header&cta=agendar-diagnostico">Agendar diagnóstico</Link>
         </nav>
       </noscript>
@@ -291,12 +293,12 @@ export function Header({ portalUrl }: { portalUrl: string | null }) {
             </div>
 
             <Link
-              href="/precios"
+              href="/rubros"
               style={step(3)}
               onClick={() => closeMobile(false)}
-              aria-current={routeActive("/precios") ? "page" : undefined}
+              aria-current={routeActive("/rubros") ? "page" : undefined}
             >
-              Precios
+              Rubros
               <ArrowRight size={18} aria-hidden />
             </Link>
             <Link
@@ -308,8 +310,17 @@ export function Header({ portalUrl }: { portalUrl: string | null }) {
               Conócenos
               <ArrowRight size={18} aria-hidden />
             </Link>
+            <Link
+              href="/precios"
+              style={step(5)}
+              onClick={() => closeMobile(false)}
+              aria-current={routeActive("/precios") ? "page" : undefined}
+            >
+              Precios
+              <ArrowRight size={18} aria-hidden />
+            </Link>
           </nav>
-          <div className="mk-mobile__cta" style={step(5)}>
+          <div className="mk-mobile__cta" style={step(6)}>
             <Link href={cta.href} className="mk-btn mk-btn--primary mk-btn--block" onClick={() => closeMobile(false)}>
               {cta.label}
             </Link>

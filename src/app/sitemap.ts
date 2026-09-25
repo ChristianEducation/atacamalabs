@@ -13,6 +13,7 @@ const STATIC_ROUTES = [
   "/a-medida",
   "/paginas-web",
   "/precios",
+  "/rubros",
   "/conocenos",
   "/diagnostico",
   "/privacidad",

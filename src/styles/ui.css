@@ -1,14 +1,5 @@
 /* Primitivas de UI (E1–E4, E20–E23, E17, E30) — spec/05-COMPONENTS.md */
 
-@media (max-width: 767px) {
-  .mk-footer__company {
-    order: 2;
-  }
-  .mk-footer__industries {
-    order: 3;
-  }
-}
-
 /* ---------- E1 Button ---------- */
 .mk-btn {
   display: inline-flex;

@@ -5,6 +5,7 @@ import { AgentSelector } from "@/components/marketing/pages/AgentSelector";
 import { AgentOnboarding } from "@/components/marketing/pages/AgentOnboarding";
 import { AgentTools } from "@/components/marketing/pages/AgentTools";
 import { AgentControl } from "@/components/marketing/pages/AgentControl";
+import { IndustryShowcase } from "@/components/marketing/pages/IndustryShowcase";
 import { SoftCTA } from "@/components/marketing/pages/HomeCTA";
 import { AGENTS_CTA, AGENTS_HERO, AGENTS_META_DESCRIPTION } from "@/content/marketing/agents";
 
@@ -47,6 +48,7 @@ export default function AgentsPage() {
       <AgentSelector />
       <AgentOnboarding />
       <AgentTools />
+      <IndustryShowcase />
       <AgentControl />
       <SoftCTA
         titleId="agents-cta-title"

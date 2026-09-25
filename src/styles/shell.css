@@ -508,7 +508,7 @@
   font-size: 14px;
 }
 
-/* Footer */
+/* Footer global (RUBROS_Y_FOOTER_SPEC_V1 §24–§29): sin CTA, sin animaciones permanentes. */
 .mk-footer {
   background: var(--dark);
   color: var(--dark-text);
@@ -516,41 +516,48 @@
 }
 .mk-footer__grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 40px 24px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 32px;
 }
 .mk-footer__brand {
-  grid-column: 1 / -1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 .mk-footer__tag {
-  font-size: 16px;
-  max-width: 34ch;
+  margin: 10px 0 0;
+  font-family: var(--font-serif);
+  font-size: 24px;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--dark-text);
 }
-.mk-footer__origin {
-  font-size: 14px;
+.mk-footer__sub {
+  margin: 0;
+  max-width: 34ch;
+  font-size: 15px;
+  line-height: 1.5;
   color: var(--dark-muted);
 }
-.mk-footer__industries {
-  grid-column: 1 / -1;
+.mk-footer__mail {
+  align-self: flex-start;
+  margin-top: 6px;
 }
 .mk-footer__h {
-  font-family: var(--font-sans);
-  font-size: 14px;
+  margin: 0 0 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
   font-weight: 600;
-  margin-bottom: 12px;
-  color: var(--dark-text);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dark-muted);
 }
 .mk-footer__col ul {
   display: flex;
   flex-direction: column;
-}
-.mk-footer__sub {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 .mk-footer__link {
   display: inline-flex;
@@ -598,48 +605,34 @@
     padding-top: 64px;
   }
   .mk-footer__grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .mk-footer__industries {
-    grid-column: auto;
+  .mk-footer__brand {
+    grid-column: 1 / -1;
+  }
+  .mk-footer__grid--connect {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 @media (min-width: 1024px) {
-  .mk-footer__grid {
-    grid-template-columns: repeat(12, 1fr);
+  .mk-footer__grid,
+  .mk-footer__grid--connect {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
     gap: 24px;
   }
   .mk-footer__brand {
-    grid-column: span 4;
-  }
-  .mk-footer__services {
-    grid-column: span 2;
-  }
-  .mk-footer__industries {
-    grid-column: span 4;
-  }
-  .mk-footer__company {
-    grid-column: span 2;
-  }
-}
-
-/* Footer sin columna de Rubros (spec V3.0): brand + servicios + empresa. */
-@media (min-width: 768px) {
-  .mk-footer__grid--compact {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-@media (min-width: 1024px) {
-  .mk-footer__grid--compact {
-    grid-template-columns: repeat(12, 1fr);
-  }
-  .mk-footer__grid--compact .mk-footer__brand {
     grid-column: span 6;
   }
-  .mk-footer__grid--compact .mk-footer__services {
+  .mk-footer__grid > .mk-footer__col {
     grid-column: span 3;
   }
-  .mk-footer__grid--compact .mk-footer__company {
+  .mk-footer__grid--connect .mk-footer__brand {
+    grid-column: span 5;
+  }
+  .mk-footer__grid--connect > .mk-footer__col {
+    grid-column: span 2;
+  }
+  .mk-footer__grid--connect > .mk-footer__col:first-of-type {
     grid-column: span 3;
   }
 }
