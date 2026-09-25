@@ -402,7 +402,8 @@
 
 /* ---------- E22 CTABlock ---------- */
 .mk-cta {
-  background: var(--blue);
+  /* Azul de marca más sereno: menos saturado que el azul de acción. */
+  background: linear-gradient(135deg, #3160b3 0%, #274b94 100%);
   color: #fff;
   border-radius: var(--r-28);
   padding: 28px;

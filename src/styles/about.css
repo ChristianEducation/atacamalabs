@@ -1,0 +1,389 @@
+/*
+ * /conocenos — ATACAMA_LABS_CONOCENOS_SPEC_V1. Prefijo `mk-ab-`.
+ * La página más editorial del sitio: numeración grande, líneas finas, mucho aire
+ * y una fotografía del relieve de Atacama. Sin tarjetas. El movimiento es el
+ * mismo del resto del sitio (entrada suave al hacer scroll); nada más.
+ */
+
+/* ---------- Tipografía editorial ---------- */
+.mk-ab-h2 {
+  margin: 14px 0 0;
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: clamp(32px, 4vw, 52px);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.mk-ab-h2--xl {
+  font-size: clamp(42px, 6vw, 84px);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+}
+.mk-ab-lead {
+  max-width: 60ch;
+  margin: 22px 0 0;
+  font-size: clamp(16px, 1.5vw, 19px);
+  line-height: 1.6;
+  color: var(--muted);
+}
+.mk-ab-head {
+  max-width: 820px;
+}
+
+/* ---------- Origen ---------- */
+.mk-ab-origin__grid {
+  display: grid;
+  gap: 36px;
+}
+.mk-ab-origin__p {
+  margin: 0 0 22px;
+  font-size: clamp(17px, 1.6vw, 21px);
+  line-height: 1.6;
+  color: var(--ink);
+}
+.mk-ab-origin__p:nth-of-type(2) {
+  color: var(--muted);
+}
+.mk-ab-origin__exp {
+  margin-top: 34px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+.mk-ab-origin__exp p {
+  margin: 0 0 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--subtle);
+}
+.mk-ab-origin__exp ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mk-ab-origin__exp li {
+  padding: 7px 14px;
+  border: 1px solid var(--line-strong, var(--line));
+  border-radius: 999px;
+  font-size: 13.5px;
+  color: var(--ink);
+}
+@media (min-width: 1024px) {
+  .mk-ab-origin__grid {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    gap: 96px;
+    align-items: start;
+  }
+  .mk-ab-origin__head {
+    position: sticky;
+    top: 110px;
+  }
+}
+
+/* ---------- Principios ---------- */
+.mk-ab-pr {
+  max-width: 1120px;
+  margin: 56px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.mk-ab-pr__item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  padding: 34px 0;
+  border-top: 1px solid var(--line-strong, var(--line));
+}
+.mk-ab-pr__item:last-child {
+  border-bottom: 1px solid var(--line-strong, var(--line));
+}
+.mk-ab-pr__num {
+  font-family: var(--font-serif);
+  font-size: clamp(64px, 12vw, 132px);
+  font-weight: 400;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  color: transparent;
+  -webkit-text-stroke: 1px rgb(15 92 237 / 55%);
+}
+.mk-ab-pr__title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: clamp(24px, 2.6vw, 34px);
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.mk-ab-pr__body {
+  margin: 0;
+  max-width: 46ch;
+  font-size: clamp(16px, 1.4vw, 18px);
+  line-height: 1.6;
+  color: var(--muted);
+}
+@media (min-width: 900px) {
+  .mk-ab-pr__item {
+    grid-template-columns: minmax(150px, 0.7fr) minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 44px;
+    align-items: center;
+    padding: 44px 0;
+  }
+}
+
+/* ---------- Capacidades ---------- */
+.mk-ab-cap__grid {
+  display: grid;
+  gap: 0;
+  margin: 56px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.mk-ab-cap__item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 30px 0 34px;
+  border-top: 1px solid var(--line-strong, var(--line));
+}
+.mk-ab-cap__item h3 {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: clamp(24px, 2.4vw, 32px);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.mk-ab-cap__item p {
+  max-width: 44ch;
+  margin: 0;
+  font-size: 16.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.mk-ab-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--blue-text);
+  text-decoration: none;
+}
+.mk-ab-link svg {
+  transition: transform 260ms var(--ease-out);
+}
+.mk-ab-link:hover svg {
+  transform: translateX(4px);
+}
+.mk-ab-link:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+@media (min-width: 768px) {
+  .mk-ab-cap__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 72px;
+  }
+}
+
+/* ---------- Construido desde el norte: apertura de la página (azul claro, el del hero del sitio) ---------- */
+.mk-ab-north {
+  position: relative;
+  overflow: hidden;
+  padding-top: 0;
+  padding-bottom: clamp(64px, 8vw, 120px);
+  background: linear-gradient(160deg, var(--section-blue-mist) 0%, var(--section-blue-soft) 100%);
+}
+/* La apertura ocupa la pantalla bajo el topbar; las evidencias quedan más abajo. */
+.mk-ab-north__hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: clamp(560px, calc(100svh - var(--header-h)), 840px);
+  padding-block: 72px;
+}
+/* Isotipos de Atacama, casi transparentes, repartidos por el espacio a distintas escalas. */
+.mk-ab-north__mark {
+  position: absolute;
+  left: -6%;
+  bottom: -14%;
+  width: min(48vw, 640px);
+  aspect-ratio: 130 / 64;
+  background-color: var(--blue);
+  opacity: 0.06;
+  -webkit-mask: url("/brand/isotipo-azul.svg") center / contain no-repeat;
+  mask: url("/brand/isotipo-azul.svg") center / contain no-repeat;
+  pointer-events: none;
+}
+.mk-ab-north__mark--b {
+  left: auto;
+  right: 40%;
+  bottom: auto;
+  top: 6%;
+  width: min(15vw, 190px);
+  opacity: 0.07;
+}
+.mk-ab-north__mark--c {
+  left: 30%;
+  bottom: 3%;
+  width: min(9vw, 100px);
+  opacity: 0.08;
+}
+/* Fotografía del norte a la derecha, a toda la altura de la apertura y difuminada hacia el texto. */
+.mk-ab-north__photo {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(64%, 1040px);
+  pointer-events: none;
+  -webkit-mask-image:
+    linear-gradient(90deg, transparent 0%, rgb(0 0 0 / 32%) 24%, #000 68%),
+    linear-gradient(180deg, transparent 0%, #000 12%, #000 80%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(90deg, transparent 0%, rgb(0 0 0 / 32%) 24%, #000 68%),
+    linear-gradient(180deg, transparent 0%, #000 12%, #000 80%, transparent 100%);
+  mask-composite: intersect;
+  opacity: 0.95;
+}
+.mk-ab-north__img {
+  object-fit: cover;
+  object-position: 62% 50%;
+  filter: saturate(0.85);
+}
+.mk-ab-north__coords {
+  position: absolute;
+  right: max(32px, calc((100vw - 1248px) / 2));
+  bottom: 28px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: rgb(11 19 36 / 60%);
+}
+.mk-ab-north__inner {
+  position: relative;
+  z-index: 1;
+}
+.mk-ab-north__head {
+  max-width: 900px;
+}
+.mk-ab-h2--hero {
+  font-size: clamp(46px, 7vw, 104px);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+.mk-ab-north__body {
+  max-width: 54ch;
+  margin: 30px 0 0;
+  font-size: clamp(17px, 1.6vw, 21px);
+  line-height: 1.6;
+  color: var(--muted);
+}
+.mk-ab-ev {
+  padding-top: clamp(24px, 4vw, 56px);
+}
+.mk-ab-ev__title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: clamp(26px, 3vw, 40px);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.mk-ab-ev__list {
+  display: grid;
+  gap: 0;
+  margin: 32px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.mk-ab-ev__item {
+  padding: 26px 0 28px;
+  border-top: 1px solid rgb(15 92 237 / 28%);
+}
+.mk-ab-ev__item h3 {
+  margin: 0 0 8px;
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--ink);
+}
+.mk-ab-ev__item p {
+  max-width: 34ch;
+  margin: 0;
+  font-size: 15.5px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+@media (min-width: 900px) {
+  .mk-ab-ev__list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 40px;
+  }
+}
+@media (max-width: 1023px) {
+  /* En pantallas angostas la foto pasa a una banda bajo el texto, para no taparlo. */
+  .mk-ab-north__hero {
+    display: block;
+    min-height: 0;
+    padding-block: 40px 0;
+  }
+  .mk-ab-north__photo {
+    position: relative;
+    width: 100%;
+    height: 300px;
+    margin-top: 36px;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 42%, #000 82%, transparent 100%);
+    mask-image: linear-gradient(180deg, transparent 0%, #000 42%, #000 82%, transparent 100%);
+    -webkit-mask-composite: source-over;
+    mask-composite: add;
+  }
+  .mk-ab-north__coords {
+    display: none;
+  }
+}
+
+/* ---------- Sello de marca: el lema con el logo ---------- */
+.mk-ab-seal__grid {
+  display: grid;
+  align-items: center;
+  gap: 40px;
+}
+.mk-ab-seal__place {
+  margin: 22px 0 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--subtle);
+}
+.mk-ab-seal__art {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 620px;
+  margin-inline: auto 0;
+}
+@media (min-width: 900px) {
+  .mk-ab-seal__grid {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: 64px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mk-ab-link svg {
+    transition: none;
+  }
+}
