@@ -606,6 +606,15 @@
   font-size: 12px;
   color: var(--muted);
 }
+.mk-home-plans__note {
+  margin: 20px auto 0;
+  max-width: 68ch;
+  text-align: center;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--muted);
+  text-wrap: balance;
+}
 .mk-pricing-more {
   margin-top: 24px;
   text-align: center;

@@ -17,8 +17,15 @@ export type WebPlanId = "landing" | "profesional" | "ecommerce";
 /** Beneficio de octubre: nuevas implementaciones contratadas hasta esta fecha. */
 export const OCTOBER_BENEFIT = {
   label: "Beneficio octubre",
-  note: "Beneficio octubre para nuevas implementaciones contratadas hasta el 31/10/2026.",
+  note: "Contrata hasta el 31/10/2026 y mantén esta mensualidad mientras continúes en el mismo plan.",
 } as const;
+
+/**
+ * Agente adicional: mensualidad por cada agente que se suma a un plan (CLP + IVA).
+ * ÚNICA fuente de verdad: Precios y el FAQ derivan el texto de esta constante.
+ * No compite con la escalera de planes (Esencial + 2 = $287.000 > Operación $279.000).
+ */
+export const ADDITIONAL_AGENT_MONTHLY = 69000;
 
 export const VAT_NOTE = "Todos los valores + IVA.";
 
@@ -133,7 +140,7 @@ export const AGENT_PLANS: readonly AgentPlan[] = [
     family: "agentes",
     id: "operacion",
     name: "Operación",
-    badge: "Más elegido",
+    badge: "Recomendado",
     featured: true,
     description:
       "Para empresas que quieren automatizar más procesos y coordinar varios agentes dentro de una misma operación.",
@@ -244,7 +251,7 @@ export const WEB_PLANS: readonly WebPlan[] = [
     family: "web",
     id: "profesional",
     name: "Web Profesional",
-    badge: "Más elegida",
+    badge: "Recomendada",
     featured: true,
     description:
       "Para empresas que necesitan una presencia completa, explicar bien lo que hacen y convertir visitas en oportunidades.",
@@ -318,6 +325,15 @@ export const WEB_PLANS: readonly WebPlan[] = [
 /** Pesos chilenos con separador de miles: 149000 → «$149.000». */
 export function clp(amount: number): string {
   return `$${new Intl.NumberFormat("es-CL", { maximumFractionDigits: 0 }).format(amount)}`;
+}
+
+/** Precio visible del agente adicional, derivado de `ADDITIONAL_AGENT_MONTHLY`. */
+export function additionalAgentPrice() {
+  return {
+    amount: clp(ADDITIONAL_AGENT_MONTHLY),
+    unit: "+ IVA / mes",
+    label: `${clp(ADDITIONAL_AGENT_MONTHLY)} más IVA al mes por agente adicional`,
+  };
 }
 
 /**

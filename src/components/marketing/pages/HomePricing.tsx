@@ -1,4 +1,5 @@
 import { Check } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Badge } from "../ui/Badge";
 import { ButtonLink } from "../ui/Button";
@@ -7,6 +8,7 @@ import { SectionHeading } from "../ui/Blocks";
 import { Reveal } from "../motion/Reveal";
 import { SnapCarousel } from "../ui/SnapCarousel";
 import { AGENT_PLANS, OCTOBER_BENEFIT, agentPlanContext, agentPrice } from "@/content/marketing/pricing";
+import { HOME_CONSUMPTION_NOTE } from "@/content/marketing/pricing-page";
 
 /**
  * Precios del Home — HOME_SPEC_V1 §7. Tres planes resumidos (Esencial /
@@ -95,6 +97,13 @@ export function HomePricing() {
             );
           })}
         </SnapCarousel>
+
+        <p className="mk-home-plans__note">
+          {HOME_CONSUMPTION_NOTE.text}{" "}
+          <Link href={HOME_CONSUMPTION_NOTE.link.href} className="mk-link">
+            {HOME_CONSUMPTION_NOTE.link.label}
+          </Link>
+        </p>
 
         <p className="mk-pricing-more">
           <ButtonLink href="/precios#agentes" variant="tertiary" arrow>

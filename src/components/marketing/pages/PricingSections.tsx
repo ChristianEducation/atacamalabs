@@ -6,8 +6,10 @@ import { SectionHeading } from "../ui/Blocks";
 import { SnapCarousel } from "../ui/SnapCarousel";
 import { PlanCards } from "./PricingPlans";
 import { PricingCompare } from "./PricingCompare";
-import { OCTOBER_BENEFIT, AGENT_PLANS, WEB_PLANS } from "@/content/marketing/pricing";
+import { OCTOBER_BENEFIT, AGENT_PLANS, WEB_PLANS, additionalAgentPrice } from "@/content/marketing/pricing";
+import { AgentCtaLink } from "../shell/AgentCtaLink";
 import {
+  ADDITIONAL_AGENT_BLOCK,
   AGENT_COMPARE,
   AGENT_PLANS_CUSTOM,
   AGENT_PLANS_CUSTOM_LINK,
@@ -46,8 +48,40 @@ export function AgentPlansSection() {
         <Reveal>
           <PricingCompare data={AGENT_COMPARE} />
         </Reveal>
+        <AdditionalAgentBlock />
       </div>
     </section>
+  );
+}
+
+/** «¿Necesitas sumar otro agente?»: precio derivado del catálogo, CTA por el sistema de Nayra. */
+function AdditionalAgentBlock() {
+  const price = additionalAgentPrice();
+  return (
+    <Reveal as="section" className="mk-pp-extra" aria-labelledby="extra-agent-title">
+      <div className="mk-pp-extra__copy">
+        <h3 id="extra-agent-title">{ADDITIONAL_AGENT_BLOCK.title}</h3>
+        <p className="mk-pp-extra__price" aria-label={price.label}>
+          <span className="mk-pp-extra__label">{ADDITIONAL_AGENT_BLOCK.label}</span>
+          <strong>{price.amount}</strong>
+          <small>
+            {price.unit} {ADDITIONAL_AGENT_BLOCK.per}
+          </small>
+        </p>
+        <p>{ADDITIONAL_AGENT_BLOCK.body}</p>
+      </div>
+      <AgentCtaLink
+        variant="secondary"
+        context={{
+          source_page: "precios",
+          source_section: "agente-adicional",
+          source_cta: "quiero-sumar-un-agente",
+          service: "agentes",
+        }}
+      >
+        {ADDITIONAL_AGENT_BLOCK.cta}
+      </AgentCtaLink>
+    </Reveal>
   );
 }
 
@@ -88,7 +122,7 @@ export function BillingSection() {
           })}
         </SnapCarousel>
 
-        <div className="mk-pp-usage">
+        <div id="consumo" className="mk-pp-usage">
           <Reveal as="section" className="mk-pp-credit" aria-label={CREDIT_BLOCK.title}>
             <h3>{CREDIT_BLOCK.title}</h3>
             <p className="mk-pp-credit__lead">{CREDIT_BLOCK.lead}</p>

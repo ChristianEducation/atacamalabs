@@ -4,6 +4,8 @@
  * comparativas, el cobro de agentes y las preguntas frecuentes.
  */
 
+import { ADDITIONAL_AGENT_MONTHLY, clp } from "./pricing";
+
 export const PRICING_META = {
   title: "Precios de agentes de IA y páginas web | Atacama Labs",
   description:
@@ -82,6 +84,21 @@ export const AGENT_PLANS_HEADING = {
   eyebrow: "AGENTES",
   title: "Planes de Agentes.",
   lead: "Implementación una vez, plan mensual y consumo según uso. La diferencia entre planes es la cantidad de agentes y la capacidad, no las integraciones estándar.",
+} as const;
+
+/** Nota de consumo bajo los planes del Home (CLARITY_PATCH §4). */
+export const HOME_CONSUMPTION_NOTE = {
+  text: "Crédito de IA incluido en cada plan. Consumo adicional de IA, WhatsApp y servicios externos se cobran aparte según uso.",
+  link: { label: "Ver cómo funciona el consumo →", href: "/precios#consumo" },
+} as const;
+
+/** Bloque «¿Necesitas sumar otro agente?» de /precios (CLARITY_PATCH §7). El precio sale de `additionalAgentPrice()`. */
+export const ADDITIONAL_AGENT_BLOCK = {
+  title: "¿Necesitas sumar otro agente?",
+  label: "Agente adicional",
+  per: "por agente",
+  body: "Puedes sumar agentes a tu operación sin comenzar desde cero. El crédito de IA corresponde al plan contratado y el consumo adicional se cobra según uso. Si el nuevo agente requiere un proceso o implementación diferente, cotizamos esa configuración antes de activarlo.",
+  cta: "Quiero sumar un agente",
 } as const;
 
 export const DETAILS_LABEL = "Ver todo lo incluido";
@@ -315,6 +332,20 @@ export const FAQ_ITEMS: Record<FaqGroupId, readonly { question: string; answer: 
     {
       question: "¿Puedo cambiar de plan?",
       answer: "Sí. El cambio puede aplicarse al siguiente ciclo de facturación.",
+    },
+    {
+      question: "¿El precio de octubre se mantiene?",
+      answer:
+        "Sí. Si contratas hasta el 31/10/2026, mantienes la mensualidad promocional mientras continúes de forma ininterrumpida en el mismo plan. Si cancelas o cambias de plan, se aplicarán las condiciones vigentes en ese momento.",
+    },
+    {
+      question: "¿Cuánto cuesta un agente adicional?",
+      answer: `Puedes sumar un agente adicional por ${clp(ADDITIONAL_AGENT_MONTHLY)} + IVA al mes. El crédito mensual de IA corresponde al plan contratado y no aumenta automáticamente al agregar agentes. Si el nuevo agente necesita una implementación, integración o proceso diferente, esa configuración se cotiza previamente.`,
+    },
+    {
+      question: "¿Me conviene agregar agentes o cambiar de plan?",
+      answer:
+        "Depende de la cantidad de agentes y del alcance de la operación. Si necesitas varios agentes, normalmente un plan superior resulta más conveniente. Te recomendamos la configuración adecuada antes de contratar.",
     },
     {
       question: "¿Qué pasa si necesito más de 5 agentes?",
