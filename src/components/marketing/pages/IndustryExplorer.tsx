@@ -6,7 +6,6 @@ import { useReducedMotion } from "../motion/reduced-motion";
 import { track } from "@/lib/analytics";
 import { INDUSTRY_LIST, OTHER_INDUSTRY } from "@/content/marketing/industries";
 import { IndustryPanel } from "./IndustrySections";
-import { IndustryBust } from "../pixel/IndustryBust";
 
 const SWAP_MS = 160;
 
@@ -116,7 +115,6 @@ export function IndustryExplorer() {
                     className="mk-sel-tab"
                     onClick={() => select(index)}
                   >
-                    <IndustryBust industry={item.slug} size={36} className="mk-rb-nav__bust" />
                     {item.shortLabel}
                   </button>
                 ))}

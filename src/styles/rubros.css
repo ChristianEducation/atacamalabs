@@ -91,21 +91,6 @@
 .mk-rb-nav .mk-sel-tab::before {
   display: none;
 }
-.mk-rb-nav .mk-sel-tab {
-  gap: 6px;
-  padding-inline: 10px 13px;
-  font-size: 13.5px;
-}
-.mk-rb-nav__bust {
-  flex: none;
-  margin-block: -2px -3px;
-  opacity: 0.78;
-  transition: opacity 200ms ease;
-}
-.mk-rb-nav .mk-sel-tab:hover .mk-rb-nav__bust,
-.mk-rb-nav .mk-sel-tab[aria-selected="true"] .mk-rb-nav__bust {
-  opacity: 1;
-}
 .mk-rb-nav .mk-sel-tab:hover {
   transform: none;
   border-color: transparent;
