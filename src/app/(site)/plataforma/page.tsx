@@ -8,25 +8,15 @@ import {
   PlatformHeroPortal,
   PlatformOmni,
 } from "@/components/marketing/pages/PlatformSections";
-import {
-  PLATFORM_CTA,
-  PLATFORM_FINAL_CTA,
-  PLATFORM_HERO,
-  PLATFORM_HERO_CTA,
-  PLATFORM_META,
-} from "@/content/marketing/platform";
+import { PLATFORM_CTA, PLATFORM_FINAL_CTA, PLATFORM_HERO, PLATFORM_HERO_CTA } from "@/content/marketing/platform";
+import { pageMetadata } from "@/lib/seo-metadata";
 
-export const metadata: Metadata = {
-  title: { absolute: PLATFORM_META.title },
-  description: PLATFORM_META.description,
-  alternates: { canonical: PLATFORM_META.canonical },
-  openGraph: {
-    title: PLATFORM_META.title,
-    description: PLATFORM_META.description,
-    url: PLATFORM_META.canonical,
-    type: "website",
-  },
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Plataforma para gestionar agentes de IA | Atacama Labs",
+  description:
+    "Revisa conversaciones, contactos, acciones y próximos pasos de tus agentes desde una plataforma conectada a la operación de tu empresa.",
+  path: "/plataforma",
+});
 
 /**
  * /plataforma (PLATAFORMA_SPEC_V1): dónde el cliente ve y controla lo que

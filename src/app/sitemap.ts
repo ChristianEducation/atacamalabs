@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/site-url";
 
 /**
- * Rutas públicas implementadas — spec V3.0 §4. Comercial/Cobranza/
- * Administrativo-Financiero y Rubros ya no son páginas propias (redirigen).
- * /privacidad y /terminos son indexables pero no prioritarias.
+ * Rutas públicas indexables — PRODUCTION_READINESS_SPEC_V1 §9.1. `/diagnostico`
+ * es una pantalla de conversión (noindex,follow — ver su page.tsx) y queda
+ * fuera del sitemap (GAP SEO-06); conserva sus links internos normales.
  */
 const STATIC_ROUTES = [
   "/",
@@ -15,11 +15,15 @@ const STATIC_ROUTES = [
   "/precios",
   "/rubros",
   "/conocenos",
-  "/diagnostico",
   "/privacidad",
   "/terminos",
 ] as const;
 
+/**
+ * Sin `lastModified` (GAP SEO-05): Google exige que represente una
+ * modificación real, y hoy no tenemos fechas de contenido verificables por
+ * ruta. Sin `priority`/`changefreq` (§9.3): Google no les da valor.
+ */
 export default function sitemap(): MetadataRoute.Sitemap {
-  return STATIC_ROUTES.map((path) => ({ url: `${SITE_URL}${path === "/" ? "" : path}`, lastModified: new Date() }));
+  return STATIC_ROUTES.map((path) => ({ url: `${SITE_URL}${path === "/" ? "" : path}` }));
 }

@@ -5,19 +5,15 @@ import { PricingReceipt } from "@/components/marketing/pages/PricingReceipt";
 import { PricingFaq } from "@/components/marketing/pages/PricingFaq";
 import { AgentPlansSection, BillingSection, WebPlansSection } from "@/components/marketing/pages/PricingSections";
 import { SectionHeading } from "@/components/marketing/ui/Blocks";
-import { FAQ_HEADING, PRICING_CTA, PRICING_HERO, PRICING_META } from "@/content/marketing/pricing-page";
+import { FAQ_HEADING, PRICING_CTA, PRICING_HERO } from "@/content/marketing/pricing-page";
+import { pageMetadata } from "@/lib/seo-metadata";
 
-export const metadata: Metadata = {
-  title: { absolute: PRICING_META.title },
-  description: PRICING_META.description,
-  alternates: { canonical: PRICING_META.canonical },
-  openGraph: {
-    title: PRICING_META.title,
-    description: PRICING_META.description,
-    url: PRICING_META.canonical,
-    type: "website",
-  },
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Precios de agentes de IA y páginas web | Atacama Labs",
+  description:
+    "Revisa planes, implementación, mensualidad y consumo de agentes de IA, junto con precios de landing pages, sitios corporativos y ecommerce.",
+  path: "/precios",
+});
 
 /**
  * /precios (PRECIOS_SPEC_V2_FINAL): hero con «la boleta» que explica cómo se

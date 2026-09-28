@@ -84,6 +84,27 @@ const ALLOWED_EVENT_NAMES = new Set<AnalyticsEvent["name"]>([
 
 const PII_LIKE_KEYS = ["email", "phone", "message", "name", "query", "querystring"];
 
+/**
+ * Funnel canónico — PRODUCTION_READINESS_SPEC_V1 §19 + eventos útiles de
+ * §16.1. Solo estos nombres viajan a GA4 vía GTM; el resto (`lead_form_view`,
+ * `demo_complete`, …) queda como legacy: se sigue registrando (compatibilidad,
+ * §23) pero no se reenvía para no duplicar conversiones.
+ *
+ * `meeting_scheduled` queda fuera a propósito (§20.3): la fuente autoritativa
+ * es Supabase/GHL vía Booking Sync, nunca el frontend.
+ */
+const GA4_FORWARD_EVENTS = new Set<AnalyticsEvent["name"]>([
+  "cta_clicked",
+  "nayra_opened",
+  "diagnostic_started",
+  "diagnostic_service_selected",
+  "diagnostic_step_completed",
+  "diagnostic_submitted",
+  "calendar_viewed",
+  "plan_interest",
+  "industry_open",
+]);
+
 export function track(event: AnalyticsEvent) {
   if (!ALLOWED_EVENT_NAMES.has(event.name)) return;
 
@@ -98,6 +119,7 @@ export function track(event: AnalyticsEvent) {
     console.debug("[analytics]", event.name, sanitized);
   }
 
-  // TODO(002/2.x posterior): enviar a la solución de analítica confirmada
-  // por Christian (I06) una vez esté conectada. No habilitar hasta entonces.
+  if (GA4_FORWARD_EVENTS.has(event.name) && typeof window !== "undefined" && window.dataLayer) {
+    window.dataLayer.push({ event: event.name, ...sanitized });
+  }
 }

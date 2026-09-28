@@ -6,7 +6,7 @@
  */
 
 export const LEGAL_CONTACT = "contacto@atacamalabs.cl";
-export const LEGAL_UPDATED = "24 de septiembre de 2026";
+export const LEGAL_UPDATED = "28 de septiembre de 2026";
 
 export type LegalBlock =
   | { type: "p"; text: string }
@@ -180,7 +180,19 @@ export const PRIVACY: LegalDoc = {
       blocks: [
         {
           type: "p",
-          text: "Podemos utilizar tecnologías estrictamente necesarias para el funcionamiento del sitio. Si incorporamos herramientas de analítica, publicidad o medición que requieran información adicional al usuario o consentimiento, actualizaremos esta política y la configuración correspondiente.",
+          text: "Utilizamos tecnologías estrictamente necesarias para el funcionamiento del sitio, y analítica para entender qué páginas y acciones funcionan, mediante Google Tag Manager y Google Analytics (Google LLC).",
+        },
+        {
+          type: "p",
+          text: "Esta analítica registra páginas visitadas, acciones dentro del sitio (por ejemplo, qué botón se usó o en qué paso del diagnóstico se avanzó) y datos técnicos generales del navegador. No enviamos tu nombre, correo, teléfono ni el contenido de tus mensajes a esta herramienta.",
+        },
+        {
+          type: "p",
+          text: "La analítica solo se activa si aceptas el aviso de cookies que aparece al llegar al sitio; si eliges «Solo necesarias», no se activa. Puedes cambiar tu elección borrando los datos de este sitio en tu navegador.",
+        },
+        {
+          type: "p",
+          text: "Google puede procesar esta información fuera de Chile, bajo sus propias condiciones de seguridad y privacidad.",
         },
       ],
     },

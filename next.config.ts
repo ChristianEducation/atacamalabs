@@ -44,6 +44,21 @@ const nextConfig: NextConfig = {
   async redirects() {
     return ALIASES.map(([source, destination]) => ({ source, destination, permanent: true }));
   },
+  // Security headers mínimos — PRODUCTION_READINESS_SPEC_V1 §43. Sin CSP
+  // todavía: hoy conviven el script de Lety, el iframe de GHL y recursos de
+  // Next/Vercel; una CSP estricta queda como hardening posterior (§64).
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

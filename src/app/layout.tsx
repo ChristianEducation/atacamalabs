@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import localFont from "next/font/local";
 import site from "@/lib/content";
 import { SITE_URL } from "@/lib/site-url";
+import { Analytics } from "@/components/marketing/analytics/Analytics";
 import "../styles/tokens.css";
 import "../styles/shell.css";
 import "../styles/ui.css";
@@ -25,6 +26,7 @@ import "../styles/about.css";
 import "../styles/diagnostic.css";
 import "../styles/legal.css";
 import "../styles/rubros.css";
+import "../styles/analytics.css";
 
 /**
  * Fuentes autoalojadas (spec C2): Newsreader (títulos, 500 roman; cursiva 500
@@ -71,31 +73,11 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title, description },
 };
 
-/**
- * JSON-LD Organization — solo datos reales verificados. Sin sameAs/url/email
- * mientras publicSettings.* siga en null; sin Review, AggregateRating, Product
- * ni Offer (precios pendientes).
- */
-function organizationJsonLd() {
-  const settings: Record<string, string | null> = site.publicSettings;
-  const sameAs = [settings.linkedinCompanyUrl, settings.instagramUrl, settings.githubUrl].filter((v): v is string =>
-    Boolean(v),
-  );
-  return {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: site.brand.name,
-    ...(settings.canonicalOrigin ? { url: settings.canonicalOrigin } : {}),
-    ...(settings.contactEmail ? { email: settings.contactEmail } : {}),
-    ...(sameAs.length > 0 ? { sameAs } : {}),
-  };
-}
-
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es-CL" className={`${newsreader.variable} ${dmSans.variable}`}>
       <body>
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd()) }} />
+        <Analytics />
         {children}
       </body>
     </html>

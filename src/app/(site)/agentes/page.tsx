@@ -7,13 +7,15 @@ import { AgentTools } from "@/components/marketing/pages/AgentTools";
 import { AgentControl } from "@/components/marketing/pages/AgentControl";
 import { IndustryShowcase } from "@/components/marketing/pages/IndustryShowcase";
 import { SoftCTA } from "@/components/marketing/pages/HomeCTA";
-import { AGENTS_CTA, AGENTS_HERO, AGENTS_META_DESCRIPTION } from "@/content/marketing/agents";
+import { AGENTS_CTA, AGENTS_HERO } from "@/content/marketing/agents";
+import { pageMetadata } from "@/lib/seo-metadata";
 
-export const metadata: Metadata = {
-  title: "Agentes — Atacama Labs",
-  description: AGENTS_META_DESCRIPTION,
-  alternates: { canonical: "/agentes" },
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Agentes de IA para empresas | Atacama Labs",
+  description:
+    "Agentes de IA que atienden, califican, agendan, hacen seguimiento y ejecutan procesos conectados a CRM, calendarios, datos y otras herramientas.",
+  path: "/agentes",
+});
 
 /**
  * /agentes — ATACAMA_LABS_AGENTES_SPEC_V1. Una sola idea: incorporar a alguien

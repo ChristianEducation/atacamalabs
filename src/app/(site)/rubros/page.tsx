@@ -1,17 +1,14 @@
 import type { Metadata } from "next";
 import { IndustryExplorer } from "@/components/marketing/pages/IndustryExplorer";
 import { OtherIndustry } from "@/components/marketing/pages/IndustrySections";
+import { pageMetadata } from "@/lib/seo-metadata";
 
-const TITLE = "Rubros e industrias para agentes de IA — Atacama Labs";
-const DESCRIPTION =
-  "Mira cómo agentes conectados a procesos y herramientas pueden adaptarse a salud, inmobiliarias, educación, retail, alimentación, fitness, servicios profesionales, industria y contabilidad.";
-
-export const metadata: Metadata = {
-  title: { absolute: TITLE },
-  description: DESCRIPTION,
-  alternates: { canonical: "https://atacamalabs.cl/rubros" },
-  openGraph: { title: TITLE, description: DESCRIPTION, url: "https://atacamalabs.cl/rubros" },
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Agentes de IA por industria y rubro | Atacama Labs",
+  description:
+    "Mira cómo un agente puede trabajar en salud, inmobiliarias, educación, retail, alimentación, gimnasios, servicios profesionales, industria y contabilidad.",
+  path: "/rubros",
+});
 
 /**
  * /rubros (RUBROS_Y_FOOTER_SPEC_V1 §5–§23): cómo un agente se ve trabajando dentro

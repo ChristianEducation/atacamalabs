@@ -9,6 +9,7 @@
  */
 
 import { resolveIndustry, type IndustrySlug } from "@/content/marketing/industries";
+import { getAttribution } from "./attribution";
 import {
   AGENT_PLAN_KEYS,
   WEB_PLAN_KEYS,
@@ -237,6 +238,12 @@ export function buildDiagnosticData(values: DiagnosticValues, industry: string):
   }
   if (values.extra.trim()) data.extra_note = values.extra.trim();
   if (industry) data.industry = industry;
+  // Atribución de primera sesión (§22.5): campos prefijados dentro de
+  // diagnostic_data, ya que el contrato actual solo admite strings planas.
+  const attribution = getAttribution();
+  for (const [key, value] of Object.entries(attribution)) {
+    if (value) data[key] = value;
+  }
   return data;
 }
 

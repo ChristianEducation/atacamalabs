@@ -5,14 +5,15 @@ import { WebsitePlans } from "@/components/marketing/pages/WebsitePlans";
 import { WebsiteConnectionScene } from "@/components/marketing/pages/WebsiteConnectionScene";
 import { WebsiteFaq, WebsiteIncludes, WebsiteProcess } from "@/components/marketing/pages/WebsiteSections";
 import { SoftCTA } from "@/components/marketing/pages/HomeCTA";
-import { WEB_META } from "@/content/marketing/web";
 import { WEB_CTA } from "@/content/marketing/web-page";
+import { pageMetadata } from "@/lib/seo-metadata";
 
-export const metadata: Metadata = {
-  title: "Páginas Web — Atacama Labs",
-  description: WEB_META,
-  alternates: { canonical: "/paginas-web" },
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Páginas web para empresas y ecommerce | Atacama Labs",
+  description:
+    "Diseñamos landing pages, sitios corporativos y ecommerce rápidos, claros y preparados para conectarse con formularios, pagos, agentes y automatizaciones.",
+  path: "/paginas-web",
+});
 
 /**
  * /paginas-web — ATACAMA_LABS_PAGINAS_WEB_SPEC_V1 §3. Orden: Hero (browser que

@@ -6,14 +6,15 @@ import { CustomStack } from "@/components/marketing/pages/CustomStack";
 import { CustomCases } from "@/components/marketing/pages/CustomCases";
 import { CustomSteps } from "@/components/marketing/pages/CustomSteps";
 import { SoftCTA } from "@/components/marketing/pages/HomeCTA";
-import { CUSTOM_META } from "@/content/marketing/custom";
 import { CUSTOM_CTA, CUSTOM_HERO } from "@/content/marketing/custom-page";
+import { pageMetadata } from "@/lib/seo-metadata";
 
-export const metadata: Metadata = {
-  title: "A Medida — Atacama Labs",
-  description: CUSTOM_META,
-  alternates: { canonical: "/a-medida" },
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Software a medida, integraciones y automatización | Atacama Labs",
+  description:
+    "Diseñamos software, integraciones y automatizaciones alrededor de procesos reales, conectando APIs, datos y herramientas que tu empresa ya utiliza.",
+  path: "/a-medida",
+});
 
 /**
  * /a-medida — ATACAMA_LABS_A_MEDIDA_SPEC_V1 §3. Orden: Hero (builder) →

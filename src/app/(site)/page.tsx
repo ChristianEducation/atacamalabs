@@ -4,13 +4,15 @@ import { HomeIntegrations } from "@/components/marketing/pages/HomeIntegrations"
 import { HomeSelector } from "@/components/marketing/pages/HomeSelector";
 import { HomePricing } from "@/components/marketing/pages/HomePricing";
 import { HomeCTA } from "@/components/marketing/pages/HomeCTA";
+import { pageMetadata } from "@/lib/seo-metadata";
+import { organizationJsonLd, websiteJsonLd } from "@/lib/seo-schema";
 
-export const metadata: Metadata = {
-  title: "Atacama Labs — Agentes que trabajan en tu empresa",
+export const metadata: Metadata = pageMetadata({
+  title: "Agentes de IA y automatización para empresas | Atacama Labs",
   description:
-    "Agentes inteligentes que se conectan a tus herramientas, ejecutan procesos y trabajan junto a tu equipo.",
-  alternates: { canonical: "/" },
-};
+    "Implementamos agentes de IA, automatizaciones e integraciones que conversan, consultan información y ejecutan procesos conectados a las herramientas de tu empresa.",
+  path: "/",
+});
 
 /**
  * Home — ATACAMA_LABS_HOME_SPEC_V1 §2. Orden: Hero → Integraciones →
@@ -20,6 +22,8 @@ export const metadata: Metadata = {
 export default function Home() {
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd()) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd()) }} />
       <HomeHero />
       <HomeIntegrations />
       <HomeSelector />

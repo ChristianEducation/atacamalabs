@@ -10,8 +10,9 @@ const MAX_BODY_BYTES = 16 * 1024;
 const RATE_LIMIT_WINDOW_MIN = 10;
 const RATE_LIMIT_MAX = 5;
 // Versión de la Política de Privacidad vigente al enviar (/privacidad,
-// actualizada el 24-sep-2026). Actualizar junto con el texto publicado.
-const NOTICE_VERSION = "privacidad-2026-09-24";
+// actualizada el 28-sep-2026: sección de cookies y analítica — GA4/GTM).
+// Actualizar junto con el texto publicado.
+const NOTICE_VERSION = "privacidad-2026-09-28";
 
 const ALLOWED_SOLUTIONS = new Set([...site.solutions.map((s) => s.slug), "unsure"]);
 
@@ -57,6 +58,14 @@ const DIAGNOSTIC_KEYS = new Set([
   "extra_note",
   "industry",
   "legacy_industry",
+  // Atribución de primera sesión (§22.5) — sessionStorage → diagnostic_data.
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_content",
+  "utm_term",
+  "landing_path",
+  "referrer_host",
 ]);
 const DIAGNOSTIC_VALUE_MAX = 900;
 const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -115,8 +124,20 @@ function fieldErrors(body: Body): Record<string, string> {
   return errors;
 }
 
-function hashIp(ip: string): string {
-  const pepper = process.env.IP_HASH_SECRET ?? "atacama-dev-pepper";
+const IS_PRODUCTION = process.env.VERCEL_ENV === "production" || (!process.env.VERCEL_ENV && process.env.NODE_ENV === "production");
+
+/**
+ * §36 — en producción, `IP_HASH_SECRET` es obligatorio: sin él, no hasheamos
+ * IPs con un pepper conocido/hardcodeado. Fuera de producción (dev, preview)
+ * el pepper fijo es válido para no bloquear el trabajo local.
+ */
+function ipHashPepper(): string | null {
+  const pepper = process.env.IP_HASH_SECRET;
+  if (pepper) return pepper;
+  return IS_PRODUCTION ? null : "atacama-dev-pepper";
+}
+
+function hashIp(ip: string, pepper: string): string {
   return createHash("sha256").update(`${ip}:${pepper}`).digest("hex");
 }
 
@@ -149,9 +170,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ errors }, { status: 422 });
   }
 
+  const pepper = ipHashPepper();
+  if (!pepper) {
+    // IP_HASH_SECRET no configurado en producción: rechazamos en vez de
+    // hashear IPs con un secreto conocido (§36). Nunca se imprime el pepper.
+    return NextResponse.json({ error: "server_not_configured" }, { status: 503 });
+  }
   const forwardedFor = req.headers.get("x-forwarded-for");
   const ip = forwardedFor ? forwardedFor.split(",")[0].trim() : "unknown";
-  const ipHash = hashIp(ip);
+  const ipHash = hashIp(ip, pepper);
 
   let supabase;
   try {
