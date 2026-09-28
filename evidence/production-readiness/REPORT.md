@@ -13,11 +13,12 @@ local (Fase 3, `next build && next start`, `NEXT_PUBLIC_GTM_ID=GTM-TK2JXVKX`)
 
 ## Resumen
 
-Fases 1–3 del spec completadas. Fase 4 (E2E real contra Supabase/GHL/
-calendario) queda pendiente de tu autorización explícita — ver
-`e2e-conversion-report.md`. Fase 5 (verificación en producción) ya se hizo
-parcialmente para Fase 1+2 (están en `main` y en vivo); falta repetirla
-después de pushear Fase 3.
+Fases 1–4 del spec completadas. Fase 4 (E2E real) se ejecutó contra
+producción con un lead de prueba (`QA Atacama` / `ATACAMA QA - BORRAR`):
+diagnóstico → Supabase → GHL → agenda → reunión funcionó de punta a
+punta, sin duplicados, con la atribución de primera sesión llegando hasta
+el lead real. Todo el rastro se borró al terminar — ver
+`e2e-conversion-report.md`.
 
 ## Fase 1 — SEO estático ✅ (en producción)
 
@@ -160,10 +161,15 @@ después del lanzamiento, no seguir persiguiendo el número de laboratorio.
       resto (429/413/422/409/503) ya estaba implementado en `/api/leads`
       antes de este spec — no reverificado end-to-end en esta ronda (ver
       Fase 4).
+- [x] Gate D — Conversión: **cerrado**. E2E real en producción: CTA
+      (`/precios`, plan Esencial) → diagnóstico → `lead_submissions` →
+      `sync_jobs` (succeeded, ~18 s) → contacto + oportunidad en GHL
+      (pipeline "Atacama Labs — Ventas", etapa Nuevo) → reserva TEST →
+      Booking Sync (~100 s, 1 ciclo) → `meeting_scheduled=true` + etapa
+      Diagnóstico → sin duplicados en ciclos posteriores → todo borrado.
 - [x] Gate F — QA UI: 446/446, dos corridas.
-- [ ] Gate G — Producción: Fase 1+2 verificada en vivo; falta repetir tras
-      pushear Fase 3, y falta verificar Search Console (acción tuya, fuera
-      de código).
+- [x] Gate G — Producción: Fase 1+2+3 verificadas en vivo. Falta Search
+      Console (acción tuya, fuera de código, §13).
 
 ## P0 / P1 / P2
 
@@ -176,13 +182,20 @@ después del lanzamiento, no seguir persiguiendo el número de laboratorio.
     LCP real medido ~1.1 s. Monitorear con datos de campo.
   - Bing Webmaster Tools (§14), CSP estricta (§43), server-side
     `meeting_scheduled` a GA4 (§20.3) — explícitamente backlog en el spec.
+  - §22.6: la nota que genera Lead Sync en GHL todavía no incluye
+    Origen/Campaña/Landing de la atribución (verificado en el E2E real: el
+    lead sí trae `landing_path` en Supabase, pero la nota de GHL no lo
+    menciona). No se tocó el workflow de n8n en producción en esta ronda
+    sin confirmación explícita — pendiente para cuando Christian dé el OK.
+  - Re-probar §34–35 (429/413/422/409/503, honeypot) y los Casos 1,2,4,5,6
+    de §33 contra un build local (no producción, para no gastar el rate
+    limit real) — ver `e2e-conversion-report.md`.
 
 ## Próximos pasos
 
-1. Confirmar push de esta Fase 3 a `main` (build local limpio, 446/446 QA).
-2. Repetir la verificación runtime de producción (§52) sobre el commit ya
-   desplegado.
-3. Verificar dominio en Search Console y enviar el sitemap (§13 — acción
-   tuya).
-4. Cuando confirmes, correr Fase 4 (E2E real con lead/reserva de prueba) —
-   ver `e2e-conversion-report.md`.
+1. Verificar dominio en Search Console y enviar el sitemap (§13 — acción
+   tuya, fuera de código).
+2. Decidir si actualizamos la nota de GHL con la atribución (§22.6) —
+   toca el workflow de n8n en producción, pide tu OK explícito primero.
+3. Opcional: repetir §34–35 (validación/resiliencia de `/api/leads`)
+   contra un build local.
