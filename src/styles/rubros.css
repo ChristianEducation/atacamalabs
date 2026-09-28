@@ -53,10 +53,21 @@
   display: flex;
   justify-content: center;
 }
+/* El <nav> semántico entre .mk-container y .mk-rb-nav__tabs no tiene estilos
+   propios, pero como flex item su min-width automático ("auto") toma el
+   ancho de contenido de los 9 tabs y no deja que nada de abajo se achique
+   (QA §29, overflow en /rubros). */
+.mk-rb-nav .mk-container > nav {
+  min-width: 0;
+}
 .mk-rb-nav__tabs {
   pointer-events: auto;
-  width: fit-content;
+  /* Sin `width` explícito (ni fit-content): como flex item, un `width`
+     definido — incluso fit-content — fija el flex-basis y Chromium no lo
+     encoge por debajo de eso pese a min-width:0. `.mk-sel-tabs` (Home) ya
+     resuelve esto mismo sin `width`; mismo patrón acá (QA §29, overflow). */
   max-width: 100%;
+  min-width: 0;
   margin: 0;
   padding: 6px;
   gap: 2px;
@@ -69,6 +80,14 @@
     0 14px 36px -16px rgb(18 26 43 / 32%),
     0 1px 3px rgb(18 26 43 / 8%),
     inset 0 1px 0 rgb(255 255 255 / 90%);
+  /* Los 9 rubros no caben en pantallas angostas (QA §29): la pastilla
+     desliza en vez de desbordar la página. Mismo look, sin scrollbar visible. */
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.mk-rb-nav__tabs::-webkit-scrollbar {
+  display: none;
 }
 .mk-rb-nav__list {
   display: flex;

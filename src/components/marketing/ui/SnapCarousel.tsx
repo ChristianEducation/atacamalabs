@@ -68,7 +68,18 @@ export function SnapCarousel({
 
   return (
     <div className="mk-snap">
-      <div ref={trackRef} className={cn("mk-snap__track", className)} role="group" aria-label={label} onScroll={onScroll}>
+      {/* tabIndex: la franja solo se recorre con mouse/touch por defecto; el
+          teclado no puede hacer scroll de un contenedor sin foco propio
+          (QA axe, scrollable-region-focusable). Con foco, las flechas del
+          navegador ya desplazan el contenedor. */}
+      <div
+        ref={trackRef}
+        className={cn("mk-snap__track", className)}
+        role="group"
+        aria-label={label}
+        tabIndex={0}
+        onScroll={onScroll}
+      >
         {children}
       </div>
       <div className="mk-snap__dots" role="group" aria-label={`Selector de ${label.toLowerCase()}`}>

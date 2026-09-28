@@ -1192,6 +1192,9 @@
 }
 .mk-pc__step.is-past .mk-pc__num {
   background: rgb(15 92 237 / 16%);
+  /* --blue-hover, no --blue-text (heredado): sobre este 16% de tinte da
+     4.38:1, bajo 4.5:1 (QA axe, color-contrast). */
+  color: var(--blue-hover);
 }
 .mk-pc__txt strong {
   display: block;

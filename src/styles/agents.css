@@ -857,7 +857,7 @@
   background: #fff;
 }
 .mk-ac-card--ask {
-  --acc: #b7791f;
+  --acc: var(--warning);
 }
 .mk-ac-card--handoff {
   --acc: var(--blue);
@@ -998,8 +998,8 @@
   color: var(--ink);
 }
 .mk-ac-vis__buttons i.is-yes {
-  border-color: #b7791f;
-  background: #b7791f;
+  border-color: var(--warning);
+  background: var(--warning);
   color: #fff;
 }
 .mk-ac-vis--flow {

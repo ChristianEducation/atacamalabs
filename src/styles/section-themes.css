@@ -33,7 +33,8 @@
 .mk-t-mist {
   --ink: #121a2b;
   --muted: #62656b;
-  --subtle: #777a80;
+  /* #63666c, no #777a80: ver la nota en tokens.css (QA axe, color-contrast). */
+  --subtle: #63666c;
   --line: #ddd9d1;
   --line-strong: rgb(18 26 43 / 16%);
   --control-border: #85878b;

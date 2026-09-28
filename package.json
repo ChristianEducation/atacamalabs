@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "qa": "node scripts/qa-production.mjs",
+    "qa:lighthouse": "node scripts/lighthouse-production.mjs",
+    "qa:production": "npm run qa && npm run qa:lighthouse"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
@@ -19,12 +22,16 @@
     "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "chrome-launcher": "^1.2.1",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
+    "lighthouse": "^12.8.2",
+    "playwright": "^1.63.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

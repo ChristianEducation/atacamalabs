@@ -9,7 +9,11 @@
   --surface-alt: #efeae1;
   --ink: #121a2b;
   --muted: #62656b;
-  --subtle: #777a80;
+  /* #63666c, no #777a80: el original daba 4.2-4.3:1 en texto pequeño sobre
+     paper/blanco (bajo el 4.5:1 AA), y sobre --blue-soft un primer ajuste a
+     #6b6e74 seguía quedando en 4.46 (QA axe, color-contrast). Mismo gris,
+     un poco más oscuro. */
+  --subtle: #63666c;
   --line: #ddd9d1;
   --control-border: #85878b;
   --blue: #0f5ced;

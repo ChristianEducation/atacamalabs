@@ -759,7 +759,10 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  opacity: 0.55;
+  /* 0.55 dejaba el rol ("Agente", "Pagos"…) en 3.79:1 sobre el mist mientras
+     la fila no está «on» — parte del diseño, no una animación de paso (QA
+     axe, color-contrast). 0.65 conserva la idea de atenuado y pasa 4.5:1. */
+  opacity: 0.65;
   transition: opacity 300ms ease;
 }
 .mk-cs__row.is-on {
@@ -832,7 +835,10 @@
 }
 .mk-cs__steps li.is-current {
   background: rgb(15 92 237 / 10%);
-  color: var(--blue-text);
+  /* --blue-hover, no --blue-text: sobre este chip (10% azul sobre mist)
+     --blue-text da 4.37:1 (QA axe, color-contrast); --blue-hover ya existe
+     como el azul un poco más oscuro del sistema. */
+  color: var(--blue-hover);
 }
 .mk-cs__note {
   margin: 10px 0 0;

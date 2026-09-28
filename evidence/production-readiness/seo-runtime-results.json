@@ -1,0 +1,30 @@
+{
+  "checkedAt": "2026-09-28T13:40:00Z",
+  "domain": "https://atacamalabs.cl",
+  "note": "Requests reales contra producción (§52). Refleja el commit del push de Fase 1+2 (910bedc); la Fase 3 (contraste, overflow /rubros, LCP hero) se verificó en local y queda pendiente de push — ver REPORT.md.",
+  "checks": [
+    { "check": "GET / -> 200", "pass": true },
+    { "check": "canonical == https://atacamalabs.cl", "pass": true },
+    { "check": "og:title/og:description/og:url presentes", "pass": true },
+    { "check": "og:locale == es_CL, og:type == website", "pass": true },
+    { "check": "twitter:card == summary_large_image", "pass": true },
+    { "check": "GET /opengraph-image -> 200", "pass": true },
+    { "check": "GET /icon.svg -> 200", "pass": true },
+    { "check": "GET /icon1 (PNG 48x48) -> 200", "pass": true },
+    { "check": "JSON-LD Organization + WebSite en Home, con logo", "pass": true },
+    { "check": "JSON-LD Organization ausente en /agentes (ya no global)", "pass": true },
+    { "check": "GET /sitemap.xml -> 200, 9 URLs (sin /diagnostico)", "pass": true },
+    { "check": "sitemap.xml sin <lastmod> falso", "pass": true },
+    { "check": "GET /robots.txt -> 200, allow /, disallow /control /studio", "pass": true },
+    { "check": "GET /diagnostico -> 200, meta robots noindex,follow", "pass": true },
+    { "check": "http://atacamalabs.cl -> 308 -> https://atacamalabs.cl", "pass": true },
+    { "check": "https://www.atacamalabs.cl -> 308 -> https://atacamalabs.cl", "pass": true },
+    { "check": "http://www.atacamalabs.cl -> 308 -> https://atacamalabs.cl", "pass": true },
+    { "check": "Strict-Transport-Security presente (max-age=63072000)", "pass": true },
+    { "check": "X-Content-Type-Options: nosniff", "pass": true },
+    { "check": "Referrer-Policy: strict-origin-when-cross-origin", "pass": true },
+    { "check": "Permissions-Policy: camera=(), microphone=(), geolocation=()", "pass": true },
+    { "check": "ruta inexistente -> 404 real", "pass": true },
+    { "check": "GTM (GTM-TK2JXVKX) presente y publicado", "pass": true }
+  ]
+}
