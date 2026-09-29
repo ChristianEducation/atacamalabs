@@ -182,20 +182,25 @@ después del lanzamiento, no seguir persiguiendo el número de laboratorio.
     LCP real medido ~1.1 s. Monitorear con datos de campo.
   - Bing Webmaster Tools (§14), CSP estricta (§43), server-side
     `meeting_scheduled` a GA4 (§20.3) — explícitamente backlog en el spec.
-  - §22.6: la nota que genera Lead Sync en GHL todavía no incluye
-    Origen/Campaña/Landing de la atribución (verificado en el E2E real: el
-    lead sí trae `landing_path` en Supabase, pero la nota de GHL no lo
-    menciona). No se tocó el workflow de n8n en producción en esta ronda
-    sin confirmación explícita — pendiente para cuando Christian dé el OK.
   - Re-probar §34–35 (429/413/422/409/503, honeypot) y los Casos 1,2,4,5,6
     de §33 contra un build local (no producción, para no gastar el rate
     limit real) — ver `e2e-conversion-report.md`.
+
+### §22.6 — resuelto (29-sep-2026)
+
+Con OK explícito de Christian, se editó el workflow "01 Lead Sync v2.2"
+en producción (`idniXY0Du2qet57O`, vía API de n8n): `Build GHL Payload`
+ahora incluye las 7 claves de atribución (`utm_source/medium/campaign/
+content/term`, `landing_path`, `referrer_host`) en el mapa `DATA` que ya
+arma la nota, con etiquetas Canal de origen/Medio/Campaña/Contenido/
+Término/Landing/Sitio de referencia. Probado con un lead real por
+`/api/leads` (`utm_source=instagram`, `utm_campaign=lanzamiento-
+septiembre`, `landing_path=/agentes`): la nota en GHL mostró las 4 líneas
+correctamente. Datos de prueba borrados. Ver `n8n/README.md`.
 
 ## Próximos pasos
 
 1. Verificar dominio en Search Console y enviar el sitemap (§13 — acción
    tuya, fuera de código).
-2. Decidir si actualizamos la nota de GHL con la atribución (§22.6) —
-   toca el workflow de n8n en producción, pide tu OK explícito primero.
-3. Opcional: repetir §34–35 (validación/resiliencia de `/api/leads`)
+2. Opcional: repetir §34–35 (validación/resiliencia de `/api/leads`)
    contra un build local.
