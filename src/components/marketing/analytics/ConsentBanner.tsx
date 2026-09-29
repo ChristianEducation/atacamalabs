@@ -37,8 +37,8 @@ export function ConsentBanner() {
   return (
     <div className="mk-consent" role="region" aria-label="Preferencias de analítica">
       <p className="mk-consent__text">
-        Usamos analítica para entender qué funciona en el sitio y mejorarlo. Puedes aceptar o continuar solo con lo
-        necesario.
+        Usamos cookies de analítica para entender qué funciona en el sitio y mejorarlo. Puedes aceptar o continuar
+        solo con lo necesario.
       </p>
       <div className="mk-consent__actions">
         <a href="/privacidad" className="mk-consent__link">
