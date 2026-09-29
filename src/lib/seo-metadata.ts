@@ -18,6 +18,15 @@ export interface PageMetadataInput {
   noindex?: boolean;
 }
 
+/**
+ * Imagen OG compartida (`src/app/opengraph-image.tsx`, 1200×630). El archivo
+ * por convención de Next debería inyectar `og:image`/`twitter:image` solo, pero
+ * al fijar `openGraph`/`twitter` explícitos por página esa detección automática
+ * no llegaba a aparecer en el HTML real (verificado: la ruta responde 200, la
+ * etiqueta simplemente no salía) — se referencia a mano para no depender de eso.
+ */
+const OG_IMAGE = { url: `${SITE_URL}/opengraph-image`, width: 1200, height: 630 };
+
 export function pageMetadata({ title, description, path, noindex }: PageMetadataInput): Metadata {
   const url = path === "/" ? SITE_URL : `${SITE_URL}${path}`;
   return {
@@ -32,11 +41,13 @@ export function pageMetadata({ title, description, path, noindex }: PageMetadata
       url,
       title,
       description,
+      images: [OG_IMAGE],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
+      images: [OG_IMAGE.url],
     },
   };
 }
