@@ -36,6 +36,23 @@ const ROUTES = [
   "/diagnostico",
   "/privacidad",
   "/terminos",
+  // SEO_GROWTH_SPEC_V1 §8, §15 — landings indexables de Rubros y Agentes.
+  "/rubros/salud",
+  "/rubros/inmobiliarias",
+  "/rubros/educacion",
+  "/rubros/retail-ecommerce",
+  "/rubros/alimentacion-casinos",
+  "/rubros/gimnasios",
+  "/rubros/servicios-profesionales",
+  "/rubros/b2b-industria",
+  "/rubros/contabilidad-finanzas",
+  "/agentes/comercial",
+  "/agentes/cobranza",
+  "/agentes/administrativo-financiero",
+  "/agentes/atencion",
+  "/agentes/agendamiento",
+  "/agentes/procesos",
+  "/agentes/whatsapp",
 ];
 
 /** §29 — matriz responsive obligatoria. */
@@ -57,9 +74,10 @@ const REDIRECTS = [
   ["/agenda", "/diagnostico"],
   ["/nosotros", "/conocenos"],
   ["/industrias", "/rubros"],
-  ["/rubros/salud", "/rubros#salud"],
-  ["/rubros/gimnasios", "/rubros#gimnasios"],
-  ["/rubros/servicios-b2b", "/rubros#b2b-industria"],
+  // /rubros/salud y /rubros/gimnasios ya no redirigen (SEO_GROWTH_SPEC_V1 §8):
+  // son páginas propias, cubiertas en ROUTES. Solo quedan los slugs viejos.
+  ["/rubros/servicios-b2b", "/rubros/b2b-industria"],
+  ["/rubros/fitness-bienestar", "/rubros/gimnasios"],
 ];
 
 const results = { baseUrl: BASE_URL, startedAt: new Date().toISOString(), checks: [] };
