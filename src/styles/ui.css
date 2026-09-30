@@ -890,11 +890,11 @@
     padding: 14px var(--gutter) 68px;
     overflow-x: auto;
     overscroll-behavior-x: contain;
-    scroll-padding-inline: var(--gutter);
-    /* `proximity` en vez de `mandatory` (QA reportado en iPhone): el snap
-       deja de "pelear" con el dedo a mitad de un swipe corto. */
-    scroll-snap-type: x proximity;
     scrollbar-width: none;
+    /* Sin scroll-snap (QA reportado en iPhone): WebKit "peleaba" con el dedo
+       al encajar cada tarjeta. Scroll libre en toda plataforma; el punto de
+       inicio y el salto al hacer clic en un punto siguen siendo JS puro
+       (SnapCarousel), no dependen de esto. */
     touch-action: pan-x;
   }
   .mk-snap__track::-webkit-scrollbar {
@@ -902,7 +902,6 @@
   }
   .mk-snap__track > * {
     flex: 0 0 min(84%, 340px);
-    scroll-snap-align: center;
   }
   .mk-snap__dots {
     display: flex;
