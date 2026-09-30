@@ -258,6 +258,11 @@
 .mk-rb-copy .mk-btn {
   margin-top: 24px;
 }
+/* Enlace crawlable hub → landing propia del rubro (SEO_GROWTH_SPEC_V1 §10). */
+.mk-rb-copy .mk-rb-more {
+  display: flex;
+  margin-top: 14px;
+}
 
 /* ---------- Demo: «Así trabaja tu agente» ---------- */
 .mk-rb-demo {

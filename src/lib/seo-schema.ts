@@ -17,6 +17,9 @@ export function organizationJsonLd() {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: site.brand.name,
+    // Variantes reales del nombre (SEO_GROWTH_SPEC_V1 §3): ayuda a buscadores a
+    // asociar la escritura sin espacio y el dominio a la misma entidad.
+    alternateName: ["AtacamaLabs", "atacamalabs.cl"],
     ...(settings.canonicalOrigin ? { url: settings.canonicalOrigin } : {}),
     logo: `${SITE_URL}/brand/social-avatar-1024.png`,
     ...(settings.contactEmail ? { email: settings.contactEmail } : {}),
@@ -31,5 +34,24 @@ export function websiteJsonLd() {
     "@type": "WebSite",
     name: site.brand.name,
     url: `${SITE_URL}/`,
+  };
+}
+
+/**
+ * BreadcrumbList (SEO_GROWTH_SPEC_V1 §4) — para páginas hijas de Rubros y
+ * Agentes. `items` es la jerarquía completa incluyendo Home, en orden;
+ * `path` es relativo (ej. "/rubros/salud"). No reemplaza a Organization/WebSite,
+ * que solo viven en Home.
+ */
+export function breadcrumbJsonLd(items: readonly { name: string; path: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: item.name,
+      item: item.path === "/" ? SITE_URL : `${SITE_URL}${item.path}`,
+    })),
   };
 }

@@ -1,3 +1,5 @@
+import type { AgentPageSlug } from "./agents";
+
 /**
  * Rubros — ATACAMA_LABS_RUBROS_Y_FOOTER_SPEC_V1 §10–§21. FUENTE ÚNICA: /rubros,
  * la franja de /agentes, los CTA y el contexto del diagnóstico consumen este
@@ -49,6 +51,18 @@ export interface IndustryTrigger {
   detail: string;
 }
 
+/** Contenido propio de la landing /rubros/[slug] de cada industria — SEO_GROWTH_SPEC_V1 §6–§7. */
+export interface IndustrySeo {
+  title: string;
+  description: string;
+  h1: string;
+  intro: string;
+  /** Editorial/interno: intención de búsqueda cubierta. Nunca se vuelca a un `<meta keywords>`. */
+  searchContext: readonly string[];
+  relatedAgentIds: readonly AgentPageSlug[];
+  faq: readonly { question: string; answer: string }[];
+}
+
 export interface IndustryExperience {
   slug: IndustrySlug;
   name: string;
@@ -66,6 +80,7 @@ export interface IndustryExperience {
   flow: readonly string[];
   capabilities: readonly string[];
   featured?: boolean;
+  seo: IndustrySeo;
 }
 
 export const INDUSTRY_LIST: readonly IndustryExperience[] = [
@@ -95,6 +110,39 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
       "Confirmaciones, recordatorios y reconfirmación",
       "Derivación con contexto",
     ],
+    seo: {
+      title: "Agentes de IA para clínicas y centros de salud | Atacama Labs",
+      description:
+        "Agentes de IA que agendan, confirman y reprograman horas para clínicas y centros de salud, conectados a tu calendario y tu equipo de recepción.",
+      h1: "Agentes de IA para clínicas y centros de salud",
+      intro:
+        "Recepción atiende las mismas consultas administrativas todo el día: disponibilidad, confirmaciones, reprogramaciones. El agente puede tomar ese trabajo repetitivo por WhatsApp, dejando la agenda al día y derivando a una persona cuando el caso lo requiere.",
+      searchContext: [
+        "agentes ia clínicas",
+        "agentes ia centros de salud",
+        "whatsapp para clínicas dentales",
+        "agendamiento médico automatizado",
+        "recordatorios de citas médicas",
+      ],
+      relatedAgentIds: ["agendamiento", "atencion", "whatsapp"],
+      faq: [
+        {
+          question: "¿Puede dar diagnósticos o recomendaciones médicas?",
+          answer:
+            "No. El agente trabaja en lo administrativo — agenda, confirma, responde preguntas generales — y deriva a tu equipo clínico cualquier consulta que requiera criterio médico.",
+        },
+        {
+          question: "¿Reduce los no shows?",
+          answer:
+            "Puede ayudar recordando y reconfirmando citas antes de la hora agendada, que es donde suelen perderse la mayoría de las horas sin aviso.",
+        },
+        {
+          question: "¿Se conecta con el sistema de agenda que ya uso?",
+          answer:
+            "Se evalúa según tu sistema: calendarios estándar como Google Calendar u Outlook se conectan directo; otros softwares clínicos según la integración disponible.",
+        },
+      ],
+    },
   },
   {
     slug: "inmobiliarias",
@@ -120,6 +168,37 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
     receipt: { title: "Interés registrado", chips: ["CRM", "Próximo paso creado"] },
     flow: ["WhatsApp", "Agente", "Catálogo", "CRM", "Agenda"],
     capabilities: ["Consultar fichas disponibles", "Calificar interesados", "Coordinar visitas", "Hacer seguimiento"],
+    seo: {
+      title: "Agentes de IA para inmobiliarias | Atacama Labs",
+      description:
+        "Agentes de IA que responden consultas por propiedades, califican interesados y coordinan visitas, conectados a tu CRM inmobiliario.",
+      h1: "Agentes de IA para inmobiliarias",
+      intro:
+        "Las mismas preguntas sobre una propiedad se repiten con cada interesado, y muchos llegan con información incompleta. El agente puede responder, entender el interés real y dejar la visita coordinada y el interesado registrado en tu CRM.",
+      searchContext: [
+        "agentes ia inmobiliarias",
+        "whatsapp para inmobiliarias",
+        "calificación de interesados propiedades",
+        "agendar visitas a propiedades",
+      ],
+      relatedAgentIds: ["comercial", "agendamiento", "whatsapp"],
+      faq: [
+        {
+          question: "¿Puede mostrar fotos y precios de las propiedades?",
+          answer:
+            "Sí, si está conectado a tu catálogo o sistema de fichas. Consulta la información disponible y la comparte dentro de la conversación.",
+        },
+        {
+          question: "¿Filtra a los interesados antes de pasarlos a un corredor?",
+          answer:
+            "Puede calificar según los criterios que definas — sector, presupuesto, tipo de propiedad — antes de coordinar la visita o el contacto con tu equipo.",
+        },
+        {
+          question: "¿Se conecta con el CRM que ya usamos?",
+          answer: "Según la herramienta y su API: CRMs estándar como HubSpot, Salesforce o Zoho, u otros con integración disponible.",
+        },
+      ],
+    },
   },
   {
     slug: "educacion",
@@ -150,6 +229,36 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
       "Agendamiento de reuniones",
       "Recordatorios y procesos administrativos",
     ],
+    seo: {
+      title: "Agentes de IA para colegios y educación | Atacama Labs",
+      description:
+        "Agentes de IA que responden consultas de familias, ordenan procesos de admisión y matrícula, y coordinan reuniones para colegios e instituciones educativas.",
+      h1: "Agentes de IA para colegios y educación",
+      intro:
+        "Las familias preguntan lo mismo por distintos canales, y los documentos de admisión terminan repartidos entre correos y mensajes. El agente puede responder con información clara, registrar la solicitud y dejarla lista para que el equipo de admisión la revise.",
+      searchContext: [
+        "agentes ia colegios",
+        "agentes ia educación",
+        "whatsapp para colegios",
+        "automatizar admisión y matrículas",
+      ],
+      relatedAgentIds: ["agendamiento", "atencion", "whatsapp"],
+      faq: [
+        {
+          question: "¿Puede responder preguntas sobre aranceles y procesos de admisión?",
+          answer:
+            "Sí, con la información que le entregues sobre tu colegio o institución: requisitos, fechas, aranceles y otros datos publicados.",
+        },
+        {
+          question: "¿Coordina reuniones con apoderados?",
+          answer: "Sí, si está conectado a tu calendario, revisa disponibilidad y deja la reunión agendada.",
+        },
+        {
+          question: "¿Sirve para colegios pequeños o solo para instituciones grandes?",
+          answer: "Se adapta al volumen y los procesos de tu institución, desde un colegio con un equipo pequeño hasta uno con varias sedes.",
+        },
+      ],
+    },
   },
   {
     slug: "retail-ecommerce",
@@ -180,6 +289,35 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
       "Enviar enlace de pago si existe integración",
       "Consultar estado y postventa",
     ],
+    seo: {
+      title: "Agentes de IA para retail y ecommerce | Atacama Labs",
+      description:
+        "Agentes de IA que consultan catálogo, toman pedidos y hacen seguimiento de postventa por WhatsApp, conectados a tu ecommerce.",
+      h1: "Agentes de IA para retail y ecommerce",
+      intro:
+        "Stock, precios y despacho son las preguntas que más se repiten en retail. El agente puede consultar tu catálogo conectado, tomar el pedido y seguir la postventa sin que el cliente tenga que saltar entre canales.",
+      searchContext: [
+        "agentes ia retail",
+        "agentes ia ecommerce",
+        "whatsapp para tiendas online",
+        "automatizar pedidos por whatsapp",
+      ],
+      relatedAgentIds: ["comercial", "whatsapp", "atencion"],
+      faq: [
+        {
+          question: "¿Consulta stock en tiempo real?",
+          answer: "Sí, si está conectado a tu catálogo o sistema de inventario. Responde con la disponibilidad que tenga registrada tu tienda.",
+        },
+        {
+          question: "¿Puede cobrar directamente por WhatsApp?",
+          answer: "Puede enviar el enlace de pago cuando exista una integración de pagos disponible; el cobro en sí ocurre en tu plataforma de pago.",
+        },
+        {
+          question: "¿Funciona con el ecommerce que ya tengo?",
+          answer: "Se evalúa según tu plataforma (Shopify, WooCommerce u otra) y qué tan abierta está su API o sus integraciones.",
+        },
+      ],
+    },
   },
   {
     slug: "alimentacion-casinos",
@@ -224,6 +362,36 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
       "Registrar en Sheets, Supabase o el sistema conectado",
     ],
     featured: true,
+    seo: {
+      title: "Agentes de IA para restaurantes y alimentación | Atacama Labs",
+      description:
+        "Agentes de IA que reciben pedidos por WhatsApp, aplican las reglas de menú y horario de tu negocio, y dejan todo registrado en tu sistema.",
+      h1: "Agentes de IA para restaurantes y negocios de alimentación",
+      intro:
+        "Casinos escolares, casinos corporativos, catering y restaurantes reciben pedidos en formatos distintos todo el día. El agente recibe el pedido por WhatsApp, aplica las reglas de menú, cantidad y horario que definas, y lo deja registrado para cocina o administración.",
+      searchContext: [
+        "agentes ia restaurantes",
+        "agentes ia casinos escolares",
+        "whatsapp para pedidos de comida",
+        "automatizar pedidos catering",
+      ],
+      relatedAgentIds: ["whatsapp", "procesos", "atencion"],
+      faq: [
+        {
+          question: "¿Puede aplicar reglas distintas según el día o el turno?",
+          answer:
+            "Sí, si defines esas reglas: menú del día, horarios de corte, cantidades máximas por turno. El agente las aplica antes de confirmar el pedido.",
+        },
+        {
+          question: "¿Dónde queda registrado el pedido?",
+          answer: "En el sistema que conectes: una planilla, Supabase o el software que ya use tu cocina o administración.",
+        },
+        {
+          question: "¿Sirve para casinos escolares con pedidos recurrentes?",
+          answer: "Sí, es uno de los casos donde más orden aporta: pedidos que se repiten día a día con variaciones puntuales.",
+        },
+      ],
+    },
   },
   {
     slug: "gimnasios",
@@ -255,6 +423,36 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
       "Responder planes y horarios",
       "Registrar todo en el CRM",
     ],
+    seo: {
+      title: "Agentes de IA para gimnasios y centros deportivos | Atacama Labs",
+      description:
+        "Agentes de IA que reactivan socios inactivos, recuerdan mensualidades y reservan clases para gimnasios y centros deportivos.",
+      h1: "Agentes de IA para gimnasios y centros deportivos",
+      intro:
+        "El seguimiento que hoy nadie alcanza a hacer —socios que dejaron de venir, mensualidades atrasadas, interesados sin respuesta— es justo el trabajo que puede tomar el agente, avisando y dejando todo registrado en tu CRM.",
+      searchContext: [
+        "agentes ia gimnasios",
+        "whatsapp para gimnasios",
+        "reactivación de socios automatizada",
+        "recordatorio de mensualidades gimnasio",
+      ],
+      relatedAgentIds: ["cobranza", "agendamiento", "whatsapp"],
+      faq: [
+        {
+          question: "¿Puede escribir primero a un socio que dejó de venir?",
+          answer:
+            "Sí, si está conectado a una señal de tu CRM (por ejemplo, sin asistir hace 14 días) puede iniciar la conversación e invitar a reservar una clase.",
+        },
+        {
+          question: "¿Cobra la mensualidad directamente?",
+          answer: "Recuerda el pago pendiente; el cobro en sí depende de la integración de pago que tengas conectada.",
+        },
+        {
+          question: "¿Reserva clases según el cupo disponible?",
+          answer: "Sí, si está conectado a tu sistema de reservas o calendario, para no ofrecer un cupo que ya está lleno.",
+        },
+      ],
+    },
   },
   {
     slug: "servicios-profesionales",
@@ -293,6 +491,36 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
       "Coordinar reuniones",
       "Registrar y hacer seguimiento",
     ],
+    seo: {
+      title: "Agentes de IA para servicios profesionales | Atacama Labs",
+      description:
+        "Agentes de IA que reciben consultas, recopilan antecedentes iniciales y coordinan reuniones para abogados, consultoras y asesorías.",
+      h1: "Agentes de IA para servicios profesionales",
+      intro:
+        "Las consultas suelen llegar cuando el equipo está atendiendo, y la información inicial viene incompleta. El agente puede recibir la necesidad, recopilar antecedentes y dejar la conversación lista para que el equipo continúe con contexto.",
+      searchContext: [
+        "agentes ia servicios profesionales",
+        "agentes ia abogados",
+        "agentes ia consultoras",
+        "whatsapp para asesorías",
+      ],
+      relatedAgentIds: ["comercial", "agendamiento", "whatsapp"],
+      faq: [
+        {
+          question: "¿Puede dar asesoría o una opinión profesional?",
+          answer:
+            "No. Recibe la consulta, recopila antecedentes y coordina el siguiente paso; la asesoría misma la entrega tu equipo profesional.",
+        },
+        {
+          question: "¿Sirve para un estudio pequeño con pocos clientes?",
+          answer: "Sí, se adapta al volumen de consultas que recibas, desde un estudio pequeño hasta una firma con varios equipos.",
+        },
+        {
+          question: "¿Qué antecedentes recopila antes de derivar?",
+          answer: "Los que definas como necesarios para tu proceso: tipo de necesidad, urgencia, contexto inicial del caso.",
+        },
+      ],
+    },
   },
   {
     slug: "b2b-industria",
@@ -332,6 +560,36 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
       "Coordinar reuniones o visitas",
       "Traspasar contexto a comercial y operaciones",
     ],
+    seo: {
+      title: "Agentes de IA para empresas B2B e industria | Atacama Labs",
+      description:
+        "Agentes de IA que recopilan alcance y contexto de solicitudes comerciales y técnicas para proveedores, minería y servicios industriales, antes de pasarlas al equipo correcto.",
+      h1: "Agentes de IA para empresas B2B e industria",
+      intro:
+        "Las solicitudes B2B llegan con información incompleta y comercial y operaciones terminan preguntando lo mismo varias veces. El agente recopila el alcance inicial y deja la oportunidad lista, con contexto, para el equipo que corresponda.",
+      searchContext: [
+        "agentes ia b2b",
+        "agentes ia industria",
+        "agentes ia minería",
+        "automatizar cotizaciones industriales",
+      ],
+      relatedAgentIds: ["comercial", "cobranza", "whatsapp"],
+      faq: [
+        {
+          question: "¿Puede cotizar un servicio directamente?",
+          answer:
+            "No genera el precio final; recopila el alcance y los datos necesarios para que tu equipo comercial prepare la cotización con esa información ya reunida.",
+        },
+        {
+          question: "¿Sirve para procesos con varias etapas de aprobación?",
+          answer: "Sí, puede traspasar el contexto completo entre comercial y operaciones para que nadie tenga que preguntar de nuevo.",
+        },
+        {
+          question: "¿Funciona por WhatsApp o solo por correo?",
+          answer: "Según el canal que uses con tus proveedores o clientes — WhatsApp, correo, o ambos.",
+        },
+      ],
+    },
   },
   {
     slug: "contabilidad-finanzas",
@@ -372,6 +630,36 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
       "Preparar o ejecutar acciones autorizadas",
       "Trabajar con SII, bancos o Previred cuando la integración concreta esté disponible y configurada",
     ],
+    seo: {
+      title: "Agentes de IA para contabilidad y finanzas | Atacama Labs",
+      description:
+        "Agentes de IA que consultan documentos y estados, hacen seguimiento de cobranza y preparan acciones administrativas para estudios contables y áreas financieras.",
+      h1: "Agentes de IA para contabilidad y finanzas",
+      intro:
+        "Clientes preguntan repetidamente por documentos y estados, y la información vive repartida entre correo, sistemas y planillas. El agente puede consultar el sistema conectado, responder o derivar, y hacer seguimiento de cobros bajo las reglas que definas.",
+      searchContext: [
+        "agentes ia contabilidad",
+        "agentes ia finanzas",
+        "automatizar cobranza contable",
+        "whatsapp para estudios contables",
+      ],
+      relatedAgentIds: ["cobranza", "administrativo-financiero", "whatsapp"],
+      faq: [
+        {
+          question: "¿Puede emitir facturas o hacer declaraciones al SII?",
+          answer:
+            "Solo si existe una integración concreta y configurada para eso; por defecto consulta y muestra información disponible. Acciones sensibles como emitir un documento quedan sujetas a tus reglas.",
+        },
+        {
+          question: "¿Con qué sistemas contables se conecta?",
+          answer: "Depende de la integración disponible: bancos, Previred o el software contable que uses, cuando exista una conexión configurada.",
+        },
+        {
+          question: "¿Puede hacer seguimiento de cobranza a clientes?",
+          answer: "Sí, recuerda y hace seguimiento de cuentas pendientes, dejando el estado registrado para tu equipo.",
+        },
+      ],
+    },
   },
 ];
 

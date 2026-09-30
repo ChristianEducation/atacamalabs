@@ -1,4 +1,5 @@
-import { Check } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Check } from "lucide-react";
 import { Reveal } from "../motion/Reveal";
 import { ButtonLink } from "../ui/Button";
 import { AgentCtaLink } from "../shell/AgentCtaLink";
@@ -72,6 +73,11 @@ export function IndustryPanel({
           >
             Quiero algo así
           </ButtonLink>
+
+          <Link href={`/rubros/${industry.slug}`} className="mk-rbs__link mk-rb-more">
+            Ver agentes para {industry.name}
+            <ArrowRight size={15} strokeWidth={2.2} aria-hidden />
+          </Link>
         </div>
 
         <div className="mk-rb-stage">

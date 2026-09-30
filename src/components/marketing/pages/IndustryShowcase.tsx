@@ -123,7 +123,7 @@ export function IndustryShowcase() {
                 </li>
               ))}
             </ul>
-            <Link href={`/rubros#${industry.slug}`} className="mk-rbs__link">
+            <Link href={`/rubros/${industry.slug}`} className="mk-rbs__link">
               Ver {industry.name} en acción
               <ArrowRight size={15} strokeWidth={2.2} aria-hidden />
             </Link>

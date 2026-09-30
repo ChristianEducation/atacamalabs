@@ -70,7 +70,7 @@ export function Footer() {
             <ul>
               {INDUSTRY_LIST.map((industry) => (
                 <li key={industry.slug}>
-                  <Link className="mk-footer__link" href={`/rubros#${industry.slug}`}>
+                  <Link className="mk-footer__link" href={`/rubros/${industry.slug}`}>
                     {industry.shortLabel}
                   </Link>
                 </li>

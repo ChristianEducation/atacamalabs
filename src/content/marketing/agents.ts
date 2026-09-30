@@ -1,3 +1,5 @@
+import type { IndustrySlug } from "./industries";
+
 /**
  * Copy de /agentes — ATACAMA_LABS_AGENTES_SPEC_V1. La página cuenta una sola
  * idea: incorporar a una persona que trabaja dentro de la empresa. Elegir el
@@ -23,6 +25,19 @@ export const AGENTS_HERO = {
 export type AgentRoleId =
   "comercial" | "cobranza" | "administrativo-financiero" | "atencion" | "agendamiento" | "procesos";
 
+/** Todas las páginas indexables bajo /agentes/[slug] (SEO_GROWTH_SPEC_V1 §12–§15): los 6 cargos + WhatsApp. */
+export type AgentPageSlug = AgentRoleId | "whatsapp";
+
+/** Contenido propio de la landing /agentes/[slug] de cada cargo — SEO_GROWTH_SPEC_V1 §13–§14. */
+export interface AgentRoleSeo {
+  title: string;
+  description: string;
+  h1: string;
+  intro: string;
+  relatedIndustries: readonly IndustrySlug[];
+  faq: readonly { question: string; answer: string }[];
+}
+
 export interface AgentRole {
   id: AgentRoleId;
   /** Nombre corto del cargo en la pestaña. */
@@ -31,6 +46,7 @@ export interface AgentRole {
   desc: string;
   features: readonly string[];
   cta: { label: string };
+  seo: AgentRoleSeo;
 }
 
 export const AGENTS_SELECTOR_HEADING = {
@@ -52,6 +68,32 @@ export const AGENT_ROLES: readonly AgentRole[] = [
       "Agenda y actualiza el proceso comercial",
     ],
     cta: { label: "Quiero este agente" },
+    seo: {
+      title: "Agente de IA para ventas y comercial | Atacama Labs",
+      description:
+        "Un agente que responde consultas, califica interesados y hace seguimiento comercial por WhatsApp u otros canales, conectado a tu CRM y tu calendario.",
+      h1: "Agente de IA para ventas y equipos comerciales",
+      intro:
+        "Cuando una consulta comercial llega fuera de horario o mientras el equipo está ocupado, el agente puede responder, entender qué necesita esa persona y dejar la oportunidad calificada y registrada para que alguien continúe, en vez de perderla.",
+      relatedIndustries: ["inmobiliarias", "retail-ecommerce", "b2b-industria", "servicios-profesionales"],
+      faq: [
+        {
+          question: "¿Reemplaza a mi equipo comercial?",
+          answer:
+            "No. Responde, califica y agenda para que tu equipo llegue a cada conversación con contexto, en vez de partir desde cero. El cierre y las decisiones comerciales siguen siendo de tu equipo.",
+        },
+        {
+          question: "¿Con qué CRM se conecta?",
+          answer:
+            "Depende de la herramienta que ya uses: HubSpot, Salesforce, Zoho u otro con API, webhook o MCP. La conexión concreta se define según tu operación.",
+        },
+        {
+          question: "¿Puede agendar una reunión directamente?",
+          answer:
+            "Sí, si está conectado a tu calendario. Revisa disponibilidad y deja la reunión registrada como parte del mismo flujo comercial.",
+        },
+      ],
+    },
   },
   {
     id: "cobranza",
@@ -60,6 +102,31 @@ export const AGENT_ROLES: readonly AgentRole[] = [
     desc: "Hace seguimiento, recuerda, registra respuestas y mantiene cada cuenta en movimiento.",
     features: ["Seguimiento de cuentas", "Recordatorios y respuestas", "Actualización de estados y próximas acciones"],
     cta: { label: "Quiero este agente" },
+    seo: {
+      title: "Agente de IA para cobranza y seguimiento | Atacama Labs",
+      description:
+        "Un agente que recuerda, hace seguimiento y registra respuestas de cobranza sin depender de que alguien se acuerde de escribir cada cuenta atrasada.",
+      h1: "Agente de IA para cobranza",
+      intro:
+        "El seguimiento de cobranza suele perderse entre otras prioridades del día. El agente recuerda vencimientos, hace seguimiento de cuentas pendientes y registra cada respuesta, dejando el estado y el próximo paso claros para tu equipo.",
+      relatedIndustries: ["contabilidad-finanzas", "gimnasios", "b2b-industria"],
+      faq: [
+        {
+          question: "¿Puede aplicar descuentos o negociar montos?",
+          answer:
+            "Solo si defines esa regla explícitamente. Por defecto hace seguimiento y registra; cualquier acción sensible como modificar un monto queda sujeta a aprobación o se deriva a tu equipo.",
+        },
+        {
+          question: "¿Con qué sistemas se conecta para saber qué está atrasado?",
+          answer:
+            "Con el sistema donde ya llevas esa información — planillas, CRM o el software contable que uses —, según la integración disponible y configurada para tu empresa.",
+        },
+        {
+          question: "¿Qué pasa si la persona no responde?",
+          answer: "Sigue el calendario de seguimiento que definas y deja registrado cada intento para que tu equipo tenga trazabilidad completa.",
+        },
+      ],
+    },
   },
   {
     id: "administrativo-financiero",
@@ -68,6 +135,32 @@ export const AGENT_ROLES: readonly AgentRole[] = [
     desc: "Consulta información, cruza datos y ejecuta tareas administrativas bajo tus reglas.",
     features: ["Consulta sistemas y documentos", "Cruza información", "Genera o registra acciones administrativas"],
     cta: { label: "Quiero este agente" },
+    seo: {
+      title: "Agente de IA administrativo y financiero | Atacama Labs",
+      description:
+        "Un agente que consulta documentos y sistemas, cruza información y ejecuta tareas administrativas bajo las reglas y permisos que definas.",
+      h1: "Agente de IA administrativo y financiero",
+      intro:
+        "Muchas tareas administrativas son repetitivas pero requieren revisar más de un sistema o documento. El agente puede consultar esa información, cruzarla y dejar la acción preparada o registrada, siempre dentro de los límites que definas.",
+      relatedIndustries: ["contabilidad-finanzas", "b2b-industria"],
+      faq: [
+        {
+          question: "¿Puede emitir documentos o hacer pagos por sí solo?",
+          answer:
+            "Solo acciones que definas como permitidas. Cualquier acción sensible —como emitir un documento o ejecutar un pago— puede quedar sujeta a aprobación antes de concretarse.",
+        },
+        {
+          question: "¿Necesito tener todo digitalizado?",
+          answer:
+            "Necesita acceso a la información que va a consultar, ya sea por API, planilla conectada o el sistema que uses. Se evalúa según cómo trabaja hoy tu empresa.",
+        },
+        {
+          question: "¿Reemplaza a mi área administrativa?",
+          answer:
+            "No. Se enfoca en el trabajo repetitivo de consultar, cruzar y dejar preparada la información, para que tu equipo revise y decida lo que requiere criterio.",
+        },
+      ],
+    },
   },
   {
     id: "atencion",
@@ -80,6 +173,31 @@ export const AGENT_ROLES: readonly AgentRole[] = [
       "Deriva con la conversación completa cuando necesita intervención humana",
     ],
     cta: { label: "Quiero este agente" },
+    seo: {
+      title: "Agente de IA para atención al cliente | Atacama Labs",
+      description:
+        "Un agente que atiende solicitudes con el conocimiento real de tu empresa y deriva a una persona, con el contexto completo, cuando la situación lo necesita.",
+      h1: "Agente de IA para atención al cliente",
+      intro:
+        "Responder con el contexto correcto es lo que distingue a un agente de un bot genérico. Este agente consulta la información de tu empresa antes de responder y, cuando una solicitud necesita criterio humano, deriva con toda la conversación, no solo un resumen.",
+      relatedIndustries: ["salud", "educacion", "retail-ecommerce", "alimentacion-casinos"],
+      faq: [
+        {
+          question: "¿Cómo sabe qué información dar?",
+          answer:
+            "Consulta el contexto y los documentos que le entregas sobre tu empresa — servicios, políticas, preguntas frecuentes— en vez de responder con información genérica.",
+        },
+        {
+          question: "¿Cuándo deriva a una persona?",
+          answer:
+            "Cuando la solicitud necesita criterio humano, una decisión sensible o simplemente lo defines así. Deriva con la conversación completa para que la persona no tenga que empezar de nuevo.",
+        },
+        {
+          question: "¿Funciona en varios canales a la vez?",
+          answer: "Puede atender por WhatsApp u otros canales de mensajería, según los que uses hoy en tu empresa.",
+        },
+      ],
+    },
   },
   {
     id: "agendamiento",
@@ -88,6 +206,29 @@ export const AGENT_ROLES: readonly AgentRole[] = [
     desc: "Revisa disponibilidad, propone horarios y deja la cita registrada.",
     features: ["Consulta disponibilidad", "Propone y reprograma horarios", "Registra citas y próximos pasos"],
     cta: { label: "Quiero este agente" },
+    seo: {
+      title: "Agente de IA para agendamiento | Atacama Labs",
+      description:
+        "Un agente que revisa disponibilidad, propone horarios, confirma y reprograma citas por WhatsApp, conectado a tu calendario.",
+      h1: "Agente de IA para agendamiento",
+      intro:
+        "Coordinar una hora suele tomar varios mensajes de ida y vuelta. El agente revisa la disponibilidad real de tu calendario, propone horarios, confirma la cita y avisa cuando corresponde reprogramar o recordar.",
+      relatedIndustries: ["salud", "inmobiliarias", "gimnasios", "educacion"],
+      faq: [
+        {
+          question: "¿Con qué calendarios funciona?",
+          answer: "Google Calendar, Calendly, Outlook u otro que ya uses, conectado directamente o vía API.",
+        },
+        {
+          question: "¿Puede enviar recordatorios y reconfirmar la cita?",
+          answer: "Sí. Puede recordar antes de la hora agendada y reconfirmar, reduciendo las horas sin confirmar que suelen terminar en no shows.",
+        },
+        {
+          question: "¿Qué pasa si dos personas piden el mismo horario?",
+          answer: "Consulta la disponibilidad real antes de proponer una hora, así que no ofrece horarios que ya están tomados en tu calendario.",
+        },
+      ],
+    },
   },
   {
     id: "procesos",
@@ -96,6 +237,31 @@ export const AGENT_ROLES: readonly AgentRole[] = [
     desc: "Coordina tareas entre sistemas cuando tu flujo no cabe en una plantilla.",
     features: ["Recibe una entrada", "Trabaja con varias herramientas", "Registra o ejecuta el resultado"],
     cta: { label: "Quiero este agente" },
+    seo: {
+      title: "Agentes de IA para automatizar procesos | Atacama Labs",
+      description:
+        "Un agente que coordina tareas entre varias herramientas y sistemas cuando tu proceso no encaja en una plantilla estándar.",
+      h1: "Agentes de IA para automatizar procesos",
+      intro:
+        "No todo proceso cabe en un flujo predefinido. Este agente recibe una entrada, trabaja con las herramientas que corresponda —CRM, planillas, APIs propias— y registra o ejecuta el resultado según las reglas de tu operación.",
+      relatedIndustries: ["alimentacion-casinos", "b2b-industria", "contabilidad-finanzas"],
+      faq: [
+        {
+          question: "¿Qué tipo de proceso puede automatizar?",
+          answer:
+            "Procesos que hoy dependen de pasar información manualmente entre sistemas: recibir un pedido y registrarlo, cruzar datos de dos herramientas, preparar un reporte, entre otros. Se define según tu operación.",
+        },
+        {
+          question: "¿Necesita que mis sistemas tengan API?",
+          answer:
+            "Es lo más directo, pero también puede trabajar con hojas de cálculo, webhooks o integraciones a medida cuando la herramienta no tiene una API estándar.",
+        },
+        {
+          question: "¿Qué pasa si el proceso falla a mitad de camino?",
+          answer: "Se define un comportamiento claro para esos casos: puede detenerse, avisar o derivar a una persona, según cómo lo configures.",
+        },
+      ],
+    },
   },
 ];
 

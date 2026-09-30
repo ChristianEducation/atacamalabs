@@ -1,0 +1,49 @@
+/*
+ * Capa común para las landings SEO de Rubros y Agentes (SEO_GROWTH_SPEC_V1 §28):
+ * breadcrumb y contenedores de ancho de lectura. El resto (hero, pains,
+ * capabilities, flow, FAQ, related) reutiliza clases que ya existen en
+ * rubros.css, inner.css y ui.css — nada se duplica acá.
+ */
+
+.mk-breadcrumb {
+  padding: 14px 0 0;
+}
+.mk-breadcrumb ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mk-breadcrumb li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--subtle);
+}
+.mk-breadcrumb a {
+  color: var(--subtle);
+  text-decoration: none;
+}
+.mk-breadcrumb a:hover,
+.mk-breadcrumb a:focus-visible {
+  color: var(--blue-text);
+  text-decoration: underline;
+}
+.mk-breadcrumb li span[aria-current="page"] {
+  color: var(--muted);
+}
+
+.mk-il-limits,
+.mk-il-faq {
+  max-width: 760px;
+  margin-inline: auto;
+}
+
+.mk-al-caps {
+  justify-content: center;
+  margin-top: 20px;
+}

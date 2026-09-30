@@ -27,6 +27,7 @@ import "../styles/diagnostic.css";
 import "../styles/legal.css";
 import "../styles/rubros.css";
 import "../styles/analytics.css";
+import "../styles/landings.css";
 
 /**
  * Fuentes autoalojadas (spec C2): Newsreader (títulos, 500 roman; cursiva 500
