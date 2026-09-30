@@ -85,6 +85,9 @@
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scrollbar-width: none;
+  /* Ayuda a iOS Safari a distinguir de entrada el gesto horizontal del
+     scroll vertical de la página (QA reportado en iPhone). */
+  touch-action: pan-x;
 }
 .mk-rb-nav__tabs::-webkit-scrollbar {
   display: none;

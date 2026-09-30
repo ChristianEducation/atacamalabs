@@ -891,8 +891,11 @@
     overflow-x: auto;
     overscroll-behavior-x: contain;
     scroll-padding-inline: var(--gutter);
-    scroll-snap-type: x mandatory;
+    /* `proximity` en vez de `mandatory` (QA reportado en iPhone): el snap
+       deja de "pelear" con el dedo a mitad de un swipe corto. */
+    scroll-snap-type: x proximity;
     scrollbar-width: none;
+    touch-action: pan-x;
   }
   .mk-snap__track::-webkit-scrollbar {
     display: none;
