@@ -890,25 +890,19 @@
     padding: 14px var(--gutter) 68px;
     overflow-x: auto;
     overscroll-behavior-x: contain;
+    scroll-padding-inline: var(--gutter);
+    /* `proximity`, no `mandatory`: en iOS el snap encaja apenas se suelta el
+       dedo, y el estricto se siente pegajoso. Sin touch-action: pan-x — en
+       iPhone bloquea el scroll vertical de la página al tocar las tarjetas. */
+    scroll-snap-type: x proximity;
     scrollbar-width: none;
-    /* Fuerza su propia capa de composición (igual que `.mk-sel-bar`, que es
-       `position: sticky` y ahí el scroll horizontal sí "pesca" bien en iPhone
-       — QA real de Christian): aísla el track del hilo de scroll vertical de
-       la página para que Safari no compita por el gesto. */
-    transform: translateZ(0);
-    /* Sin scroll-snap (QA reportado en iPhone): WebKit "peleaba" con el dedo
-       al encajar cada tarjeta. Scroll libre en toda plataforma; el punto de
-       inicio y el salto al hacer clic en un punto siguen siendo JS puro
-       (SnapCarousel), no dependen de esto. Sin touch-action: pan-x (QA en
-       iPhone real) — bloqueaba el scroll vertical de la página al tocar
-       las tarjetas en vez de dejarlo pasar; el navegador ya distingue bien
-       la dirección del gesto sin esa restricción. */
   }
   .mk-snap__track::-webkit-scrollbar {
     display: none;
   }
   .mk-snap__track > * {
     flex: 0 0 min(84%, 340px);
+    scroll-snap-align: center;
   }
   .mk-snap__dots {
     display: flex;
