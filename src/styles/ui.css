@@ -891,6 +891,11 @@
     overflow-x: auto;
     overscroll-behavior-x: contain;
     scrollbar-width: none;
+    /* Fuerza su propia capa de composición (igual que `.mk-sel-bar`, que es
+       `position: sticky` y ahí el scroll horizontal sí "pesca" bien en iPhone
+       — QA real de Christian): aísla el track del hilo de scroll vertical de
+       la página para que Safari no compita por el gesto. */
+    transform: translateZ(0);
     /* Sin scroll-snap (QA reportado en iPhone): WebKit "peleaba" con el dedo
        al encajar cada tarjeta. Scroll libre en toda plataforma; el punto de
        inicio y el salto al hacer clic en un punto siguen siendo JS puro
