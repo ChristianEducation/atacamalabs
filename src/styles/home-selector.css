@@ -33,6 +33,16 @@
 .mk-sel-tabs::-webkit-scrollbar {
   display: none;
 }
+/* TEMP — experimento de diagnóstico (QA iPhone real, revertir después):
+   agrandar el alto del selector al de una tarjeta de precio, para probar si
+   la franja "que deja hacer scroll horizontal" más abajo en la página
+   también se agranda en proporción. */
+@media (max-width: 1023px) {
+  .mk-sel-tabs {
+    min-height: 380px;
+    align-items: flex-start;
+  }
+}
 .mk-sel-tab {
   position: relative;
   flex: none;
