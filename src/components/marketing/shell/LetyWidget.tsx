@@ -1,5 +1,6 @@
 import Script from "next/script";
 import { letyWidgetId } from "@/lib/marketing/public-config";
+import { LetyPanelFix } from "./LetyPanelFix";
 
 /**
  * Widget del agente de Atacama, operado en Lety (V3.0 §6). El ID es público y
@@ -10,5 +11,10 @@ import { letyWidgetId } from "@/lib/marketing/public-config";
 export function LetyWidget() {
   const id = letyWidgetId();
   if (!id) return null;
-  return <Script src="https://cdn.lety.ai/widget.js" data-widget-id={id} strategy="afterInteractive" />;
+  return (
+    <>
+      <Script src="https://cdn.lety.ai/widget.js" data-widget-id={id} strategy="afterInteractive" />
+      <LetyPanelFix />
+    </>
+  );
 }
