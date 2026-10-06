@@ -1,0 +1,520 @@
+{
+  "name": "Atacama Labs - 12 Content Intake",
+  "nodes": [
+    {
+      "id": "db202154-be2a-4578-b5aa-2b4f942db837",
+      "name": "Intake Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "d6ffb4d8-b400-40b0-9e74-13f07e574382",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "lUGhlXVaQBEiEh5S",
+          "name": "Atacama Labs - Ingest Key"
+        }
+      },
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "atacama-content-intake",
+        "authentication": "headerAuth",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "2d9ebc09-b1e8-4794-a647-484fe723b3a1",
+      "name": "Fetch Keys",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "parameters": {
+        "method": "GET",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/content_pieces?icp_pack_id=eq.0ba54785-bff0-4a2d-a397-64e697d34e38&select=idea_key&limit=1000",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": false,
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "46a97c2b-8502-49fc-9a34-36b60f3208d2",
+      "name": "Evaluate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "jsCode": "function evaluatePiece(piece, ctx = {}) {\n  const errors = [];\n  const warnings = [];\n  const CHANNELS = ['instagram', 'linkedin_page', 'linkedin_profile'];\n  const FORMATS = ['texto', 'imagen', 'carrusel', 'demo', 'reel'];\n  const CATEGORIES = ['Educativo', 'Caso', 'Demo', 'Noticia', 'Evergreen', 'Founder'];\n  const SOURCE_KINDS = ['hermes_research', 'real_work', 'evergreen', 'manual'];\n  const CTA_TYPES = ['none', 'comment_keyword', 'resource', 'dm', 'link'];\n  const LAYOUTS = ['cover', 'content', 'cta'];\n  const FACTORS = { relevance: 15, audience_fit: 12, novelty: 8, evidence: 15, utility: 12, clarity: 10, conversation: 8, differentiation: 10, non_repetition: 10 };\n  const THRESHOLD = 70;\n  const isUrl = (u) => /^https?:\\/\\/[^\\s/$.?#][^\\s]*$/i.test(String(u || ''));\n  const str = (v) => (typeof v === 'string' ? v.trim() : '');\n  const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9% ]+/g, ' ').replace(/\\s+/g, ' ').trim();\n  const fnv = (s) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16).padStart(8, '0'); };\n\n  const p = piece && typeof piece === 'object' ? piece : {};\n  if (p.version !== 1) errors.push('version_invalida');\n  if (!CHANNELS.includes(p.channel)) errors.push('canal_invalido');\n  if (!FORMATS.includes(p.format)) errors.push('formato_invalido');\n  if (!CATEGORIES.includes(p.category)) errors.push('categoria_invalida');\n  const topic = str(p.topic);\n  const angle = str(p.angle);\n  const hook = str(p.hook);\n  const body = str(p.body);\n  if (topic.length < 5 || topic.length > 140) errors.push('topic_fuera_de_rango');\n  if (!angle) errors.push('angle_obligatorio');\n  if (!str(p.audience)) errors.push('audience_obligatoria');\n  if (hook.length < 8 || hook.length > 160) errors.push('hook_fuera_de_rango');\n  if (body.length < 40) errors.push('body_muy_corto');\n  if (!str(p.rationale)) errors.push('rationale_obligatorio');\n  if (!str(p.visual_direction) && ['imagen', 'carrusel', 'demo', 'reel'].includes(p.format)) errors.push('visual_direction_obligatoria');\n\n  // Canal ↔ formato\n  if (p.channel === 'instagram' && p.format === 'texto') errors.push('instagram_requiere_medio');\n  const hashtags = Array.isArray(p.hashtags) ? p.hashtags.map(str).filter(Boolean) : [];\n  if (hashtags.length > 5) errors.push('demasiados_hashtags');\n  const ctaObj = p.cta && typeof p.cta === 'object' ? p.cta : { type: 'none' };\n  if (!CTA_TYPES.includes(ctaObj.type || 'none')) errors.push('cta_tipo_invalido');\n  if (ctaObj.type === 'comment_keyword' && (!str(ctaObj.keyword) || !str(ctaObj.resource))) errors.push('cta_keyword_requiere_keyword_y_recurso');\n  if (ctaObj.type === 'resource' && !str(ctaObj.resource)) errors.push('cta_recurso_obligatorio');\n  const ctaText = str(ctaObj.text);\n\n  // Texto final del post\n  let postText = hook + '\\n\\n' + body;\n  if (ctaText) postText += '\\n\\n' + ctaText;\n  if (hashtags.length) postText += '\\n\\n' + hashtags.map((h) => (h.startsWith('#') ? h : '#' + h)).join(' ');\n  const maxLen = p.channel === 'instagram' ? 2200 : 3000;\n  if (postText.length > maxLen) errors.push('texto_excede_limite_' + maxLen);\n\n  // Slides\n  const slides = Array.isArray(p.slides) ? p.slides : [];\n  if (['imagen', 'carrusel'].includes(p.format)) {\n    const min = p.format === 'imagen' ? 1 : 3;\n    const max = p.format === 'imagen' ? 1 : 10;\n    if (slides.length < min || slides.length > max) errors.push('cantidad_de_slides_invalida');\n  }\n  slides.forEach((s, i) => {\n    if (!LAYOUTS.includes(s && s.layout)) errors.push('slide_' + (i + 1) + '_layout_invalido');\n    const t = str(s && s.title);\n    if (!t) errors.push('slide_' + (i + 1) + '_sin_titulo');\n    if (t.length > 90) errors.push('slide_' + (i + 1) + '_titulo_largo');\n    if (str(s && s.body).length > 180) errors.push('slide_' + (i + 1) + '_texto_largo');\n    if (Array.isArray(s && s.items) && s.items.length > 4) errors.push('slide_' + (i + 1) + '_muchas_ideas');\n  });\n  if (p.format === 'carrusel' && slides.length && slides[0].layout !== 'cover') warnings.push('primera_slide_no_es_portada');\n\n  // Fuentes y claims\n  const sources = Array.isArray(p.sources) ? p.sources : [];\n  if (!sources.length) errors.push('sin_fuentes');\n  sources.forEach((s, i) => {\n    if (!SOURCE_KINDS.includes(s && s.kind)) errors.push('fuente_' + (i + 1) + '_tipo_invalido');\n    if (!str(s && s.title)) errors.push('fuente_' + (i + 1) + '_sin_titulo');\n    if (s && s.url && !isUrl(s.url)) errors.push('fuente_' + (i + 1) + '_url_invalida');\n  });\n  const evidenceUrls = (Array.isArray(p.evidence_urls) ? p.evidence_urls : []).map(str).filter(Boolean);\n  if (evidenceUrls.some((u) => !isUrl(u))) errors.push('evidence_url_invalida');\n  const verifiedSources = sources.filter((s) => s && s.verified === true);\n  const claims = Array.isArray(p.claims) ? p.claims : [];\n  claims.forEach((c, i) => {\n    if (!str(c && c.text)) errors.push('claim_' + (i + 1) + '_sin_texto');\n    if (c && c.external === true) {\n      if (!isUrl(c.source_url)) errors.push('claim_externo_sin_fuente:' + str(c.text).slice(0, 40));\n      else if (!verifiedSources.some((s) => s.url === c.source_url || (Array.isArray(s.evidence) && s.evidence.some((e) => e && e.url === c.source_url)))) errors.push('claim_externo_fuente_no_verificada:' + str(c.text).slice(0, 40));\n    }\n  });\n  // Cifras / porcentajes en el texto deben tener respaldo en un claim\n  const allText = [hook, body, ctaText].concat(slides.map((s) => [s && s.kicker, s && s.title, s && s.body].concat((s && s.items) || []).map((x) => (typeof x === 'object' && x ? str(x.title) + ' ' + str(x.text) : str(x))).join(' '))).join('\\n');\n  const claimBlob = norm(claims.map((c) => str(c && c.text)).join(' | '));\n  const figures = allText.match(/\\d[\\d.,]*\\s?%|\\$\\s?\\d[\\d.,]*|\\d[\\d.,]*\\s?(millones|mil millones|veces)\\b/gi) || [];\n  figures.forEach((f) => { if (!claimBlob.includes(norm(f))) errors.push('cifra_sin_respaldo:' + f.trim()); });\n  if (p.category === 'Noticia' && !claims.some((c) => c && c.external === true)) errors.push('noticia_sin_claim_externo');\n\n  // Lint de marca / relleno de IA\n  const BANNED = [/revolucion/i, /game.?changer/i, /en el mundo actual/i, /desbloque/i, /potencia tu/i, /el futuro (ya )?(est[aá]|es)/i, /innovador/i, /soluciones? integrales?/i, /sinergia/i, /disruptiv/i, /hoy m[aá]s que nunca/i, /llev(a|ar) (tu|su) negocio al siguiente nivel/i, /transformaci[oó]n digital/i, /en este post/i, /sum[eé]rgete/i, /\\bdescubre c[oó]mo\\b/i];\n  let penalties = 0;\n  const lintHits = [];\n  BANNED.forEach((re) => { if (re.test(allText)) { penalties += 3; lintHits.push(String(re.source)); } });\n  if (/agenda (una|tu) llamada/i.test(allText)) { penalties += 4; lintHits.push('cta_generico_agenda_llamada'); }\n  const emojiCount = (allText.match(/[\\u{1F300}-\\u{1FAFF}\\u{2600}-\\u{27BF}]/gu) || []).length;\n  if (emojiCount > 3) { penalties += 3; lintHits.push('exceso_de_emojis'); }\n  penalties = Math.min(penalties, 20);\n\n  // Factores 0–10 (los asigna quien genera la pieza; aquí se validan, se acotan y se aplican topes)\n  const f = p.factors && typeof p.factors === 'object' ? p.factors : {};\n  const breakdown = {};\n  let raw = 0;\n  Object.keys(FACTORS).forEach((k) => {\n    let v = Number(f[k] && typeof f[k] === 'object' ? f[k].value : f[k]);\n    if (!Number.isFinite(v)) { errors.push('factor_faltante:' + k); v = 0; }\n    v = Math.max(0, Math.min(10, v));\n    if (k === 'evidence' && !verifiedSources.length) v = Math.min(v, 2);\n    if (k === 'non_repetition' && Array.isArray(ctx.existingIdeaKeys)) { /* se fija abajo con idea_key */ }\n    breakdown[k] = v;\n  });\n  const ideaKey = fnv(norm(p.channel) + '|' + norm(topic) + '|' + norm(angle));\n  if (Array.isArray(ctx.existingIdeaKeys) && ctx.existingIdeaKeys.includes(ideaKey)) { errors.push('idea_repetida'); breakdown.non_repetition = 0; }\n  Object.keys(FACTORS).forEach((k) => { raw += (FACTORS[k] * breakdown[k]) / 10; });\n  const score = Math.max(0, Math.min(100, Math.round(raw - penalties)));\n\n  let decision;\n  if (errors.length) decision = 'rejected';\n  else if (score >= THRESHOLD) decision = 'candidate';\n  else decision = 'below_threshold';\n\n  return { ok: errors.length === 0, decision, score, threshold: THRESHOLD, breakdown, penalties, lint_hits: lintHits, errors, warnings, idea_key: ideaKey, post_text: postText, evidence_urls: evidenceUrls };\n}\n\nconst PACK_ID = '0ba54785-bff0-4a2d-a397-64e697d34e38';\nconst ACCOUNTS = {\"instagram\":\"6ac43e3ecfe0752734a5fe1e_pxHuOsiz2i3lM6BtC9IM_17841424613699090\",\"linkedin_page\":\"6ac4fabe3356d12d204557ea_pxHuOsiz2i3lM6BtC9IM_145278681_page\",\"linkedin_profile\":\"6ac4fabe3356d12d204557ea_pxHuOsiz2i3lM6BtC9IM_D9Z-EPMxLu_profile\"};\nconst APPROVER = 'OjkAjHMdUjnblO7W1kBZ';\nconst first = $('Intake Webhook').first().json ?? {};\nconst body = first.body ?? first;\nif (body.icp_pack_id && body.icp_pack_id !== PACK_ID) throw new Error('SEGURIDAD: icp_pack_id no coincide con el pack de Atacama Labs.');\nconst piece = body.piece;\nconst isTest = body.test === true;\nconst wantsReview = body.submit_to_review !== false;\nconst rows = ($('Fetch Keys').first().json || {}).body;\nconst existing = Array.isArray(rows) ? rows.map((r) => r.idea_key) : [];\nconst ev = evaluatePiece(piece, { existingIdeaKeys: existing });\nconst base = { test: isTest, evaluation: ev };\nif (ev.decision === 'rejected') return [{ json: { ...base, action: 'reject' } }];\n\n// ¿falta el render? Instagram y los formatos visuales requieren medio ya subido (URL).\nconst media = Array.isArray(piece.media) ? piece.media.filter((m) => m && /^https?:\\/\\//.test(m.url || '')) : [];\nconst needsMedia = piece.channel === 'instagram' || ['imagen', 'carrusel', 'demo', 'reel'].includes(piece.format);\nlet action = ev.decision === 'candidate' ? 'submit' : 'hold';\nlet holdReason = ev.decision === 'candidate' ? null : 'score_bajo_el_umbral';\nif (action === 'submit' && needsMedia && !media.length) { action = 'hold'; holdReason = 'falta_render_o_medio'; }\nif (action === 'submit' && !wantsReview) { action = 'hold'; holdReason = 'submit_to_review_false'; }\n\nconst slug = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);\nconst sourcesBody = piece.sources.map((s) => ({ icp_pack_id: PACK_ID, source_key: s.kind + ':' + (s.url ? s.url : slug(s.title)), kind: s.kind, title: s.title, url: s.url || null,\n  summary: s.summary || null, evidence: s.evidence || [], verified: s.verified === true }));\nconst pieceRow = { icp_pack_id: PACK_ID, idea_key: ev.idea_key, topic: piece.topic, angle: piece.angle, audience: piece.audience, channel: piece.channel, format: piece.format,\n  category: piece.category, score: ev.score, score_breakdown: ev.breakdown, rationale: piece.rationale, evidence_urls: ev.evidence_urls, piece,\n  status: action === 'submit' ? 'drafted' : 'scored', ghl_account_id: ACCOUNTS[piece.channel], is_test: isTest, updated_at: new Date().toISOString() };\n\n// Propuesta de fecha: la sugerida si es ≥ 2 días en el futuro; si no, en 7 días a las 13:00 UTC (10:00 Chile). Es solo una propuesta: nada se programa sin aprobación.\nconst minDate = Date.now() + 2 * 86400000;\nlet when = piece.schedule_suggestion ? new Date(piece.schedule_suggestion).getTime() : NaN;\nif (!Number.isFinite(when) || when < minDate) { const d = new Date(Date.now() + 7 * 86400000); d.setUTCHours(13, 0, 0, 0); when = d.getTime(); }\nconst summary = (isTest ? '[PRUEBA ATACAMA OS — NO PUBLICAR] ' : '') + ev.post_text;\n// Las etiquetas/categorías de Social Planner exigen ObjectIds creados desde la interfaz (la API con token de integración no puede crearlos): por ahora formato y categoría viajan en Supabase.\nconst ghlBody = { accountIds: [ACCOUNTS[piece.channel]], summary, type: 'post', status: 'in_review', userId: APPROVER, media: media.map((m) => ({ url: m.url, type: m.type || 'image/png' })),\n  scheduleDate: new Date(when).toISOString(), postApprovalDetails: { approver: APPROVER } };\nif (ghlBody.status !== 'in_review') throw new Error('SEGURIDAD: este workflow solo puede crear posts en in_review.');\nreturn [{ json: { ...base, action, holdReason, sourcesBody, pieceRow, ghlBody } }];"
+      }
+    },
+    {
+      "id": "93e7de14-b962-48e3-b358-52de625bd132",
+      "name": "Rejected?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ ($json.action === \"reject\") ? \"yes\" : \"no\" }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "604d2d93-e9a7-4652-871a-b4289a4fad8a",
+      "name": "Respond Rejected",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        -140
+      ],
+      "parameters": {
+        "jsCode": "const e = $json.evaluation;\nreturn [{ json: { ok: false, action: 'rejected', errors: e.errors, warnings: e.warnings, score: e.score } }];"
+      }
+    },
+    {
+      "id": "cc12baf9-fa8e-41f4-bb2f-bf92b222fc04",
+      "name": "Upsert Sources",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        60
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "parameters": {
+        "method": "POST",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/content_sources?on_conflict=icp_pack_id,source_key",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.sourcesBody) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "4daa69c7-42ae-4af7-bdec-68da957d872e",
+      "name": "Build Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        60
+      ],
+      "parameters": {
+        "jsCode": "if (($json.statusCode || 0) >= 300) throw new Error('Supabase content_sources falló (HTTP ' + $json.statusCode + '): ' + JSON.stringify($json.body || {}).slice(0, 300));\nconst ev = $('Evaluate').first().json;\nconst ids = (($json.body) || []).map((r) => r.id).filter(Boolean);\nreturn [{ json: { ...ev, pieceRowFull: { ...ev.pieceRow, source_ids: ids } } }];"
+      }
+    },
+    {
+      "id": "48604a53-e278-42bb-9e34-6ff6f7a1aae3",
+      "name": "Upsert Piece",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        60
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "parameters": {
+        "method": "POST",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/content_pieces?on_conflict=icp_pack_id,idea_key",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.pieceRowFull) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "7e50e4b2-7d31-4b7d-92aa-57def39cbd19",
+      "name": "Submit?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1680,
+        60
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ ($(\"Build Row\").first().json.action === \"submit\") ? \"yes\" : \"no\" }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "bd8a512d-724e-4633-9d5b-6695a891e756",
+      "name": "Respond Held",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        -80
+      ],
+      "parameters": {
+        "jsCode": "const ev = $('Build Row').first().json;\nconst saved = Array.isArray($('Upsert Piece').first().json.body) ? $('Upsert Piece').first().json.body[0] : null;\nreturn [{ json: { ok: true, action: 'held', reason: ev.holdReason, score: ev.evaluation.score, piece_id: saved && saved.id, status: saved && saved.status, breakdown: ev.evaluation.breakdown, lint_hits: ev.evaluation.lint_hits } }];"
+      }
+    },
+    {
+      "id": "fbfb06b0-24f0-4167-8c48-9f385b590e9b",
+      "name": "Create GHL Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        160
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4Vc6nfxyKjZ14Bep",
+          "name": "GHL — Atacama OS"
+        }
+      },
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/social-media-posting/pxHuOsiz2i3lM6BtC9IM/posts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($(\"Build Row\").first().json.ghlBody) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "f8c371be-b282-4c0f-a276-49c10ba97540",
+      "name": "Check GHL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        160
+      ],
+      "parameters": {
+        "jsCode": "const up = $('Upsert Piece').first().json;\nif ((up.statusCode || 0) >= 300) throw new Error('Supabase content_pieces falló (HTTP ' + up.statusCode + '): ' + JSON.stringify(up.body || {}).slice(0, 300));\nconst ev = $('Build Row').first().json;\nconst res = $json || {};\nconst post = (res.body && res.body.results && res.body.results.post) || null;\nif (!post || !post._id) throw new Error('GHL no creó el post (HTTP ' + res.statusCode + '): ' + JSON.stringify(res.body || {}).slice(0, 300));\nif (post.status !== 'in_review') throw new Error('SEGURIDAD: GHL devolvió estado ' + post.status + ' (se esperaba in_review). Revisar/borrar el post ' + post._id);\nreturn [{ json: { ...ev, ghl_post_id: post._id, patchBody: { status: 'in_review', ghl_post_id: post._id, updated_at: new Date().toISOString() } } }];"
+      }
+    },
+    {
+      "id": "c8d8d152-0736-4a0a-952e-920786228d35",
+      "name": "Mark In Review",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2400,
+        160
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/content_pieces?icp_pack_id=eq.0ba54785-bff0-4a2d-a397-64e697d34e38&idea_key=eq.\" + $json.evaluation.idea_key }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.patchBody) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "6384c14f-385c-48f9-985b-634228e9cf6c",
+      "name": "Respond Submitted",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        160
+      ],
+      "parameters": {
+        "jsCode": "const c = $('Check GHL').first().json;\nreturn [{ json: { ok: true, action: 'in_review', ghl_post_id: c.ghl_post_id, piece_id: (($json.body || [])[0] || {}).id || null, score: c.evaluation.score, channel: c.pieceRow.channel, status: 'in_review',\n  note: 'Quedó en GHL Social Planner como in_review. Nada se programó ni publicó.' } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Intake Webhook": {
+      "main": [
+        [
+          {
+            "node": "Fetch Keys",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Keys": {
+      "main": [
+        [
+          {
+            "node": "Evaluate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate": {
+      "main": [
+        [
+          {
+            "node": "Rejected?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rejected?": {
+      "main": [
+        [
+          {
+            "node": "Respond Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Upsert Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Sources": {
+      "main": [
+        [
+          {
+            "node": "Build Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Row": {
+      "main": [
+        [
+          {
+            "node": "Upsert Piece",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Piece": {
+      "main": [
+        [
+          {
+            "node": "Submit?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Submit?": {
+      "main": [
+        [
+          {
+            "node": "Create GHL Post",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Held",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create GHL Post": {
+      "main": [
+        [
+          {
+            "node": "Check GHL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check GHL": {
+      "main": [
+        [
+          {
+            "node": "Mark In Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark In Review": {
+      "main": [
+        [
+          {
+            "node": "Respond Submitted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

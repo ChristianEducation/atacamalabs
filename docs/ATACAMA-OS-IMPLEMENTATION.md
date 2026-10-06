@@ -452,3 +452,100 @@ Las 4 asociaciones previas (ver estado previo) quedaron intactas.
 - **Pulido pendiente (cosmético, por interfaz):** el widget *Respuestas por atender* quedó al final y grande; en modo edición se puede achicar (esquina inferior derecha) y moverlo junto a Tareas arrastrándolo por el icono ⋮⋮ del título. Se probó que el arrastre y el redimensionado funcionan.
 - **Smart Lists / vistas:** no se crearon; la navegación diaria recomendada es Dashboard → Opportunities (Kanban del pipeline Atacama) → Tasks → Conversations → Calendars. Pendiente opcional: una Smart List de contactos con la etiqueta `proxima-accion`.
 - **Rollback:** Dashboard → Edit dashboard → borrar/añadir widgets; los dos widgets quitados se pueden recrear (*Opportunity value*, *Appointments*).
+
+## BLOQUE H — Social Planner + Content Engine MVP (6-oct-2026) · ✅ CIRCUITO FUNCIONANDO
+
+**Regla de oro:** nada se publica ni se programa solo. El circuito termina en GHL Social Planner con estado **`in_review`** y aprobador pendiente (Christian). Aprobar/editar/descartar se hace dentro de GHL.
+
+### H0. Fuentes de verdad y un faltante importante
+- Leídos: `ATACAMA-OS-NEXT.md`, `ATACAMA-OS-IMPLEMENTATION.md`, `brand/content/README.md`, `public/brand/README.md`.
+- **`ATACAMA-LABS-GUIA-PUBLICACIONES.md` NO existe en el repo ni en el disco** (se buscó en todo el directorio del usuario). Se aplicaron las reglas editoriales del encargo y de `brand/content/README.md` (sobrio, claro, tecnológico, humano, #0F5CED / #041228, fondos limpios, aire, tipografía fina, una idea por slide, sin neón/crypto/robots, mascota solo si aporta). **Pendiente de Christian:** copiar la guía a `brand/content/guia-de-publicaciones.md` y las hojas de la llamita a `brand/content/mascota/`; hasta entonces **no se usa mascota** y el renderer no la incluye. Cuando la guía llegue, hay que contrastar `BANNED` (lista de frases de relleno) y los layouts contra ella.
+- Voz de referencia ya publicada en Instagram (4 posts nativos del 30-sep: «Tus clientes no siempre escriben en horario de oficina…», «Conecta WhatsApp, CRM, correo…», «Hay señales de que tu equipo…», «La IA está pasando de responder a ejecutar…»). Las piezas nuevas no deben repetirlos.
+
+### H1. Auditoría de Social Planner (token `Atacama OS — Claude`)
+| Cuenta | Plataforma / tipo | ID de cuenta GHL | Rol |
+|---|---|---|---|
+| `atacama.labs` | Instagram · profile | `6ac43e3ecfe0752734a5fe1e_pxHuOsiz2i3lM6BtC9IM_17841424613699090` | Visual de marca: educativo, producto, integraciones, casos, demos, carruseles, recursos |
+| Atacama Labs | LinkedIn · page (`urn:li:organization:145278681`) | `6ac4fabe3356d12d204557ea_pxHuOsiz2i3lM6BtC9IM_145278681_page` | Corporativo: producto, casos, integraciones, novedades, demos, aprendizajes |
+| Christian Wevar | LinkedIn · profile (`urn:li:person:D9Z-EPMxLu`) | `6ac4fabe3356d12d204557ea_pxHuOsiz2i3lM6BtC9IM_D9Z-EPMxLu_profile` | Founder-led: aprendizajes, opinión con fundamento, decisiones, experimentos, visión |
+
+Las 3 están `active`, sin expirar (tokens de red hasta dic-2026), `hasStatisticsPermissions: true`; Instagram sin scopes faltantes. **No se publica el mismo texto en las 3**: una idea se adapta por canal (el `idea_key` incluye el canal).
+
+| Capacidad (token de integración) | Resultado |
+|---|---|
+| Listar cuentas / categorías / etiquetas / posts | ✅ |
+| Crear post `draft` | ✅ (probado y borrado) |
+| Crear post `in_review` | ✅ — exige `media` (array, puede ir vacío), `scheduleDate` futuro y `postApprovalDetails: { approver: "<userId GHL>" }`; queda `approvalStatus: pending` |
+| Subir medios a la biblioteca (`POST /medias/upload-file`) | ✅ (y borrarlos) |
+| Estadísticas (`POST /social-media-posting/statistics?locationId=`) | ✅ (agregadas) |
+| Borrar post | ✅ |
+| **Crear categorías** (`POST …/categories`) | ❌ exige `createdBy` de un usuario de interfaz y rechaza ese campo: **crearlas desde la UI** |
+| **Crear etiquetas** (`POST …/tags`) | ❌ responde «Created» pero no crea; los posts exigen `ObjectId` de etiquetas existentes |
+| `…/csv` | ❌ 401 (sin scope) |
+- **Categorías y etiquetas:** no se crearon (límite de la API, no decisión). Plan mínimo si se quieren: categorías Educativo, Caso, Demo, Noticia, Evergreen, Founder y etiquetas texto, imagen, carrusel, demo, reel, creadas una vez en Social Planner → Settings. Mientras tanto la categoría y el formato viven en Supabase (`content_pieces`) y el workflow no manda etiquetas a GHL.
+- **Aprobador:** hay dos usuarios «Christian Wevar» en GHL: `OjkAjHMdUjnblO7W1kBZ` (`c.wevarh@gmail.com`, **el usado**) y `wTEyOmg7jpn018RPjzxX` (`christian.wevar@atacamalabs.cl`). Si el que aprueba es el otro, hay que cambiar `APPROVER_USER_ID` en `n8n/build/content-engine.mjs` y reimportar.
+- **No verificado desde aquí:** el botón exacto de «Approve» en la interfaz (abrir el editor de un post congela la pestaña del navegador automatizado). Los posts aparecen con estado «In Review» en Social Planner → Planner.
+
+### H2. Arquitectura final
+```
+Hermes (investiga) ─┐
+Trabajo real ───────┼─► pieza canónica JSON ─► n8n «12 Content Intake» ─► Supabase (content_sources / content_pieces)
+Evergreen ──────────┘      (scripts/content/submit.mjs)            │
+                                                                    └─► GHL Social Planner  status=in_review ─► Christian aprueba/edita/descarta
+render PNG (scripts/content/render.mjs) ─► biblioteca de medios GHL ─► URLs en `media` de la pieza
+```
+Hermes investiga · Supabase guarda · n8n orquesta · GHL aprueba/publica · OpenClaw fuera de la ruta crítica.
+
+### H3. Supabase (migración `20261006_content_engine.sql`, aplicada)
+Auditado antes: no había estructura de contenido (solo `signals`, de cuentas comerciales). Se crearon **dos tablas mínimas**, RLS activado sin políticas (solo service_role):
+- `content_sources`: `icp_pack_id`, `source_key` (único por pack), `kind` (`hermes_research | real_work | evergreen | manual`), `title`, `url`, `summary`, `evidence` (jsonb), `verified`.
+- `content_pieces`: `idea_key` (único por pack = anti-repetición), `source_ids`, `topic`, `angle`, `audience`, `channel`, `format`, `category`, `score`, `score_breakdown`, `rationale`, `evidence_urls`, `piece` (JSON canónico), `status` (`idea → scored → drafted → rendered → in_review → approved → scheduled → published`, más `rejected/discarded`), `ghl_account_id`, `ghl_post_id`, `is_test`, timestamps.
+
+### H4. JSON canónico de pieza (versión 1)
+`version, channel (instagram|linkedin_page|linkedin_profile), format (texto|imagen|carrusel|demo|reel), category (Educativo|Caso|Demo|Noticia|Evergreen|Founder), topic, angle, audience, sources[{kind,title,url,verified,evidence[{url,quote}]}], claims[{text,external,source_url?}], factors{relevance,audience_fit,novelty,evidence,utility,clarity,conversation,differentiation,non_repetition → {value 0–10, note}}, rationale, hook, body, slides[{layout cover|content|cta, kicker, title, body, items[{title,text}], cta_label}], cta{type none|comment_keyword|resource|dm|link, text, keyword?, resource?}, hashtags[], evidence_urls[], visual_direction, schedule_suggestion, media[{url,type}]`. Ejemplos reales en `scripts/content/examples/`.
+
+### H5. Gate (scripts/content/engine-core.mjs, 27 pruebas)
+- Score 0–100 = Σ peso·valor/10 con pesos: relevancia 15, encaje 12, novedad 8, evidencia 15, utilidad 12, claridad 10, conversación 8, diferenciación 10, no repetición 10; menos penalizaciones de marca (hasta −20: frases de relleno de IA, CTA genérico «agenda una llamada», exceso de emojis).
+- **Rechazo duro:** claim externo sin URL o con fuente no verificada; cifra/porcentaje en el texto sin claim que lo respalde; categoría Noticia sin claim externo; sin fuentes; idea repetida; límites de largo, #slides, ideas por slide, hashtags; Instagram sin medio. Sin fuente verificada el factor evidencia se topa en 2.
+- **Umbral 70:** ≥70 candidata; <70 queda `scored` y no se fuerza. Los factores 0–10 los asigna quien genera la pieza (Hermes/yo) con nota obligatoria; el motor los valida y acota.
+- CTA: modelo listo (`type`, `keyword`, `resource`) sin construir aún las automatizaciones de comentario → recurso.
+
+### H6. Workflow n8n `Atacama Labs - 12 Content Intake` (id `wKrn00R0x4XXcfvR`, **activo**, etiqueta PRODUCCIÓN)
+Webhook `POST /webhook/atacama-content-intake` (`X-Atacama-Key`, misma credencial que 08/09) → consulta `idea_key` existentes → **Evaluate** (validación + scoring, el mismo código de `engine-core.mjs`) → `Rejected?` → upsert de fuentes → upsert de pieza → `Submit?` → **Create GHL Post** → **Check GHL** → `Mark In Review` → respuesta. Credenciales: `GHL — Atacama OS`, `Atacama Labs - Supabase`, `Atacama Labs - Ingest Key`. Cuerpo: `{ piece, test?: true, submit_to_review?: false }`.
+- **Seguridad:** el post se arma con `status: 'in_review'` fijo; `Check GHL` aborta si GHL devolviera otro estado; ningún nodo puede crear `scheduled`/`published`. Una pieza `test:true` lleva el prefijo `[PRUEBA ATACAMA OS — NO PUBLICAR]` y `is_test=true`. La fecha de GHL (`scheduleDate`) es solo una **propuesta**: la sugerida si es ≥2 días futura, si no +7 días 10:00 Chile; al aprobar, GHL la programa para esa fecha (editable).
+- Sin `media` (Instagram o formatos visuales) la pieza queda `scored` y respondida como `held / falta_render_o_medio`.
+- 20 pruebas de los nodos Code con stubs (`n8n/build/content-engine.test.mjs`). JSON versionado: `n8n/atacama-labs-12-content-intake.json` (generado por `n8n/build/content-engine.mjs`).
+- **Render:** hoy es un paso previo (`scripts/content/submit.mjs` renderiza, sube a la biblioteca de medios de GHL y llama al webhook). Moverlo dentro de n8n requiere un servicio con Chromium; queda como mejora.
+
+### H7. Renderer (scripts/content/render.mjs)
+Auditoría: `src/components/studio/SocialCard.tsx` y los exportables `social/exports/C01–C06` usaban la **paleta anterior (marrón #4E2E1E / crema) e isotipo antiguo** → **actualizado** `SocialCard.tsx` a la identidad vigente (azul #0F5CED, #041228, Newsreader fina + DM Sans, logo oficial vía `/brand/*.svg`); los exportables antiguos siguen marcados como no publicables. Nuevo renderer con Playwright/Chromium: 1080×1350, **3 layouts** (portada · contenido con tarjetas opcionales · cierre/CTA) con variantes de fondo (claro, gris, azul, oscuro) elegidas por hash de la idea, logos SVG **oficiales** incrustados tal cual, sin mascota. Revisado visualmente (portada azul, tarjetas sobre gris, cierre oscuro).
+
+### H8. Pruebas controladas (todo borrado después)
+| Prueba | Resultado |
+|---|---|
+| Seguridad del webhook | sin clave / clave mala → 403 |
+| LinkedIn Christian, texto TEST → n8n → GHL | **PASS** `in_review`, `approvalStatus: pending`, fecha propuesta 13-oct, fila en Supabase (`is_test`) |
+| Reenvío de la misma idea | rechazada `idea_repetida` |
+| Instagram carrusel TEST (5 slides renderizados + subidos) → `in_review` | **PASS** (5 medios en el post) |
+| Verificación visual en GHL | **PASS**: ambos aparecen «In Review» en Social Planner → Planner (cuentas y fecha correctas) |
+| Limpieza | 2 posts TEST, 6 medios TEST, 2 piezas y 2 fuentes TEST borrados; 0 posts residuales |
+- Hallazgos: el primer intento falló por `tags` (GHL exige ObjectId) → se quitaron; el nodo leía el cuerpo del nodo equivocado → corregido (los tests no lo habían detectado porque simulaban la entrada directa; ahora simulan el flujo real).
+
+### H9. Candidato REAL dejado en revisión (no programado ni publicado)
+- **Cuenta:** LinkedIn — Christian Wevar · **Categoría:** Founder · **Score 80/100** · fuente: trabajo real verificable (commit `23c2936`).
+- **Idea:** «Automatizamos el alta de clientes. Y lo primero que hicimos fue impedir que escribiera algo» — por qué el flujo «oportunidad ganada → cliente» parte en modo ensayo; aprendizaje: automatizar es decidir dónde va el freno; cierra con una pregunta (conversación).
+- **Dónde verlo:** GHL → **Marketing → Social Planner → Planner** (lista): fila con estado **In Review**, cuenta Christian Wevar, fecha propuesta **13-oct-2026 10:00**. Ahí puedes abrirla y aprobar, editar el texto o descartarla (borrarla). Es texto en primera persona: **léelo como tuyo antes de aprobar**. IDs: post GHL `6ac51f2bd3e22f4c60c0c08c`, pieza Supabase `5cb8e163-eaf0-436b-ab6d-f1be1919e6c2`.
+
+### H10. Métricas disponibles (no se construyó analytics)
+- **Agregadas** (`POST /social-media-posting/statistics?locationId=` con `profileIds`): por día y plataforma — publicaciones, impresiones, alcance (reach), likes, comentarios, compartidos, seguidores, y demografía (género/edad). Hoy: Instagram 4 posts y ~92.000 impresiones en 7 días (posts nativos del 30-sep), LinkedIn 0.
+- **Por post:** el objeto del post trae `insights {like, share, comment}`; los **posts nativos** (publicados fuera de GHL) no se devuelven por la API de posts. **Clics: no expuestos.** Las ventanas 24 h / 72 h / 7 d quedan para una fase posterior (habría que guardar snapshots en Supabase).
+
+### H11. Pendientes y limitaciones
+1. Copiar la **guía de publicaciones** y las hojas de la **llamita** al repo (ver H0).
+2. Crear categorías y etiquetas en la UI de Social Planner (la API no puede) y luego mapear sus IDs.
+3. Confirmar que el aprobador correcto es `OjkAjHMdUjnblO7W1kBZ`.
+4. Verificar en la UI el botón de aprobación (la pestaña se congela al abrir el editor).
+5. Render dentro de n8n (servicio con Chromium) y automatización comentario → recurso (CTA con keyword): modelo listo, flujo no construido.
+6. Hermes: aún no alimenta el Content Engine; falta su prompt de «señales de contenido» (entrada `hermes_research` con fuentes verificadas).
+7. Estado `approved/scheduled/published` en Supabase: hoy no se sincroniza desde GHL (el post es la fuente de verdad); sincronización y métricas a 24 h/72 h/7 d quedan para la fase siguiente.
+- **Rollback:** desactivar/archivar el workflow 12; las tablas `content_*` se pueden borrar sin afectar nada más; borrar el post `in_review` desde Social Planner.

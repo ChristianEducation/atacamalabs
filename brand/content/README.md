@@ -25,6 +25,12 @@ Estos tres materiales existen hoy en el conocimiento del proyecto de ChatGPT y *
 
 Línea visual: sobria, tecnológica, clara y humana; fondos claros (blanco/crema), mucho aire, **una idea fuerte por slide**, poco 3D, sin neón, sin estética crypto, sin robots genéricos, sin circuitos decorativos.
 
+## Estado del Content Engine (6-oct-2026)
+
+- Renderer vigente: `scripts/content/render.mjs` (3 layouts, logos oficiales, tokens de arriba). `src/components/studio/SocialCard.tsx` ya usa la identidad actual.
+- **La guía oficial de publicaciones sigue sin estar en el repo**: el motor aplica las reglas del encargo y de este README. Cuando se copie `guia-de-publicaciones.md`, hay que contrastarla con `scripts/content/engine-core.mjs` (lista `BANNED`, límites) y con los layouts. Sin las hojas de la llamita **no se usa mascota**.
+- Detalle: `docs/ATACAMA-OS-IMPLEMENTATION.md`, Bloque H.
+
 ## Aviso sobre piezas antiguas
 
 Los exportables de `social/exports/` (C01–C06) y la plantilla `src/components/studio/SocialCard.tsx` usan la **paleta anterior (marrón `#4E2E1E` / crema `#FAF6F0`)** y el isotipo antiguo de 5 curvas. No son la identidad actual y no deben publicarse ni usarse de base visual sin re-temear.
