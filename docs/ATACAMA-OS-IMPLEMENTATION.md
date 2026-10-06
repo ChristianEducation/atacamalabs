@@ -360,3 +360,40 @@ Las 4 asociaciones previas (ver estado previo) quedaron intactas.
 ### E9. Rollback
 - Campos nuevos: borrar `tYjEMFrR2LAaWqPSQN0S` y `JzsnIz7M4LPS6yIrQ2mI` (`DELETE /locations/{id}/customFields/{id}`); quitar `fields.motivo_perdida`, `contact_fields` y `entry_policy` de `icp_packs.crm` (copia previa en `backups/2026-10-05/`).
 - Workflow 11: no está desplegado; basta no importarlo. Pipeline y workflows en producción: sin cambios.
+
+## CHECKPOINT FINAL — 6-oct-2026 (noche)
+
+**Resumen en una línea:** GHL ya es el centro operativo (modelo Business → Opportunity → Servicio contratado → Proyecto), y el flujo «oportunidad ganada → n8n» está probado de punta a punta en modo seguro (`dry_run = true`). Falta lo que depende de la interfaz de GHL y de cuentas externas (tareas automáticas, dashboard, redes, Gmail, Telegram).
+
+### Qué quedó funcionando
+| Área | Estado |
+|---|---|
+| GHL Core y permisos | Listos. Token `GHL_PRIVATE_INTEGRATION_TOKEN2` («Atacama OS — Claude») con Businesses, Objetos (schema y registros), Asociaciones, Contactos, Oportunidades, Calendarios, campos personalizados |
+| Objetos personalizados | **Servicio contratado** (`custom_objects.servicios_contratados`, `6ac440feb01eea82c5076de2`) y **Proyecto** (`custom_objects.proyectos`, `6ac440ff79c86f212d1cac6b`) |
+| Asociaciones | Business↔Servicio, Servicio↔Opportunity, Business↔Proyecto, Proyecto↔Servicio, más las nativas Business↔Opportunity y Business↔Contact: las 6 relaciones se crearon, leyeron y borraron con registros TEST |
+| Pipeline `Atacama Labs — Ventas` (`trSWhAcNDyUMmPlYIEib`) | Nuevo → Investigado → Contactado → Respondió → Diagnóstico → Propuesta → Seguimiento. **Ganado/Perdido son los estados nativos `won`/`lost`** (no hay etapas con esos nombres). IDs en la sección E1 |
+| Campos nuevos | `Motivo de pérdida` (oportunidad) y `Origen detallado` (contacto) |
+| Lead Sync v2.2 (`idniXY0Du2qet57O`) | Funcionando; los inbound entran a **Nuevo** |
+| Booking Sync (`VsLCMZ6MeDsNvGzI`) | Funcionando; probado e2e: reserva → oportunidad pasa a **Diagnóstico** |
+| n8n `Atacama Labs - 11 Won to Client` (`jB62BWlu1Eg6BEuD`) | **Activo**; credencial `GHL — Atacama OS` en los 8 nodos GHL; entrada compatible con el Webhook de GHL (`customData`, booleano o texto); 45 pruebas OK |
+| Workflow GHL `Atacama — Oportunidad ganada` | **Publicado** (v4). Hoy solo contiene el webhook |
+| Prueba real GHL → n8n | **PASS**. Datos TEST, oportunidad en Won → GHL disparó solo → ejecución n8n 22305 |
+| `opportunity_id` | Llegó correcto desde GHL (`{{opportunity.id}}` resuelve bien en un evento real) |
+| `dry_run` | `true` validado: ausente, inválido o ambiguo ⇒ siempre `true`. **Sigue en `true` en el webhook de GHL** |
+| Escrituras reales en la prueba | **Cero** (Business 3 de ejemplo, Servicios 0, Proyectos 0 antes, durante y después) |
+| Datos TEST | Eliminados; conteos iguales a los iniciales (43 contactos, 42 oportunidades, 5 tareas) |
+
+### Git
+- Rama: `feat/frontend-v2-2-1`. Commit funcional: `23c2936` — `feat: complete Atacama OS won-to-client flow` (encima de `4a98cfd` — `feat: establish Atacama OS CRM operations`).
+- **Push hecho** (`c28f001..23c2936`, fast-forward): `origin/feat/frontend-v2-2-1` = `23c2936`. Sin merge a `main`, sin PR. `main` remoto sigue en `2ccbf2a` (esos 2 commits solo agregan docs, n8n, ops y migraciones; no tocan `src/`).
+- Este checkpoint y `docs/ATACAMA-OS-NEXT.md` se guardaron **después** de ese commit: quedan sin commit hasta que se pida.
+- `.claude/` sigue fuera del repo.
+
+### Pendiente que depende de interfaz o de terceros
+- Tareas automáticas de etapa en GHL (3 workflows, especificados en E4) y las 4 tareas de onboarding dentro de `Atacama — Oportunidad ganada` (especificadas en E5). La prueba mostró que hoy ese workflow **no crea tareas**.
+- Nombre publicado del workflow GHL termina con un punto («…ganada.»): cosmético.
+- Dashboard `Atacama OS — Hoy` (clientes, servicios, proyectos, tareas, social).
+- Instagram y LinkedIn en Social Planner (0 cuentas conectadas), Gmail/dominio de envío, bot de Telegram para el Atacama Daily.
+- Vía 60–79 con gates en 03/09: decidida **no habilitar** hasta que el flujo de revisión sea visible.
+- Ocultar los campos legacy de EnBandeja, forzar el motivo al marcar Lost, rellenar `Origen detallado` desde Lead Sync (mejoras menores).
+- Sin resolver de bloques anteriores: `complete_territory_scan` ejecutable por anon, persistir el override de OpenClaw (requiere root), datos legales (razón social/RUT).
