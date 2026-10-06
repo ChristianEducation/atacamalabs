@@ -1,6 +1,6 @@
 // node n8n/build/content-engine.test.mjs — prueba los nodos Code de «12 Content Intake» con stubs de n8n.
 import fs from 'node:fs';
-import { buildContentIntake, ACCOUNTS, APPROVER_USER_ID } from './content-engine.mjs';
+import { buildContentIntake, ACCOUNTS, APPROVER_USER_ID, CATEGORY_IDS } from './content-engine.mjs';
 
 const wf = buildContentIntake();
 const codeOf = (name) => wf.nodes.find((n) => n.name === name).parameters.jsCode;
@@ -14,7 +14,7 @@ const run = (name, { nodes = {}, json = {}, input }) => {
   const f = new Function('$', '$json', '$input', '$items', codeOf(name));
   return f($, json, { first: () => ({ json: input ?? json }) }, null);
 };
-const evaluate = (body, keys = []) => run('Evaluate', { nodes: { 'Intake Webhook': { body }, 'Fetch Keys': { body: keys.map((k) => ({ idea_key: k })) } }, json: { statusCode: 200, body: [] } })[0].json;
+const evaluate = (body, keys = [], db = []) => run('Evaluate', { nodes: { 'Intake Webhook': { body }, 'Fetch Keys': { body: keys.map((k) => ({ idea_key: k })) }, 'Fetch Sources': { body: db } }, json: { statusCode: 200, body: [] } })[0].json;
 
 // Evaluate
 let r = evaluate({ piece: base, test: true });
@@ -27,6 +27,7 @@ t('fila de pieza: drafted, is_test, cuenta GHL', r.pieceRow.status === 'drafted'
 t('fuentes con source_key y verified', r.sourcesBody[0].source_key.startsWith('real_work:') && r.sourcesBody[0].verified === true);
 r = evaluate({ piece: base });
 t('sin test: sin prefijo', !r.ghlBody.summary.startsWith('[PRUEBA'));
+t('categoría de Social Planner según la pieza (Founder)', r.ghlBody.categoryId === CATEGORY_IDS.Founder);
 r = evaluate({ piece: base, submit_to_review: false });
 t('submit_to_review=false => hold', r.action === 'hold' && r.holdReason === 'submit_to_review_false');
 const bad = clone(base); bad.hook = 'x';
@@ -42,7 +43,19 @@ t('Instagram sin render => hold falta_render_o_medio', r.action === 'hold' && r.
 ig.media = [{ url: 'https://example.com/a.png', type: 'image/png' }, { url: 'https://example.com/b.png', type: 'image/png' }, { url: 'https://example.com/c.png', type: 'image/png' }];
 r = evaluate({ piece: ig });
 t('Instagram con render => submit con 3 medios', r.action === 'submit' && r.ghlBody.media.length === 3 && r.ghlBody.accountIds[0] === ACCOUNTS.instagram);
-try { run('Evaluate', { nodes: { 'Intake Webhook': { body: { icp_pack_id: '00000000-0000-0000-0000-000000000000', piece: base } }, 'Fetch Keys': { body: [] } }, json: {} }); t('pack ajeno => error', false); } catch { t('pack ajeno => error', true); }
+try { run('Evaluate', { nodes: { 'Intake Webhook': { body: { icp_pack_id: '00000000-0000-0000-0000-000000000000', piece: base } }, 'Fetch Keys': { body: [] }, 'Fetch Sources': { body: [] } }, json: {} }); t('pack ajeno => error', false); } catch { t('pack ajeno => error', true); }
+
+
+// Verificación de fuentes externas: la decide Supabase (gate de señales), no la pieza
+const ext = clone(base); ext.sources.push({ kind: 'hermes_research', title: 'Cambio de precios', url: 'https://example.com/precios', verified: true, evidence: [] });
+ext.claims.push({ text: 'Meta cambió el cobro de plantillas', external: true, source_url: 'https://example.com/precios' });
+r = evaluate({ piece: ext });
+t('fuente externa que se autodeclara verificada pero no está en BD => rechazo', r.action === 'reject' && r.evaluation.errors.some((e) => e.startsWith('claim_externo_fuente_no_verificada')), JSON.stringify(r.evaluation.errors));
+r = evaluate({ piece: ext }, [], [{ id: 'src-1', source_key: 'hermes_research:https://example.com/precios', verified: true }]);
+t('fuente externa verificada en BD => OK y se reutiliza su id', r.action === 'submit' && r.existingSourceIds.includes('src-1') && r.sourcesBody.every((x) => x.kind !== 'hermes_research'), JSON.stringify(r.evaluation.errors));
+r = evaluate({ piece: ext }, [], [{ id: 'src-1', source_key: 'hermes_research:https://example.com/precios', verified: false }]);
+t('fuente en BD pero no verificada => rechazo', r.action === 'reject');
+t('Mark Sources Used solo toca candidatas', JSON.stringify(wf.nodes.find((n) => n.name === 'Mark Sources Used').parameters).includes('signal_status=eq.candidate'));
 
 // Check GHL (guardas)
 const ev = { ...evaluate({ piece: base, test: true }) };

@@ -7,33 +7,128 @@
   "angle": "Mapear antes de automatizar: quién, qué falla y cómo se mide",
   "audience": "Dueños y gerentes de pymes que quieren automatizar pero no saben por dónde partir",
   "sources": [
-    { "kind": "evergreen", "title": "Método de diagnóstico de Atacama Labs", "url": "https://atacamalabs.cl", "verified": true, "evidence": [] }
+    {
+      "kind": "evergreen",
+      "title": "Método de diagnóstico de Atacama Labs",
+      "url": "https://atacamalabs.cl",
+      "verified": true,
+      "evidence": []
+    }
   ],
   "claims": [],
   "factors": {
-    "relevance": { "value": 9, "note": "Es el primer paso de cualquier proyecto de automatización de Atacama." },
-    "audience_fit": { "value": 8, "note": "La duda típica de un dueño de pyme." },
-    "novelty": { "value": 5, "note": "Tema recurrente; el valor está en la claridad." },
-    "evidence": { "value": 6, "note": "Método propio, sin cifras externas." },
-    "utility": { "value": 8, "note": "Tres preguntas aplicables hoy." },
-    "clarity": { "value": 9, "note": "Una idea por slide." },
-    "conversation": { "value": 6, "note": "Invita a mapear un proceso." },
-    "differentiation": { "value": 6, "note": "Enfoca el freno antes del acelerador." },
-    "non_repetition": { "value": 10, "note": "Primera pieza de este ángulo." }
+    "relevance": {
+      "value": 9,
+      "note": "Es el primer paso de cualquier proyecto de automatización de Atacama."
+    },
+    "audience_fit": {
+      "value": 8,
+      "note": "La duda típica de un dueño de pyme."
+    },
+    "novelty": {
+      "value": 5,
+      "note": "Tema recurrente; el valor está en la claridad."
+    },
+    "evidence": {
+      "value": 6,
+      "note": "Método propio, sin cifras externas."
+    },
+    "utility": {
+      "value": 8,
+      "note": "Tres preguntas aplicables hoy."
+    },
+    "clarity": {
+      "value": 9,
+      "note": "Una idea por slide."
+    },
+    "conversation": {
+      "value": 6,
+      "note": "Invita a mapear un proceso."
+    },
+    "differentiation": {
+      "value": 6,
+      "note": "Enfoca el freno antes del acelerador."
+    },
+    "non_repetition": {
+      "value": 10,
+      "note": "Primera pieza de este ángulo."
+    }
   },
   "rationale": "Evergreen de alto valor: método de trabajo propio, sin afirmaciones externas ni cifras.",
   "hook": "Antes de automatizar, responde estas tres preguntas.",
   "body": "Automatizar un proceso que nadie entiende solo lo hace fallar más rápido.\n\nAntes de elegir una herramienta, responde: quién lo hace hoy, qué pasa cuando falla y cómo vas a saber que funciona.\n\nSi quieres mapear uno de tus procesos, escríbenos y lo vemos juntos.",
   "slides": [
-    { "layout": "cover", "kicker": "Automatización", "title": "Antes de automatizar, responde tres preguntas" },
-    { "layout": "content", "kicker": "Pregunta 1", "title": "¿Quién hace esto hoy?", "body": "Si nadie sabe contestar, todavía no hay un proceso: hay hábitos." },
-    { "layout": "content", "kicker": "Pregunta 2", "title": "¿Qué pasa cuando falla?", "body": "Define el freno antes del acelerador: quién se entera y qué se revisa." },
-    { "layout": "content", "kicker": "Pregunta 3", "title": "¿Cómo sabrás que funciona?", "items": [ { "title": "Tiempo de respuesta", "text": "¿Cuánto tarda hoy?" }, { "title": "Consultas sin seguimiento", "text": "¿Cuántas se pierden?" }, { "title": "Tareas repetidas", "text": "¿Cuántas se hacen a mano?" } ] },
-    { "layout": "cta", "kicker": "Siguiente paso", "title": "Empieza por mapear un solo proceso", "body": "Uno. El que más te quita tiempo.", "cta_label": "atacamalabs.cl" }
+    {
+      "layout": "cover",
+      "kicker": "Automatización",
+      "title": "Antes de automatizar, responde *tres* preguntas",
+      "mascot": {
+        "sheet": "poses",
+        "pose": "pregunta"
+      }
+    },
+    {
+      "layout": "content",
+      "kicker": "Pregunta 1",
+      "title": "¿Quién hace esto *hoy*?",
+      "body": "Si nadie sabe contestar, todavía no hay un proceso: hay hábitos."
+    },
+    {
+      "layout": "content",
+      "kicker": "Pregunta 2",
+      "title": "¿Qué pasa cuando *falla*?",
+      "compare": {
+        "left": {
+          "label": "Sin freno",
+          "text": "Nadie se entera hasta que el cliente reclama."
+        },
+        "right": {
+          "label": "Con freno",
+          "text": "Alguien recibe el aviso y revisa antes de que escale."
+        }
+      }
+    },
+    {
+      "layout": "content",
+      "kicker": "Pregunta 3",
+      "title": "¿Cómo sabrás que *funciona*?",
+      "items": [
+        {
+          "title": "Tiempo de respuesta",
+          "text": "¿Cuánto tarda hoy?"
+        },
+        {
+          "title": "Consultas sin seguimiento",
+          "text": "¿Cuántas se pierden?"
+        },
+        {
+          "title": "Tareas repetidas",
+          "text": "¿Cuántas se hacen a mano?"
+        }
+      ]
+    },
+    {
+      "layout": "cta",
+      "kicker": "Siguiente paso",
+      "title": "Empieza por mapear *un* proceso",
+      "body": "Uno. El que más te quita tiempo.",
+      "cta_label": "atacamalabs.cl",
+      "mascot": {
+        "sheet": "emociones",
+        "pose": "orgullo"
+      }
+    }
   ],
-  "cta": { "type": "link", "text": "Más en atacamalabs.cl" },
-  "hashtags": ["#automatización"],
-  "evidence_urls": ["https://atacamalabs.cl"],
+  "cta": {
+    "type": "link",
+    "text": "Más en atacamalabs.cl"
+  },
+  "hashtags": [
+    "#automatización"
+  ],
+  "evidence_urls": [
+    "https://atacamalabs.cl"
+  ],
   "visual_direction": "Fondo claro con aire; portada y cierre varían (claro/azul/oscuro); una idea por slide; logo oficial; sin mascota.",
   "schedule_suggestion": null,
   "media": []

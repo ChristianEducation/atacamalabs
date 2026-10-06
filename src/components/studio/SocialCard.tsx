@@ -3,9 +3,9 @@ import type { SocialPanel } from "@/lib/social-content";
 
 /**
  * Vista previa interna de un panel 1080×1350 con la identidad VIGENTE (6-oct-2026):
- * azul Atacama #0F5CED, azul oscuro #041228, tinta #121A2B, gris claro #F0F2F4, Newsreader (fina) + DM Sans,
+ * azul Atacama #0F5CED, azul oscuro #041228, tinta #121A2B, gris claro #F0F2F4, DM Sans fina (guía de publicaciones v1.0: sans serif limpia),
  * y el logo OFICIAL de public/brand/ (nunca reconstruido). El renderer de producción del Content Engine es
- * scripts/content/render.mjs (mismos tokens); esta plantilla solo sirve para revisar paneles en /studio.
+ * scripts/content/render.mjs (mismos tokens y reglas: brand/content/ATACAMA-LABS-GUIA-PUBLICACIONES.md); esta plantilla solo sirve para revisar paneles en /studio.
  */
 export function SocialCard({
   panel,
@@ -56,11 +56,11 @@ export function SocialCard({
         <div style={{ width: 72, height: 3, background: isCta ? "#2E74F5" : "#0F5CED", marginBottom: 40 }} />
         <h1
           style={{
-            fontFamily: "var(--font-newsreader), serif",
+            fontFamily: "var(--font-dm-sans), sans-serif",
             fontWeight: 300,
             fontSize: 88,
             lineHeight: 1.06,
-            letterSpacing: "-0.012em",
+            letterSpacing: "-0.022em",
             margin: 0,
           }}
         >

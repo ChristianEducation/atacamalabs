@@ -26,7 +26,9 @@ export const ACCOUNTS = {
   linkedin_page: '6ac4fabe3356d12d204557ea_pxHuOsiz2i3lM6BtC9IM_145278681_page',
   linkedin_profile: '6ac4fabe3356d12d204557ea_pxHuOsiz2i3lM6BtC9IM_D9Z-EPMxLu_profile',
 };
-export const APPROVER_USER_ID = 'OjkAjHMdUjnblO7W1kBZ'; // Christian Wevar (c.wevarh@gmail.com)
+// Categorías de Social Planner (creadas por interfaz el 6-oct-2026; la API de integración no puede crearlas)
+export const CATEGORY_IDS = { Educativo: '6ac5265a4f30bdd64eaa5807', Caso: '6ac52690faf51cff54e27cf4', Demo: '6ac52699faf51cff54e29123', Noticia: '6ac527bf0c6e2434babc5054', Evergreen: '6ac527cc3abea0cc82a7ad8a', Founder: '6ac527f0d3e22f4c60cc70d4' };
+export const APPROVER_USER_ID = 'OjkAjHMdUjnblO7W1kBZ'; // usuario operativo de Social Planner (ver docs, Bloque I)
 const SUPABASE_CRED = { supabaseApi: { id: 'XOmXUuyLVSazDIh5', name: 'Atacama Labs - Supabase' } };
 const GHL_CRED = { httpHeaderAuth: { id: '4Vc6nfxyKjZ14Bep', name: 'GHL — Atacama OS' } };
 const INGEST_CRED = { httpHeaderAuth: { id: 'lUGhlXVaQBEiEh5S', name: 'Atacama Labs - Ingest Key' } };
@@ -46,11 +48,19 @@ const EVALUATE = `${evaluatePiece.toString()}
 const PACK_ID = '${PACK_ID}';
 const ACCOUNTS = ${JSON.stringify(ACCOUNTS)};
 const APPROVER = '${APPROVER_USER_ID}';
+const CATEGORIES = ${JSON.stringify(CATEGORY_IDS)};
 const first = $('Intake Webhook').first().json ?? {};
 const body = first.body ?? first;
 if (body.icp_pack_id && body.icp_pack_id !== PACK_ID) throw new Error('SEGURIDAD: icp_pack_id no coincide con el pack de Atacama Labs.');
 const piece = body.piece;
+if (!piece || !Array.isArray(piece.sources)) return [{ json: { action: 'reject', test: false, evaluation: evaluatePiece(piece, {}) } }];
 const isTest = body.test === true;
+// La verificación de fuentes externas NO la declara la pieza: viene de content_sources (gate de señales, workflow 13).
+const dbRows = ($('Fetch Sources').first().json || {}).body;
+const dbMap = {};
+(Array.isArray(dbRows) ? dbRows : []).forEach((r) => { dbMap[r.source_key] = r; });
+const keyOf = (s) => s.key || ((s.kind === 'real_work' || s.kind === 'evergreen' ? s.kind : 'hermes_research') + ':' + (s.url || ''));
+piece.sources = piece.sources.map((s) => { const internal = s.kind === 'real_work' || s.kind === 'evergreen'; const db = dbMap[keyOf(s)]; return { ...s, verified: internal ? s.verified === true : Boolean(db && db.verified) }; });
 const wantsReview = body.submit_to_review !== false;
 const rows = ($('Fetch Keys').first().json || {}).body;
 const existing = Array.isArray(rows) ? rows.map((r) => r.idea_key) : [];
@@ -67,7 +77,8 @@ if (action === 'submit' && needsMedia && !media.length) { action = 'hold'; holdR
 if (action === 'submit' && !wantsReview) { action = 'hold'; holdReason = 'submit_to_review_false'; }
 
 const slug = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
-const sourcesBody = piece.sources.map((s) => ({ icp_pack_id: PACK_ID, source_key: s.kind + ':' + (s.url ? s.url : slug(s.title)), kind: s.kind, title: s.title, url: s.url || null,
+const existingSourceIds = piece.sources.map((s) => dbMap[keyOf(s)] && dbMap[keyOf(s)].id).filter(Boolean);
+const sourcesBody = piece.sources.filter((s) => !dbMap[keyOf(s)]).map((s) => ({ icp_pack_id: PACK_ID, source_key: s.kind + ':' + (s.url ? s.url : slug(s.title)), kind: s.kind, title: s.title, url: s.url || null,
   summary: s.summary || null, evidence: s.evidence || [], verified: s.verified === true }));
 const pieceRow = { icp_pack_id: PACK_ID, idea_key: ev.idea_key, topic: piece.topic, angle: piece.angle, audience: piece.audience, channel: piece.channel, format: piece.format,
   category: piece.category, score: ev.score, score_breakdown: ev.breakdown, rationale: piece.rationale, evidence_urls: ev.evidence_urls, piece,
@@ -80,13 +91,13 @@ if (!Number.isFinite(when) || when < minDate) { const d = new Date(Date.now() + 
 const summary = (isTest ? '[PRUEBA ATACAMA OS — NO PUBLICAR] ' : '') + ev.post_text;
 // Las etiquetas/categorías de Social Planner exigen ObjectIds creados desde la interfaz (la API con token de integración no puede crearlos): por ahora formato y categoría viajan en Supabase.
 const ghlBody = { accountIds: [ACCOUNTS[piece.channel]], summary, type: 'post', status: 'in_review', userId: APPROVER, media: media.map((m) => ({ url: m.url, type: m.type || 'image/png' })),
-  scheduleDate: new Date(when).toISOString(), postApprovalDetails: { approver: APPROVER } };
+  scheduleDate: new Date(when).toISOString(), postApprovalDetails: { approver: APPROVER }, ...(CATEGORIES[piece.category] ? { categoryId: CATEGORIES[piece.category] } : {}) };
 if (ghlBody.status !== 'in_review') throw new Error('SEGURIDAD: este workflow solo puede crear posts en in_review.');
-return [{ json: { ...base, action, holdReason, sourcesBody, pieceRow, ghlBody } }];`;
+return [{ json: { ...base, action, holdReason, sourcesBody, existingSourceIds, pieceRow, ghlBody } }];`;
 
 const BUILD_ROW = `if (($json.statusCode || 0) >= 300) throw new Error('Supabase content_sources falló (HTTP ' + $json.statusCode + '): ' + JSON.stringify($json.body || {}).slice(0, 300));
 const ev = $('Evaluate').first().json;
-const ids = (($json.body) || []).map((r) => r.id).filter(Boolean);
+const ids = (Array.isArray($json.body) ? $json.body : []).map((r) => r.id).filter(Boolean).concat(ev.existingSourceIds || []);
 return [{ json: { ...ev, pieceRowFull: { ...ev.pieceRow, source_ids: ids } } }];`;
 
 const CHECK_GHL = `const up = $('Upsert Piece').first().json;
@@ -104,7 +115,7 @@ const RESP_HELD = `const ev = $('Build Row').first().json;
 const saved = Array.isArray($('Upsert Piece').first().json.body) ? $('Upsert Piece').first().json.body[0] : null;
 return [{ json: { ok: true, action: 'held', reason: ev.holdReason, score: ev.evaluation.score, piece_id: saved && saved.id, status: saved && saved.status, breakdown: ev.evaluation.breakdown, lint_hits: ev.evaluation.lint_hits } }];`;
 const RESP_SUBMITTED = `const c = $('Check GHL').first().json;
-return [{ json: { ok: true, action: 'in_review', ghl_post_id: c.ghl_post_id, piece_id: (($json.body || [])[0] || {}).id || null, score: c.evaluation.score, channel: c.pieceRow.channel, status: 'in_review',
+return [{ json: { ok: true, action: 'in_review', ghl_post_id: c.ghl_post_id, piece_id: ((($('Mark In Review').first().json.body) || [])[0] || {}).id || null, score: c.evaluation.score, channel: c.pieceRow.channel, status: 'in_review',
   note: 'Quedó en GHL Social Planner como in_review. Nada se programó ni publicó.' } }];`;
 
 export function buildContentIntake() {
@@ -112,7 +123,8 @@ export function buildContentIntake() {
     { id: randomUUID(), name: 'Intake Webhook', type: 'n8n-nodes-base.webhook', typeVersion: 2, position: [0, 0], webhookId: randomUUID(), credentials: INGEST_CRED,
       parameters: { httpMethod: 'POST', path: 'atacama-content-intake', authentication: 'headerAuth', responseMode: 'lastNode', options: {} } },
     sb('Fetch Keys', 'GET', `${SUPABASE}/rest/v1/content_pieces?icp_pack_id=eq.${PACK_ID}&select=idea_key&limit=1000`, null, [240, 0]),
-    code('Evaluate', EVALUATE, [480, 0]),
+    sb('Fetch Sources', 'GET', `${SUPABASE}/rest/v1/content_sources?icp_pack_id=eq.${PACK_ID}&select=id,source_key,verified&limit=3000`, null, [360, 0]),
+    code('Evaluate', EVALUATE, [600, 0]),
     iff('Rejected?', '$json.action === "reject"', [720, 0]),
     code('Respond Rejected', RESP_REJECT, [960, -140]),
     sb('Upsert Sources', 'POST', `${SUPABASE}/rest/v1/content_sources?on_conflict=icp_pack_id,source_key`, '={{ JSON.stringify($json.sourcesBody) }}', [960, 60], 'resolution=merge-duplicates,return=representation'),
@@ -126,12 +138,14 @@ export function buildContentIntake() {
         sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($("Build Row").first().json.ghlBody) }}', options: full() } },
     code('Check GHL', CHECK_GHL, [2160, 160]),
     sb('Mark In Review', 'PATCH', `={{ "${SUPABASE}/rest/v1/content_pieces?icp_pack_id=eq.${PACK_ID}&idea_key=eq." + $json.evaluation.idea_key }}`, '={{ JSON.stringify($json.patchBody) }}', [2400, 160], 'return=representation'),
-    code('Respond Submitted', RESP_SUBMITTED, [2640, 160]),
+    sb('Mark Sources Used', 'PATCH', `={{ "${SUPABASE}/rest/v1/content_sources?icp_pack_id=eq.${PACK_ID}&signal_status=eq.candidate&id=in.(" + (($('Build Row').first().json.pieceRowFull.source_ids || []).concat(['00000000-0000-0000-0000-000000000000'])).join(',') + ")" }}`, '={{ JSON.stringify({ signal_status: "used" }) }}', [2640, 160], 'return=minimal'),
+    code('Respond Submitted', RESP_SUBMITTED, [2880, 160]),
   ];
   const to = (n) => [{ node: n, type: 'main', index: 0 }];
   const connections = {
     'Intake Webhook': { main: [to('Fetch Keys')] },
-    'Fetch Keys': { main: [to('Evaluate')] },
+    'Fetch Keys': { main: [to('Fetch Sources')] },
+    'Fetch Sources': { main: [to('Evaluate')] },
     'Evaluate': { main: [to('Rejected?')] },
     'Rejected?': { main: [to('Respond Rejected'), to('Upsert Sources')] },
     'Upsert Sources': { main: [to('Build Row')] },
@@ -140,7 +154,8 @@ export function buildContentIntake() {
     'Submit?': { main: [to('Create GHL Post'), to('Respond Held')] },
     'Create GHL Post': { main: [to('Check GHL')] },
     'Check GHL': { main: [to('Mark In Review')] },
-    'Mark In Review': { main: [to('Respond Submitted')] },
+    'Mark In Review': { main: [to('Mark Sources Used')] },
+    'Mark Sources Used': { main: [to('Respond Submitted')] },
   };
   return { name: 'Atacama Labs - 12 Content Intake', nodes, connections, settings: { executionOrder: 'v1' } };
 }

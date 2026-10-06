@@ -2,7 +2,7 @@
   "name": "Atacama Labs - 12 Content Intake",
   "nodes": [
     {
-      "id": "db202154-be2a-4578-b5aa-2b4f942db837",
+      "id": "02822aef-9a89-4f86-848e-bea3d319ea0a",
       "name": "Intake Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -10,7 +10,7 @@
         0,
         0
       ],
-      "webhookId": "d6ffb4d8-b400-40b0-9e74-13f07e574382",
+      "webhookId": "7008dd1a-c5ff-42bd-8066-c22ab0e332bb",
       "credentials": {
         "httpHeaderAuth": {
           "id": "lUGhlXVaQBEiEh5S",
@@ -26,7 +26,7 @@
       }
     },
     {
-      "id": "2d9ebc09-b1e8-4794-a647-484fe723b3a1",
+      "id": "40358f97-cf42-439d-8206-6c167fce65c2",
       "name": "Fetch Keys",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -59,20 +59,53 @@
       }
     },
     {
-      "id": "46a97c2b-8502-49fc-9a34-36b60f3208d2",
+      "id": "98954916-509a-4bbf-99e1-5c932c2f8c84",
+      "name": "Fetch Sources",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        360,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "parameters": {
+        "method": "GET",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/content_sources?icp_pack_id=eq.0ba54785-bff0-4a2d-a397-64e697d34e38&select=id,source_key,verified&limit=3000",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": false,
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "40d21f2d-0222-4750-9abb-06fa01305420",
       "name": "Evaluate",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        480,
+        600,
         0
       ],
       "parameters": {
-        "jsCode": "function evaluatePiece(piece, ctx = {}) {\n  const errors = [];\n  const warnings = [];\n  const CHANNELS = ['instagram', 'linkedin_page', 'linkedin_profile'];\n  const FORMATS = ['texto', 'imagen', 'carrusel', 'demo', 'reel'];\n  const CATEGORIES = ['Educativo', 'Caso', 'Demo', 'Noticia', 'Evergreen', 'Founder'];\n  const SOURCE_KINDS = ['hermes_research', 'real_work', 'evergreen', 'manual'];\n  const CTA_TYPES = ['none', 'comment_keyword', 'resource', 'dm', 'link'];\n  const LAYOUTS = ['cover', 'content', 'cta'];\n  const FACTORS = { relevance: 15, audience_fit: 12, novelty: 8, evidence: 15, utility: 12, clarity: 10, conversation: 8, differentiation: 10, non_repetition: 10 };\n  const THRESHOLD = 70;\n  const isUrl = (u) => /^https?:\\/\\/[^\\s/$.?#][^\\s]*$/i.test(String(u || ''));\n  const str = (v) => (typeof v === 'string' ? v.trim() : '');\n  const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9% ]+/g, ' ').replace(/\\s+/g, ' ').trim();\n  const fnv = (s) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16).padStart(8, '0'); };\n\n  const p = piece && typeof piece === 'object' ? piece : {};\n  if (p.version !== 1) errors.push('version_invalida');\n  if (!CHANNELS.includes(p.channel)) errors.push('canal_invalido');\n  if (!FORMATS.includes(p.format)) errors.push('formato_invalido');\n  if (!CATEGORIES.includes(p.category)) errors.push('categoria_invalida');\n  const topic = str(p.topic);\n  const angle = str(p.angle);\n  const hook = str(p.hook);\n  const body = str(p.body);\n  if (topic.length < 5 || topic.length > 140) errors.push('topic_fuera_de_rango');\n  if (!angle) errors.push('angle_obligatorio');\n  if (!str(p.audience)) errors.push('audience_obligatoria');\n  if (hook.length < 8 || hook.length > 160) errors.push('hook_fuera_de_rango');\n  if (body.length < 40) errors.push('body_muy_corto');\n  if (!str(p.rationale)) errors.push('rationale_obligatorio');\n  if (!str(p.visual_direction) && ['imagen', 'carrusel', 'demo', 'reel'].includes(p.format)) errors.push('visual_direction_obligatoria');\n\n  // Canal ↔ formato\n  if (p.channel === 'instagram' && p.format === 'texto') errors.push('instagram_requiere_medio');\n  const hashtags = Array.isArray(p.hashtags) ? p.hashtags.map(str).filter(Boolean) : [];\n  if (hashtags.length > 5) errors.push('demasiados_hashtags');\n  const ctaObj = p.cta && typeof p.cta === 'object' ? p.cta : { type: 'none' };\n  if (!CTA_TYPES.includes(ctaObj.type || 'none')) errors.push('cta_tipo_invalido');\n  if (ctaObj.type === 'comment_keyword' && (!str(ctaObj.keyword) || !str(ctaObj.resource))) errors.push('cta_keyword_requiere_keyword_y_recurso');\n  if (ctaObj.type === 'resource' && !str(ctaObj.resource)) errors.push('cta_recurso_obligatorio');\n  const ctaText = str(ctaObj.text);\n\n  // Texto final del post\n  let postText = hook + '\\n\\n' + body;\n  if (ctaText) postText += '\\n\\n' + ctaText;\n  if (hashtags.length) postText += '\\n\\n' + hashtags.map((h) => (h.startsWith('#') ? h : '#' + h)).join(' ');\n  const maxLen = p.channel === 'instagram' ? 2200 : 3000;\n  if (postText.length > maxLen) errors.push('texto_excede_limite_' + maxLen);\n\n  // Slides\n  const slides = Array.isArray(p.slides) ? p.slides : [];\n  if (['imagen', 'carrusel'].includes(p.format)) {\n    const min = p.format === 'imagen' ? 1 : 3;\n    const max = p.format === 'imagen' ? 1 : 10;\n    if (slides.length < min || slides.length > max) errors.push('cantidad_de_slides_invalida');\n  }\n  slides.forEach((s, i) => {\n    if (!LAYOUTS.includes(s && s.layout)) errors.push('slide_' + (i + 1) + '_layout_invalido');\n    const t = str(s && s.title);\n    if (!t) errors.push('slide_' + (i + 1) + '_sin_titulo');\n    if (t.length > 90) errors.push('slide_' + (i + 1) + '_titulo_largo');\n    if (str(s && s.body).length > 180) errors.push('slide_' + (i + 1) + '_texto_largo');\n    if (Array.isArray(s && s.items) && s.items.length > 4) errors.push('slide_' + (i + 1) + '_muchas_ideas');\n  });\n  if (p.format === 'carrusel' && slides.length && slides[0].layout !== 'cover') warnings.push('primera_slide_no_es_portada');\n\n  // Fuentes y claims\n  const sources = Array.isArray(p.sources) ? p.sources : [];\n  if (!sources.length) errors.push('sin_fuentes');\n  sources.forEach((s, i) => {\n    if (!SOURCE_KINDS.includes(s && s.kind)) errors.push('fuente_' + (i + 1) + '_tipo_invalido');\n    if (!str(s && s.title)) errors.push('fuente_' + (i + 1) + '_sin_titulo');\n    if (s && s.url && !isUrl(s.url)) errors.push('fuente_' + (i + 1) + '_url_invalida');\n  });\n  const evidenceUrls = (Array.isArray(p.evidence_urls) ? p.evidence_urls : []).map(str).filter(Boolean);\n  if (evidenceUrls.some((u) => !isUrl(u))) errors.push('evidence_url_invalida');\n  const verifiedSources = sources.filter((s) => s && s.verified === true);\n  const claims = Array.isArray(p.claims) ? p.claims : [];\n  claims.forEach((c, i) => {\n    if (!str(c && c.text)) errors.push('claim_' + (i + 1) + '_sin_texto');\n    if (c && c.external === true) {\n      if (!isUrl(c.source_url)) errors.push('claim_externo_sin_fuente:' + str(c.text).slice(0, 40));\n      else if (!verifiedSources.some((s) => s.url === c.source_url || (Array.isArray(s.evidence) && s.evidence.some((e) => e && e.url === c.source_url)))) errors.push('claim_externo_fuente_no_verificada:' + str(c.text).slice(0, 40));\n    }\n  });\n  // Cifras / porcentajes en el texto deben tener respaldo en un claim\n  const allText = [hook, body, ctaText].concat(slides.map((s) => [s && s.kicker, s && s.title, s && s.body].concat((s && s.items) || []).map((x) => (typeof x === 'object' && x ? str(x.title) + ' ' + str(x.text) : str(x))).join(' '))).join('\\n');\n  const claimBlob = norm(claims.map((c) => str(c && c.text)).join(' | '));\n  const figures = allText.match(/\\d[\\d.,]*\\s?%|\\$\\s?\\d[\\d.,]*|\\d[\\d.,]*\\s?(millones|mil millones|veces)\\b/gi) || [];\n  figures.forEach((f) => { if (!claimBlob.includes(norm(f))) errors.push('cifra_sin_respaldo:' + f.trim()); });\n  if (p.category === 'Noticia' && !claims.some((c) => c && c.external === true)) errors.push('noticia_sin_claim_externo');\n\n  // Lint de marca / relleno de IA\n  const BANNED = [/revolucion/i, /game.?changer/i, /en el mundo actual/i, /desbloque/i, /potencia tu/i, /el futuro (ya )?(est[aá]|es)/i, /innovador/i, /soluciones? integrales?/i, /sinergia/i, /disruptiv/i, /hoy m[aá]s que nunca/i, /llev(a|ar) (tu|su) negocio al siguiente nivel/i, /transformaci[oó]n digital/i, /en este post/i, /sum[eé]rgete/i, /\\bdescubre c[oó]mo\\b/i];\n  let penalties = 0;\n  const lintHits = [];\n  BANNED.forEach((re) => { if (re.test(allText)) { penalties += 3; lintHits.push(String(re.source)); } });\n  if (/agenda (una|tu) llamada/i.test(allText)) { penalties += 4; lintHits.push('cta_generico_agenda_llamada'); }\n  const emojiCount = (allText.match(/[\\u{1F300}-\\u{1FAFF}\\u{2600}-\\u{27BF}]/gu) || []).length;\n  if (emojiCount > 3) { penalties += 3; lintHits.push('exceso_de_emojis'); }\n  penalties = Math.min(penalties, 20);\n\n  // Factores 0–10 (los asigna quien genera la pieza; aquí se validan, se acotan y se aplican topes)\n  const f = p.factors && typeof p.factors === 'object' ? p.factors : {};\n  const breakdown = {};\n  let raw = 0;\n  Object.keys(FACTORS).forEach((k) => {\n    let v = Number(f[k] && typeof f[k] === 'object' ? f[k].value : f[k]);\n    if (!Number.isFinite(v)) { errors.push('factor_faltante:' + k); v = 0; }\n    v = Math.max(0, Math.min(10, v));\n    if (k === 'evidence' && !verifiedSources.length) v = Math.min(v, 2);\n    if (k === 'non_repetition' && Array.isArray(ctx.existingIdeaKeys)) { /* se fija abajo con idea_key */ }\n    breakdown[k] = v;\n  });\n  const ideaKey = fnv(norm(p.channel) + '|' + norm(topic) + '|' + norm(angle));\n  if (Array.isArray(ctx.existingIdeaKeys) && ctx.existingIdeaKeys.includes(ideaKey)) { errors.push('idea_repetida'); breakdown.non_repetition = 0; }\n  Object.keys(FACTORS).forEach((k) => { raw += (FACTORS[k] * breakdown[k]) / 10; });\n  const score = Math.max(0, Math.min(100, Math.round(raw - penalties)));\n\n  let decision;\n  if (errors.length) decision = 'rejected';\n  else if (score >= THRESHOLD) decision = 'candidate';\n  else decision = 'below_threshold';\n\n  return { ok: errors.length === 0, decision, score, threshold: THRESHOLD, breakdown, penalties, lint_hits: lintHits, errors, warnings, idea_key: ideaKey, post_text: postText, evidence_urls: evidenceUrls };\n}\n\nconst PACK_ID = '0ba54785-bff0-4a2d-a397-64e697d34e38';\nconst ACCOUNTS = {\"instagram\":\"6ac43e3ecfe0752734a5fe1e_pxHuOsiz2i3lM6BtC9IM_17841424613699090\",\"linkedin_page\":\"6ac4fabe3356d12d204557ea_pxHuOsiz2i3lM6BtC9IM_145278681_page\",\"linkedin_profile\":\"6ac4fabe3356d12d204557ea_pxHuOsiz2i3lM6BtC9IM_D9Z-EPMxLu_profile\"};\nconst APPROVER = 'OjkAjHMdUjnblO7W1kBZ';\nconst first = $('Intake Webhook').first().json ?? {};\nconst body = first.body ?? first;\nif (body.icp_pack_id && body.icp_pack_id !== PACK_ID) throw new Error('SEGURIDAD: icp_pack_id no coincide con el pack de Atacama Labs.');\nconst piece = body.piece;\nconst isTest = body.test === true;\nconst wantsReview = body.submit_to_review !== false;\nconst rows = ($('Fetch Keys').first().json || {}).body;\nconst existing = Array.isArray(rows) ? rows.map((r) => r.idea_key) : [];\nconst ev = evaluatePiece(piece, { existingIdeaKeys: existing });\nconst base = { test: isTest, evaluation: ev };\nif (ev.decision === 'rejected') return [{ json: { ...base, action: 'reject' } }];\n\n// ¿falta el render? Instagram y los formatos visuales requieren medio ya subido (URL).\nconst media = Array.isArray(piece.media) ? piece.media.filter((m) => m && /^https?:\\/\\//.test(m.url || '')) : [];\nconst needsMedia = piece.channel === 'instagram' || ['imagen', 'carrusel', 'demo', 'reel'].includes(piece.format);\nlet action = ev.decision === 'candidate' ? 'submit' : 'hold';\nlet holdReason = ev.decision === 'candidate' ? null : 'score_bajo_el_umbral';\nif (action === 'submit' && needsMedia && !media.length) { action = 'hold'; holdReason = 'falta_render_o_medio'; }\nif (action === 'submit' && !wantsReview) { action = 'hold'; holdReason = 'submit_to_review_false'; }\n\nconst slug = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);\nconst sourcesBody = piece.sources.map((s) => ({ icp_pack_id: PACK_ID, source_key: s.kind + ':' + (s.url ? s.url : slug(s.title)), kind: s.kind, title: s.title, url: s.url || null,\n  summary: s.summary || null, evidence: s.evidence || [], verified: s.verified === true }));\nconst pieceRow = { icp_pack_id: PACK_ID, idea_key: ev.idea_key, topic: piece.topic, angle: piece.angle, audience: piece.audience, channel: piece.channel, format: piece.format,\n  category: piece.category, score: ev.score, score_breakdown: ev.breakdown, rationale: piece.rationale, evidence_urls: ev.evidence_urls, piece,\n  status: action === 'submit' ? 'drafted' : 'scored', ghl_account_id: ACCOUNTS[piece.channel], is_test: isTest, updated_at: new Date().toISOString() };\n\n// Propuesta de fecha: la sugerida si es ≥ 2 días en el futuro; si no, en 7 días a las 13:00 UTC (10:00 Chile). Es solo una propuesta: nada se programa sin aprobación.\nconst minDate = Date.now() + 2 * 86400000;\nlet when = piece.schedule_suggestion ? new Date(piece.schedule_suggestion).getTime() : NaN;\nif (!Number.isFinite(when) || when < minDate) { const d = new Date(Date.now() + 7 * 86400000); d.setUTCHours(13, 0, 0, 0); when = d.getTime(); }\nconst summary = (isTest ? '[PRUEBA ATACAMA OS — NO PUBLICAR] ' : '') + ev.post_text;\n// Las etiquetas/categorías de Social Planner exigen ObjectIds creados desde la interfaz (la API con token de integración no puede crearlos): por ahora formato y categoría viajan en Supabase.\nconst ghlBody = { accountIds: [ACCOUNTS[piece.channel]], summary, type: 'post', status: 'in_review', userId: APPROVER, media: media.map((m) => ({ url: m.url, type: m.type || 'image/png' })),\n  scheduleDate: new Date(when).toISOString(), postApprovalDetails: { approver: APPROVER } };\nif (ghlBody.status !== 'in_review') throw new Error('SEGURIDAD: este workflow solo puede crear posts en in_review.');\nreturn [{ json: { ...base, action, holdReason, sourcesBody, pieceRow, ghlBody } }];"
+        "jsCode": "function evaluatePiece(piece, ctx = {}) {\r\n  const errors = [];\r\n  const warnings = [];\r\n  const CHANNELS = ['instagram', 'linkedin_page', 'linkedin_profile'];\r\n  const FORMATS = ['texto', 'imagen', 'carrusel', 'demo', 'reel'];\r\n  const CATEGORIES = ['Educativo', 'Caso', 'Demo', 'Noticia', 'Evergreen', 'Founder'];\r\n  const SOURCE_KINDS = ['hermes_research', 'real_work', 'evergreen', 'manual'];\r\n  const CTA_TYPES = ['none', 'comment_keyword', 'resource', 'dm', 'link'];\r\n  const LAYOUTS = ['cover', 'content', 'cta'];\r\n  const FACTORS = { relevance: 15, audience_fit: 12, novelty: 8, evidence: 15, utility: 12, clarity: 10, conversation: 8, differentiation: 10, non_repetition: 10 };\r\n  const THRESHOLD = 70;\r\n  const isUrl = (u) => /^https?:\\/\\/[^\\s/$.?#][^\\s]*$/i.test(String(u || ''));\r\n  const str = (v) => (typeof v === 'string' ? v.trim() : '');\r\n  const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9% ]+/g, ' ').replace(/\\s+/g, ' ').trim();\r\n  const fnv = (s) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16).padStart(8, '0'); };\r\n\r\n  const p = piece && typeof piece === 'object' ? piece : {};\r\n  if (p.version !== 1) errors.push('version_invalida');\r\n  if (!CHANNELS.includes(p.channel)) errors.push('canal_invalido');\r\n  if (!FORMATS.includes(p.format)) errors.push('formato_invalido');\r\n  if (!CATEGORIES.includes(p.category)) errors.push('categoria_invalida');\r\n  const topic = str(p.topic);\r\n  const angle = str(p.angle);\r\n  const hook = str(p.hook);\r\n  const body = str(p.body);\r\n  if (topic.length < 5 || topic.length > 140) errors.push('topic_fuera_de_rango');\r\n  if (!angle) errors.push('angle_obligatorio');\r\n  if (!str(p.audience)) errors.push('audience_obligatoria');\r\n  if (hook.length < 8 || hook.length > 160) errors.push('hook_fuera_de_rango');\r\n  if (body.length < 40) errors.push('body_muy_corto');\r\n  if (!str(p.rationale)) errors.push('rationale_obligatorio');\r\n  if (!str(p.visual_direction) && ['imagen', 'carrusel', 'demo', 'reel'].includes(p.format)) errors.push('visual_direction_obligatoria');\r\n\r\n  // Canal ↔ formato\r\n  if (p.channel === 'instagram' && p.format === 'texto') errors.push('instagram_requiere_medio');\r\n  const hashtags = Array.isArray(p.hashtags) ? p.hashtags.map(str).filter(Boolean) : [];\r\n  if (hashtags.length > 5) errors.push('demasiados_hashtags');\r\n  const ctaObj = p.cta && typeof p.cta === 'object' ? p.cta : { type: 'none' };\r\n  if (!CTA_TYPES.includes(ctaObj.type || 'none')) errors.push('cta_tipo_invalido');\r\n  if (ctaObj.type === 'comment_keyword' && (!str(ctaObj.keyword) || !str(ctaObj.resource))) errors.push('cta_keyword_requiere_keyword_y_recurso');\r\n  if (ctaObj.type === 'resource' && !str(ctaObj.resource)) errors.push('cta_recurso_obligatorio');\r\n  const ctaText = str(ctaObj.text);\r\n\r\n  // Texto final del post\r\n  let postText = hook + '\\n\\n' + body;\r\n  if (ctaText) postText += '\\n\\n' + ctaText;\r\n  if (hashtags.length) postText += '\\n\\n' + hashtags.map((h) => (h.startsWith('#') ? h : '#' + h)).join(' ');\r\n  const maxLen = p.channel === 'instagram' ? 2200 : 3000;\r\n  if (postText.length > maxLen) errors.push('texto_excede_limite_' + maxLen);\r\n\r\n  // Slides\r\n  const slides = Array.isArray(p.slides) ? p.slides : [];\r\n  if (['imagen', 'carrusel'].includes(p.format)) {\r\n    const min = p.format === 'imagen' ? 1 : 3;\r\n    const max = p.format === 'imagen' ? 1 : 10;\r\n    if (slides.length < min || slides.length > max) errors.push('cantidad_de_slides_invalida');\r\n  }\r\n  const POSES = ['neutral', 'pregunta', 'celebra', 'senala', 'celular', 'brazos_arriba', 'laptop', 'conectada', 'tablet'];\r\n  const EMOCIONES = ['neutral', 'pregunta', 'alegria', 'sorpresa', 'duda', 'salto', 'timida', 'orgullo', 'duerme'];\r\n  let mascotCount = 0;\r\n  slides.forEach((s, i) => {\r\n    if (!LAYOUTS.includes(s && s.layout)) errors.push('slide_' + (i + 1) + '_layout_invalido');\r\n    // Guía §6: la llamita es opcional, solo en portada o cierre, nunca en slides densos ni en todas las slides.\r\n    if (s && s.mascot) {\r\n      mascotCount++;\r\n      const okPose = (s.mascot.sheet === 'poses' && POSES.includes(s.mascot.pose)) || (s.mascot.sheet === 'emociones' && EMOCIONES.includes(s.mascot.pose));\r\n      if (!okPose) errors.push('slide_' + (i + 1) + '_mascota_invalida');\r\n      if (s.layout === 'content') errors.push('slide_' + (i + 1) + '_mascota_solo_en_portada_o_cierre');\r\n    }\r\n    if (s && s.figure) {\r\n      if (!str(s.figure.value) || str(s.figure.value).length > 12) errors.push('slide_' + (i + 1) + '_cifra_invalida');\r\n      if (str(s.figure.label).length > 80) errors.push('slide_' + (i + 1) + '_cifra_etiqueta_larga');\r\n    }\r\n    if (s && s.compare) {\r\n      const sides = [s.compare.left, s.compare.right];\r\n      if (sides.some((c) => !c || !str(c.label) || str(c.label).length > 28 || str(c.text).length > 110)) errors.push('slide_' + (i + 1) + '_comparacion_invalida');\r\n    }\r\n    if (s && ((s.figure ? 1 : 0) + (s.compare ? 1 : 0) + (Array.isArray(s.items) && s.items.length ? 1 : 0)) > 1) errors.push('slide_' + (i + 1) + '_mezcla_de_estructuras');\r\n    const t = str(s && s.title);\r\n    if (!t) errors.push('slide_' + (i + 1) + '_sin_titulo');\r\n    if (t.length > 90) errors.push('slide_' + (i + 1) + '_titulo_largo');\r\n    if (str(s && s.body).length > 180) errors.push('slide_' + (i + 1) + '_texto_largo');\r\n    if (Array.isArray(s && s.items) && s.items.length > 4) errors.push('slide_' + (i + 1) + '_muchas_ideas');\r\n  });\r\n  if (p.format === 'carrusel' && slides.length && slides[0].layout !== 'cover') warnings.push('primera_slide_no_es_portada');\r\n  if (mascotCount > 2 || (slides.length > 2 && mascotCount > Math.ceil(slides.length / 2))) errors.push('demasiada_mascota');\r\n\r\n  // Fuentes y claims\r\n  const sources = Array.isArray(p.sources) ? p.sources : [];\r\n  if (!sources.length) errors.push('sin_fuentes');\r\n  sources.forEach((s, i) => {\r\n    if (!SOURCE_KINDS.includes(s && s.kind)) errors.push('fuente_' + (i + 1) + '_tipo_invalido');\r\n    if (!str(s && s.title)) errors.push('fuente_' + (i + 1) + '_sin_titulo');\r\n    if (s && s.url && !isUrl(s.url)) errors.push('fuente_' + (i + 1) + '_url_invalida');\r\n  });\r\n  const evidenceUrls = (Array.isArray(p.evidence_urls) ? p.evidence_urls : []).map(str).filter(Boolean);\r\n  if (evidenceUrls.some((u) => !isUrl(u))) errors.push('evidence_url_invalida');\r\n  const verifiedSources = sources.filter((s) => s && s.verified === true);\r\n  const claims = Array.isArray(p.claims) ? p.claims : [];\r\n  claims.forEach((c, i) => {\r\n    if (!str(c && c.text)) errors.push('claim_' + (i + 1) + '_sin_texto');\r\n    if (c && c.external === true) {\r\n      if (!isUrl(c.source_url)) errors.push('claim_externo_sin_fuente:' + str(c.text).slice(0, 40));\r\n      else if (!verifiedSources.some((s) => s.url === c.source_url || (Array.isArray(s.evidence) && s.evidence.some((e) => e && e.url === c.source_url)))) errors.push('claim_externo_fuente_no_verificada:' + str(c.text).slice(0, 40));\r\n    }\r\n  });\r\n  // Cifras / porcentajes en el texto deben tener respaldo en un claim\r\n  const extra = (s) => [s && s.figure ? str(s.figure.value) + ' ' + str(s.figure.label) : '', s && s.compare ? [s.compare.left, s.compare.right].map((c) => (c ? str(c.label) + ' ' + str(c.text) : '')).join(' ') : ''];\r\n  const allText = [hook, body, ctaText].concat(slides.map((s) => [s && s.kicker, s && s.title, s && s.body].concat(extra(s)).concat((s && s.items) || []).map((x) => (typeof x === 'object' && x ? str(x.title) + ' ' + str(x.text) : str(x))).join(' '))).join('\\n');\r\n  const claimBlob = norm(claims.map((c) => str(c && c.text)).join(' | '));\r\n  const figures = allText.match(/\\d[\\d.,]*\\s?%|\\$\\s?\\d[\\d.,]*|\\d[\\d.,]*\\s?(millones|mil millones|veces)\\b/gi) || [];\r\n  figures.forEach((f) => { if (!claimBlob.includes(norm(f))) errors.push('cifra_sin_respaldo:' + f.trim()); });\r\n  if (p.category === 'Noticia' && !claims.some((c) => c && c.external === true)) errors.push('noticia_sin_claim_externo');\r\n\r\n  // Lint de marca / relleno de IA\r\n  const BANNED = [/revolucion/i, /game.?changer/i, /en el mundo actual/i, /desbloque/i, /potencia tu/i, /el futuro (ya )?(est[aá]|es)/i, /innovador/i, /soluciones? integrales?/i, /sinergia/i, /disruptiv/i, /hoy m[aá]s que nunca/i, /llev(a|ar) (tu|su) negocio al siguiente nivel/i, /transformaci[oó]n digital/i, /en este post/i, /sum[eé]rgete/i, /\\bdescubre c[oó]mo\\b/i];\r\n  let penalties = 0;\r\n  const lintHits = [];\r\n  BANNED.forEach((re) => { if (re.test(allText)) { penalties += 3; lintHits.push(String(re.source)); } });\r\n  if (/agenda (una|tu) llamada/i.test(allText)) { penalties += 4; lintHits.push('cta_generico_agenda_llamada'); }\r\n  if (/\\bno sirve\\b|somos mejores|mejor que (la competencia|otros)|garantizad[oa]|sin riesgo|el mejor del mercado/i.test(allText)) { penalties += 4; lintHits.push('ataque_o_promesa_exagerada'); }\r\n  const emojiCount = (allText.match(/[\\u{1F300}-\\u{1FAFF}\\u{2600}-\\u{27BF}]/gu) || []).length;\r\n  if (emojiCount > 3) { penalties += 3; lintHits.push('exceso_de_emojis'); }\r\n  penalties = Math.min(penalties, 20);\r\n\r\n  // Factores 0–10 (los asigna quien genera la pieza; aquí se validan, se acotan y se aplican topes)\r\n  const f = p.factors && typeof p.factors === 'object' ? p.factors : {};\r\n  const breakdown = {};\r\n  let raw = 0;\r\n  Object.keys(FACTORS).forEach((k) => {\r\n    let v = Number(f[k] && typeof f[k] === 'object' ? f[k].value : f[k]);\r\n    if (!Number.isFinite(v)) { errors.push('factor_faltante:' + k); v = 0; }\r\n    v = Math.max(0, Math.min(10, v));\r\n    if (k === 'evidence' && !verifiedSources.length) v = Math.min(v, 2);\r\n    if (k === 'non_repetition' && Array.isArray(ctx.existingIdeaKeys)) { /* se fija abajo con idea_key */ }\r\n    breakdown[k] = v;\r\n  });\r\n  const ideaKey = fnv(norm(p.channel) + '|' + norm(topic) + '|' + norm(angle));\r\n  if (Array.isArray(ctx.existingIdeaKeys) && ctx.existingIdeaKeys.includes(ideaKey)) { errors.push('idea_repetida'); breakdown.non_repetition = 0; }\r\n  Object.keys(FACTORS).forEach((k) => { raw += (FACTORS[k] * breakdown[k]) / 10; });\r\n  const score = Math.max(0, Math.min(100, Math.round(raw - penalties)));\r\n\r\n  let decision;\r\n  if (errors.length) decision = 'rejected';\r\n  else if (score >= THRESHOLD) decision = 'candidate';\r\n  else decision = 'below_threshold';\r\n\r\n  return { ok: errors.length === 0, decision, score, threshold: THRESHOLD, breakdown, penalties, lint_hits: lintHits, errors, warnings, idea_key: ideaKey, post_text: postText, evidence_urls: evidenceUrls };\r\n}\n\nconst PACK_ID = '0ba54785-bff0-4a2d-a397-64e697d34e38';\nconst ACCOUNTS = {\"instagram\":\"6ac43e3ecfe0752734a5fe1e_pxHuOsiz2i3lM6BtC9IM_17841424613699090\",\"linkedin_page\":\"6ac4fabe3356d12d204557ea_pxHuOsiz2i3lM6BtC9IM_145278681_page\",\"linkedin_profile\":\"6ac4fabe3356d12d204557ea_pxHuOsiz2i3lM6BtC9IM_D9Z-EPMxLu_profile\"};\nconst APPROVER = 'OjkAjHMdUjnblO7W1kBZ';\nconst CATEGORIES = {\"Educativo\":\"6ac5265a4f30bdd64eaa5807\",\"Caso\":\"6ac52690faf51cff54e27cf4\",\"Demo\":\"6ac52699faf51cff54e29123\",\"Noticia\":\"6ac527bf0c6e2434babc5054\",\"Evergreen\":\"6ac527cc3abea0cc82a7ad8a\",\"Founder\":\"6ac527f0d3e22f4c60cc70d4\"};\nconst first = $('Intake Webhook').first().json ?? {};\nconst body = first.body ?? first;\nif (body.icp_pack_id && body.icp_pack_id !== PACK_ID) throw new Error('SEGURIDAD: icp_pack_id no coincide con el pack de Atacama Labs.');\nconst piece = body.piece;\nif (!piece || !Array.isArray(piece.sources)) return [{ json: { action: 'reject', test: false, evaluation: evaluatePiece(piece, {}) } }];\nconst isTest = body.test === true;\n// La verificación de fuentes externas NO la declara la pieza: viene de content_sources (gate de señales, workflow 13).\nconst dbRows = ($('Fetch Sources').first().json || {}).body;\nconst dbMap = {};\n(Array.isArray(dbRows) ? dbRows : []).forEach((r) => { dbMap[r.source_key] = r; });\nconst keyOf = (s) => s.key || ((s.kind === 'real_work' || s.kind === 'evergreen' ? s.kind : 'hermes_research') + ':' + (s.url || ''));\npiece.sources = piece.sources.map((s) => { const internal = s.kind === 'real_work' || s.kind === 'evergreen'; const db = dbMap[keyOf(s)]; return { ...s, verified: internal ? s.verified === true : Boolean(db && db.verified) }; });\nconst wantsReview = body.submit_to_review !== false;\nconst rows = ($('Fetch Keys').first().json || {}).body;\nconst existing = Array.isArray(rows) ? rows.map((r) => r.idea_key) : [];\nconst ev = evaluatePiece(piece, { existingIdeaKeys: existing });\nconst base = { test: isTest, evaluation: ev };\nif (ev.decision === 'rejected') return [{ json: { ...base, action: 'reject' } }];\n\n// ¿falta el render? Instagram y los formatos visuales requieren medio ya subido (URL).\nconst media = Array.isArray(piece.media) ? piece.media.filter((m) => m && /^https?:\\/\\//.test(m.url || '')) : [];\nconst needsMedia = piece.channel === 'instagram' || ['imagen', 'carrusel', 'demo', 'reel'].includes(piece.format);\nlet action = ev.decision === 'candidate' ? 'submit' : 'hold';\nlet holdReason = ev.decision === 'candidate' ? null : 'score_bajo_el_umbral';\nif (action === 'submit' && needsMedia && !media.length) { action = 'hold'; holdReason = 'falta_render_o_medio'; }\nif (action === 'submit' && !wantsReview) { action = 'hold'; holdReason = 'submit_to_review_false'; }\n\nconst slug = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);\nconst existingSourceIds = piece.sources.map((s) => dbMap[keyOf(s)] && dbMap[keyOf(s)].id).filter(Boolean);\nconst sourcesBody = piece.sources.filter((s) => !dbMap[keyOf(s)]).map((s) => ({ icp_pack_id: PACK_ID, source_key: s.kind + ':' + (s.url ? s.url : slug(s.title)), kind: s.kind, title: s.title, url: s.url || null,\n  summary: s.summary || null, evidence: s.evidence || [], verified: s.verified === true }));\nconst pieceRow = { icp_pack_id: PACK_ID, idea_key: ev.idea_key, topic: piece.topic, angle: piece.angle, audience: piece.audience, channel: piece.channel, format: piece.format,\n  category: piece.category, score: ev.score, score_breakdown: ev.breakdown, rationale: piece.rationale, evidence_urls: ev.evidence_urls, piece,\n  status: action === 'submit' ? 'drafted' : 'scored', ghl_account_id: ACCOUNTS[piece.channel], is_test: isTest, updated_at: new Date().toISOString() };\n\n// Propuesta de fecha: la sugerida si es ≥ 2 días en el futuro; si no, en 7 días a las 13:00 UTC (10:00 Chile). Es solo una propuesta: nada se programa sin aprobación.\nconst minDate = Date.now() + 2 * 86400000;\nlet when = piece.schedule_suggestion ? new Date(piece.schedule_suggestion).getTime() : NaN;\nif (!Number.isFinite(when) || when < minDate) { const d = new Date(Date.now() + 7 * 86400000); d.setUTCHours(13, 0, 0, 0); when = d.getTime(); }\nconst summary = (isTest ? '[PRUEBA ATACAMA OS — NO PUBLICAR] ' : '') + ev.post_text;\n// Las etiquetas/categorías de Social Planner exigen ObjectIds creados desde la interfaz (la API con token de integración no puede crearlos): por ahora formato y categoría viajan en Supabase.\nconst ghlBody = { accountIds: [ACCOUNTS[piece.channel]], summary, type: 'post', status: 'in_review', userId: APPROVER, media: media.map((m) => ({ url: m.url, type: m.type || 'image/png' })),\n  scheduleDate: new Date(when).toISOString(), postApprovalDetails: { approver: APPROVER }, ...(CATEGORIES[piece.category] ? { categoryId: CATEGORIES[piece.category] } : {}) };\nif (ghlBody.status !== 'in_review') throw new Error('SEGURIDAD: este workflow solo puede crear posts en in_review.');\nreturn [{ json: { ...base, action, holdReason, sourcesBody, existingSourceIds, pieceRow, ghlBody } }];"
       }
     },
     {
-      "id": "93e7de14-b962-48e3-b358-52de625bd132",
+      "id": "42299c10-dbb0-4713-a649-d6256e85d53d",
       "name": "Rejected?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -102,7 +135,7 @@
       }
     },
     {
-      "id": "604d2d93-e9a7-4652-871a-b4289a4fad8a",
+      "id": "437c8686-a76c-485f-abcb-c3948345ea48",
       "name": "Respond Rejected",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -115,7 +148,7 @@
       }
     },
     {
-      "id": "cc12baf9-fa8e-41f4-bb2f-bf92b222fc04",
+      "id": "00fa98cf-cfb0-4c8d-96fe-8e2c9242cd5b",
       "name": "Upsert Sources",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -159,7 +192,7 @@
       }
     },
     {
-      "id": "4daa69c7-42ae-4af7-bdec-68da957d872e",
+      "id": "ba64bb67-4ebc-4d70-a586-e76b3ed9e6ba",
       "name": "Build Row",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -168,11 +201,11 @@
         60
       ],
       "parameters": {
-        "jsCode": "if (($json.statusCode || 0) >= 300) throw new Error('Supabase content_sources falló (HTTP ' + $json.statusCode + '): ' + JSON.stringify($json.body || {}).slice(0, 300));\nconst ev = $('Evaluate').first().json;\nconst ids = (($json.body) || []).map((r) => r.id).filter(Boolean);\nreturn [{ json: { ...ev, pieceRowFull: { ...ev.pieceRow, source_ids: ids } } }];"
+        "jsCode": "if (($json.statusCode || 0) >= 300) throw new Error('Supabase content_sources falló (HTTP ' + $json.statusCode + '): ' + JSON.stringify($json.body || {}).slice(0, 300));\nconst ev = $('Evaluate').first().json;\nconst ids = (Array.isArray($json.body) ? $json.body : []).map((r) => r.id).filter(Boolean).concat(ev.existingSourceIds || []);\nreturn [{ json: { ...ev, pieceRowFull: { ...ev.pieceRow, source_ids: ids } } }];"
       }
     },
     {
-      "id": "48604a53-e278-42bb-9e34-6ff6f7a1aae3",
+      "id": "bbead2fb-499d-4ef6-9028-6ed0e07f46c8",
       "name": "Upsert Piece",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -216,7 +249,7 @@
       }
     },
     {
-      "id": "7e50e4b2-7d31-4b7d-92aa-57def39cbd19",
+      "id": "6ee12363-f21f-42e5-9c42-4cab7f850e53",
       "name": "Submit?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -246,7 +279,7 @@
       }
     },
     {
-      "id": "bd8a512d-724e-4633-9d5b-6695a891e756",
+      "id": "48d6d8e3-fd0a-40f7-a201-362ccf549be0",
       "name": "Respond Held",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -259,7 +292,7 @@
       }
     },
     {
-      "id": "fbfb06b0-24f0-4167-8c48-9f385b590e9b",
+      "id": "e9fd1135-27d6-490b-bb6e-d457f7032b1f",
       "name": "Create GHL Post",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -307,7 +340,7 @@
       }
     },
     {
-      "id": "f8c371be-b282-4c0f-a276-49c10ba97540",
+      "id": "a6421a27-1ac1-4ec1-8fca-3597ecd47e25",
       "name": "Check GHL",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -320,7 +353,7 @@
       }
     },
     {
-      "id": "c8d8d152-0736-4a0a-952e-920786228d35",
+      "id": "a999aded-75d6-4d32-82b1-5d1139dc5f96",
       "name": "Mark In Review",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -364,16 +397,60 @@
       }
     },
     {
-      "id": "6384c14f-385c-48f9-985b-634228e9cf6c",
-      "name": "Respond Submitted",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "id": "612df7ed-164b-4dc0-b379-59cf72b3150d",
+      "name": "Mark Sources Used",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         2640,
         160
       ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
       "parameters": {
-        "jsCode": "const c = $('Check GHL').first().json;\nreturn [{ json: { ok: true, action: 'in_review', ghl_post_id: c.ghl_post_id, piece_id: (($json.body || [])[0] || {}).id || null, score: c.evaluation.score, channel: c.pieceRow.channel, status: 'in_review',\n  note: 'Quedó en GHL Social Planner como in_review. Nada se programó ni publicó.' } }];"
+        "method": "PATCH",
+        "url": "={{ \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/content_sources?icp_pack_id=eq.0ba54785-bff0-4a2d-a397-64e697d34e38&signal_status=eq.candidate&id=in.(\" + (($('Build Row').first().json.pieceRowFull.source_ids || []).concat(['00000000-0000-0000-0000-000000000000'])).join(',') + \")\" }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ signal_status: \"used\" }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "50942117-f40d-498a-8d6b-989def31055f",
+      "name": "Respond Submitted",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        160
+      ],
+      "parameters": {
+        "jsCode": "const c = $('Check GHL').first().json;\nreturn [{ json: { ok: true, action: 'in_review', ghl_post_id: c.ghl_post_id, piece_id: ((($('Mark In Review').first().json.body) || [])[0] || {}).id || null, score: c.evaluation.score, channel: c.pieceRow.channel, status: 'in_review',\n  note: 'Quedó en GHL Social Planner como in_review. Nada se programó ni publicó.' } }];"
       }
     }
   ],
@@ -390,6 +467,17 @@
       ]
     },
     "Fetch Keys": {
+      "main": [
+        [
+          {
+            "node": "Fetch Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Sources": {
       "main": [
         [
           {
@@ -503,6 +591,17 @@
       ]
     },
     "Mark In Review": {
+      "main": [
+        [
+          {
+            "node": "Mark Sources Used",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Sources Used": {
       "main": [
         [
           {

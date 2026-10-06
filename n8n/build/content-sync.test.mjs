@@ -1,0 +1,30 @@
+// node n8n/build/content-sync.test.mjs
+import { mapGhlToPiece, buildContentSync } from './content-sync.mjs';
+let pass = 0, fail = 0;
+const t = (n, c, x = '') => { c ? pass++ : fail++; console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : x); };
+const now = Date.parse('2026-10-14T00:00:00Z');
+const m = (st, extra = {}) => mapGhlToPiece({ status: st, ...extra }, now);
+t('draft → drafted', m('draft').status === 'drafted');
+t('in_review pendiente → in_review', m('in_review', { postApprovalDetails: { approvalStatus: 'pending' } }).status === 'in_review');
+t('in_review con aprobación → approved', m('in_review', { postApprovalDetails: { approvalStatus: 'approved' } }).status === 'approved');
+t('in_review rechazado → discarded', m('in_review', { postApprovalDetails: { approvalStatus: 'rejected' } }).status === 'discarded');
+t('scheduled → scheduled con fecha', (() => { const r = m('scheduled', { scheduleDate: '2026-10-13T13:00:00.000Z' }); return r.status === 'scheduled' && r.scheduled_at === '2026-10-13T13:00:00.000Z'; })());
+t('published → published con published_at', (() => { const r = m('published', { publishedAt: '2026-10-13T13:02:00.000Z' }); return r.status === 'published' && r.published_at === '2026-10-13T13:02:00.000Z'; })());
+t('failed → failed', m('failed').status === 'failed');
+t('post inexistente → discarded/deleted', (() => { const r = mapGhlToPiece(null, now); return r.status === 'discarded' && r.ghl_status === 'deleted'; })());
+t('estado desconocido no toca la pieza', m('algo_nuevo').status === null);
+
+const wf = buildContentSync();
+const compute = wf.nodes.find((n) => n.name === 'Compute').parameters.jsCode;
+const run = (pending, res) => { const $ = (n) => ({ first: () => ({ json: { 'Fetch Pending': { body: pending } }[n] }) }); return new Function('$', '$json', compute)($, res); };
+const ok = (posts) => ({ statusCode: 201, body: { results: { posts } } });
+t('Compute: sin pendientes no hace nada', run([], ok([])).length === 0);
+const pend = [{ id: 'a', ghl_post_id: 'p1', status: 'in_review', ghl_status: 'in_review', ghl_approval_status: 'pending' }, { id: 'b', ghl_post_id: 'p2', status: 'in_review', ghl_status: 'in_review', ghl_approval_status: 'pending' }, { id: 'c', ghl_post_id: 'p3', status: 'scheduled', ghl_status: 'scheduled', ghl_approval_status: 'approved' }];
+let out = run(pend, ok([{ _id: 'p1', status: 'in_review', postApprovalDetails: { approvalStatus: 'pending' } }, { _id: 'p3', status: 'published', publishedAt: '2026-10-13T13:02:00Z', postApprovalDetails: { approvalStatus: 'approved' } }]));
+t('Compute: solo emite lo que cambió (sin cambios p1; p2 borrado → discarded; p3 → published)', out.length === 2 && out.find((x) => x.json.id === 'b').json.to === 'discarded' && out.find((x) => x.json.id === 'c').json.to === 'published', JSON.stringify(out.map((x) => x.json)));
+t('Compute: el parche lleva synced_at', out[0].json.patch.synced_at === new Date(out[0].json.patch.synced_at).toISOString());
+t('Compute: si GHL falla NO descarta nada (lanza error)', (() => { try { run(pend, { statusCode: 500, body: { message: 'x' } }); return false; } catch { return true; } })());
+t('el workflow no escribe en GHL (solo POST de lectura posts/list)', wf.nodes.filter((n) => /leadconnectorhq/.test(JSON.stringify(n.parameters))).every((n) => /posts\/list$/.test(n.parameters.url)));
+t('frecuencia moderada (30 min)', wf.nodes[0].parameters.rule.interval[0].minutesInterval === 30);
+console.log(pass, 'ok', fail, 'fallos');
+process.exit(fail ? 1 : 0);

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "channel": "linkedin_page",
+  "format": "texto",
+  "category": "Evergreen",
+  "topic": "PRUEBA de sincronización GHL a Supabase",
+  "angle": "Prueba técnica del workflow 14",
+  "audience": "Equipo Atacama",
+  "sources": [{ "kind": "evergreen", "title": "Prueba técnica interna", "url": "https://atacamalabs.cl", "verified": true, "evidence": [] }],
+  "claims": [],
+  "factors": {
+    "relevance": 9, "audience_fit": 8, "novelty": 6, "evidence": 7, "utility": 8, "clarity": 9, "conversation": 7, "differentiation": 7, "non_repetition": 10
+  },
+  "rationale": "Pieza de prueba para validar el estado sincronizado desde GHL.",
+  "hook": "Prueba técnica del circuito de contenido de Atacama Labs.",
+  "body": "Este es un texto de prueba para comprobar que el estado de un post en GHL Social Planner se refleja en Supabase. No se publica.",
+  "slides": [],
+  "cta": { "type": "none", "text": "" },
+  "hashtags": [],
+  "evidence_urls": ["https://atacamalabs.cl"],
+  "visual_direction": "",
+  "media": []
+}

@@ -13,33 +13,88 @@
       "url": "https://github.com/ChristianEducation/atacamalabs/commit/23c2936",
       "verified": true,
       "evidence": [
-        { "url": "https://github.com/ChristianEducation/atacamalabs/commit/23c2936", "quote": "feat: complete Atacama OS won-to-client flow — dry_run por defecto, 45 pruebas, prueba de punta a punta con datos de prueba y cero escrituras." }
+        {
+          "url": "https://github.com/ChristianEducation/atacamalabs/commit/23c2936",
+          "quote": "feat: complete Atacama OS won-to-client flow — dry_run por defecto, 45 pruebas, prueba de punta a punta con datos de prueba y cero escrituras."
+        }
       ]
     }
   ],
   "claims": [
-    { "text": "El flujo crea empresa, servicio contratado y proyecto y deja seis relaciones", "external": false },
-    { "text": "En la prueba con una oportunidad de prueba no se escribió nada", "external": false },
-    { "text": "Si el dato que activa la escritura falta o es ambiguo, el flujo asume ensayo", "external": false }
+    {
+      "text": "El flujo crea empresa, servicio contratado y proyecto y deja relaciones entre ellos",
+      "external": false
+    },
+    {
+      "text": "Las dos primeras pruebas desde GHL llegaron con el ID de la oportunidad vacío y el flujo las rechazó",
+      "external": false
+    },
+    {
+      "text": "En la prueba con una oportunidad de prueba ganada en GHL el plan salió completo con seis relaciones previstas y no se escribió ningún registro",
+      "external": false
+    },
+    {
+      "text": "Si la señal que activa la escritura falta o es ambigua, el flujo asume ensayo",
+      "external": false
+    },
+    {
+      "text": "Todavía no hay un cliente real que haya pasado por el flujo",
+      "external": false
+    }
   ],
   "factors": {
-    "relevance": { "value": 9, "note": "Es el trabajo real de Atacama: automatizar procesos comerciales con control." },
-    "audience_fit": { "value": 8, "note": "Un dueño de pyme entiende el miedo a automatizar sin poder revisar." },
-    "novelty": { "value": 6, "note": "Poco común mostrar el freno como decisión de diseño." },
-    "evidence": { "value": 8, "note": "Cada afirmación está respaldada por el commit y el registro de pruebas del proyecto." },
-    "utility": { "value": 7, "note": "Deja una regla aplicable: ensayo primero, escritura después." },
-    "clarity": { "value": 8, "note": "Una sola idea, sin jerga." },
-    "conversation": { "value": 8, "note": "Cierra con una pregunta concreta." },
-    "differentiation": { "value": 7, "note": "Habla de una decisión real, no de tendencias." },
-    "non_repetition": { "value": 10, "note": "Primera pieza sobre este ángulo." }
+    "relevance": {
+      "value": 9,
+      "note": "Es el trabajo real de Atacama: automatizar procesos comerciales con control."
+    },
+    "audience_fit": {
+      "value": 8,
+      "note": "Un dueño de pyme entiende el miedo a automatizar sin poder revisar."
+    },
+    "novelty": {
+      "value": 6,
+      "note": "Poco común mostrar el freno como decisión de diseño."
+    },
+    "evidence": {
+      "value": 8,
+      "note": "Cada afirmación está respaldada por el commit y el registro de pruebas del proyecto."
+    },
+    "utility": {
+      "value": 7,
+      "note": "Deja una regla aplicable: ensayo primero, escritura después."
+    },
+    "clarity": {
+      "value": 8,
+      "note": "Una sola idea, sin jerga."
+    },
+    "conversation": {
+      "value": 8,
+      "note": "Cierra con una pregunta concreta."
+    },
+    "differentiation": {
+      "value": 8,
+      "note": "Incluye un detalle real (las pruebas con ID vacío) en vez de una moraleja genérica."
+    },
+    "non_repetition": {
+      "value": 10,
+      "note": "Primera pieza sobre este ángulo."
+    }
   },
-  "rationale": "Muestra una decisión de producto verificable (ensayo por defecto) con un aprendizaje transferible. Voz de fundador: Christian debe confirmar que la primera persona refleja su criterio antes de aprobar.",
-  "hook": "Automatizamos el alta de clientes. Y lo primero que hicimos fue impedir que escribiera algo.",
-  "body": "En Atacama Labs, cuando una oportunidad pasa a «Ganada», un flujo crea la empresa, el servicio contratado y el proyecto, y deja todo relacionado.\n\nLo construimos así: antes de tocar un solo registro, el flujo devuelve el plan de lo que haría. Si falta el dato que le dice que de verdad escriba, o llega ambiguo, asume ensayo. Siempre.\n\nLo probamos con una oportunidad de prueba. El plan salió completo (empresa, servicio, proyecto y seis relaciones) y no se escribió nada.\n\nLo que me llevo: automatizar no es quitar el freno, es decidir dónde va el freno. El primer cliente real que se gane será quien lo active, con el plan a la vista.\n\n¿Dónde pondrías el freno en un proceso que quieras automatizar?",
+  "rationale": "Cuenta una decisión de producto real y verificable (ensayo por defecto) con un detalle vivido: las dos primeras pruebas llegaron vacías y el flujo las rechazó. Sin frases de founder genéricas; cierra con una pregunta concreta. Voz en primera persona: Christian debe confirmar que refleja su criterio antes de aprobar.",
+  "hook": "Automatizamos el alta de clientes y lo primero que hicimos fue impedir que escribiera algo.",
+  "body": "Cuando una oportunidad pasa a «Ganada» en Atacama Labs, un flujo debe crear la empresa, el servicio contratado y el proyecto, y dejarlos relacionados.\n\nLo armamos al revés de lo habitual: primero devuelve el plan de lo que haría, y no escribe nada hasta que se le diga de forma explícita. Si esa señal falta o llega ambigua, asume ensayo.\n\nLas dos primeras pruebas desde GHL llegaron con el ID de la oportunidad vacío. El flujo las rechazó en vez de adivinar. La siguiente, ya con una oportunidad de prueba ganada de verdad en GHL, salió completa: empresa, servicio, proyecto y seis relaciones previstas, y cero registros escritos.\n\nTodavía no hay un cliente real pasando por ahí, y el ensayo no se apaga hasta que lo haya.\n\nSi hoy automatizaras un proceso de tu empresa, ¿cómo revisarías lo que hace antes de dejarlo solo?",
   "slides": [],
-  "cta": { "type": "none", "text": "" },
-  "hashtags": ["#automatización", "#agentesdeIA"],
-  "evidence_urls": ["https://github.com/ChristianEducation/atacamalabs/commit/23c2936"],
+  "cta": {
+    "type": "none",
+    "text": ""
+  },
+  "hashtags": [
+    "#automatización",
+    "#agentesdeIA"
+  ],
+  "evidence_urls": [
+    "https://github.com/ChristianEducation/atacamalabs/commit/23c2936"
+  ],
   "visual_direction": "Solo texto. Sin imagen: la idea se sostiene sola.",
   "schedule_suggestion": null,
   "media": []

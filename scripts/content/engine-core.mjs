@@ -69,8 +69,27 @@ export function evaluatePiece(piece, ctx = {}) {
     const max = p.format === 'imagen' ? 1 : 10;
     if (slides.length < min || slides.length > max) errors.push('cantidad_de_slides_invalida');
   }
+  const POSES = ['neutral', 'pregunta', 'celebra', 'senala', 'celular', 'brazos_arriba', 'laptop', 'conectada', 'tablet'];
+  const EMOCIONES = ['neutral', 'pregunta', 'alegria', 'sorpresa', 'duda', 'salto', 'timida', 'orgullo', 'duerme'];
+  let mascotCount = 0;
   slides.forEach((s, i) => {
     if (!LAYOUTS.includes(s && s.layout)) errors.push('slide_' + (i + 1) + '_layout_invalido');
+    // Guía §6: la llamita es opcional, solo en portada o cierre, nunca en slides densos ni en todas las slides.
+    if (s && s.mascot) {
+      mascotCount++;
+      const okPose = (s.mascot.sheet === 'poses' && POSES.includes(s.mascot.pose)) || (s.mascot.sheet === 'emociones' && EMOCIONES.includes(s.mascot.pose));
+      if (!okPose) errors.push('slide_' + (i + 1) + '_mascota_invalida');
+      if (s.layout === 'content') errors.push('slide_' + (i + 1) + '_mascota_solo_en_portada_o_cierre');
+    }
+    if (s && s.figure) {
+      if (!str(s.figure.value) || str(s.figure.value).length > 12) errors.push('slide_' + (i + 1) + '_cifra_invalida');
+      if (str(s.figure.label).length > 80) errors.push('slide_' + (i + 1) + '_cifra_etiqueta_larga');
+    }
+    if (s && s.compare) {
+      const sides = [s.compare.left, s.compare.right];
+      if (sides.some((c) => !c || !str(c.label) || str(c.label).length > 28 || str(c.text).length > 110)) errors.push('slide_' + (i + 1) + '_comparacion_invalida');
+    }
+    if (s && ((s.figure ? 1 : 0) + (s.compare ? 1 : 0) + (Array.isArray(s.items) && s.items.length ? 1 : 0)) > 1) errors.push('slide_' + (i + 1) + '_mezcla_de_estructuras');
     const t = str(s && s.title);
     if (!t) errors.push('slide_' + (i + 1) + '_sin_titulo');
     if (t.length > 90) errors.push('slide_' + (i + 1) + '_titulo_largo');
@@ -78,6 +97,7 @@ export function evaluatePiece(piece, ctx = {}) {
     if (Array.isArray(s && s.items) && s.items.length > 4) errors.push('slide_' + (i + 1) + '_muchas_ideas');
   });
   if (p.format === 'carrusel' && slides.length && slides[0].layout !== 'cover') warnings.push('primera_slide_no_es_portada');
+  if (mascotCount > 2 || (slides.length > 2 && mascotCount > Math.ceil(slides.length / 2))) errors.push('demasiada_mascota');
 
   // Fuentes y claims
   const sources = Array.isArray(p.sources) ? p.sources : [];
@@ -99,7 +119,8 @@ export function evaluatePiece(piece, ctx = {}) {
     }
   });
   // Cifras / porcentajes en el texto deben tener respaldo en un claim
-  const allText = [hook, body, ctaText].concat(slides.map((s) => [s && s.kicker, s && s.title, s && s.body].concat((s && s.items) || []).map((x) => (typeof x === 'object' && x ? str(x.title) + ' ' + str(x.text) : str(x))).join(' '))).join('\n');
+  const extra = (s) => [s && s.figure ? str(s.figure.value) + ' ' + str(s.figure.label) : '', s && s.compare ? [s.compare.left, s.compare.right].map((c) => (c ? str(c.label) + ' ' + str(c.text) : '')).join(' ') : ''];
+  const allText = [hook, body, ctaText].concat(slides.map((s) => [s && s.kicker, s && s.title, s && s.body].concat(extra(s)).concat((s && s.items) || []).map((x) => (typeof x === 'object' && x ? str(x.title) + ' ' + str(x.text) : str(x))).join(' '))).join('\n');
   const claimBlob = norm(claims.map((c) => str(c && c.text)).join(' | '));
   const figures = allText.match(/\d[\d.,]*\s?%|\$\s?\d[\d.,]*|\d[\d.,]*\s?(millones|mil millones|veces)\b/gi) || [];
   figures.forEach((f) => { if (!claimBlob.includes(norm(f))) errors.push('cifra_sin_respaldo:' + f.trim()); });
@@ -111,6 +132,7 @@ export function evaluatePiece(piece, ctx = {}) {
   const lintHits = [];
   BANNED.forEach((re) => { if (re.test(allText)) { penalties += 3; lintHits.push(String(re.source)); } });
   if (/agenda (una|tu) llamada/i.test(allText)) { penalties += 4; lintHits.push('cta_generico_agenda_llamada'); }
+  if (/\bno sirve\b|somos mejores|mejor que (la competencia|otros)|garantizad[oa]|sin riesgo|el mejor del mercado/i.test(allText)) { penalties += 4; lintHits.push('ataque_o_promesa_exagerada'); }
   const emojiCount = (allText.match(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu) || []).length;
   if (emojiCount > 3) { penalties += 3; lintHits.push('exceso_de_emojis'); }
   penalties = Math.min(penalties, 20);

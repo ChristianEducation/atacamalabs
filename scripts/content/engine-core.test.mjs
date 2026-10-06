@@ -71,5 +71,29 @@ const hs = clone(base); hs.hashtags = ['#a', '#b', '#c', '#d', '#e', '#f'];
 t('más de 5 hashtags => rechazo', evaluatePiece(hs).errors.includes('demasiados_hashtags'));
 t('entrada basura no lanza excepción', (() => { try { return evaluatePiece(null).decision === 'rejected'; } catch { return false; } })());
 
+
+// 6. Reglas de la guía oficial: llamita, cifras, comparaciones, ataques
+const mk = () => { const c = clone(base); c.channel = 'instagram'; c.format = 'carrusel'; c.visual_direction = 'Fondo claro y aire';
+  c.slides = [{ layout: 'cover', title: 'Antes de automatizar, decide el freno', mascot: { sheet: 'poses', pose: 'pregunta' } }, { layout: 'content', title: 'El plan primero', body: 'Antes de escribir, el flujo muestra qué haría.' }, { layout: 'cta', title: '¿Dónde va tu freno?', mascot: { sheet: 'emociones', pose: 'alegria' } }]; return c; };
+t('llamita en portada y cierre => OK', evaluatePiece(mk()).ok, JSON.stringify(evaluatePiece(mk()).errors));
+const m1 = mk(); m1.slides[1].mascot = { sheet: 'poses', pose: 'neutral' };
+t('llamita en slide de contenido => rechazo', evaluatePiece(m1).errors.includes('slide_2_mascota_solo_en_portada_o_cierre'));
+const m2 = mk(); m2.slides[0].mascot = { sheet: 'poses', pose: 'inexistente' };
+t('pose inexistente => rechazo', evaluatePiece(m2).errors.includes('slide_1_mascota_invalida'));
+const m3 = mk(); m3.slides.push({ layout: 'cta', title: 'Otro cierre', mascot: { sheet: 'poses', pose: 'celebra' } });
+t('más de 2 llamitas => rechazo', evaluatePiece(m3).errors.includes('demasiada_mascota'));
+const cmp = mk(); cmp.slides[1] = { layout: 'content', title: 'Herramienta estándar o Atacama', compare: { left: { label: 'Si solo necesitas X', text: 'Una herramienta estándar puede ser suficiente.' }, right: { label: 'Si conectas sistemas', text: 'Ahí empieza Atacama.' } } };
+t('comparación lado a lado válida', evaluatePiece(cmp).ok, JSON.stringify(evaluatePiece(cmp).errors));
+const cmp2 = clone(cmp); cmp2.slides[1].compare.left.text = 'x'.repeat(120);
+t('comparación con texto largo => rechazo', evaluatePiece(cmp2).errors.includes('slide_2_comparacion_invalida'));
+const fg = mk(); fg.slides[1] = { layout: 'content', title: 'Lo que cambió', figure: { value: '$0,03', label: 'por mensaje de plantilla' } };
+t('cifra grande con $ sin claim => rechazo', evaluatePiece(fg).errors.some((e) => e.startsWith('cifra_sin_respaldo')));
+const fg2 = clone(fg); fg2.sources.push({ kind: 'hermes_research', title: 'Tarifas', url: 'https://example.com/tarifas', verified: true, evidence: [] }); fg2.claims.push({ text: 'La tarifa es $0,03 por mensaje de plantilla', external: true, source_url: 'https://example.com/tarifas' });
+t('cifra grande con claim externo verificado => OK', evaluatePiece(fg2).ok, JSON.stringify(evaluatePiece(fg2).errors));
+const mix = mk(); mix.slides[1].figure = { value: '3', label: 'pasos' }; mix.slides[1].items = [{ title: 'a', text: 'b' }];
+t('mezclar estructuras en una slide => rechazo', evaluatePiece(mix).errors.includes('slide_2_mezcla_de_estructuras'));
+const atk = clone(base); atk.body += '\n\nOtras herramientas no sirve y somos mejores.';
+t('atacar o prometer de más penaliza', evaluatePiece(atk).lint_hits.includes('ataque_o_promesa_exagerada'));
+
 console.log(pass, 'ok', fail, 'fallos');
 process.exit(fail ? 1 : 0);

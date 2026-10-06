@@ -1,0 +1,260 @@
+{
+  "name": "Atacama Labs - 13 Content Signal Intake",
+  "nodes": [
+    {
+      "id": "24da2985-5466-431c-9445-f41f382cb673",
+      "name": "Signals Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "d418d8d7-8fd0-4472-860a-f30128343a06",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "lUGhlXVaQBEiEh5S",
+          "name": "Atacama Labs - Ingest Key"
+        }
+      },
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "atacama-content-signals",
+        "authentication": "headerAuth",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "10b82783-f623-4bf4-b1b3-48e41a922259",
+      "name": "Fetch Existing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "parameters": {
+        "method": "GET",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/content_sources?icp_pack_id=eq.0ba54785-bff0-4a2d-a397-64e697d34e38&select=source_key&limit=3000",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": false,
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "624b5bbe-b236-479c-99a1-44e039fc5407",
+      "name": "Prepare",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const PACK_ID = '0ba54785-bff0-4a2d-a397-64e697d34e38';\nconst first = $('Signals Webhook').first().json ?? {};\nconst body = first.body ?? first;\nif (!body || typeof body !== 'object') throw new Error('Cuerpo invalido');\nif (body.icp_pack_id && body.icp_pack_id !== PACK_ID) throw new Error('SEGURIDAD: icp_pack_id no coincide con el pack de Atacama Labs.');\nconst list = Array.isArray(body.signals) ? body.signals : [];\nif (!list.length) throw new Error('signals vacio');\nif (list.length > 8) throw new Error('maximo 8 senales por lote');\nconst batch = String(body.batch_id || '').trim();\nif (!/^[A-Za-z0-9._:-]{4,80}$/.test(batch)) throw new Error('batch_id obligatorio (4-80 caracteres)');\nreturn list.map((sig, idx) => {\n  const url = sig && typeof sig.url === 'string' ? sig.url.trim() : '';\n  const ok = /^https?:\\/\\/[^\\s/$.?#][^\\s]*$/i.test(url);\n  return { json: { idx, batch, sig, fetchUrl: ok ? url : 'https://localhost.invalid/' } };\n});"
+      }
+    },
+    {
+      "id": "9f7936b5-1ff0-4360-b53a-ac4a9bb40661",
+      "name": "Fetch Source",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        0
+      ],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.fetchUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (compatible; AtacamaLabsContentRadar/1.0; +https://atacamalabs.cl)"
+            },
+            {
+              "name": "Accept-Language",
+              "value": "es,en;q=0.8"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 20000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": true,
+              "maxRedirects": 5
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "d9671583-f74c-4daa-bd4f-21277dee91b6",
+      "name": "Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        0
+      ],
+      "parameters": {
+        "jsCode": "function evaluateSignal(sig, ctx = {}) {\r\n  const reasons = [];\r\n  const TYPES = ['news', 'competitor', 'founder', 'customer-question', 'evergreen', 'real-work'];\r\n  const EXTERNAL = ['news', 'competitor', 'founder', 'customer-question'];\r\n  const CHANNELS = ['instagram', 'linkedin_page', 'linkedin_profile'];\r\n  const W = { relevance: 15, audience_fit: 12, novelty: 8, evidence: 15, utility: 12, clarity: 10, conversation: 8, differentiation: 10, non_repetition: 10 };\r\n  const THRESHOLD = 70;\r\n  const now = ctx.now || Date.now();\r\n  const str = (v) => (typeof v === 'string' ? v.trim() : '');\r\n  const isUrl = (u) => /^https?:\\/\\/[^\\s/$.?#][^\\s]*$/i.test(String(u || ''));\r\n  const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/&[a-z]+;|&#\\d+;/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();\r\n  const s = sig && typeof sig === 'object' ? sig : {};\r\n\r\n  const type = str(s.type);\r\n  if (!TYPES.includes(type)) reasons.push('tipo_invalido');\r\n  const external = EXTERNAL.includes(type);\r\n  const title = str(s.title);\r\n  const summary = str(s.summary);\r\n  const url = str(s.url);\r\n  const quote = str(s.quote);\r\n  if (title.length < 8 || title.length > 200) reasons.push('titulo_fuera_de_rango');\r\n  if (summary.length < 30 || summary.length > 700) reasons.push('resumen_fuera_de_rango');\r\n  if (!isUrl(url)) reasons.push('url_invalida');\r\n  if (!str(s.source)) reasons.push('fuente_obligatoria');\r\n  if (str(s.why_it_matters).length < 20) reasons.push('falta_por_que_importa');\r\n  if (!str(s.angle)) reasons.push('falta_angulo');\r\n  if (!str(s.audience)) reasons.push('falta_audiencia');\r\n  if (!CHANNELS.includes(s.channel_suggestion)) reasons.push('canal_invalido');\r\n  const conf = Number(s.confidence);\r\n  if (!Number.isFinite(conf) || conf < 0 || conf > 1) reasons.push('confianza_invalida');\r\n  if (external && (quote.length < 20 || quote.length > 500)) reasons.push('cita_obligatoria_en_senal_externa');\r\n  const hasDate = /^\\d{4}-\\d{2}-\\d{2}$/.test(str(s.date));\r\n  if (external && !hasDate) reasons.push('fecha_obligatoria_en_senal_externa');\r\n\r\n  // Frescura\r\n  let ageDays = null;\r\n  if (hasDate) { const t = Date.parse(str(s.date) + 'T12:00:00Z'); if (Number.isFinite(t)) ageDays = Math.max(0, Math.round((now - t) / 86400000)); else reasons.push('fecha_invalida'); }\r\n  if (ageDays !== null && ageDays < 0) reasons.push('fecha_en_el_futuro');\r\n  if (external && ageDays !== null && ageDays > 90) reasons.push('senal_obsoleta');\r\n\r\n  // Verificación (la hace n8n al abrir la URL; aquí se interpreta)\r\n  const httpOk = Number(ctx.httpStatus) >= 200 && Number(ctx.httpStatus) < 300;\r\n  // La cita puede partirse entre etiquetas HTML: se compara contra el texto visible (sin scripts, estilos ni marcado).\r\n  const plain = (h) => String(h || '').replace(/<script[\\s\\S]*?<\\/script>|<style[\\s\\S]*?<\\/style>|<!--[\\s\\S]*?-->/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&quot;|&#34;/g, '\"').replace(/&#39;|&apos;/g, \"'\").replace(/&#(\\d+);/g, (m, d) => String.fromCharCode(Number(d)));\r\n  const quoteFound = external ? Boolean(ctx.bodyText) && norm(plain(ctx.bodyText)).includes(norm(plain(quote))) : null;\r\n  if (external && !httpOk) reasons.push('url_inaccesible');\r\n  if (external && httpOk && !quoteFound) reasons.push('cita_no_aparece_en_la_pagina');\r\n  const verified = external ? httpOk && quoteFound === true : true; // evergreen/real-work: fuente interna declarada\r\n\r\n  // Duplicado\r\n  // Un mismo changelog/URL puede traer varias novedades distintas: la clave incluye un hash de la cita (o del título).\r\n  const fnv = (x) => { let h = 0x811c9dc5; for (let i = 0; i < x.length; i++) { h ^= x.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16).padStart(8, '0'); };\r\n  const sourceKey = (type === 'real-work' || type === 'evergreen' ? type.replace('-', '_') : 'hermes_research') + ':' + (url || norm(title).slice(0, 60)) + (external ? '#' + fnv(norm(quote || title)) : '');\r\n  const dup = Array.isArray(ctx.existingKeys) && ctx.existingKeys.includes(sourceKey);\r\n\r\n  // Factores\r\n  const f = s.factors && typeof s.factors === 'object' ? s.factors : {};\r\n  const val = (k) => { const v = Number(f[k]); return Number.isFinite(v) ? Math.max(0, Math.min(10, v)) : null; };\r\n  const judged = ['relevance', 'audience_fit', 'novelty', 'utility', 'clarity', 'conversation', 'differentiation'];\r\n  const bd = {};\r\n  judged.forEach((k) => { const v = val(k); if (v === null) reasons.push('factor_faltante:' + k); bd[k] = v === null ? 0 : v; });\r\n  if (external && ageDays !== null) { if (ageDays > 30) bd.novelty = Math.round(bd.novelty * 0.4); else if (ageDays > 14) bd.novelty = Math.round(bd.novelty * 0.8); }\r\n  // La evidencia la calcula el sistema (no la declara Hermes)\r\n  bd.evidence = external ? (verified ? Math.min(10, Math.round(6 + 4 * (Number.isFinite(conf) ? conf : 0))) : 0) : 7;\r\n  bd.non_repetition = dup ? 0 : 10;\r\n  let raw = 0;\r\n  Object.keys(W).forEach((k) => { raw += (W[k] * (bd[k] || 0)) / 10; });\r\n  const score = Math.max(0, Math.min(100, Math.round(raw)));\r\n\r\n  let status;\r\n  if (dup) { status = 'duplicate'; if (!reasons.includes('duplicada')) reasons.push('duplicada'); }\r\n  else if (reasons.length) status = 'rejected';\r\n  else if (score >= THRESHOLD) status = 'candidate';\r\n  else status = 'held';\r\n\r\n  return { status, signal_score: score, verified, quote_found: quoteFound, http_ok: httpOk, age_days: ageDays, reasons, breakdown: bd, source_key: sourceKey, threshold: THRESHOLD };\r\n}\n\nconst PACK_ID = '0ba54785-bff0-4a2d-a397-64e697d34e38';\nconst prepared = $('Prepare').all().map((i) => i.json);\nconst fetched = $input.all().map((i) => i.json);\nconst existingRows = ($('Fetch Existing').first().json || {}).body;\nconst existing = Array.isArray(existingRows) ? existingRows.map((r) => r.source_key) : [];\nconst now = Date.now();\nconst seenKeys = new Set(existing);\nconst rows = [];\nconst report = [];\nprepared.forEach((p, i) => {\n  const f = fetched[i] || {};\n  const httpStatus = Number(f.statusCode || 0);\n  const raw = typeof f.data === 'string' ? f.data : typeof f.body === 'string' ? f.body : '';\n  const text = raw.slice(0, 900000);\n  const ev = evaluateSignal(p.sig, { now, httpStatus, bodyText: text, existingKeys: Array.from(seenKeys) });\n  if (ev.status !== 'duplicate') seenKeys.add(ev.source_key);\n  const s = p.sig || {};\n  report.push({ title: String(s.title || '').slice(0, 120), type: s.type, status: ev.status, score: ev.signal_score, verified: ev.verified, quote_found: ev.quote_found, http: httpStatus, age_days: ev.age_days, reasons: ev.reasons });\n  if (ev.status === 'duplicate') return;\n  const kind = s.type === 'real-work' ? 'real_work' : s.type === 'evergreen' ? 'evergreen' : 'hermes_research';\n  rows.push({ icp_pack_id: PACK_ID, source_key: ev.source_key, kind, title: String(s.title || 'sin titulo').slice(0, 200), url: /^https?:/.test(s.url || '') ? s.url : null,\n    summary: String(s.summary || '').slice(0, 700) || null, evidence: s.quote ? [{ url: s.url, quote: String(s.quote).slice(0, 500), quote_found: ev.quote_found, verified_at: new Date(now).toISOString() }] : [],\n    verified: ev.verified === true && ev.status !== 'rejected', signal_type: ['news', 'competitor', 'founder', 'customer-question', 'evergreen', 'real-work'].includes(s.type) ? s.type : null,\n    signal: { batch_id: p.batch, source: s.source, why_it_matters: s.why_it_matters, angle: s.angle, audience: s.audience, channel_suggestion: s.channel_suggestion, confidence: s.confidence, factors: s.factors, score_breakdown: ev.breakdown },\n    signal_score: ev.signal_score, signal_status: ev.status === 'candidate' ? 'candidate' : ev.status === 'held' ? 'held' : 'rejected', reject_reasons: ev.reasons, quote_found: ev.quote_found, http_status: httpStatus || null,\n    source_date: /^\\d{4}-\\d{2}-\\d{2}$/.test(String(s.date || '')) ? s.date : null, checked_at: new Date(now).toISOString() });\n});\nreturn [{ json: { rows, report } }];"
+      }
+    },
+    {
+      "id": "1800e300-afa3-4313-b42e-377ea3a5cc17",
+      "name": "Upsert Signals",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "parameters": {
+        "method": "POST",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/content_sources?on_conflict=icp_pack_id,source_key",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.rows) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "f99971f4-4797-4aa8-adcc-f17f40026be9",
+      "name": "Respond",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const sc = $('Score').first().json;\nconst up = $json;\nif ((up.statusCode || 0) >= 300 && sc.rows.length) throw new Error('Supabase content_sources fallo (HTTP ' + up.statusCode + '): ' + JSON.stringify(up.body || {}).slice(0, 300));\nconst by = (s) => sc.report.filter((r) => r.status === s).length;\nconst best = sc.report.filter((r) => r.status === 'candidate').sort((a, b) => b.score - a.score)[0] || null;\nreturn [{ json: { ok: true, received: sc.report.length, candidates: by('candidate'), held: by('held'), rejected: by('rejected'), duplicates: by('duplicate'), best, report: sc.report,\n  note: 'Solo se guardaron senales; no se creo ninguna pieza ni se toco GHL.' } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Signals Webhook": {
+      "main": [
+        [
+          {
+            "node": "Fetch Existing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Existing": {
+      "main": [
+        [
+          {
+            "node": "Prepare",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare": {
+      "main": [
+        [
+          {
+            "node": "Fetch Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Source": {
+      "main": [
+        [
+          {
+            "node": "Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score": {
+      "main": [
+        [
+          {
+            "node": "Upsert Signals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Signals": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

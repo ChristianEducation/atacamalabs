@@ -1,0 +1,254 @@
+{
+  "name": "Atacama Labs - 14 Content Sync (GHL → Supabase)",
+  "nodes": [
+    {
+      "id": "329876db-9ce0-4fa1-89dd-3ec0ce3f97c8",
+      "name": "Every 30 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "07761114-3933-43ff-8412-c7788b71fc53",
+      "name": "Fetch Pending",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "parameters": {
+        "method": "GET",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/content_pieces?icp_pack_id=eq.0ba54785-bff0-4a2d-a397-64e697d34e38&ghl_post_id=not.is.null&status=in.(drafted,in_review,approved,scheduled)&select=id,ghl_post_id,status,ghl_status,ghl_approval_status&limit=100",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "d530f43d-6315-48f3-bac8-0589c4ed94ad",
+      "name": "Any Pending?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        360,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ (Array.isArray($json.body) && $json.body.length > 0) ? \"yes\" : \"no\" }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "0f755c8e-af68-4a6c-9a6c-5ca978e9da2d",
+      "name": "List GHL Posts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4Vc6nfxyKjZ14Bep",
+          "name": "GHL — Atacama OS"
+        }
+      },
+      "alwaysOutputData": true,
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/social-media-posting/pxHuOsiz2i3lM6BtC9IM/posts/list",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ type: 'all', accounts: \"6ac43e3ecfe0752734a5fe1e_pxHuOsiz2i3lM6BtC9IM_17841424613699090,6ac4fabe3356d12d204557ea_pxHuOsiz2i3lM6BtC9IM_145278681_page,6ac4fabe3356d12d204557ea_pxHuOsiz2i3lM6BtC9IM_D9Z-EPMxLu_profile\", skip: '0', limit: '100', fromDate: new Date(Date.now() - 400 * 86400000).toISOString(), toDate: new Date(Date.now() + 400 * 86400000).toISOString(), includeUsers: 'false' }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "e7e05869-e43e-46c1-b011-e9629902a911",
+      "name": "Compute",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        840,
+        0
+      ],
+      "parameters": {
+        "jsCode": "function mapGhlToPiece(post, now) {\n  const approval = post && post.postApprovalDetails && post.postApprovalDetails.approvalStatus ? String(post.postApprovalDetails.approvalStatus) : null;\n  if (!post) return { status: 'discarded', ghl_status: 'deleted', ghl_approval_status: null };\n  const st = String(post.status || '').toLowerCase();\n  const out = { ghl_status: st, ghl_approval_status: approval };\n  if (post.scheduleDate) out.scheduled_at = new Date(post.scheduleDate).toISOString();\n  if (st === 'published') { out.status = 'published'; out.published_at = new Date(post.publishedAt || post.updatedAt || now).toISOString(); }\n  else if (st === 'scheduled' || st === 'in_progress' || st === 'publishing') out.status = 'scheduled';\n  else if (st === 'failed' || st === 'error') out.status = 'failed';\n  else if (st === 'draft') out.status = 'drafted';\n  else if (st === 'in_review') out.status = approval === 'rejected' ? 'discarded' : approval === 'approved' ? 'approved' : 'in_review';\n  else if (st === 'deleted') out.status = 'discarded';\n  else out.status = null; // estado desconocido: no se toca la pieza\n  return out;\n}\n\nconst pending = ($('Fetch Pending').first().json || {}).body;\nconst res = $json || {};\nconst posts = res.body && res.body.results && Array.isArray(res.body.results.posts) ? res.body.results.posts : null;\nif (!Array.isArray(pending) || !pending.length) return [];\nif (!posts || (res.statusCode || 0) >= 300) throw new Error('GHL posts/list fallo (HTTP ' + res.statusCode + '): ' + JSON.stringify(res.body || {}).slice(0, 300));\nconst byId = {};\nposts.forEach((p) => { byId[p._id] = p; });\nconst now = Date.now();\nconst out = [];\npending.forEach((piece) => {\n  const post = byId[piece.ghl_post_id] || null;\n  const m = mapGhlToPiece(post, now);\n  if (m.status === null) return;\n  const patch = { ...m, synced_at: new Date(now).toISOString(), updated_at: new Date(now).toISOString() };\n  const changed = m.status !== piece.status || (m.ghl_status || null) !== (piece.ghl_status || null) || (m.ghl_approval_status || null) !== (piece.ghl_approval_status || null);\n  if (changed) out.push({ json: { id: piece.id, from: piece.status, to: m.status, patch } });\n});\nreturn out;"
+      }
+    },
+    {
+      "id": "dc64d3aa-bee2-4250-ad3f-aaa699d6d67b",
+      "name": "Patch Piece",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1080,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/content_pieces?id=eq.\" + $json.id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.patch) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every 30 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Fetch Pending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Pending": {
+      "main": [
+        [
+          {
+            "node": "Any Pending?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Pending?": {
+      "main": [
+        [
+          {
+            "node": "List GHL Posts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "List GHL Posts": {
+      "main": [
+        [
+          {
+            "node": "Compute",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute": {
+      "main": [
+        [
+          {
+            "node": "Patch Piece",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

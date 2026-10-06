@@ -549,3 +549,45 @@ Auditoría: `src/components/studio/SocialCard.tsx` y los exportables `social/exp
 6. Hermes: aún no alimenta el Content Engine; falta su prompt de «señales de contenido» (entrada `hermes_research` con fuentes verificadas).
 7. Estado `approved/scheduled/published` en Supabase: hoy no se sincroniza desde GHL (el post es la fuente de verdad); sincronización y métricas a 24 h/72 h/7 d quedan para la fase siguiente.
 - **Rollback:** desactivar/archivar el workflow 12; las tablas `content_*` se pueden borrar sin afectar nada más; borrar el post `in_review` desde Social Planner.
+
+## BLOQUE I — Cierre del Content Engine + Hermes como fuente real (6-oct-2026) · ✅ FUNCIONANDO DE PUNTA A PUNTA
+
+### I1. Sistema de marca y guía editorial
+- Del ZIP `Atacama-brand-content-references.zip` se copiaron **sin alterar** `brand/content/ATACAMA-LABS-GUIA-PUBLICACIONES.md` (fuente editorial oficial), `brand/content/mascot/poses.png` y `brand/content/mascot/emociones.png` (hojas 3×3 de la llamita).
+- Auditoría de assets: `public/brand/` = logos/isotipos oficiales (para código y renderer); `brand/content/` = guía + referencias de la mascota. Nada duplicado, ningún logo rehecho ni recoloreado. `brand/content/README.md` reescrito: qué logo va sobre fondo claro/oscuro, reglas de la llamita, flujo y aviso sobre los exportables antiguos `social/exports/` (paleta marrón, no usar).
+- Línea editorial aplicada: tipografía sans (DM Sans 300/400), azul `#0F5CED` / tinta `#041228`, la llamita **solo en portada/cierre y solo cuando suma**, tomada de las hojas de referencia (recortes en `MASCOT_CROPS`). `SocialCard.tsx` (Studio) alineado a la identidad vigente.
+
+### I2. Renderer y motor de piezas
+- `scripts/content/render.mjs` (Playwright → PNG 1080×1350): 3 familias de layout (portada/idea, contenido·comparación·tarjetas, cierre/CTA) con variación determinista por hash de la idea; logos SVG oficiales incrustados; mascota opcional. Comprobado visualmente con una pieza de 5 láminas.
+- `engine-core.mjs` (37 pruebas): valida pose/emoción de la mascota, que solo aparezca en portada/cierre, `figure`, `compare`, mezcla de estructuras y lint de ataques/promesas exageradas.
+
+### I3. Pieza Founder revisada
+LinkedIn · Christian Wevar · categoría Founder · `in_review` (post `6ac51f2bd3e22f4c60c0c08c`, propuesta 13-oct 10:00 Chile, score 81). Se reescribió desde la experiencia real de construir el alta de clientes: «Automatizamos el alta de clientes y lo primero que hicimos fue impedir que escribiera algo.» Sin publicar.
+
+### I4. Aprobador (resuelto con evidencia, no por suposición)
+Hay dos «Christian Wevar» en GHL. La evidencia indica que el **usuario operativo es `OjkAjHMdUjnblO7W1kBZ` (`c.wevarh@gmail.com`)**: es el usuario de la sesión de interfaz con la que se operó GHL y el dueño del proyecto n8n; `wTEyOmg7jpn018RPjzxX` no mostró actividad. Queda como `APPROVER_USER_ID` en `n8n/build/content-engine.mjs`. Si en la práctica aprueba el otro, cambiar esa constante y reimportar el workflow 12 (decisión humana: no es demostrable desde la API).
+
+### I5. Social Planner: categorías y etiquetas
+- **Categorías creadas por UI** (la API no puede) y verificadas por API: Educativo `6ac5265a…`, Caso `6ac52690…`, Demo `6ac52699…`, Noticia `6ac527bf…`, Evergreen `6ac527cc…`, Founder `6ac527f0…`. El workflow 12 ahora manda `categoryId` según `piece.category`; las dos piezas reales ya lo llevan (Founder, Noticia).
+- **Etiquetas (texto, imagen, carrusel, demo, reel): NO creadas.** La API responde «Created» sin crear y en la interfaz se crean desde el compositor de un post. El formato queda en Supabase (`content_pieces.format`) y no bloquea nada. Pasos manuales en I10.
+
+### I6. Hermes `content-radar` (señales verificadas)
+- Prompt versionado: `ops/hermes/content-radar.prompt.txt` — radar de cambios de plataformas que Atacama integra, preguntas repetidas de clientes, casos reales, competidores/founders y rubros; **no** es un agregador de noticias de IA. Máx. 5 señales, 40 llamadas a herramientas, 12 min. Por señal: título, resumen, URL, fuente, fecha, cita literal, por qué importa, ángulo, audiencia, canal sugerido, tipo, confianza y factores.
+- Job Hermes `a46bd3138a0b` (modelo barato `google/gemini-3.7-flash`), **pausado** tras la corrida controlada: la cadencia es decisión de Christian.
+- Workflow n8n `13 Content Signal Intake` (`8EI8YcBJ5lQaPK0L`, activo): webhook `POST /webhook/atacama-content-signals` (`X-Atacama-Key`) → abre cada URL → `evaluateSignal` (`scripts/content/signal-core.mjs`, 20 pruebas) → `content_sources`. **Gate de señales:** HTTP 2xx, cita literal presente en el texto visible, fecha/frescura (>90 días se rechaza; >30 pierde novedad), duplicado por `URL#hash(cita)`, esquema completo; score 0–100 con los 9 factores (la evidencia la calcula el sistema), umbral 70; `<70` queda `held`. No se rellena cuota: 0 piezas es válido.
+- Migración `20261006_content_signals_and_sync.sql` (aplicada): columnas de señal en `content_sources` y de sincronización en `content_pieces`; estado `failed`.
+
+### I7. Corrida real controlada (una sola)
+Hermes entregó **5 señales**: **3 candidatas** (90 Claude Managed Agents · permisos `auto`; 88 compactación bajo demanda en la API de Claude; 84 Account Usage API de Resend) y **2 rechazadas** (77 y 76, changelog de GoHighLevel: la cita no aparece en el HTML porque la página se renderiza con JavaScript; no se verificó, no se forzó). 0 duplicadas. Se eligió la mejor (90) y se generó **una sola pieza**: LinkedIn · página Atacama Labs · Noticia · score **82**, con dos fuentes (la nota de lanzamiento de Anthropic verificada + el commit propio 3d5f85d). Post `6ac527672249615b17fbd838`, `in_review`, propuesta 15-oct 10:00 Chile. Las otras dos candidatas siguen disponibles (`candidate`). Costo de tokens de Hermes: **no medido**.
+
+### I8. Sincronización GHL → Supabase
+Workflow `14 Content Sync` (`E9KMwNH7QmWbuy8Q`, activo, cada 30 min, **solo lectura en GHL**): si no hay piezas abiertas (drafted/in_review/approved/scheduled con `ghl_post_id`) termina sin llamar a GHL; si las hay, hace **una** consulta `posts/list` y mapea draft→drafted, in_review→in_review/approved, scheduled→scheduled, published→published (+`published_at`), failed→failed, borrado→discarded, guardando `ghl_post_id`, `ghl_status`, `ghl_approval_status`, `scheduled_at`, `synced_at`. Probado con una copia desechable por webhook y una pieza TEST (sin cambios → no-op; post a draft → `drafted`; post borrado → `discarded`; nada pendiente → no-op). El disparo programado todavía no había corrido al cierre (recién activado): la pieza de la página se sincroniza en la primera ejecución. **No** hay métricas a 24 h/72 h/7 d (siguiente bloque).
+
+### I9. Seguridad y estado final
+Cero publicaciones, cero aprobaciones, cero programaciones automáticas; los cuerpos a GHL llevan `status: 'in_review'` fijo (hay prueba que lo verifica). No se tocó Gmail, prospección, leads 60–79, `dry_run` de Won, EnBandeja ni la web de producción. Los datos TEST de las pruebas (posts, medios, filas) se borraron. Pruebas: engine-core 37, signal-core 20, content-engine 25, content-signals 9, content-sync 15, won-to-client 45; todas OK. Escaneo de secretos sin hallazgos.
+
+### I10. Pasos manuales pendientes (solo Christian)
+1. **Decidir las 2 piezas** en Marketing → Social Planner → Planner (estado *In Review*): Founder (LinkedIn Christian, 13-oct) y Noticia (LinkedIn Atacama Labs, 15-oct). El botón «Approve» no se pudo verificar por UI automatizada.
+2. **Etiquetas:** Social Planner → Planner → Create post; en el campo *Tags* escribir `texto` y confirmar con Enter para crearla; repetir con `imagen`, `carrusel`, `demo`, `reel`; cerrar sin publicar.
+3. Decidir la cadencia del radar (reanudar el job `a46bd3138a0b` o mantenerlo manual).
+4. Confirmar que `c.wevarh@gmail.com` es quien aprueba (ver I4).

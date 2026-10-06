@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "channel": "linkedin_page",
+  "format": "texto",
+  "category": "Noticia",
+  "topic": "Agentes de IA que piden permiso: la política «auto» de Claude Managed Agents",
+  "angle": "No todas las acciones de un agente merecen el mismo control: leer solo, borrador para revisar, escribir o publicar con aprobación",
+  "audience": "Dueños y gerentes de pymes que evalúan agentes de IA y temen que ejecuten acciones sin control",
+  "sources": [
+    {
+      "kind": "hermes_research",
+      "key": "hermes_research:https://docs.anthropic.com/en/release-notes/overview#71d8e224",
+      "title": "Claude Managed Agents: política de permisos auto (notas de versión de Anthropic, 10-sep-2026)",
+      "url": "https://docs.anthropic.com/en/release-notes/overview",
+      "verified": true,
+      "evidence": [
+        {
+          "url": "https://docs.anthropic.com/en/release-notes/overview",
+          "quote": "the server evaluates each agent or MCP tool call and runs it, denies it, or pauses for your approval."
+        }
+      ]
+    },
+    {
+      "kind": "real_work",
+      "title": "Content Engine de Atacama OS: toda pieza queda en revisión en Social Planner antes de publicarse",
+      "url": "https://github.com/ChristianEducation/atacamalabs/commit/3d5f85d",
+      "verified": true,
+      "evidence": [
+        {
+          "url": "https://github.com/ChristianEducation/atacamalabs/commit/3d5f85d",
+          "quote": "feat: Content Engine MVP — Social Planner in_review circuit"
+        }
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "text": "Anthropic agregó la política de permisos auto a Claude Managed Agents el 10 de septiembre de 2026: el servidor evalúa cada llamada a una herramienta y la ejecuta, la rechaza o se detiene a pedir aprobación",
+      "external": true,
+      "source_url": "https://docs.anthropic.com/en/release-notes/overview"
+    },
+    {
+      "text": "El sistema de contenido de Atacama Labs deja cada publicación en revisión y nada sale sin aprobación",
+      "external": false
+    }
+  ],
+  "factors": {
+    "relevance": {
+      "value": 9,
+      "note": "El control humano sobre las acciones de un agente es parte del trabajo real de Atacama."
+    },
+    "audience_fit": {
+      "value": 8,
+      "note": "Responde al miedo más común de quien contrata un agente."
+    },
+    "novelty": {
+      "value": 7,
+      "note": "Novedad de hace 26 días: reciente pero no de esta semana."
+    },
+    "evidence": {
+      "value": 9,
+      "note": "Cita literal verificada en la página de notas de versión; la práctica propia está en el repositorio."
+    },
+    "utility": {
+      "value": 8,
+      "note": "Deja una regla aplicable: tres niveles de control según el riesgo de la acción."
+    },
+    "clarity": {
+      "value": 8,
+      "note": "Una sola idea y una lista de tres."
+    },
+    "conversation": {
+      "value": 8,
+      "note": "Cierra con una pregunta concreta sobre qué dejarían sin permiso."
+    },
+    "differentiation": {
+      "value": 7,
+      "note": "Conecta la novedad con una práctica propia en vez de repetir la noticia."
+    },
+    "non_repetition": {
+      "value": 9,
+      "note": "Tema cercano al post de fundador en revisión (el freno), pero otro ángulo, otra cuenta y otra fuente."
+    }
+  },
+  "rationale": "Señal verificada del radar (score de señal 90): cambio concreto en un producto de agentes. Se explica sin exagerar (es de un producto específico), se extrae el patrón aplicable y se muestra cómo lo practica Atacama. Cuenta corporativa por ser novedad + aprendizaje técnico; el ángulo personal del fundador ya está en otra pieza.",
+  "hook": "Un agente de IA que decide cuándo pedirte permiso: eso fue lo que cambió en Claude Managed Agents.",
+  "body": "El 10 de septiembre Anthropic agregó una política de permisos «auto»: el servidor evalúa cada llamada a una herramienta y decide si la ejecuta, la rechaza o se detiene a pedir aprobación.\n\nEs una novedad de un producto concreto y no aplica a todos los agentes que una empresa pueda tener. Lo que sí sirve para cualquiera es el patrón: no todas las acciones merecen el mismo nivel de control.\n\nAsí lo diseñamos en Atacama Labs:\n• Consultar o leer: el agente lo hace solo.\n• Preparar un borrador o un plan: lo hace y lo deja para revisar.\n• Escribir en un sistema, enviar o publicar: queda detenido hasta que una persona apruebe.\n\nNuestro propio sistema de contenido funciona así: prepara las publicaciones y las deja en revisión. Nada sale sin aprobación.\n\n¿Qué acciones de tu empresa le dejarías hoy a un agente sin pedirle permiso?",
+  "slides": [],
+  "cta": {
+    "type": "none",
+    "text": ""
+  },
+  "hashtags": [
+    "#AgentesDeIA",
+    "#Automatización"
+  ],
+  "evidence_urls": [
+    "https://docs.anthropic.com/en/release-notes/overview",
+    "https://github.com/ChristianEducation/atacamalabs/commit/3d5f85d"
+  ],
+  "visual_direction": "Solo texto.",
+  "schedule_suggestion": null,
+  "media": []
+}
