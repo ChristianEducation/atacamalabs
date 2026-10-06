@@ -1,0 +1,869 @@
+{
+  "name": "Atacama Labs - 11 Won to Client",
+  "nodes": [
+    {
+      "id": "ce6f848c-250f-43ef-bd27-481ecfa1bef9",
+      "name": "Won Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "5162036a-b4ec-4830-9b8f-6e303e436270",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "INGEST_KEY_CREDENTIAL_ID",
+          "name": "Atacama Labs - Ingest Key"
+        }
+      },
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "atacama-won-to-client",
+        "authentication": "headerAuth",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "f0404b28-7679-4717-a0d3-7d5f6e3b8107",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const first = $input.first().json ?? {};\nconst body = first.body ?? first;\nconst id = String(body.opportunity_id || '').trim();\nif (!/^[A-Za-z0-9]{15,30}$/.test(id)) throw new Error('opportunity_id invalido');\n// SEGURIDAD: sin \"dry_run\": false explicito, solo se planifica (lecturas) y no se escribe nada.\nreturn [{ json: { opportunityId: id, dryRun: body.dry_run !== false } }];"
+      }
+    },
+    {
+      "id": "4d13b709-1d78-4892-8aed-3a3b8120f882",
+      "name": "Get Opportunity",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GHL_ATACAMA_OS_CREDENTIAL_ID",
+          "name": "Atacama Labs - GHL Atacama OS (token2)"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://services.leadconnectorhq.com/opportunities/\" + $json.opportunityId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "a2229b7c-f59c-481f-9811-c03bdfda527e",
+      "name": "Guard Won",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const v = $('Validate Input').first().json;\nconst opp = $json.opportunity;\nconst skip = (reason) => [{ json: { proceed: false, action: 'skipped', reason, opportunityId: v.opportunityId } }];\nif (!opp || !opp.id) return skip('oportunidad_no_encontrada');\nif (opp.locationId !== 'pxHuOsiz2i3lM6BtC9IM') return skip('location_distinta');\nif (opp.pipelineId !== 'trSWhAcNDyUMmPlYIEib') return skip('fuera_del_pipeline_atacama');\nif (String(opp.status).toLowerCase() !== 'won') return skip('status_no_es_won (' + opp.status + ')');\nif (!opp.contactId) return skip('oportunidad_sin_contacto');\nconst cf = (opp.customFields || []).find((f) => f.id === 'yY5sqFov8GeXcx5G9vuy');\nconst solucion = cf ? (cf.fieldValueString || cf.fieldValue || '') : '';\nreturn [{ json: { proceed: true, opportunityId: opp.id, dryRun: v.dryRun, contactId: opp.contactId, oppName: opp.name || '', solucion: String(solucion) } }];"
+      }
+    },
+    {
+      "id": "8da78b14-ee9f-4a66-95e8-e45a715134a5",
+      "name": "Proceed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        960,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ ($json.proceed === true) ? \"yes\" : \"no\" }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "337bfb4c-b0db-4679-a2f3-98fb0a82e1f8",
+      "name": "Get Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        -120
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GHL_ATACAMA_OS_CREDENTIAL_ID",
+          "name": "Atacama Labs - GHL Atacama OS (token2)"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://services.leadconnectorhq.com/contacts/\" + $json.contactId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "35c8cb9e-2393-4623-8f50-e77c70ce76f3",
+      "name": "Get Opp Relations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        -120
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GHL_ATACAMA_OS_CREDENTIAL_ID",
+          "name": "Atacama Labs - GHL Atacama OS (token2)"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://services.leadconnectorhq.com/associations/relations/\" + $(\"Guard Won\").first().json.opportunityId + \"?locationId=pxHuOsiz2i3lM6BtC9IM&skip=0&limit=50\" }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "4843936f-9c0b-488d-86bb-3c0efcdfa091",
+      "name": "List Businesses",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        -120
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GHL_ATACAMA_OS_CREDENTIAL_ID",
+          "name": "Atacama Labs - GHL Atacama OS (token2)"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "=https://services.leadconnectorhq.com/businesses/?locationId=pxHuOsiz2i3lM6BtC9IM",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "86f8f33a-8f1e-4c1e-8a6b-7d9a399d4fdd",
+      "name": "Plan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        -120
+      ],
+      "parameters": {
+        "jsCode": "const g = $('Guard Won').first().json;\nconst contact = ($('Get Contact').first().json || {}).contact || {};\nconst rels = ($('Get Opp Relations').first().json || {}).relations || [];\nconst businesses = ($json.businesses || []).filter((b) => !/^\\(example\\)/i.test(b.name || ''));\nconst norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();\n\n// 1) Idempotencia: si la oportunidad ya tiene Servicio contratado, no se repite nada.\nif (rels.some((r) => r.associationId === '6ac4412e79bbec5a0686f0ea')) {\n  return [{ json: { action: 'already_processed', reason: 'la oportunidad ya tiene un Servicio contratado', opportunityId: g.opportunityId } }];\n}\n// 2) Nombre de empresa: contacto.companyName o el sufijo de \"Nombre - Empresa\". Si no hay, se detiene.\nlet companyName = String(contact.companyName || '').trim();\nif (!companyName && g.oppName.includes(' - ')) companyName = g.oppName.split(' - ').slice(1).join(' - ').trim();\nif (!companyName || /^atacama labs$/i.test(companyName)) {\n  return [{ json: { action: 'needs_human', reason: 'sin_nombre_de_empresa_confiable', opportunityId: g.opportunityId } }];\n}\n// 3) Business: relacion existente con la oportunidad > businessId del contacto > nombre igual > crear.\nconst relBiz = rels.find((r) => r.associationId === '6aab99ca4b0508155da7f710');\nlet businessId = null;\nif (relBiz) businessId = relBiz.firstRecordId === g.opportunityId ? relBiz.secondRecordId : relBiz.firstRecordId;\nif (!businessId && contact.businessId) businessId = contact.businessId;\nif (!businessId) { const m = businesses.find((b) => norm(b.name) === norm(companyName)); if (m) businessId = m.id; }\n// 4) Servicio / Proyecto (sin inventar montos ni fechas).\nconst MAP = { 'atencion-y-seguimiento': 'Agente de IA', 'Agentes': 'Agente de IA', 'automatizacion-de-procesos': 'Automatización',\n  'sistemas-a-medida': 'Software a medida', 'A Medida': 'Software a medida', 'integraciones': 'Integración', 'Página Web': 'Web', 'Ecommerce': 'Ecommerce' };\nconst TIPO = { 'Agente de IA': 'Agente', 'Automatización': 'Automatización', 'Software a medida': 'Software', 'Integración': 'Integración', 'Web': 'Web', 'Ecommerce': 'Ecommerce' };\nconst producto = MAP[g.solucion] || 'Otro';\nconst servicio = { nombre: (companyName + ' — ' + producto).slice(0, 120), servicio_producto: producto, estado: 'Onboarding',\n  proximo_paso: 'Definir alcance y completar el onboarding' };\nconst proyecto = TIPO[producto] ? { nombre: (companyName + ' — ' + producto + ' (implementación)').slice(0, 120), tipo: TIPO[producto], estado: 'Planificado',\n  prioridad: 'Media', proximo_hito: 'Kickoff y levantamiento de requerimientos' } : null;\nreturn [{ json: { action: 'create', dryRun: g.dryRun, opportunityId: g.opportunityId, contactId: g.contactId, companyName, businessId,\n  createBusiness: !businessId, oppHasBusinessRel: Boolean(relBiz), contactHasBusiness: Boolean(businessId && contact.businessId === businessId), servicio, proyecto } }];"
+      }
+    },
+    {
+      "id": "f3cfae78-1c38-4c60-b3f5-ed57173d340d",
+      "name": "Create?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2160,
+        -120
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ ($json.action === \"create\") ? \"yes\" : \"no\" }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "e8ce3fa9-68ac-4042-b4ff-528f7f6bd16f",
+      "name": "Dry Run?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2400,
+        -240
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ ($json.dryRun === true) ? \"yes\" : \"no\" }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "2ad2418c-bae9-4642-8d0b-f6baccdaa76c",
+      "name": "Respond Dry Run",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        -360
+      ],
+      "parameters": {
+        "jsCode": "const p = $json;\nconst would = [];\nif (p.createBusiness) would.push('crear Business \"' + p.companyName + '\"');\nelse would.push('usar Business existente ' + p.businessId);\nwould.push('crear Servicio contratado \"' + p.servicio.nombre + '\" (estado Onboarding)');\nif (p.proyecto) would.push('crear Proyecto \"' + p.proyecto.nombre + '\" (estado Planificado)');\nwould.push('relaciones: servicio↔oportunidad, business↔servicio' + (p.proyecto ? ', business↔proyecto, proyecto↔servicio' : '') + (p.oppHasBusinessRel ? '' : ', business↔oportunidad') + (p.contactHasBusiness ? '' : ', business↔contacto'));\nreturn [{ json: { ok: true, action: 'dry_run', wrote_nothing: true, would, plan: p } }];"
+      }
+    },
+    {
+      "id": "df22ff73-6457-4953-ae23-7ad37d28f6c6",
+      "name": "Needs Business?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2640,
+        -120
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ ($json.createBusiness === true) ? \"yes\" : \"no\" }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "435b75b9-52e2-432d-b395-c08acdcf6b1f",
+      "name": "Create Business",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2880,
+        -200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GHL_ATACAMA_OS_CREDENTIAL_ID",
+          "name": "Atacama Labs - GHL Atacama OS (token2)"
+        }
+      },
+      "continueOnFail": false,
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/businesses/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { locationId: \"pxHuOsiz2i3lM6BtC9IM\", name: $json.companyName } }}",
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "da2db742-2335-4d08-a186-bd12e76bd6d1",
+      "name": "Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3120,
+        -120
+      ],
+      "parameters": {
+        "jsCode": "const p = $('Plan').first().json;\nconst businessId = p.createBusiness ? ($('Create Business').first().json.business || {}).id : p.businessId;\nif (!businessId) throw new Error('No se pudo obtener el id de la Business');\nreturn [{ json: { ...p, businessId } }];"
+      }
+    },
+    {
+      "id": "439418c1-6155-42a1-93b6-184ca0c32d42",
+      "name": "Create Servicio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3360,
+        -120
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GHL_ATACAMA_OS_CREDENTIAL_ID",
+          "name": "Atacama Labs - GHL Atacama OS (token2)"
+        }
+      },
+      "continueOnFail": false,
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/objects/custom_objects.servicios_contratados/records",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { locationId: \"pxHuOsiz2i3lM6BtC9IM\", properties: $json.servicio } }}",
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "74ce0f67-f712-4fc2-ae29-200a6d48b9ad",
+      "name": "Has Proyecto?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3600,
+        -120
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ (Boolean($(\"Context\").first().json.proyecto)) ? \"yes\" : \"no\" }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "436b2647-7a5d-415a-9249-0e07661df5cf",
+      "name": "Create Proyecto",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3840,
+        -200
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GHL_ATACAMA_OS_CREDENTIAL_ID",
+          "name": "Atacama Labs - GHL Atacama OS (token2)"
+        }
+      },
+      "continueOnFail": false,
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/objects/custom_objects.proyectos/records",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { locationId: \"pxHuOsiz2i3lM6BtC9IM\", properties: $(\"Context\").first().json.proyecto } }}",
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "5c3b7d6b-3dea-45c4-ba74-160af65de34d",
+      "name": "Build Relations",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4080,
+        -120
+      ],
+      "parameters": {
+        "jsCode": "const c = $('Context').first().json;\nconst servicioId = ($('Create Servicio').first().json.record || {}).id;\nif (!servicioId) throw new Error('No se creó el Servicio contratado');\nlet proyectoId = null;\nif (c.proyecto) { proyectoId = (($('Create Proyecto').first().json || {}).record || {}).id || null; }\nconst R = [{ label: 'servicio↔oportunidad', associationId: '6ac4412e79bbec5a0686f0ea', firstRecordId: servicioId, secondRecordId: c.opportunityId },\n  { label: 'business↔servicio', associationId: '6ac4412e1ef24423a65a24b6', firstRecordId: c.businessId, secondRecordId: servicioId }];\nif (!c.oppHasBusinessRel) R.push({ label: 'business↔oportunidad', associationId: '6aab99ca4b0508155da7f710', firstRecordId: c.businessId, secondRecordId: c.opportunityId });\nif (!c.contactHasBusiness) R.push({ label: 'business↔contacto', associationId: 'BUSINESSES_CONTACTS_ASSOCIATION', firstRecordId: c.businessId, secondRecordId: c.contactId });\nif (proyectoId) {\n  R.push({ label: 'business↔proyecto', associationId: '6ac4412fd143f08a0a642c44', firstRecordId: c.businessId, secondRecordId: proyectoId });\n  R.push({ label: 'proyecto↔servicio', associationId: '6ac44130ad83d04a973c2511', firstRecordId: proyectoId, secondRecordId: servicioId });\n}\nreturn R.map((r) => ({ json: { ...r, locationId: 'pxHuOsiz2i3lM6BtC9IM', servicioId, proyectoId } }));"
+      }
+    },
+    {
+      "id": "83393f22-46e7-4c86-89ce-24bac3826cd9",
+      "name": "Create Relation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4320,
+        -120
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "GHL_ATACAMA_OS_CREDENTIAL_ID",
+          "name": "Atacama Labs - GHL Atacama OS (token2)"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/associations/relations",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { locationId: $json.locationId, associationId: $json.associationId, firstRecordId: $json.firstRecordId, secondRecordId: $json.secondRecordId } }}",
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "2b1b79c4-76e2-4de8-af6a-d32cbf4d73be",
+      "name": "Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4560,
+        -120
+      ],
+      "parameters": {
+        "jsCode": "const c = $('Context').first().json;\nconst items = $input.all();\nconst rels = items.map((i, n) => ({ label: $('Build Relations').all()[n].json.label, ok: !i.json.error }));\nconst first = $('Build Relations').first().json;\nreturn [{ json: { ok: rels.every((r) => r.ok), action: 'created', opportunityId: c.opportunityId, businessId: c.businessId, businessCreated: c.createBusiness,\n  servicioId: first.servicioId, proyectoId: first.proyectoId, relations: rels,\n  note: 'Las tareas de onboarding las crea el Workflow nativo de GHL; este flujo no crea tareas.' } }];"
+      }
+    },
+    {
+      "id": "03a964a7-414f-4e43-ae18-078ff8adcad5",
+      "name": "Respond Skipped",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        120
+      ],
+      "parameters": {
+        "jsCode": "return [{ json: { ok: true, ...$input.first().json } }];"
+      }
+    },
+    {
+      "id": "463825b0-1de6-4ae7-aab6-96f88f21e046",
+      "name": "Respond Not Create",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return [{ json: { ok: $json.action !== \"needs_human\", ...$json } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Won Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Get Opportunity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Opportunity": {
+      "main": [
+        [
+          {
+            "node": "Guard Won",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guard Won": {
+      "main": [
+        [
+          {
+            "node": "Proceed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Proceed?": {
+      "main": [
+        [
+          {
+            "node": "Get Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Skipped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Contact": {
+      "main": [
+        [
+          {
+            "node": "Get Opp Relations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Opp Relations": {
+      "main": [
+        [
+          {
+            "node": "List Businesses",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Businesses": {
+      "main": [
+        [
+          {
+            "node": "Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan": {
+      "main": [
+        [
+          {
+            "node": "Create?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create?": {
+      "main": [
+        [
+          {
+            "node": "Dry Run?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Not Create",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dry Run?": {
+      "main": [
+        [
+          {
+            "node": "Respond Dry Run",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Needs Business?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Business?": {
+      "main": [
+        [
+          {
+            "node": "Create Business",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Business": {
+      "main": [
+        [
+          {
+            "node": "Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Context": {
+      "main": [
+        [
+          {
+            "node": "Create Servicio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Servicio": {
+      "main": [
+        [
+          {
+            "node": "Has Proyecto?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Proyecto?": {
+      "main": [
+        [
+          {
+            "node": "Create Proyecto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Relations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Proyecto": {
+      "main": [
+        [
+          {
+            "node": "Build Relations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Relations": {
+      "main": [
+        [
+          {
+            "node": "Create Relation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Relation": {
+      "main": [
+        [
+          {
+            "node": "Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

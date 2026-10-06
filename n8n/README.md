@@ -2,6 +2,47 @@
 
 Workflows propios de Atacama Labs en la instancia n8n compartida (`n8n.srv1650725.hstgr.cloud`). **No se tocó ningún workflow ni pipeline de EnBandeja** — todo lo de acá es nuevo, con nombre/credenciales propios.
 
+## Estado REAL de la instancia (verificado el 2026-10-05)
+
+> Esta sección manda sobre el resto del archivo cuando haya diferencias; el resto es historia técnica de cómo se construyó cada pieza. Detalle de la limpieza en `docs/ATACAMA-OS-IMPLEMENTATION.md`.
+
+Los workflows se agrupan con **etiquetas** de n8n (la API pública no ofrece carpetas):
+
+| Etiqueta | Workflows | Estado |
+|---|---|---|
+| `ATACAMA — PRODUCCIÓN` | **01 Lead Sync v2.2** (`idniXY0Du2qet57O`), **07 Booking Sync** (`sw0xbhB91s5mhHCh`) | Activos, cada 2 min, sin errores |
+| `ATACAMA — EN DESARROLLO` | 00 Orchestrator (`ubXANtYTd5y9wdbP`, inactivo) y las copias PROD de 01 Discovery (`AnjrmngEzXWiXIVT`), 02 Research (`cw3oTblethuiTtEm`), 02b Signals (`liNLmszWOlEz9kVv`), 03 Qualification (`LzkojauO5ypKNALc`) | "Activos" solo para ser invocados por el orquestador; **el pipeline de prospección está detenido** (Discovery bloqueado por el scraper compartido; 0 prospectos reales de Atacama) |
+| `ATACAMA — ARCHIVO` | Lead Sync v1 (`oKQujZqHy09dMJao`), v2 (`COWM3i2F4VZq7Dau`), v2.1 (`dlB8WgFwQZjtDJz1`) | Archivados (no borrados) |
+| `LEGACY — ENBANDEJA` | 8 workflows del motor original + 3 benchmarks | Inactivos; no tocar, no borrar sin autorización |
+
+**Diferencias con lo escrito más abajo**
+- `04 CRM Sync`, `05 Outreach Draft` y `06 Gmail Sync` **existen solo como JSON en este directorio**: se probaron como copias desechables y se borraron. **No están desplegados en la instancia.**
+- Se dejó de cumplir "no se dejó ningún workflow activo permanentemente": 01 Lead Sync v2.2 y 07 Booking Sync están activos de forma permanente.
+- `06 Gmail Sync` sigue bloqueado: no existe ninguna credencial de Gmail en la instancia.
+- Dependencias compartidas con EnBandeja que **siguen en uso** y se migrarán después: servicio `enbandeja-gmaps:8080` (01 Discovery), credenciales `Header Auth account` / `Header Auth account 2` (OpenClaw y Crawl4AI en 02/02b), y el propio contenedor/ruta `enbandeja-n8n`.
+- Todo workflow nuevo debe llamarse **Atacama Labs — …** (o nombre genérico) y no puede introducir dependencias `enbandeja-*`.
+
+## Atacama OS · prospección y resumen diario (workflows 08, 09 y 10)
+
+Generados por scripts versionados en [`build/`](build/) (los JSON de esta carpeta quedan en modo `test` con marcadores de ids; la versión `real` se genera con las constantes del pack `atacama-labs` y se despliega con el protocolo de copias). Detalle completo y evidencia en `docs/ATACAMA-OS-IMPLEMENTATION.md`.
+
+| Workflow | Disparador | Qué hace |
+|---|---|---|
+| **08 Prospect Ingest** (`YCl1Xns0XLX4W6M6`) | `POST /webhook/atacama-prospects-ingest` con cabecera `X-Atacama-Key` | Recibe el JSON de Hermes, aplica el gate (empresa y dominio propios; evidencia citada con URL del dolor y del encaje; contacto público con su fuente; razón específica), llama a la RPC `ingest_prospect` (transaccional, deduplica por dominio, registra en `prospect_inbox`) y ejecuta 03 Qualification sobre las cuentas nuevas |
+| **09 Prospect Approve** (`jznwD7AwEI0h9pEv`) | `POST /webhook/atacama-prospects-approve` con la misma cabecera | Marca como `ready_to_contact` solo prospectos `hot` + `crm_candidate` + `new`; ejecuta 04 CRM Sync una vez (entrada en la etapa *Investigado*) y 05 Outreach Draft una vez por cuenta. **No envía nada** |
+| **10 Atacama Daily** (JSON con marcadores; **sin desplegar**) | Cron `30 8 * * *` (America/Santiago) | Resumen operativo por Telegram. Falta la credencial del bot |
+
+Credenciales propias creadas: `Atacama Labs - Ingest Key` (cabecera de 08/09 y de Hermes) y `Atacama Labs - n8n API (lectura)` (solo para contar ejecuciones fallidas en el Daily). Ambas webhooks rechazan sin clave (403) y con un `icp_pack_id` que no sea el del workflow (error, sin escribir).
+
+Cómo se usa (aprobación manual, hoy por API):
+
+```bash
+# ver lo que espera aprobación (en Supabase): prospects con classification='hot', crm_candidate=true, status='new'
+curl -X POST "$N8N_BASE_URL/webhook/atacama-prospects-approve" \
+  -H "X-Atacama-Key: $ATACAMA_INGEST_KEY" -H "Content-Type: application/json" \
+  -d '{"icp_pack_id":"0ba54785-bff0-4a2d-a397-64e697d34e38","prospect_ids":["<uuid>"],"approved_by":"christian"}'
+```
+
 ## Protocolo de pruebas seguras (vigente desde 2026-09-15, tras el incidente de 02 Research)
 
 Tras el incidente de abajo, Christian decidió: entorno de prueba aislado dentro del mismo motor, no probar más contra `atacama-labs` directamente. Reglas vigentes para **todo** workflow nuevo de 003+:
@@ -28,7 +69,17 @@ Durante esta ronda se encontraron y corrigieron 3 bugs reales más (ninguno de a
 
 Los JSON versionados en este directorio quedan en modo `test` (el seguro por defecto para seguir iterando/probando). La promoción a `real` es un proceso repetible y ya probado (mismo script, `MODE=real`) — no se dejó ningún workflow activo permanentemente en n8n; todo se ejecuta vía copias desechables bajo demanda hasta que exista un orquestador (`00`) que decida cuándo correr cada uno en producción.
 
-## Atacama Labs - 07 Booking Sync (2026-09-25, ACTIVO: id `sw0xbhB91s5mhHCh`)
+## Atacama Labs - 11 Won to Client (6-oct-2026 · **preparado, NO desplegado**)
+
+- Archivo: [`atacama-labs-11-won-to-client.json`](atacama-labs-11-won-to-client.json) (generado por [`build/won-to-client.mjs`](build/won-to-client.mjs)). Webhook `POST /webhook/atacama-won-to-client` con cabecera `X-Atacama-Key`, cuerpo `{"opportunity_id":"…","dry_run":false}`.
+- Qué hace cuando GHL avisa de una oportunidad ganada: relee la oportunidad en GHL (solo actúa si `status=won` en `Atacama Labs — Ventas`), localiza o crea la **Business**, crea el **Servicio contratado** (estado Onboarding) y, si corresponde, un **Proyecto** inicial (Planificado), y deja las relaciones (servicio↔oportunidad, business↔servicio, business↔oportunidad, business↔contacto, business↔proyecto, proyecto↔servicio). No crea tareas (eso lo hace el Workflow nativo de GHL) ni inventa montos o fechas.
+- Seguridad: **`dry_run` es verdadero por defecto**; sin nombre de empresa confiable se detiene (`needs_human`); idempotente (si la oportunidad ya tiene Servicio no repite).
+- Pruebas hechas: 17 pruebas unitarias de la lógica de los nodos (guardas, plan, idempotencia, relaciones) y verificación por API de cada operación con registros TEST ya borrados. El flujo completo **no se ejecutó** (ninguna oportunidad está ganada y no se dispara de forma artificial).
+- Para activarlo (pasos de Christian): crear en n8n una credencial *Header Auth* `Atacama Labs - GHL Atacama OS (token2)` (`Authorization: Bearer <GHL_PRIVATE_INTEGRATION_TOKEN2>`), importar el JSON, reemplazar los marcadores `GHL_ATACAMA_OS_CREDENTIAL_ID` e `INGEST_KEY_CREDENTIAL_ID`, activarlo y recién entonces crear el Workflow de GHL descrito en `docs/ATACAMA-OS-IMPLEMENTATION.md` (Bloque E, §E5). No se creó la credencial desde aquí porque guardar el token en n8n quedó bloqueado por el control de permisos de la sesión.
+
+## Atacama Labs - 07 Booking Sync (2026-09-25; ACTIVO desde el 5-oct-2026 como copia `VsLCMZ6MeDsNvGzI`, el original `sw0xbhB91s5mhHCh` quedó archivado)
+
+> **Actualización 6-oct-2026 (Bloque E):** el pipeline ahora tiene 7 etapas (Nuevo → Investigado → Contactado → Respondió → Diagnóstico → Propuesta → Seguimiento). Una reserva lleva a **Diagnóstico** desde Nuevo, Investigado, Contactado o Respondió (la lista "etapa temprana" tiene esas 4). Reverificado de punta a punta el 6-oct (oportunidad TEST en Investigado → reserva TEST → pasó a Diagnóstico en ~2 min; todo borrado después).
 
 - Archivo: [`atacama-labs-07-booking-sync.json`](atacama-labs-07-booking-sync.json). Cada 2 min lista las reservas del calendario GHL **«Reunión de activación»** (id `D3CUkoKxRyze3Kpt8sa9`, 30 min, Google Calendar de atacamalabs.cl) de los últimos 3 días y los próximos 120. GHL no ofrece webhooks para Private Integrations, por eso es *polling* por API.
 - Flujo: `List Booked Events` → `Split Events` (descarta canceladas/no-show) → `Find Lead` (por `ghl_contact_id` en Supabase) → `Decide` (solo si el lead ya tiene oportunidad y esa reserva no está registrada; si el lead aún no sincroniza, reintenta en la siguiente corrida) → `Get Opportunity` → si sigue en Nuevo/Contactado, `Move To Diagnostico` (etapa `fec1e794-…`; nunca retrocede una oportunidad que ya está en Propuesta/Seguimiento/Cerrado) → `Update Lead Meeting` (PATCH `meeting_scheduled`, `meeting_start`, `calendar_event_id`, `calendar_provider='ghl'`). Idempotente por `calendar_event_id`.

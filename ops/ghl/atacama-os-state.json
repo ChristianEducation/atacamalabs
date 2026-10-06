@@ -1,0 +1,126 @@
+{
+  "pre": {
+    "capturedAt": "2026-10-06T00:29:37.344Z",
+    "businesses": {
+      "status": 200,
+      "count": 3,
+      "names": [
+        "(Example) Dunder Mifflin",
+        "(Example) Goliath National Bank",
+        "(Example) MacLarens Pub"
+      ]
+    },
+    "schemas": {
+      "status": 200,
+      "keys": [
+        "business (SYSTEM_DEFINED)",
+        "opportunity (SYSTEM_DEFINED)",
+        "contact (SYSTEM_DEFINED)"
+      ]
+    },
+    "associations": {
+      "status": 200,
+      "items": [
+        {
+          "id": "6aab99ca4b0508155da7f710",
+          "key": "BUSINESSES_OPPORTUNITIES_ASSOCIATION",
+          "first": "business",
+          "second": "opportunity",
+          "type": "USER_DEFINED"
+        },
+        {
+          "id": "6aab99ca4b0508155da7f70f",
+          "key": "OPPORTUNITIES_CONTACTS_ADDITIONAL_ASSOCIATION",
+          "first": "contact",
+          "second": "opportunity",
+          "type": "USER_DEFINED"
+        },
+        {
+          "id": "OPPORTUNITIES_CONTACTS_ASSOCIATION",
+          "key": "OPPORTUNITIES_CONTACTS_ASSOCIATION",
+          "first": "contact",
+          "second": "opportunity",
+          "type": "SYSTEM_DEFINED"
+        },
+        {
+          "id": "BUSINESSES_CONTACTS_ASSOCIATION",
+          "key": "BUSINESSES_CONTACTS_ASSOCIATION",
+          "first": "business",
+          "second": "contact",
+          "type": "SYSTEM_DEFINED"
+        }
+      ]
+    },
+    "contactsTotal": 43,
+    "opportunitiesTotal": 42
+  },
+  "servicios_contratados": {
+    "objectId": "6ac440feb01eea82c5076de2",
+    "key": "custom_objects.servicios_contratados"
+  },
+  "proyectos": {
+    "objectId": "6ac440ff79c86f212d1cac6b",
+    "key": "custom_objects.proyectos"
+  },
+  "post": {
+    "schemas": [
+      "business (SYSTEM_DEFINED) id=6a4f7709606a1b200bd49709",
+      "opportunity (SYSTEM_DEFINED) id=6a4f7709606a1b3e7cd49708",
+      "contact (SYSTEM_DEFINED) id=6a4f7709606a1b089bd49707",
+      "custom_objects.servicios_contratados (USER_DEFINED) id=6ac440feb01eea82c5076de2",
+      "custom_objects.proyectos (USER_DEFINED) id=6ac440ff79c86f212d1cac6b"
+    ],
+    "servicios_contratados": {
+      "schema": 200,
+      "objectId": "6ac440feb01eea82c5076de2",
+      "primary": "custom_objects.servicios_contratados.nombre",
+      "campos": [
+        "Nombre:TEXT key=custom_objects.servicios_contratados.nombre",
+        "Servicio / producto:SINGLE_OPTIONS[7] key=custom_objects.servicios_contratados.servicio_producto",
+        "Estado:SINGLE_OPTIONS[6] key=custom_objects.servicios_contratados.estado",
+        "MRR:MONETORY key=custom_objects.servicios_contratados.mrr",
+        "Fee de implementación:MONETORY key=custom_objects.servicios_contratados.fee_de_implementacion",
+        "Fecha de inicio:DATE key=custom_objects.servicios_contratados.fecha_de_inicio",
+        "Fecha de término:DATE key=custom_objects.servicios_contratados.fecha_de_termino",
+        "Próximo paso:TEXT key=custom_objects.servicios_contratados.proximo_paso",
+        "Notas:LARGE_TEXT key=custom_objects.servicios_contratados.notas"
+      ]
+    },
+    "proyectos": {
+      "schema": 200,
+      "objectId": "6ac440ff79c86f212d1cac6b",
+      "primary": "custom_objects.proyectos.nombre",
+      "campos": [
+        "Nombre:TEXT key=custom_objects.proyectos.nombre",
+        "Tipo:SINGLE_OPTIONS[9] key=custom_objects.proyectos.tipo",
+        "Estado:SINGLE_OPTIONS[7] key=custom_objects.proyectos.estado",
+        "Responsable:TEXT key=custom_objects.proyectos.responsable",
+        "Prioridad:SINGLE_OPTIONS[4] key=custom_objects.proyectos.prioridad",
+        "Fecha de inicio:DATE key=custom_objects.proyectos.fecha_de_inicio",
+        "Fecha objetivo:DATE key=custom_objects.proyectos.fecha_objetivo",
+        "Progreso %:NUMERICAL key=custom_objects.proyectos.progreso",
+        "Próximo hito:TEXT key=custom_objects.proyectos.proximo_hito",
+        "Repo:TEXT key=custom_objects.proyectos.repo",
+        "Deployment / URL:TEXT key=custom_objects.proyectos.deployment_url",
+        "Documentación:TEXT key=custom_objects.proyectos.documentacion",
+        "Notas:LARGE_TEXT key=custom_objects.proyectos.notas"
+      ]
+    },
+    "associations": [
+      "BUSINESSES_OPPORTUNITIES_ASSOCIATION · business ↔ opportunity · USER_DEFINED · id=6aab99ca4b0508155da7f710",
+      "OPPORTUNITIES_CONTACTS_ADDITIONAL_ASSOCIATION · contact ↔ opportunity · USER_DEFINED · id=6aab99ca4b0508155da7f70f",
+      "atacama_proyecto_business · business ↔ custom_objects.proyectos · USER_DEFINED · id=6ac4412fd143f08a0a642c44",
+      "atacama_servicio_business · business ↔ custom_objects.servicios_contratados · USER_DEFINED · id=6ac4412e1ef24423a65a24b6",
+      "atacama_servicio_opportunity · custom_objects.servicios_contratados ↔ opportunity · USER_DEFINED · id=6ac4412e79bbec5a0686f0ea",
+      "atacama_servicio_proyecto · custom_objects.proyectos ↔ custom_objects.servicios_contratados · USER_DEFINED · id=6ac44130ad83d04a973c2511",
+      "OPPORTUNITIES_CONTACTS_ASSOCIATION · contact ↔ opportunity · SYSTEM_DEFINED · id=OPPORTUNITIES_CONTACTS_ASSOCIATION",
+      "BUSINESSES_CONTACTS_ASSOCIATION · business ↔ contact · SYSTEM_DEFINED · id=BUSINESSES_CONTACTS_ASSOCIATION"
+    ],
+    "coreIntacto": {
+      "businesses": 3,
+      "contacts": 43,
+      "opportunities": 42,
+      "pipelines": 3
+    }
+  }
+}

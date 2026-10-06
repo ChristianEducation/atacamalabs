@@ -1,0 +1,531 @@
+{
+  "name": "Atacama Labs - 10 Atacama Daily",
+  "nodes": [
+    {
+      "id": "a84fcd32-f45a-462a-8cce-7ae238c7e6d0",
+      "name": "Every Morning 08:30",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 8 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "77c96a4c-30c1-4e7f-90d5-df71a0d836af",
+      "name": "GHL Opportunities",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "url": "https://services.leadconnectorhq.com/opportunities/search?location_id=pxHuOsiz2i3lM6BtC9IM&pipeline_id=trSWhAcNDyUMmPlYIEib&limit=100",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 20000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "8VKPDkZYHtODhRtk",
+          "name": "Atacama Labs - GHL Header Auth"
+        }
+      }
+    },
+    {
+      "id": "e4e14d82-4fa9-442a-a953-4e20631de892",
+      "name": "GHL Meetings Today",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "url": "={{ \"https://services.leadconnectorhq.com/calendars/events?locationId=pxHuOsiz2i3lM6BtC9IM&calendarId=D3CUkoKxRyze3Kpt8sa9&startTime=\" + $now.setZone(\"America/Santiago\").startOf(\"day\").toMillis() + \"&endTime=\" + $now.setZone(\"America/Santiago\").endOf(\"day\").toMillis() }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 20000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "MIOyxnOFWOwL1Rvt",
+          "name": "Atacama Labs - GHL Calendars Auth"
+        }
+      }
+    },
+    {
+      "id": "bf016d57-1620-4f22-bd8a-8a1c88ce6d73",
+      "name": "Prospects Pending Approval",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        0
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/prospects?icp_pack_id=eq.0ba54785-bff0-4a2d-a397-64e697d34e38&classification=eq.hot&crm_candidate=eq.true&status=eq.new&select=id,final_score,accounts(name)&order=final_score.desc&limit=50",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 20000
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      }
+    },
+    {
+      "id": "cfbdac0c-f69a-4bae-b4c6-18eff965e772",
+      "name": "Prospect Inbox 24h",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        0
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "url": "={{ \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/prospect_inbox?icp_pack_id=eq.0ba54785-bff0-4a2d-a397-64e697d34e38&received_at=gte.\" + new Date(Date.now() - 24 * 3600 * 1000).toISOString() + \"&select=status,reasons&limit=500\" }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 20000
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      }
+    },
+    {
+      "id": "5a0efc56-339f-4bdb-aff9-dffc06ba09af",
+      "name": "Last Hermes Ingest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        0
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/prospect_inbox?icp_pack_id=eq.0ba54785-bff0-4a2d-a397-64e697d34e38&source=eq.hermes&select=received_at&order=received_at.desc&limit=1",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 20000
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      }
+    },
+    {
+      "id": "a4f98667-e687-4ff7-a5f7-32d3fe14a743",
+      "name": "Drafts Awaiting",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        0
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/outreach?status=eq.draft&select=id&limit=200",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 20000
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      }
+    },
+    {
+      "id": "564077f1-f22e-4ae6-9325-80e7194b8dc5",
+      "name": "Sync Jobs Problem",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        0
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "url": "={{ \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/sync_jobs?icp_pack_id=eq.0ba54785-bff0-4a2d-a397-64e697d34e38&status=in.(failed,retry_wait)&created_at=gte.\" + new Date(Date.now() - 7 * 86400000).toISOString() + \"&select=id,status&limit=50\" }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 20000
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      }
+    },
+    {
+      "id": "c9d77142-d6fe-4eba-a0e7-b399d1c8b420",
+      "name": "n8n Failed Executions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        0
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "url": "http://localhost:5678/api/v1/executions?status=error&limit=100",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "N8N_API_CREDENTIAL_ID",
+          "name": "Atacama Labs - n8n API (lectura)"
+        }
+      }
+    },
+    {
+      "id": "b14982bf-a475-48ee-af74-6d9e807d5edc",
+      "name": "n8n Workflows",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2160,
+        0
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "url": "http://localhost:5678/api/v1/workflows?limit=100",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "N8N_API_CREDENTIAL_ID",
+          "name": "Atacama Labs - n8n API (lectura)"
+        }
+      }
+    },
+    {
+      "id": "a133f565-fc3c-45be-b364-205d91390307",
+      "name": "OpenClaw Health",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2400,
+        0
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "url": "http://openclaw-gateway:18790/healthz",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 6000
+        }
+      }
+    },
+    {
+      "id": "e6d90ade-0379-41b3-a152-240fbe6236f9",
+      "name": "Compose Daily",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// Arma el texto del Atacama Daily. Cada fuente puede fallar sin tumbar el resumen: si falta, se avisa en SISTEMA.\nconst body = (name) => { const r = $(name).first()?.json ?? {}; const ok = Number(r.statusCode) >= 200 && Number(r.statusCode) < 300; return { ok, data: ok ? r.body : null }; };\nconst tz = 'America/Santiago';\nconst now = new Date();\nconst hoursAgo = (iso) => (iso ? (now.getTime() - new Date(iso).getTime()) / 3600000 : null);\nconst fmtHour = (iso) => new Intl.DateTimeFormat('es-CL', { hour: '2-digit', minute: '2-digit', timeZone: tz, hour12: false }).format(new Date(iso));\nconst dateLabel = new Intl.DateTimeFormat('es-CL', { weekday: 'short', day: 'numeric', month: 'short', timeZone: tz }).format(now);\nconst lines = [];\nconst todo = [];\nconst problems = [];\n\n// ---- VENTAS (GHL, pipeline Atacama Labs — Ventas)\nconst opps = body('GHL Opportunities');\nconst events = body('GHL Meetings Today');\nconst stageNames = { 'aad0ad01-bffd-4ea9-b00c-7ab11dc941f6': 'Nuevo', '2216d3ae-d153-4446-bc3b-77d0a240e415': 'Investigado', 'b947fae7-0941-4296-a76b-e9a826dd47d0': 'Contactado', '38059f54-3ebf-47cd-9a10-126589e61b86': 'Respondió', 'fec1e794-fb25-4242-806d-f3c13316df6e': 'Diagnóstico', '62d85e18-1bef-44fa-a82d-cf45462d1ae5': 'Propuesta', 'b8d98d33-b593-4b0e-b0da-0aa8ab0ffa4d': 'Seguimiento' };\nif (opps.ok) {\n  const list = (opps.data.opportunities || []);\n  const open = list.filter((o) => o.status === 'open');\n  const by = {};\n  for (const o of open) { const n = stageNames[o.pipelineStageId] || 'otra'; by[n] = (by[n] || 0) + 1; }\n  const newToday = list.filter((o) => hoursAgo(o.createdAt) !== null && hoursAgo(o.createdAt) <= 24).length;\n  const won = list.filter((o) => o.status === 'won').length;\n  const lost = list.filter((o) => o.status === 'lost').length;\n  const order = ['Nuevo', 'Investigado', 'Contactado', 'Respondió', 'Diagnóstico', 'Propuesta', 'Seguimiento'];\n  const stages = order.filter((n) => by[n]).map((n) => n + ' ' + by[n]).join(' · ');\n  lines.push('VENTAS');\n  lines.push('  abiertas ' + open.length + (stages ? ' (' + stages + ')' : '') + (newToday ? ' · nuevas 24 h: ' + newToday : '') + (won ? ' · ganadas ' + won : '') + (lost ? ' · perdidas ' + lost : ''));\n  if (by['Nuevo']) todo.push('Contactar ' + by['Nuevo'] + ' lead(s) nuevo(s) del sitio');\n  if (by['Respondió']) todo.push('Responder a ' + by['Respondió'] + ' prospecto(s) que respondió');\n} else problems.push('GHL oportunidades no disponible');\nif (events.ok) {\n  const ev = (events.data.events || []).filter((e) => !['cancelled', 'canceled', 'invalid', 'noshow'].includes(String(e.appointmentStatus || '').toLowerCase()));\n  if (ev.length) {\n    lines.push('  reuniones hoy: ' + ev.map((e) => fmtHour(e.startTime)).join(', '));\n    todo.push('Reunión(es) hoy a las ' + ev.map((e) => fmtHour(e.startTime)).join(', '));\n  }\n} else problems.push('GHL calendario no disponible');\n\n// ---- PROSPECCIÓN (Supabase)\nconst pend = body('Prospects Pending Approval');\nconst inbox = body('Prospect Inbox 24h');\nconst lastIngest = body('Last Hermes Ingest');\nconst draftsPend = body('Drafts Awaiting');\nconst pLines = [];\nif (pend.ok) {\n  const n = pend.data.length;\n  if (n) { pLines.push('  por aprobar: ' + n + (pend.data[0]?.accounts?.name ? ' (' + pend.data.slice(0, 3).map((p) => (p.accounts?.name || '?') + ' ' + p.final_score).join(', ') + (n > 3 ? ', …' : '') + ')' : '')); todo.push('Aprobar ' + n + ' prospecto(s) (hot) — ver lista y ids en prospects');\n  }\n} else problems.push('Supabase prospectos no disponible');\nif (inbox.ok && inbox.data.length) {\n  const c = (s) => inbox.data.filter((x) => x.status === s).length;\n  pLines.push('  ingesta 24 h: ' + c('accepted') + ' aceptados · ' + c('rejected') + ' rechazados · ' + c('duplicate') + ' duplicados');\n  const reasons = {};\n  for (const x of inbox.data.filter((y) => y.status === 'rejected')) for (const r of (x.reasons || [])) reasons[r.split(':')[0]] = (reasons[r.split(':')[0]] || 0) + 1;\n  const top = Object.entries(reasons).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k, v]) => k + ' ×' + v).join(', ');\n  if (top) pLines.push('  rechazos más comunes: ' + top);\n}\nif (draftsPend.ok && draftsPend.data.length) pLines.push('  borradores de correo listos (sin enviar): ' + draftsPend.data.length);\nconst lastAt = lastIngest.ok && lastIngest.data[0] ? lastIngest.data[0].received_at : null;\nif (lastAt) { const h = hoursAgo(lastAt); if (h > 36) problems.push('Hermes sin ingestas hace ' + Math.round(h) + ' h'); else pLines.push('  última ingesta de Hermes: hace ' + (h < 1 ? '<1' : Math.round(h)) + ' h'); }\nelse pLines.push('  Hermes: aún sin ingestas registradas');\nif (pLines.length) { lines.push('PROSPECCIÓN'); lines.push(...pLines); }\n\n// ---- SISTEMA\nconst failed = body('n8n Failed Executions');\nconst wfs = body('n8n Workflows');\nconst sync = body('Sync Jobs Problem');\nconst oc = $('OpenClaw Health').first()?.json ?? {};\nconst sLines = [];\nif (failed.ok) {\n  const recent = (failed.data.data || []).filter((e) => hoursAgo(e.startedAt) !== null && hoursAgo(e.startedAt) <= 24);\n  if (recent.length) {\n    const names = {}; const map = Object.fromEntries(((wfs.ok ? wfs.data.data : []) || []).map((w) => [w.id, w.name]));\n    for (const e of recent) { const n = (map[e.workflowId] || e.workflowId).replace(/^Atacama Labs[ —-]+/, ''); names[n] = (names[n] || 0) + 1; }\n    sLines.push('  workflows con error 24 h: ' + recent.length + ' (' + Object.entries(names).slice(0, 3).map(([k, v]) => k + ' ×' + v).join(', ') + ')');\n    todo.push('Revisar ' + recent.length + ' ejecución(es) fallida(s) en n8n');\n  }\n} else problems.push('n8n no disponible');\nif (sync.ok && sync.data.length) { sLines.push('  cola de sincronización con problemas: ' + sync.data.length); todo.push('Revisar cola de sync (' + sync.data.length + ')'); }\nif (!(Number(oc.statusCode) >= 200 && Number(oc.statusCode) < 300)) problems.push('OpenClaw no responde');\nfor (const p of problems) sLines.push('  ⚠ ' + p);\nif (sLines.length) { lines.push('SISTEMA'); lines.push(...sLines); }\n\nconst header = 'ATACAMA DAILY · ' + dateLabel;\nconst text = [header, ...lines, '', todo.length ? 'HOY TE TOCA\\n' + todo.map((t) => '  • ' + t).join('\\n') : 'HOY: nada urgente.'].join('\\n');\nreturn [{ json: { text, todo, problems } }];"
+      }
+    },
+    {
+      "id": "fc0a4c79-a89b-42c3-8398-53870e634f76",
+      "name": "Send Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2880,
+        0
+      ],
+      "parameters": {
+        "chatId": "CHAT_ID_PENDIENTE",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every Morning 08:30": {
+      "main": [
+        [
+          {
+            "node": "GHL Opportunities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GHL Opportunities": {
+      "main": [
+        [
+          {
+            "node": "GHL Meetings Today",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GHL Meetings Today": {
+      "main": [
+        [
+          {
+            "node": "Prospects Pending Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prospects Pending Approval": {
+      "main": [
+        [
+          {
+            "node": "Prospect Inbox 24h",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prospect Inbox 24h": {
+      "main": [
+        [
+          {
+            "node": "Last Hermes Ingest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Last Hermes Ingest": {
+      "main": [
+        [
+          {
+            "node": "Drafts Awaiting",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drafts Awaiting": {
+      "main": [
+        [
+          {
+            "node": "Sync Jobs Problem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sync Jobs Problem": {
+      "main": [
+        [
+          {
+            "node": "n8n Failed Executions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "n8n Failed Executions": {
+      "main": [
+        [
+          {
+            "node": "n8n Workflows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "n8n Workflows": {
+      "main": [
+        [
+          {
+            "node": "OpenClaw Health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenClaw Health": {
+      "main": [
+        [
+          {
+            "node": "Compose Daily",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compose Daily": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Santiago"
+  }
+}
