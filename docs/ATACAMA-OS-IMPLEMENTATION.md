@@ -664,3 +664,86 @@ Cero publicaciones automáticas (ninguna aprobación ni programación fue hecha 
 - **Sync real (ejecución programada de las 19:00, n8n 23347):** ambas piezas `scheduled`, `ghl_approval_status = approved`, `approved_at` exacto (`18:51:08Z` Founder, `18:51:04Z` Atacama Labs, de `approvalActionAt`), `scheduled_at` correcto, `ghl_edited = false`, `published_at` vacío (aún no publicadas).
 - **Workflow 15:** activo; la corrida programada de las 18:00 UTC terminó OK sin tocar GHL (no había publicaciones). `content_metrics` = 0 filas reales (correcto); 0 piezas/fuentes TEST residuales.
 - **GHL:** exactamente 2 posts programados (7-oct 19:00Z y 8-oct 13:00Z); ninguna otra publicación o programación creada por el sistema.
+
+## BLOQUE K — Prospección real: Hermes → evidencia → Supabase → scoring → GHL «Investigado» → borrador para revisión (6-oct-2026) · ✅ OPERATIVO, SIN ENVÍOS
+
+Objetivo: que Christian pueda entrar a GHL y encontrar prospectos reales, bien investigados, con empresa, contacto público, por qué encaja, señal/dolor, evidencia, score, ángulo y borrador, y decidir **después** si contactar. Sin Gmail, sin envíos (eso es el bloque siguiente).
+
+### K1. Auditoría del flujo existente (estado real al empezar)
+| Pieza | Estado real | Decisión |
+|---|---|---|
+| Hermes `Client Finder` (job `8421589d0902`, diario 11:00 UTC) | activo; modelo `gemini-3.7-flash`; solo leía HTML por `curl` (sin buscador); entregaba evidencia de dolor/encaje, casi nunca de volumen/automatización/urgencia | **Se rehizo como «Prospect Radar»** (K3); job **pausado** tras la corrida controlada |
+| 01 Discovery / 02 Research / 02b Signals | desplegados (PROD, activos pero solo se ejecutan por Execute Workflow/manual); dependen de **OpenClaw** y del descubrimiento por Maps | **Fuera de la ruta crítica** (se conservan sin tocar) |
+| 03 Qualification (PROD `LzkojauO5ypKNALc`) | funciona: 7 factores × nivel 0/1/2, clase A/B/C, `crm_candidate` solo clase A | **Se conserva igual** (pesos y umbrales sin cambios) |
+| 04 CRM Sync / 05 Outreach Draft (PROD) | camino antiguo: 04 solo escribía 3 campos y ninguna nota; ambos exigían un prospecto ya «aprobado» (`ready_to_contact`) | **Sustituidos** por el 18; quedan sin uso |
+| 06 Gmail Sync | esqueleto bloqueado (sin credencial) | **No se toca** (bloque siguiente) |
+| 08 Prospect Ingest (PROD `i8VEHPHrBsT4fCBn`) | gate + verificación de citas + RPC `ingest_prospect` + ejecuta 03 | **Se conserva y se amplía** (contrato v2, verificación semántica, encadena 18) |
+| 09 Prospect Approve (PROD `fxIBBQX2jlNhzAO5`) | aprobaba **antes** de CRM → contradice el flujo nuevo | **Desactivado** (reversible) |
+| Supabase | `accounts/research/contacts/prospects/outreach/prospect_inbox` + RPC `ingest_prospect` | sin migraciones nuevas |
+| GHL | pipeline `Atacama Labs — Ventas`, etapa «Investigado»; campos de oportunidad (Evidencia URL, ICP/vertical, Canal de contacto, Qualification Score, Commercial Angle, Prospect Key, Fuente, Solución de interés) y de contacto (Origen detallado, Primary Contact Role) **ya existían** | **Se reutilizan; no se creó ningún campo** |
+
+### K2. Arquitectura final
+```
+Hermes «Prospect Radar» ──(busca)──► n8n 17 Prospect Search (Exa; la clave no sale de n8n)
+        │
+        └─ JSON v2 ─► n8n 08 Prospect Ingest ─► gate + verificación de citas (la cita debe EXISTIR y DEMOSTRAR el factor)
+                          │ RPC ingest_prospect (cuenta+evidencia+contacto, dedupe por dominio)
+                          ▼
+                     n8n 03 Qualification ─► score 0–100 (7 factores) ─► clase A/B/C
+                          ▼
+                     n8n 18 Prospect Admit ─► (solo score ≥ 80, clase A y TODOS los gates)
+                          ▼
+                     GHL: contacto + oportunidad «Investigado» + nota de revisión  ·  Supabase: borrador `outreach` (draft, sin enviar)
+```
+Hermes investiga · Supabase guarda evidencia, score y logs · n8n orquesta · GHL es el lugar de revisión y fuente de verdad comercial · OpenClaw fuera de la ruta crítica.
+
+### K3. Hermes `prospect-radar` (prompt `ops/hermes/prospect-radar.prompt.txt`, reemplaza a `client-finder.prompt.txt`)
+- **Contrato v2** (JSON por candidato): `company, domain, city, region, country, vertical, signal` (señal observada), `pain, fit, offer` (hipótesis), `why_now`, `commercial_angle`, `source`, `confidence`, `contact{name, job_title, email, phone, whatsapp, linkedin_url, source_url, public:true, channel, is_decision_maker}`, `draft_subject`, `draft` y `evidence[{factor, level 1|2, url, quote, finding, date, certainty observed|inferred}]`. 08 acepta además la forma plana `evidence_url + evidence_quote/evidence_summary` y el alias `reason` del contrato anterior.
+- **Reglas del prompt:** distinguir HECHO (cita literal) / INFERENCIA / HIPÓTESIS comercial; contacto solo profesional y público con su URL (nada de adivinar correos ni datos personales); borrador sin «vi que tienen problemas», sin exageraciones ni «chatbot», **un** dolor y **un** resultado; presupuesto de esfuerzo duro: **≤10 candidatos, ≤30 búsquedas, ≤45 llamadas a herramientas, ≤15 min**, páginas leídas una vez y acotadas a 6.000 caracteres.
+- **Buscador** (workflow `17 Prospect Search`, `aGe77cEyCmobdAg7`): `POST /webhook/atacama-prospect-search` con `X-Atacama-Key`; Exa vía la credencial que ya existía en n8n; ≤8 resultados por llamada, texto citable de ~1.500 caracteres, **tope de 80 búsquedas por día**. Hermes pasó de leer HTML de Bing a tener búsqueda real.
+- Skills del job: solo `grounded-citations` (se quitó `opportunity-builder`). Job **pausado**; copia de seguridad de `jobs.json` en `/opt/data/backups/`.
+
+### K4. Verificación de evidencia y una corrección objetiva (documentada)
+- **Tres tipos de evidencia, siempre rotulados:** ✔ **literal** (nivel 2, `certainty=observed`: la cita se encontró en la URL **y** demuestra el factor) · ~ **inferencia** (siempre nivel 1) · ? **sin verificar** (cita no encontrada/ilegible/no demostrativa → nivel 1, no suma como evidencia concreta). La nota de GHL los marca así; las hipótesis comerciales se rotulan «hipótesis».
+- **Error objetivo encontrado con la corrida real:** la verificación solo comprobaba que la cita *existiera* en la página, no que *probara* el factor. Hermes etiquetó como «dolor» (20 puntos) textos como `MAESTRANZA Y TORNERIA`, `Contáctanos al +56 9 8852 0730` o `Llamadas: (56) 9 6727 6825`: existen en la página, pero no son dolor. **Corrección (`evidenceSupports`, `scripts/prospecting/admit-core.mjs`, usada en 08 y de nuevo en 18):** una cita debe tener ≥4 palabras (≥3 para el dolor, sin contar números ni signos) y, para el dolor, mencionar un proceso manual/de atención observable (WhatsApp, cotizar, agendar, formulario, solicitudes, llamadas, pedidos, horario…). Si no, la evidencia baja a nivel 1 (`unverified`). **Los umbrales y pesos NO se tocaron.** Las 6 cuentas aceptadas en la corrida se recalcularon con el mismo criterio (`research.raw_metadata.rescored`).
+- Limitación honesta: es una heurística por palabras clave; reduce falsos positivos obvios pero no reemplaza la revisión humana (que sigue siendo obligatoria).
+
+### K5. Scoring (sin cambios)
+`pain 20 · fit 15 · automation 15 · volume 15 · budget_proxy 15 · urgency 10 · access 10` = 100; nivel 0/1/2 → puntos = peso × nivel/2; urgencia exige fecha ≤ 30 días; `access` lo deriva el sistema del contacto. Clase A ≥ 80 con gates (empresa verificada, dolor ≥ nivel 1, contacto verificable, evidencia vigente), B ≥ 60, C < 60. Se guardan `final_score`, componentes (`prospects.metadata.factors`: nivel, peso, puntos y evidencia por factor) y `qualification_reason`. **Política de entrada a GHL intacta:** ≥ 80 → puede entrar; 60–79 → se queda en Supabase (la vía 60–79 **no** se habilitó); < 60 → no entra. Nota: la constraint de la BD exige ≥ 75 para `hot`, pero el CRM exige 80.
+
+### K6. Admisión a GHL (workflow `18 Prospect Admit`, `VV358NdbpNreMCDM`, activo; equivalente nuevo de 04 + 05)
+- **Gates** (todos, vueltos a comprobar en el 18 aunque 03 ya haya marcado `crm_candidate`; código probado en `admit-core.test.mjs`, 47 pruebas): clase A y score ≥ 80; `status = new` y sin oportunidad; empresa con sitio propio; **cita literal del dolor que describa un proceso**; **≥ 3 factores con evidencia literal**; contacto público con URL de fuente; **motivo para escribir ahora** (≥ 20 caracteres); **ángulo comercial** (≥ 20 caracteres). Lo que no pasa se queda en Supabase con el motivo en `prospects.metadata.admission` (`held` + razones).
+- **Deduplicación** (4 capas): Supabase (`accounts.dedupe_key` = dominio; solo prospectos sin `ghl_opportunity_id`); **GHL: contacto por dominio/correo/teléfono antes de crear — si ya existe un contacto (p. ej. un cliente o lead real) NO se toca, el prospecto queda `held: ya_existe_en_ghl`**; creación con `POST /contacts/` (nunca `upsert`, que podría modificar un contacto real; GHL rechaza el duplicado); `Prospect Key` = `account:<uuid>` y búsqueda de oportunidad por contacto; el id del contacto se guarda en Supabase **antes** de crear la oportunidad y la oportunidad antes de la nota (un reintento reanuda sin duplicar).
+- **Qué se crea en GHL:** **contacto** (nombre o «empresa» si no hay persona; correo/teléfono públicos; empresa, sitio; fuente `atacama-labs-prospecting`; etiquetas `prospecto-hermes` y `prospecto-por-revisar`; *Origen detallado* = «Prospección outbound»; cargo) · **oportunidad** en `Atacama Labs — Ventas` / **Investigado** con *Fuente* = `outbound_manual`, *Solución de interés* (orientativa), *ICP / vertical*, *Evidencia URL*, *Canal de contacto*, *Qualification Score*, *Commercial Angle*, *Prospect Key* · **nota de revisión** en el contacto (empresa y dominio, score, **por qué escribirle ahora**, ángulo, señal, dolor, encaje y posible solución rotulados como hipótesis, evidencia con ✔/~/? y su cita y URL, contacto público y su fuente, puntos por factor, confianza de Hermes y **el borrador marcado NO ENVIADO**) · la tarea de revisión la crea la automatización nativa de GHL «Atacama — Tarea al investigar» (se comprobó: una tarea por prospecto, sin duplicar).
+- **Borrador** (`outreach`, `status=draft`, `sent_at` nulo, `metadata.never_sent`): se usa el de Hermes si pasa la revisión (≤ 140 palabras, con pregunta final, sin «vi que tienen problemas», sin exageraciones/«chatbot»/relación falsa, no ofrece varios servicios, menciona a la empresa); si no, una **plantilla honesta**: «En <sitio> leí: «<cita literal>». Mi hipótesis, sin haberlo visto por dentro, es que eso hoy se resuelve a mano…» + una posibilidad concreta + una pregunta.
+- **Aprobación humana (convención, sin sistema externo):** el contacto lleva `prospecto-por-revisar`. Christian decide con una **etiqueta nativa de GHL**: `aprobado-para-contactar` (el bloque siguiente la usará como disparador del envío por Gmail) o `descartado-prospecto`. Mientras tanto: `prospects.status` queda en `new` (**`ready_to_contact` queda reservado para la aprobación**), la oportunidad queda en Investigado y **nada se envía ni pasa a «Contactado»**.
+
+### K7. Corrida real controlada (una sola, 6-oct-2026 19:28–19:41 UTC)
+| Medida | Valor |
+|---|---|
+| Candidatos investigados | **8** (tope 10) |
+| Búsquedas (n8n 17) / páginas abiertas por Hermes / llamadas a herramientas | 20 / 12 / 46 |
+| Duración | **13,3 min** (12 min declarados por Hermes) |
+| Tokens | entrada 599.122 + 1.682.182 en caché (≈ 2,28 M), salida 46.823, razonamiento 12.444; 94 mensajes |
+| Costo estimado (reportado por Hermes) | **≈ US$ 0,75** (≈ US$ 0,09 por candidato); modelo `gemini-3.7-flash` |
+| Aceptados / rechazados / duplicados | 6 / 2 (`missing_fit_evidence`: Nazka Maquinarias, Centro Cumbres Antofagasta) / 0 |
+| Citas | 13 de 13 citas legibles existían en la página (3 ilegibles: Mediped); 6 de esas 13 existían pero **no demostraban** el factor (K4) |
+| Scores con el gate corregido | Bazz 50 · Sermaqui 45 · Pulmari 45 · Ingeniería JL 30 · Mediped 30 · Centro de Salud 360 23 (todos **cold**; antes de la corrección: 60, 55, 55, 40, 30 y 40 respectivamente) |
+| Prospectos ≥ 80 | **0** → **0 entran a GHL** (correcto: no se bajaron criterios ni se forzó cuota) |
+- **Por qué ninguno llega a 80:** Hermes con un modelo barato entregó solo 2–3 factores por empresa (dolor, encaje y a veces capacidad de pago), nunca automatización, volumen ni urgencia fechada; los «porqué ahora» fueron descripciones genéricas de la empresa, no hechos recientes. Con los pesos actuales, 80 exige evidencia literal de ≥ 5 factores. Es un límite de la **calidad de la investigación**, no del pipeline.
+- El tablero de GHL queda sin prospectos nuevos de esta corrida (las 6 cuentas quedan en Supabase como `cold`).
+
+### K8. Pruebas
+- Unitarias: `admit-core` 47, `prospect-flow` 52 (17: tope diario, validación, forma de la respuesta; 18: gates, dedupe, orden de guardado, cargas a GHL, ninguna escritura distinta a crear contacto/oportunidad/nota, sin envío, pack equivocado; 08: contrato v2 y gate), más las suites previas.
+- **Punta a punta con datos TEST** (copia desechable de 08 → 03 PROD → 18 PROD → GHL real; todo borrado después): Hermes-like batch de 2 empresas → la de citas reales se calificó **90 / hot / candidato** y llegó a GHL (contacto, oportunidad en Investigado con los 8 campos, nota completa, borrador de plantilla porque el de Hermes fallaba la revisión, tarea nativa); la de citas inventadas quedó **50 / cold** sin entrar; reintento del 18 y lote repetido **no duplican** (oportunidad, contacto ni borrador); un contacto ya existente en GHL (p. ej. el de ejemplo `jordan.smith@example.com`) fue **detectado y no se tocó**. Sin clave → 403; clave incorrecta → 403; pack equivocado → error sin escribir.
+- **Bugs reales que solo aparecieron en la prueba y se corrigieron:** (1) la oportunidad se creaba **sin contacto** y la nota fallaba (el id del contacto se leía de la respuesta de búsqueda en vez de los nodos «Resolve»); (2) el webhook respondía 500 cuando el 18 no tenía candidatos; (3) el borrador de plantilla tenía una frase mal construida; (4) las citas que existen pero no demuestran el factor inflaban el score (K4).
+- **Incidente propio, resuelto:** mi limpieza final borró por patrón de nombre («TEST …») un workflow legacy de EnBandeja, inactivo (`TEST - Direct Model vs Prospector Agent`, `IDDoxJy4iHZjpmKN`). **Se restauró desde el respaldo del 5-oct** (`backups/2026-10-05/n8n/`): nuevo id `UmIhW9YnoaocDwz9`, inactivo, con etiqueta LEGACY — ENBANDEJA. No tenía ejecuciones activas. Lección aplicada: las limpiezas borran solo por id exacto.
+
+### K9. Workflows activos (n8n)
+`08 Prospect Ingest` `i8VEHPHrBsT4fCBn` (PROD, ampliado; respaldo previo en `backups/2026-10-06/n8n/`) · `03 Qualification` `LzkojauO5ypKNALc` · **`17 Prospect Search` `aGe77cEyCmobdAg7`** · **`18 Prospect Admit` `VV358NdbpNreMCDM`**. Desactivado: `09 Prospect Approve`. Sin uso: 04, 05, 01, 02, 02b. Generadores: `n8n/build/prospect-flow.mjs` (17 y 18) y `n8n/build/atacama-os-workflows.mjs` (08; el JSON versionado queda en modo test con marcadores).
+
+### K10. Límites, pendientes y recomendaciones
+- **Calidad de la investigación (lo que falta para tener prospectos ≥ 80):** (a) probar un modelo más capaz o un **segundo paso de profundización por candidato** (leer sus páginas de contacto, equipo, sucursales y ofertas de trabajo para evidenciar automatización/volumen/urgencia) antes de enviar; (b) exigir en el prompt que `why_now` sea un hecho fechado y reciente; (c) medir de nuevo costo y tasa de ≥ 80 con 10 candidatos. No se recomienda bajar el umbral.
+- **Cadencia sugerida del radar:** no diario mientras no produzca ≥ 80; cuando lo haga, **2 veces por semana en días hábiles** (martes y jueves, 11:00 UTC), máximo 10 candidatos por corrida (costo ≈ US$ 0,75). El job está **pausado** (`hermes cron resume 8421589d0902`).
+- Pendiente para el **bloque siguiente (Gmail y envío)**: disparar desde la etiqueta `aprobado-para-contactar`, enviar, mover a «Contactado», seguimiento y respuestas; hoy no hay nada de eso.
+- Heurística `evidenceSupports` basada en palabras clave en español; revisión humana siempre.

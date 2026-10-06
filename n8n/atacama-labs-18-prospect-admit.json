@@ -1,0 +1,1446 @@
+{
+  "name": "Atacama Labs - 18 Prospect Admit",
+  "nodes": [
+    {
+      "id": "0ed4a83a-b8f6-42b8-a155-c5becccce2b1",
+      "name": "Admit Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -120
+      ],
+      "webhookId": "d07e1c97-d057-43ef-a82f-ff741cb58816",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "lUGhlXVaQBEiEh5S",
+          "name": "Atacama Labs - Ingest Key"
+        }
+      },
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "atacama-prospect-admit",
+        "authentication": "headerAuth",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "155f1496-0e25-48de-809a-686a872e958a",
+      "name": "Called by Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        120
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "7afa740c-91f4-4c97-ab46-606a613fdfd8",
+      "name": "Init",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const PACK_ID = '0ba54785-bff0-4a2d-a397-64e697d34e38';\nconst first = $input.first().json || {};\nconst body = first.body || first;\nif (body.icp_pack_id && body.icp_pack_id !== PACK_ID) throw new Error('SEGURIDAD: icp_pack_id no coincide con el pack de este workflow (atacama-labs).');\nconst ids = (Array.isArray(body.account_ids) ? body.account_ids : []).map(String).filter((x) => /^[0-9a-f-]{36}$/.test(x));\nconst limit = Math.min(Math.max(parseInt(body.limit, 10) || 10, 1), 10);\nconst filter = ids.length ? '&account_id=in.(' + ids.join(',') + ')' : '';\nconst url = 'https://uwquwjmiofixzugttals.supabase.co/rest/v1/prospects?icp_pack_id=eq.' + PACK_ID + '&classification=eq.hot&crm_candidate=eq.true&status=eq.new&ghl_opportunity_id=is.null&final_score=gte.80' + filter + '&select=*&order=final_score.desc&limit=' + limit;\nreturn [{ json: { pack_id: PACK_ID, account_ids: ids, limit, url } }];"
+      }
+    },
+    {
+      "id": "f874d87f-8261-4a64-9200-6366361d2c86",
+      "name": "Fetch Candidates",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": false,
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "356ace10-8b02-43ae-9062-0f1c28ec9bab",
+      "name": "Any Candidates?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ (Array.isArray($json.body) && $json.body.length > 0) ? \"yes\" : \"no\" }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a50f9f90-3b65-479f-94fa-f6f8dabdb05f",
+      "name": "Fetch Accounts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        -120
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/accounts?id=in.(\" + $('Fetch Candidates').first().json.body.map((p) => p.account_id).join(',') + \")&select=*\" }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": false,
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "6df1d595-75ef-4a59-9f12-29b90aaa660c",
+      "name": "Fetch Contacts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        -120
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/contacts?account_id=in.(\" + $('Fetch Candidates').first().json.body.map((p) => p.account_id).join(',') + \")&select=*&order=created_at.asc\" }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": false,
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "f8af5c3e-075e-4691-b358-4990b47bfc32",
+      "name": "Fetch Research",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        -120
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/research?account_id=in.(\" + $('Fetch Candidates').first().json.body.map((p) => p.account_id).join(',') + \")&is_current=eq.true&select=account_id,research_type,finding,evidence_text,source_url,source_date,raw_metadata\" }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": false,
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "67cbe558-c058-4b82-8748-d688b2011573",
+      "name": "Fetch Drafts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        -120
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/outreach?prospect_id=in.(\" + $('Fetch Candidates').first().json.body.map((p) => p.id).join(',') + \")&type=eq.first_contact&select=id,prospect_id,status\" }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": false,
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "c2effb52-5175-4f3d-b0f3-9530d02a33e3",
+      "name": "Plan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        -120
+      ],
+      "parameters": {
+        "jsCode": "function evidenceKind(r) {\r\n  const meta = (r && r.raw_metadata) || {};\r\n  const level = Number(meta.level);\r\n  const certainty = meta.certainty || 'inferred';\r\n  if (certainty === 'observed' && level === 2 && r.evidence_text && r.source_url) return 'literal';\r\n  if (certainty === 'inferred') return 'inferencia';\r\n  return 'sin_verificar';\r\n}\n\nfunction evidenceSupports(factor, quote, finding) {\r\n  const words = (s) => String(s || '').replace(/[+()\\d·|/@_:;.,\\-–—]+/g, ' ').split(/\\s+/).filter((w) => w.length > 1);\r\n  const q = String(quote || '');\r\n  const wc = words(q).length;\r\n  if (String(factor) === 'pain') {\r\n    if (wc < 3) return false;\r\n    return /(whatsapp|cotiz|agend|reserv|solicit|formulario|escr[ií]b|mensaje|llam(a|e|ada)|pedido|consult|fuera de horario|respond|seguimiento|manual|planilla|excel|presupuesto|inscripci|vacante|trabaja con nosotros|recepcionista|atenci[oó]n al cliente|horario|demora|esper)/i.test(q);\r\n  }\r\n  return wc >= 4;\r\n}\n\nfunction normalizeVertical(v) {\r\n  const OPT = ['Salud', 'Inmobiliarias', 'Educación', 'Retail & Ecommerce', 'Alimentación & Casinos', 'Gimnasios', 'Servicios Profesionales', 'B2B & Industria', 'Contabilidad & Finanzas', 'Otro'];\r\n  const s = String(v || '').trim();\r\n  return OPT.includes(s) ? s : 'Otro';\r\n}\n\nfunction mapSolution(text) {\r\n  const t = String(text || '').toLowerCase();\r\n  if (/sistema|software|a medida|plataforma propia|app /.test(t)) return 'sistemas-a-medida';\r\n  if (/integr|conectar|crm|erp|sincroniz/.test(t)) return 'integraciones';\r\n  if (/agente|atenci|whatsapp|cotiz|agend|reserva|seguimiento|responde/.test(t)) return 'atencion-y-seguimiento';\r\n  if (/automat|proceso|factura|cobranza|pedido/.test(t)) return 'automatizacion-de-procesos';\r\n  return 'unsure';\r\n}\n\nfunction mapChannel(contact, declared) {\r\n  const c = contact || {};\r\n  const d = String(declared || '').toLowerCase();\r\n  const byDecl = { email: 'Correo', correo: 'Correo', whatsapp: 'WhatsApp', phone: 'Llamada', llamada: 'Llamada', telefono: 'Llamada', linkedin: 'LinkedIn', instagram: 'Instagram', form: 'Formulario web', formulario: 'Formulario web' }[d];\r\n  if (byDecl) return byDecl;\r\n  if (c.email) return 'Correo';\r\n  if (c.whatsapp) return 'WhatsApp';\r\n  if (c.phone) return 'Llamada';\r\n  if (c.linkedin_url) return 'LinkedIn';\r\n  return 'Formulario web';\r\n}\n\nfunction evaluateAdmission(row) {\r\n  const p = (row && row.prospect) || {};\r\n  const a = (row && row.account) || {};\r\n  const c = (row && row.contact) || null;\r\n  const rs = Array.isArray(row && row.research) ? row.research : [];\r\n  const h = (a.metadata && a.metadata.hermes) || {};\r\n  const reasons = [];\r\n  const len = (v) => String(v == null ? '' : v).trim().length;\r\n\r\n  if (p.classification !== 'hot' || p.crm_candidate !== true) reasons.push('no_es_clase_A');\r\n  if (!(Number(p.final_score) >= 80)) reasons.push('score_bajo_80');\r\n  if (p.status !== 'new') reasons.push('estado_no_new');\r\n  if (p.ghl_opportunity_id) reasons.push('ya_en_ghl');\r\n  if (!a.name || !(a.domain || a.website)) reasons.push('empresa_sin_sitio_propio');\r\n  if (p.pain_verified !== true) reasons.push('dolor_no_verificado');\r\n\r\n  const literal = rs.filter((r) => evidenceKind(r) === 'literal');\r\n  const literalFactors = [...new Set(literal.map((r) => String(r.research_type || '').replace('factor:', '')))].filter((f) => f && f !== 'access');\r\n  const painLiteral = literal.find((r) => r.research_type === 'factor:pain');\r\n  if (!painLiteral) reasons.push('sin_evidencia_literal_del_dolor');\r\n  else if (!evidenceSupports('pain', painLiteral.evidence_text, painLiteral.finding)) reasons.push('cita_del_dolor_no_describe_un_proceso');\r\n  if (literalFactors.length < 3) reasons.push('evidencia_literal_insuficiente');\r\n\r\n  const contactOk = Boolean(c && (c.email || c.phone || c.whatsapp) && c.source_url && (!c.metadata || c.metadata.public !== false));\r\n  if (!contactOk) reasons.push('sin_contacto_publico_con_fuente');\r\n\r\n  const whyNow = h.why_now || h.reason || '';\r\n  if (len(whyNow) < 20) reasons.push('sin_motivo_para_ahora');\r\n  if (len(h.commercial_angle) < 20) reasons.push('sin_angulo_comercial');\r\n\r\n  const best = painLiteral || literal[0] || null;\r\n  return {\r\n    ok: reasons.length === 0, reasons,\r\n    literal_factors: literalFactors,\r\n    best_evidence: best ? { url: best.source_url, quote: best.evidence_text, finding: best.finding, factor: String(best.research_type).replace('factor:', '') } : null,\r\n    why_now: String(whyNow).trim(), commercial_angle: String(h.commercial_angle || '').trim(),\r\n  };\r\n}\n\nfunction lintDraft(subject, message, ctx) {\r\n  const FORBIDDEN = [\r\n    [/vi que (est[aá]n|estás|est[aá]s|tienen|tienes) (teniendo )?(problemas|dificultades)/i, 'afirma_un_problema_no_demostrado'],\r\n    [/revolucion|disrupt|transforma(r|mos) (tu|su) (negocio|empresa)|el mejor|garantizamos|100 ?%|sin riesgo|inigualable/i, 'exageracion'],\r\n    [/chatbot/i, 'dice_chatbot'],\r\n    [/como (conversamos|hablamos|acordamos)|seguimiento (de|a) (nuestra|mi) (conversaci[oó]n|llamada)|de nuevo|nuevamente/i, 'finge_relacion_previa'],\r\n    [/estimad[oa]/i, 'tono_formal_distante'],\r\n  ];\r\n  const probs = [];\r\n  const text = String(message || '').trim();\r\n  const words = text.split(/\\s+/).filter(Boolean).length;\r\n  if (words < 25) probs.push('muy_corto');\r\n  if (words > 140) probs.push('muy_largo');\r\n  if (!String(subject || '').trim() || String(subject).length > 90) probs.push('asunto_invalido');\r\n  FORBIDDEN.forEach(([re, tag]) => { if (re.test(text) || re.test(String(subject || ''))) probs.push(tag); });\r\n  if (!/\\?/.test(text)) probs.push('sin_pregunta_final');\r\n  const name = String((ctx && ctx.company) || '').toLowerCase().split(/\\s+/)[0];\r\n  if (name && name.length > 2 && !text.toLowerCase().includes(name) && !String(subject || '').toLowerCase().includes(name)) probs.push('no_menciona_a_la_empresa');\r\n  const services = (text.match(/\\b(chatbot|sitio web|p[aá]gina web|ecommerce|crm|erp|app m[oó]vil|marketing|seo|dise[ñn]o)\\b/gi) || []).length;\r\n  if (services > 3) probs.push('ofrece_demasiados_servicios');\r\n  return probs;\r\n}\n\nfunction host(u) { const m = String(u || '').match(/^https?:\\/\\/([^\\/?#]+)/i); return m ? m[1].replace(/^www\\./, '') : String(u || ''); }\n\nfunction buildDraft(row, adm) {\r\n  const a = row.account || {};\r\n  const h = (a.metadata && a.metadata.hermes) || {};\r\n  const c = row.contact || {};\r\n  const company = a.name || 'tu empresa';\r\n  const ctx = { company };\r\n  const hSubject = String(h.draft_subject || '').trim();\r\n  const hBody = String(h.draft || '').trim();\r\n  const hProbs = hBody ? lintDraft(hSubject, hBody, ctx) : ['sin_borrador_de_hermes'];\r\n  if (!hProbs.length) return { subject: hSubject, message: hBody, source: 'hermes', lint: [] };\r\n  const first = String(c.name || '').trim().split(/\\s+/)[0];\r\n  const greet = first ? 'Hola ' + first + ',' : 'Hola, equipo de ' + company + ',';\r\n  const ev = adm && adm.best_evidence;\r\n  const quote = ev && ev.quote ? String(ev.quote).replace(/\\s+/g, ' ').trim().slice(0, 160) : '';\r\n  const offer = String(h.offer || '').trim().replace(/[.\\s]+$/, '').replace(/^./, (x) => x.toLowerCase()).slice(0, 180);\r\n  const named = Boolean(first);\r\n  const lines = [greet, ''];\r\n  if (quote) lines.push('En ' + host(ev.url) + ' leí: «' + quote + '».', '');\r\n  lines.push('Mi hipótesis, sin haberlo visto por dentro, es que eso hoy se resuelve a mano. En Atacama Labs armamos agentes y automatizaciones conectadas a las herramientas que ya usan, para que una persona del equipo intervenga solo cuando haga falta.' + (offer ? ' Una posibilidad concreta: ' + offer + '.' : ''), '');\r\n  lines.push(named ? '¿Te sirve que te muestre en 10 minutos cómo se vería para ' + company + '?' : '¿Les sirve que les muestre en 10 minutos cómo se vería para ' + company + '?', '', 'Christian Wevar · Atacama Labs · atacamalabs.cl');\r\n  const message = lines.join('\\n');\r\n  const subject = ('Una idea para ' + company).slice(0, 80);\r\n  return { subject, message, source: 'plantilla', lint: lintDraft(subject, message, ctx), hermes_lint: hProbs };\r\n}\n\nfunction buildGhlPayloads(row, adm, draft, cfg) {\r\n  const p = row.prospect;\r\n  const a = row.account;\r\n  const c = row.contact || {};\r\n  const h = (a.metadata && a.metadata.hermes) || {};\r\n  const company = a.name;\r\n  const channel = mapChannel(c, h.contact_channel);\r\n  const vertical = normalizeVertical(h.vertical);\r\n  const contactName = String(c.name || '').trim();\r\n  const contact = {\r\n    locationId: cfg.locationId, name: contactName || company, companyName: company, website: a.website || undefined,\r\n    email: c.email || undefined, phone: c.phone || c.whatsapp || undefined, source: 'atacama-labs-prospecting',\r\n    tags: ['prospecto-hermes', 'prospecto-por-revisar'],\r\n    customFields: [{ id: cfg.contactFields.origen_detallado, field_value: 'Prospección outbound' }].concat(c.job_title ? [{ id: cfg.contactFields.primary_contact_role, field_value: String(c.job_title).slice(0, 120) }] : []),\r\n  };\r\n  const angle = adm.commercial_angle;\r\n  const opportunity = {\r\n    locationId: cfg.locationId, pipelineId: cfg.pipelineId, pipelineStageId: cfg.stageId, name: (company + ' — Prospecto').slice(0, 120), status: 'open',\r\n    customFields: [\r\n      { id: cfg.fields.fuente, field_value: 'outbound_manual' },\r\n      { id: cfg.fields.solucion_de_interes, field_value: mapSolution(h.offer + ' ' + angle) },\r\n      { id: cfg.fields.icp_vertical, field_value: vertical },\r\n      { id: cfg.fields.evidencia_url, field_value: adm.best_evidence ? adm.best_evidence.url : '' },\r\n      { id: cfg.fields.canal_de_contacto, field_value: channel },\r\n      { id: cfg.fields.qualification_score, field_value: Number(p.final_score) },\r\n      { id: cfg.fields.commercial_angle, field_value: angle.slice(0, 500) },\r\n      { id: cfg.fields.prospect_key, field_value: p.prospect_key },\r\n    ],\r\n  };\r\n  return { contact, opportunity, note: buildReviewNote(row, adm, draft, channel), channel, vertical };\r\n}\n\nfunction buildReviewNote(row, adm, draft, channel) {\r\n  const p = row.prospect;\r\n  const a = row.account;\r\n  const c = row.contact || {};\r\n  const h = (a.metadata && a.metadata.hermes) || {};\r\n  const rs = Array.isArray(row.research) ? row.research : [];\r\n  const f = (p.metadata && p.metadata.factors) || {};\r\n  const mark = { literal: '✔', inferencia: '~', sin_verificar: '?' };\r\n  const ev = rs.filter((r) => String(r.research_type).startsWith('factor:') && r.research_type !== 'factor:access').map((r) => {\r\n    const k = evidenceKind(r);\r\n    const q = r.evidence_text ? ' «' + String(r.evidence_text).replace(/\\s+/g, ' ').slice(0, 220) + '»' : '';\r\n    return ' ' + mark[k] + ' [' + String(r.research_type).replace('factor:', '') + '] ' + String(r.finding || '').slice(0, 200) + q + ' — ' + r.source_url;\r\n  });\r\n  const factorLine = Object.keys(f).map((k) => k + ' ' + (f[k].points != null ? f[k].points : '?') + '/' + f[k].weight).join(' · ');\r\n  const person = [c.name, c.job_title].filter(Boolean).join(', ') || 'sin persona identificada (casilla de la empresa)';\r\n  const contactLine = [c.email, c.phone, c.whatsapp && 'WhatsApp ' + c.whatsapp].filter(Boolean).join(' · ');\r\n  const lines = [\r\n    'PROSPECTO PARA REVISIÓN — ' + a.name + ' (' + (a.domain || a.website) + ')',\r\n    'Score ' + p.final_score + '/100 · clase A · ' + normalizeVertical(h.vertical) + (a.city ? ' · ' + a.city : ''),\r\n    '',\r\n    'POR QUÉ ESCRIBIRLE AHORA: ' + adm.why_now,\r\n    'ÁNGULO COMERCIAL: ' + adm.commercial_angle,\r\n    '',\r\n    'SEÑAL OBSERVADA: ' + (h.signal || '—'),\r\n    'DOLOR (hipótesis a partir de la evidencia): ' + (h.pain || '—'),\r\n    'ENCAJE: ' + (h.fit || '—'),\r\n    'POSIBLE SOLUCIÓN (hipótesis): ' + (h.offer || '—'),\r\n    '',\r\n    'EVIDENCIA  (✔ cita literal verificada en la URL · ~ inferencia · ? no verificada):',\r\n  ].concat(ev, [\r\n    '',\r\n    'CONTACTO PÚBLICO (' + channel + '): ' + person + ' · ' + contactLine + ' · fuente ' + (c.source_url || '—'),\r\n    'Puntos por factor: ' + factorLine,\r\n    'Confianza de Hermes: ' + (h.confidence != null ? h.confidence : '—') + ' · origen: ' + (h.source || 'hermes'),\r\n    '',\r\n    'BORRADOR (' + draft.source + ', NO ENVIADO) — Asunto: ' + draft.subject,\r\n    draft.message,\r\n    '',\r\n    'DECISIÓN: nada se envía hasta que lo apruebes. Para aprobar, pon la etiqueta «aprobado-para-contactar» en este contacto; para descartar, «descartado-prospecto». (No se mueve a «Contactado» automáticamente.)',\r\n  ]);\r\n  return lines.join('\\n').slice(0, 6000);\r\n}\n\nfunction findExistingContact(results, email, phone, domain) {\r\n  const list = Array.isArray(results) ? results : [];\r\n  const digits = (s) => String(s || '').replace(/\\D/g, '');\r\n  const pd = digits(phone).slice(-9);\r\n  const hit = list.find((x) => {\r\n    const e = String(x.email || '').toLowerCase();\r\n    if (email && e === String(email).toLowerCase()) return true;\r\n    if (domain && e.endsWith('@' + domain)) return true;\r\n    if (pd.length >= 8 && digits(x.phone).slice(-9) === pd) return true;\r\n    return false;\r\n  });\r\n  return hit ? { id: hit.id, name: hit.contactName || hit.name || null } : null;\r\n}\n\nconst CFG = {\"locationId\":\"pxHuOsiz2i3lM6BtC9IM\",\"pipelineId\":\"trSWhAcNDyUMmPlYIEib\",\"stageId\":\"2216d3ae-d153-4446-bc3b-77d0a240e415\",\"fields\":{\"fuente\":\"Vc1cfrhuq3KCiBdzzmnf\",\"solucion_de_interes\":\"yY5sqFov8GeXcx5G9vuy\",\"icp_vertical\":\"0uK7RJiBCZkpzPofV5cV\",\"evidencia_url\":\"WoO2N4rtxNPqkjWflOAf\",\"canal_de_contacto\":\"iNNT2QdbHmtlvqgxunIB\",\"qualification_score\":\"rZHgyynpwHljXVwOB3qL\",\"commercial_angle\":\"AEqKhoiFpgz8ojHTjqNj\",\"prospect_key\":\"ar3HYR1AKswxC6RIgyXd\"},\"contactFields\":{\"origen_detallado\":\"JzsnIz7M4LPS6yIrQ2mI\",\"primary_contact_role\":\"MvEGJKCI9McDuVqn2cSi\"}};\nconst rows = (n) => { const r = $(n).first().json || {}; if ((r.statusCode || 0) >= 300) throw new Error(n + ' falló (HTTP ' + r.statusCode + ')'); return Array.isArray(r.body) ? r.body : []; };\nconst cands = rows('Fetch Candidates');\nconst accounts = rows('Fetch Accounts');\nconst contacts = rows('Fetch Contacts');\nconst research = rows('Fetch Research');\nconst drafts = rows('Fetch Drafts');\nconst now = new Date().toISOString();\nconst out = [];\ncands.forEach((p) => {\n  const account = accounts.find((a) => a.id === p.account_id) || {};\n  const contact = contacts.find((c) => c.account_id === p.account_id) || null;\n  const rs = research.filter((r) => r.account_id === p.account_id);\n  const row = { prospect: p, account, contact, research: rs };\n  const adm = evaluateAdmission(row);\n  const base = { prospect_id: p.id, account_id: p.account_id, company: account.name || null, resume_contact_id: p.ghl_contact_id || null };\n  const heldPatch = (reasons) => ({ metadata: { ...(p.metadata || {}), admission: { status: 'held', reasons, at: now } }, updated_at: now });\n  if (!adm.ok) { out.push({ json: { ...base, ok: false, reasons: adm.reasons, held_patch: heldPatch(adm.reasons) } }); return; }\n  const draft = buildDraft(row, adm);\n  const g = buildGhlPayloads(row, adm, draft, CFG);\n  const email = contact.email || null;\n  const emailDomain = email ? String(email).split('@')[1] : null;\n  const free = ['gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com', 'live.com', 'icloud.com', 'yahoo.es', 'hotmail.es'];\n  out.push({ json: { ...base, ok: true, reasons: [], held_patch: heldPatch([]), payloads: g, draft, score: p.final_score, why_now: adm.why_now, has_draft: drafts.some((d) => d.prospect_id === p.id),\n    contact_row_id: contact.id, search_q: (emailDomain && free.indexOf(emailDomain) === -1) ? emailDomain : (email || account.domain), email, phone: contact.phone || contact.whatsapp || null, domain: account.domain,\n    prospect_metadata: p.metadata || {}, prospect_key: p.prospect_key } });\n});\nreturn out;"
+      }
+    },
+    {
+      "id": "abd329b2-fc49-408a-996f-76a163a1ca40",
+      "name": "Admitted?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2160,
+        -120
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ ($json.ok === true) ? \"yes\" : \"no\" }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "0dd58bc8-280a-4661-830d-4be8fddbaa60",
+      "name": "Has Contact?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2400,
+        -240
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ ($json.resume_contact_id) ? \"yes\" : \"no\" }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "5717c563-579e-4186-8053-4e9197a3b52e",
+      "name": "Search Domain",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2640,
+        -120
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4Vc6nfxyKjZ14Bep",
+          "name": "GHL — Atacama OS"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://services.leadconnectorhq.com/contacts/?locationId=pxHuOsiz2i3lM6BtC9IM&limit=10&query=\" + encodeURIComponent($json.search_q || \"\") }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "cdc05981-38cf-4edd-ba2d-d990eadad994",
+      "name": "Dup Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        -120
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "function evidenceKind(r) {\r\n  const meta = (r && r.raw_metadata) || {};\r\n  const level = Number(meta.level);\r\n  const certainty = meta.certainty || 'inferred';\r\n  if (certainty === 'observed' && level === 2 && r.evidence_text && r.source_url) return 'literal';\r\n  if (certainty === 'inferred') return 'inferencia';\r\n  return 'sin_verificar';\r\n}\n\nfunction evidenceSupports(factor, quote, finding) {\r\n  const words = (s) => String(s || '').replace(/[+()\\d·|/@_:;.,\\-–—]+/g, ' ').split(/\\s+/).filter((w) => w.length > 1);\r\n  const q = String(quote || '');\r\n  const wc = words(q).length;\r\n  if (String(factor) === 'pain') {\r\n    if (wc < 3) return false;\r\n    return /(whatsapp|cotiz|agend|reserv|solicit|formulario|escr[ií]b|mensaje|llam(a|e|ada)|pedido|consult|fuera de horario|respond|seguimiento|manual|planilla|excel|presupuesto|inscripci|vacante|trabaja con nosotros|recepcionista|atenci[oó]n al cliente|horario|demora|esper)/i.test(q);\r\n  }\r\n  return wc >= 4;\r\n}\n\nfunction normalizeVertical(v) {\r\n  const OPT = ['Salud', 'Inmobiliarias', 'Educación', 'Retail & Ecommerce', 'Alimentación & Casinos', 'Gimnasios', 'Servicios Profesionales', 'B2B & Industria', 'Contabilidad & Finanzas', 'Otro'];\r\n  const s = String(v || '').trim();\r\n  return OPT.includes(s) ? s : 'Otro';\r\n}\n\nfunction mapSolution(text) {\r\n  const t = String(text || '').toLowerCase();\r\n  if (/sistema|software|a medida|plataforma propia|app /.test(t)) return 'sistemas-a-medida';\r\n  if (/integr|conectar|crm|erp|sincroniz/.test(t)) return 'integraciones';\r\n  if (/agente|atenci|whatsapp|cotiz|agend|reserva|seguimiento|responde/.test(t)) return 'atencion-y-seguimiento';\r\n  if (/automat|proceso|factura|cobranza|pedido/.test(t)) return 'automatizacion-de-procesos';\r\n  return 'unsure';\r\n}\n\nfunction mapChannel(contact, declared) {\r\n  const c = contact || {};\r\n  const d = String(declared || '').toLowerCase();\r\n  const byDecl = { email: 'Correo', correo: 'Correo', whatsapp: 'WhatsApp', phone: 'Llamada', llamada: 'Llamada', telefono: 'Llamada', linkedin: 'LinkedIn', instagram: 'Instagram', form: 'Formulario web', formulario: 'Formulario web' }[d];\r\n  if (byDecl) return byDecl;\r\n  if (c.email) return 'Correo';\r\n  if (c.whatsapp) return 'WhatsApp';\r\n  if (c.phone) return 'Llamada';\r\n  if (c.linkedin_url) return 'LinkedIn';\r\n  return 'Formulario web';\r\n}\n\nfunction evaluateAdmission(row) {\r\n  const p = (row && row.prospect) || {};\r\n  const a = (row && row.account) || {};\r\n  const c = (row && row.contact) || null;\r\n  const rs = Array.isArray(row && row.research) ? row.research : [];\r\n  const h = (a.metadata && a.metadata.hermes) || {};\r\n  const reasons = [];\r\n  const len = (v) => String(v == null ? '' : v).trim().length;\r\n\r\n  if (p.classification !== 'hot' || p.crm_candidate !== true) reasons.push('no_es_clase_A');\r\n  if (!(Number(p.final_score) >= 80)) reasons.push('score_bajo_80');\r\n  if (p.status !== 'new') reasons.push('estado_no_new');\r\n  if (p.ghl_opportunity_id) reasons.push('ya_en_ghl');\r\n  if (!a.name || !(a.domain || a.website)) reasons.push('empresa_sin_sitio_propio');\r\n  if (p.pain_verified !== true) reasons.push('dolor_no_verificado');\r\n\r\n  const literal = rs.filter((r) => evidenceKind(r) === 'literal');\r\n  const literalFactors = [...new Set(literal.map((r) => String(r.research_type || '').replace('factor:', '')))].filter((f) => f && f !== 'access');\r\n  const painLiteral = literal.find((r) => r.research_type === 'factor:pain');\r\n  if (!painLiteral) reasons.push('sin_evidencia_literal_del_dolor');\r\n  else if (!evidenceSupports('pain', painLiteral.evidence_text, painLiteral.finding)) reasons.push('cita_del_dolor_no_describe_un_proceso');\r\n  if (literalFactors.length < 3) reasons.push('evidencia_literal_insuficiente');\r\n\r\n  const contactOk = Boolean(c && (c.email || c.phone || c.whatsapp) && c.source_url && (!c.metadata || c.metadata.public !== false));\r\n  if (!contactOk) reasons.push('sin_contacto_publico_con_fuente');\r\n\r\n  const whyNow = h.why_now || h.reason || '';\r\n  if (len(whyNow) < 20) reasons.push('sin_motivo_para_ahora');\r\n  if (len(h.commercial_angle) < 20) reasons.push('sin_angulo_comercial');\r\n\r\n  const best = painLiteral || literal[0] || null;\r\n  return {\r\n    ok: reasons.length === 0, reasons,\r\n    literal_factors: literalFactors,\r\n    best_evidence: best ? { url: best.source_url, quote: best.evidence_text, finding: best.finding, factor: String(best.research_type).replace('factor:', '') } : null,\r\n    why_now: String(whyNow).trim(), commercial_angle: String(h.commercial_angle || '').trim(),\r\n  };\r\n}\n\nfunction lintDraft(subject, message, ctx) {\r\n  const FORBIDDEN = [\r\n    [/vi que (est[aá]n|estás|est[aá]s|tienen|tienes) (teniendo )?(problemas|dificultades)/i, 'afirma_un_problema_no_demostrado'],\r\n    [/revolucion|disrupt|transforma(r|mos) (tu|su) (negocio|empresa)|el mejor|garantizamos|100 ?%|sin riesgo|inigualable/i, 'exageracion'],\r\n    [/chatbot/i, 'dice_chatbot'],\r\n    [/como (conversamos|hablamos|acordamos)|seguimiento (de|a) (nuestra|mi) (conversaci[oó]n|llamada)|de nuevo|nuevamente/i, 'finge_relacion_previa'],\r\n    [/estimad[oa]/i, 'tono_formal_distante'],\r\n  ];\r\n  const probs = [];\r\n  const text = String(message || '').trim();\r\n  const words = text.split(/\\s+/).filter(Boolean).length;\r\n  if (words < 25) probs.push('muy_corto');\r\n  if (words > 140) probs.push('muy_largo');\r\n  if (!String(subject || '').trim() || String(subject).length > 90) probs.push('asunto_invalido');\r\n  FORBIDDEN.forEach(([re, tag]) => { if (re.test(text) || re.test(String(subject || ''))) probs.push(tag); });\r\n  if (!/\\?/.test(text)) probs.push('sin_pregunta_final');\r\n  const name = String((ctx && ctx.company) || '').toLowerCase().split(/\\s+/)[0];\r\n  if (name && name.length > 2 && !text.toLowerCase().includes(name) && !String(subject || '').toLowerCase().includes(name)) probs.push('no_menciona_a_la_empresa');\r\n  const services = (text.match(/\\b(chatbot|sitio web|p[aá]gina web|ecommerce|crm|erp|app m[oó]vil|marketing|seo|dise[ñn]o)\\b/gi) || []).length;\r\n  if (services > 3) probs.push('ofrece_demasiados_servicios');\r\n  return probs;\r\n}\n\nfunction host(u) { const m = String(u || '').match(/^https?:\\/\\/([^\\/?#]+)/i); return m ? m[1].replace(/^www\\./, '') : String(u || ''); }\n\nfunction buildDraft(row, adm) {\r\n  const a = row.account || {};\r\n  const h = (a.metadata && a.metadata.hermes) || {};\r\n  const c = row.contact || {};\r\n  const company = a.name || 'tu empresa';\r\n  const ctx = { company };\r\n  const hSubject = String(h.draft_subject || '').trim();\r\n  const hBody = String(h.draft || '').trim();\r\n  const hProbs = hBody ? lintDraft(hSubject, hBody, ctx) : ['sin_borrador_de_hermes'];\r\n  if (!hProbs.length) return { subject: hSubject, message: hBody, source: 'hermes', lint: [] };\r\n  const first = String(c.name || '').trim().split(/\\s+/)[0];\r\n  const greet = first ? 'Hola ' + first + ',' : 'Hola, equipo de ' + company + ',';\r\n  const ev = adm && adm.best_evidence;\r\n  const quote = ev && ev.quote ? String(ev.quote).replace(/\\s+/g, ' ').trim().slice(0, 160) : '';\r\n  const offer = String(h.offer || '').trim().replace(/[.\\s]+$/, '').replace(/^./, (x) => x.toLowerCase()).slice(0, 180);\r\n  const named = Boolean(first);\r\n  const lines = [greet, ''];\r\n  if (quote) lines.push('En ' + host(ev.url) + ' leí: «' + quote + '».', '');\r\n  lines.push('Mi hipótesis, sin haberlo visto por dentro, es que eso hoy se resuelve a mano. En Atacama Labs armamos agentes y automatizaciones conectadas a las herramientas que ya usan, para que una persona del equipo intervenga solo cuando haga falta.' + (offer ? ' Una posibilidad concreta: ' + offer + '.' : ''), '');\r\n  lines.push(named ? '¿Te sirve que te muestre en 10 minutos cómo se vería para ' + company + '?' : '¿Les sirve que les muestre en 10 minutos cómo se vería para ' + company + '?', '', 'Christian Wevar · Atacama Labs · atacamalabs.cl');\r\n  const message = lines.join('\\n');\r\n  const subject = ('Una idea para ' + company).slice(0, 80);\r\n  return { subject, message, source: 'plantilla', lint: lintDraft(subject, message, ctx), hermes_lint: hProbs };\r\n}\n\nfunction buildGhlPayloads(row, adm, draft, cfg) {\r\n  const p = row.prospect;\r\n  const a = row.account;\r\n  const c = row.contact || {};\r\n  const h = (a.metadata && a.metadata.hermes) || {};\r\n  const company = a.name;\r\n  const channel = mapChannel(c, h.contact_channel);\r\n  const vertical = normalizeVertical(h.vertical);\r\n  const contactName = String(c.name || '').trim();\r\n  const contact = {\r\n    locationId: cfg.locationId, name: contactName || company, companyName: company, website: a.website || undefined,\r\n    email: c.email || undefined, phone: c.phone || c.whatsapp || undefined, source: 'atacama-labs-prospecting',\r\n    tags: ['prospecto-hermes', 'prospecto-por-revisar'],\r\n    customFields: [{ id: cfg.contactFields.origen_detallado, field_value: 'Prospección outbound' }].concat(c.job_title ? [{ id: cfg.contactFields.primary_contact_role, field_value: String(c.job_title).slice(0, 120) }] : []),\r\n  };\r\n  const angle = adm.commercial_angle;\r\n  const opportunity = {\r\n    locationId: cfg.locationId, pipelineId: cfg.pipelineId, pipelineStageId: cfg.stageId, name: (company + ' — Prospecto').slice(0, 120), status: 'open',\r\n    customFields: [\r\n      { id: cfg.fields.fuente, field_value: 'outbound_manual' },\r\n      { id: cfg.fields.solucion_de_interes, field_value: mapSolution(h.offer + ' ' + angle) },\r\n      { id: cfg.fields.icp_vertical, field_value: vertical },\r\n      { id: cfg.fields.evidencia_url, field_value: adm.best_evidence ? adm.best_evidence.url : '' },\r\n      { id: cfg.fields.canal_de_contacto, field_value: channel },\r\n      { id: cfg.fields.qualification_score, field_value: Number(p.final_score) },\r\n      { id: cfg.fields.commercial_angle, field_value: angle.slice(0, 500) },\r\n      { id: cfg.fields.prospect_key, field_value: p.prospect_key },\r\n    ],\r\n  };\r\n  return { contact, opportunity, note: buildReviewNote(row, adm, draft, channel), channel, vertical };\r\n}\n\nfunction buildReviewNote(row, adm, draft, channel) {\r\n  const p = row.prospect;\r\n  const a = row.account;\r\n  const c = row.contact || {};\r\n  const h = (a.metadata && a.metadata.hermes) || {};\r\n  const rs = Array.isArray(row.research) ? row.research : [];\r\n  const f = (p.metadata && p.metadata.factors) || {};\r\n  const mark = { literal: '✔', inferencia: '~', sin_verificar: '?' };\r\n  const ev = rs.filter((r) => String(r.research_type).startsWith('factor:') && r.research_type !== 'factor:access').map((r) => {\r\n    const k = evidenceKind(r);\r\n    const q = r.evidence_text ? ' «' + String(r.evidence_text).replace(/\\s+/g, ' ').slice(0, 220) + '»' : '';\r\n    return ' ' + mark[k] + ' [' + String(r.research_type).replace('factor:', '') + '] ' + String(r.finding || '').slice(0, 200) + q + ' — ' + r.source_url;\r\n  });\r\n  const factorLine = Object.keys(f).map((k) => k + ' ' + (f[k].points != null ? f[k].points : '?') + '/' + f[k].weight).join(' · ');\r\n  const person = [c.name, c.job_title].filter(Boolean).join(', ') || 'sin persona identificada (casilla de la empresa)';\r\n  const contactLine = [c.email, c.phone, c.whatsapp && 'WhatsApp ' + c.whatsapp].filter(Boolean).join(' · ');\r\n  const lines = [\r\n    'PROSPECTO PARA REVISIÓN — ' + a.name + ' (' + (a.domain || a.website) + ')',\r\n    'Score ' + p.final_score + '/100 · clase A · ' + normalizeVertical(h.vertical) + (a.city ? ' · ' + a.city : ''),\r\n    '',\r\n    'POR QUÉ ESCRIBIRLE AHORA: ' + adm.why_now,\r\n    'ÁNGULO COMERCIAL: ' + adm.commercial_angle,\r\n    '',\r\n    'SEÑAL OBSERVADA: ' + (h.signal || '—'),\r\n    'DOLOR (hipótesis a partir de la evidencia): ' + (h.pain || '—'),\r\n    'ENCAJE: ' + (h.fit || '—'),\r\n    'POSIBLE SOLUCIÓN (hipótesis): ' + (h.offer || '—'),\r\n    '',\r\n    'EVIDENCIA  (✔ cita literal verificada en la URL · ~ inferencia · ? no verificada):',\r\n  ].concat(ev, [\r\n    '',\r\n    'CONTACTO PÚBLICO (' + channel + '): ' + person + ' · ' + contactLine + ' · fuente ' + (c.source_url || '—'),\r\n    'Puntos por factor: ' + factorLine,\r\n    'Confianza de Hermes: ' + (h.confidence != null ? h.confidence : '—') + ' · origen: ' + (h.source || 'hermes'),\r\n    '',\r\n    'BORRADOR (' + draft.source + ', NO ENVIADO) — Asunto: ' + draft.subject,\r\n    draft.message,\r\n    '',\r\n    'DECISIÓN: nada se envía hasta que lo apruebes. Para aprobar, pon la etiqueta «aprobado-para-contactar» en este contacto; para descartar, «descartado-prospecto». (No se mueve a «Contactado» automáticamente.)',\r\n  ]);\r\n  return lines.join('\\n').slice(0, 6000);\r\n}\n\nfunction findExistingContact(results, email, phone, domain) {\r\n  const list = Array.isArray(results) ? results : [];\r\n  const digits = (s) => String(s || '').replace(/\\D/g, '');\r\n  const pd = digits(phone).slice(-9);\r\n  const hit = list.find((x) => {\r\n    const e = String(x.email || '').toLowerCase();\r\n    if (email && e === String(email).toLowerCase()) return true;\r\n    if (domain && e.endsWith('@' + domain)) return true;\r\n    if (pd.length >= 8 && digits(x.phone).slice(-9) === pd) return true;\r\n    return false;\r\n  });\r\n  return hit ? { id: hit.id, name: hit.contactName || hit.name || null } : null;\r\n}\n\nconst plan = $('Plan').item.json;\nconst res = $json || {};\nif ((res.statusCode || 0) >= 300) return { json: { prospect_id: plan.prospect_id, proceed: false, held_patch: { metadata: { ...plan.prospect_metadata, admission: { status: 'held', reasons: ['ghl_no_disponible_para_comprobar_duplicados'], at: new Date().toISOString() } } } } };\nconst list = Array.isArray(res.body && res.body.contacts) ? res.body.contacts : [];\nconst hit = findExistingContact(list, plan.email, plan.phone, plan.domain);\nif (hit) return { json: { prospect_id: plan.prospect_id, proceed: false, held_patch: { metadata: { ...plan.prospect_metadata, admission: { status: 'held', reasons: ['ya_existe_en_ghl'], existing_contact_id: hit.id, at: new Date().toISOString() } } } } };\nreturn { json: { prospect_id: plan.prospect_id, proceed: true } };"
+      }
+    },
+    {
+      "id": "edb10dbf-b0d7-4594-9c70-83dada04f125",
+      "name": "No Duplicate?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3120,
+        -120
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ ($json.proceed === true) ? \"yes\" : \"no\" }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "dbdd538a-e099-45f4-87cd-2864ee57d09c",
+      "name": "Create Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3360,
+        -120
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4Vc6nfxyKjZ14Bep",
+          "name": "GHL — Atacama OS"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/contacts/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($(\"Plan\").item.json.payloads.contact) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "241128a1-981f-4b39-8063-f0fea859a2b4",
+      "name": "Contact Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3600,
+        -120
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const plan = $('Plan').item.json;\nconst res = $json || {};\nconst id = res.body && res.body.contact && res.body.contact.id;\nif ((res.statusCode || 0) < 300 && id) return { json: { prospect_id: plan.prospect_id, created: true, contact_id: id } };\nconst dupId = res.body && res.body.meta && res.body.meta.contactId;\nconst reason = dupId ? 'ya_existe_en_ghl' : 'error_al_crear_contacto_en_ghl:' + String((res.body && res.body.message) || res.statusCode).slice(0, 120);\nreturn { json: { prospect_id: plan.prospect_id, created: false, held_patch: { metadata: { ...plan.prospect_metadata, admission: { status: 'held', reasons: [reason], ...(dupId ? { existing_contact_id: dupId } : {}), at: new Date().toISOString() } } } } };"
+      }
+    },
+    {
+      "id": "1080845e-cf07-4631-94e0-202cb22d0bff",
+      "name": "Contact Created?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3840,
+        -120
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ ($json.created === true) ? \"yes\" : \"no\" }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a5b94cb9-cfff-4660-b89d-8eee5eba07c3",
+      "name": "Save Contact Id",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4080,
+        -120
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/prospects?id=eq.\" + $json.prospect_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ ghl_contact_id: $json.contact_id }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "52db8e86-119c-4010-9803-a0eadcf09add",
+      "name": "Resolve New",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4320,
+        -120
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return { json: { contact_id: $(\"Contact Result\").item.json.contact_id } };"
+      }
+    },
+    {
+      "id": "9305f62c-8fdd-403f-bd08-50f3a7b1ee16",
+      "name": "Resolve Resume",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        -360
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return { json: { contact_id: $(\"Plan\").item.json.resume_contact_id } };"
+      }
+    },
+    {
+      "id": "92ad09bb-076a-4dd0-bc64-8aeff4cbc397",
+      "name": "Search Opps",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4560,
+        -240
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4Vc6nfxyKjZ14Bep",
+          "name": "GHL — Atacama OS"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://services.leadconnectorhq.com/opportunities/search?location_id=pxHuOsiz2i3lM6BtC9IM&pipeline_id=trSWhAcNDyUMmPlYIEib&contact_id=\" + $json.contact_id + \"&limit=20\" }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "e5b4d664-871b-4219-aff7-3c4d0bcf572f",
+      "name": "Opp Decision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4800,
+        -240
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const plan = $('Plan').item.json;\n// El id del contacto viene de «Resolve New» (contacto recién creado) o «Resolve Resume» (reintento); la respuesta de Search Opps NO lo trae.\nlet contactId = null;\ntry { contactId = $('Resolve New').item.json.contact_id; } catch (e) { contactId = null; }\nif (!contactId) { try { contactId = $('Resolve Resume').item.json.contact_id; } catch (e) { contactId = null; } }\nif (!contactId) throw new Error('Sin id de contacto de GHL para crear la oportunidad (prospecto ' + plan.prospect_id + ')');\nconst res = $json || {};\nconst opps = (res.statusCode || 0) < 300 && Array.isArray(res.body && res.body.opportunities) ? res.body.opportunities : [];\nconst mine = opps.find((o) => (o.customFields || []).some((f) => String(f.fieldValueString || f.fieldValue || f.field_value || '') === String(plan.prospect_key)) || String(o.name || '') === String(plan.payloads.opportunity.name));\nreturn { json: { prospect_id: plan.prospect_id, contact_id: contactId, exists: Boolean(mine), existing_opportunity_id: mine ? mine.id : null, opp_body: { ...plan.payloads.opportunity, contactId } } };"
+      }
+    },
+    {
+      "id": "9cc85212-e101-4caf-aa07-d985a0d16272",
+      "name": "Opp Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        5040,
+        -240
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ ($json.exists === true) ? \"yes\" : \"no\" }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "afc721fe-d973-45e1-9caa-24a21997312c",
+      "name": "Create Opportunity",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5280,
+        -360
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4Vc6nfxyKjZ14Bep",
+          "name": "GHL — Atacama OS"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/opportunities/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.opp_body) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "c672a1e3-0d47-453f-b03f-3863b0492927",
+      "name": "Save Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5520,
+        -360
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const plan = $('Plan').item.json;\nconst dec = $('Opp Decision').item.json;\nconst oppRes = $json || {};\nconst oppId = (oppRes.body && ((oppRes.body.opportunity && oppRes.body.opportunity.id) || oppRes.body.id)) || null;\nif (!oppId) throw new Error('GHL no devolvió id de oportunidad (HTTP ' + oppRes.statusCode + '): ' + JSON.stringify(oppRes.body || {}).slice(0, 200));\nconst now = new Date().toISOString();\nconst patch = { ghl_contact_id: dec.contact_id, ghl_opportunity_id: oppId, last_activity_at: now, updated_at: now,\n  metadata: { ...plan.prospect_metadata, admission: { status: 'in_ghl', stage: 'Investigado', at: now, draft_source: plan.draft.source, approval: 'pendiente: etiqueta aprobado-para-contactar en el contacto' } } };\nconst draftRow = { prospect_id: plan.prospect_id, contact_id: plan.contact_row_id, channel: plan.payloads.channel === 'Correo' ? 'email' : plan.payloads.channel === 'WhatsApp' ? 'whatsapp' : plan.payloads.channel === 'LinkedIn' ? 'linkedin' : plan.payloads.channel === 'Llamada' ? 'call' : 'other',\n  direction: 'outbound', type: 'first_contact', subject: plan.draft.subject, message: plan.draft.message, status: 'draft', created_by: 'prospect-admit',\n  metadata: { source: plan.draft.source, lint: plan.draft.lint, hermes_lint: plan.draft.hermes_lint || [], never_sent: true } };\nreturn { json: { prospect_id: plan.prospect_id, patch, draft_row: draftRow, needs_draft: !plan.has_draft, ghl_contact_id: dec.contact_id, ghl_opportunity_id: oppId } };"
+      }
+    },
+    {
+      "id": "55b1e3da-ad58-4933-bcdf-7b86afe67764",
+      "name": "Patch Prospect",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5760,
+        -360
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/prospects?id=eq.\" + $json.prospect_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.patch) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "e9f31892-f6e8-4852-8794-60199e0c9179",
+      "name": "Insert Draft",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6000,
+        -360
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/outreach",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $(\"Save Result\").item.json.needs_draft ? JSON.stringify($(\"Save Result\").item.json.draft_row) : \"[]\" }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "d0eef804-58d8-4975-851e-5235ca752a6d",
+      "name": "Add Note",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6240,
+        -360
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4Vc6nfxyKjZ14Bep",
+          "name": "GHL — Atacama OS"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ \"https://services.leadconnectorhq.com/contacts/\" + $(\"Opp Decision\").item.json.contact_id + \"/notes\" }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ body: $(\"Plan\").item.json.payloads.note, userId: \"OjkAjHMdUjnblO7W1kBZ\" }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "af017359-8345-454a-a69d-fd6ccd407e5b",
+      "name": "Finalize Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6720,
+        -360
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const plan = $('Plan').item.json;\nconst sr = $('Save Result').item.json;\nconst note = $('Add Note').item.json || {};\nconst base = sr.patch.metadata;\nreturn { json: { prospect_id: plan.prospect_id, patch: { updated_at: new Date().toISOString(), metadata: { ...base, admission: { ...base.admission, note_created: (note.statusCode || 0) < 300, note_http: note.statusCode || null, review_task: 'la crea la automatización de GHL «Atacama — Tarea al investigar»' } } } } };"
+      }
+    },
+    {
+      "id": "c9f35fa5-e45d-47a2-b51e-700a7b79b913",
+      "name": "Finalize",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6960,
+        -360
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/prospects?id=eq.\" + $json.prospect_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.patch) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "40c0b0cf-b637-4d23-a9d4-ce1f795c7d0f",
+      "name": "No Work",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        160
+      ],
+      "parameters": {
+        "jsCode": "return [{ json: { ok: true, admitted: 0, note: 'Sin prospectos elegibles (hot + crm_candidate + score >= 80 + status new + sin oportunidad).' } }];"
+      }
+    },
+    {
+      "id": "d3a71034-445b-4d52-bdf6-bb9aa4730364",
+      "name": "Mark Existing Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5280,
+        -120
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const plan = $('Plan').item.json;\nconst dec = $json;\nconst now = new Date().toISOString();\nreturn { json: { prospect_id: plan.prospect_id, patch: { ghl_contact_id: dec.contact_id, ghl_opportunity_id: dec.existing_opportunity_id, updated_at: now, metadata: { ...plan.prospect_metadata, admission: { status: 'in_ghl', stage: 'ya_existia', at: now } } } } };"
+      }
+    },
+    {
+      "id": "511fc8bb-2fb2-4276-aa37-dd2a61157a88",
+      "name": "Mark Existing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5520,
+        -120
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/prospects?id=eq.\" + $json.prospect_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.patch) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "00cdc21d-41e8-49a1-9a5f-d9725c5c4c67",
+      "name": "Mark Held",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2400,
+        240
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/prospects?id=eq.\" + $json.prospect_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.held_patch) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Admit Webhook": {
+      "main": [
+        [
+          {
+            "node": "Init",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Called by Workflow": {
+      "main": [
+        [
+          {
+            "node": "Init",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Init": {
+      "main": [
+        [
+          {
+            "node": "Fetch Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Candidates": {
+      "main": [
+        [
+          {
+            "node": "Any Candidates?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Candidates?": {
+      "main": [
+        [
+          {
+            "node": "Fetch Accounts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Work",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Accounts": {
+      "main": [
+        [
+          {
+            "node": "Fetch Contacts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Contacts": {
+      "main": [
+        [
+          {
+            "node": "Fetch Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Research": {
+      "main": [
+        [
+          {
+            "node": "Fetch Drafts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Drafts": {
+      "main": [
+        [
+          {
+            "node": "Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan": {
+      "main": [
+        [
+          {
+            "node": "Admitted?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Admitted?": {
+      "main": [
+        [
+          {
+            "node": "Has Contact?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Held",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Contact?": {
+      "main": [
+        [
+          {
+            "node": "Resolve Resume",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search Domain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Resume": {
+      "main": [
+        [
+          {
+            "node": "Search Opps",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Domain": {
+      "main": [
+        [
+          {
+            "node": "Dup Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dup Check": {
+      "main": [
+        [
+          {
+            "node": "No Duplicate?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Duplicate?": {
+      "main": [
+        [
+          {
+            "node": "Create Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Held",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Contact": {
+      "main": [
+        [
+          {
+            "node": "Contact Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contact Result": {
+      "main": [
+        [
+          {
+            "node": "Contact Created?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contact Created?": {
+      "main": [
+        [
+          {
+            "node": "Save Contact Id",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Held",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Contact Id": {
+      "main": [
+        [
+          {
+            "node": "Resolve New",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve New": {
+      "main": [
+        [
+          {
+            "node": "Search Opps",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Opps": {
+      "main": [
+        [
+          {
+            "node": "Opp Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Opp Decision": {
+      "main": [
+        [
+          {
+            "node": "Opp Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Opp Exists?": {
+      "main": [
+        [
+          {
+            "node": "Mark Existing Body",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Opportunity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Existing Body": {
+      "main": [
+        [
+          {
+            "node": "Mark Existing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Opportunity": {
+      "main": [
+        [
+          {
+            "node": "Save Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Result": {
+      "main": [
+        [
+          {
+            "node": "Patch Prospect",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Patch Prospect": {
+      "main": [
+        [
+          {
+            "node": "Insert Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Draft": {
+      "main": [
+        [
+          {
+            "node": "Add Note",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Note": {
+      "main": [
+        [
+          {
+            "node": "Finalize Body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalize Body": {
+      "main": [
+        [
+          {
+            "node": "Finalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

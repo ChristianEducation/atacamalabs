@@ -17,6 +17,7 @@
  * o importado desde un script de despliegue: import { build08, build09, patch04 } from ...
  */
 import fs from 'node:fs';
+import { evidenceSupports } from '../../scripts/prospecting/admit-core.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -76,9 +77,12 @@ for (const raw of list) {
   if (domain && seen.has(domain)) reasons.push('duplicate_in_batch');
   if (domain) seen.add(domain);
 
-  // Evidencia por factor
+  // Evidencia por factor (contrato v2: tambien se acepta la forma plana evidence_url + evidence_quote/evidence_summary como evidencia del dolor)
   const rows = [];
-  const ev = Array.isArray(raw?.evidence) ? raw.evidence : [];
+  let ev = Array.isArray(raw?.evidence) ? raw.evidence : [];
+  if (!ev.length && isUrl(raw?.evidence_url) && (raw?.evidence_quote || raw?.evidence_summary)) {
+    ev = [{ factor: 'pain', level: raw?.evidence_quote ? 2 : 1, url: raw.evidence_url, quote: raw?.evidence_quote || null, finding: raw?.evidence_summary || raw?.evidence_quote, certainty: raw?.evidence_quote ? 'observed' : 'inferred' }];
+  }
   for (const e of ev) {
     const factor = String(e?.factor || '').toLowerCase();
     let level = Number(e?.level);
@@ -105,7 +109,7 @@ for (const raw of list) {
     if (c.public !== true) reasons.push('contact_not_declared_public');
     if (!isUrl(c.source_url)) reasons.push('contact_missing_source_url');
   }
-  const reason = txt(raw?.reason, 600);
+  const reason = txt(raw?.why_now || raw?.reason, 600);
   if (!reason || reason.length < 20) reasons.push('missing_specific_reason');
 
   // Factor de acceso derivado del contacto (si Hermes no aporto uno)
@@ -124,7 +128,7 @@ for (const raw of list) {
       verdict, reasons: [...new Set(reasons)], company, domain,
       account: { website, city: txt(raw?.city, 80), region: txt(raw?.region, 80), phone, whatsapp, email_general: email && FREE_MAIL.has(email.split('@')[1]) ? null : email,
         source: 'hermes', source_url: rows[0]?.source_url ?? null,
-        metadata: { hermes: { vertical: txt(raw?.vertical, 80), signal: txt(raw?.signal), pain: txt(raw?.pain), fit: txt(raw?.fit), offer: txt(raw?.offer), reason, draft: txt(raw?.draft, 1500), draft_subject: txt(raw?.draft_subject, 200), batch_id: batchId, personal_email: Boolean(email && FREE_MAIL.has(email.split('@')[1])) } } },
+        metadata: { hermes: { vertical: txt(raw?.vertical, 80), signal: txt(raw?.signal || raw?.observed_signal), pain: txt(raw?.pain), fit: txt(raw?.fit), offer: txt(raw?.offer || raw?.possible_solution), reason, why_now: reason, commercial_angle: txt(raw?.commercial_angle, 500), confidence: Number.isFinite(Number(raw?.confidence)) ? Math.max(0, Math.min(1, Number(raw.confidence))) : null, source: txt(raw?.source, 60), contact_channel: txt(raw?.contact?.channel || raw?.contact_channel, 20), country: txt(raw?.country, 60) || 'Chile', contract: 'prospect-radar-v2', draft: txt(raw?.draft, 1500), draft_subject: txt(raw?.draft_subject, 200), batch_id: batchId, personal_email: Boolean(email && FREE_MAIL.has(email.split('@')[1])) } } },
       research: verdict === 'accepted' ? rows : [],
       contact: verdict === 'accepted' ? { name: txt(c.name, 120), job_title: txt(c.job_title, 120), email, phone, whatsapp, linkedin_url: isUrl(c.linkedin_url) ? String(c.linkedin_url) : null, source_url: String(c.source_url), is_decision_maker: c.is_decision_maker === true, confidence: 0.85 } : null,
       raw: raw,
@@ -134,7 +138,9 @@ for (const raw of list) {
 return out;`;
 
 
-const VERIFY_CODE = String.raw`// Verifica las citas: la evidencia nivel 2 solo cuenta si la cita aparece de verdad en la URL indicada.
+const VERIFY_CODE = String.raw`${evidenceSupports.toString()}
+
+// Verifica las citas: la evidencia nivel 2 solo cuenta si la cita aparece de verdad en la URL indicada.
 // Si la página carga y la cita NO aparece, o la página no se puede leer, la evidencia baja a nivel 1 y queda marcada
 // como "unverified" (no se descarta ni se rechaza el prospecto: la revisión humana lo ve). Evita que una cita inventada
 // sume puntos como evidencia concreta.
@@ -161,23 +167,27 @@ const pageText = (url) => {
 for (const it of items) {
   const item = it.json.item;
   if (!item || item.verdict !== 'accepted') continue;
-  const stats = { checked: 0, found: 0, not_found: 0, unreadable: 0, capped_no_quote: 0 };
+  const stats = { checked: 0, found: 0, not_found: 0, unreadable: 0, capped_no_quote: 0, not_supporting: 0 };
   for (const row of item.research) {
     if (row.research_type === 'factor:access') continue;
     if (!row.evidence_text) { if (row.level > 1) { row.level = 1; stats.capped_no_quote++; } row.certainty = row.certainty === 'inferred' ? 'inferred' : 'unverified'; continue; }
     stats.checked++;
     const page = await pageText(row.source_url);
     const q = norm(row.evidence_text).slice(0, 90);
-    if (page.ok && q.length >= 12 && page.text.includes(q)) { stats.found++; row.certainty = row.certainty === 'inferred' ? 'inferred' : 'observed'; }
+    if (page.ok && q.length >= 12 && page.text.includes(q)) {
+      // La cita existe, pero ¿demuestra el factor? (un título o un teléfono no demuestran dolor): si no, nivel 1 y sin verificar.
+      if (!evidenceSupports(row.research_type.replace('factor:', ''), row.evidence_text, row.finding)) { stats.not_supporting++; row.level = Math.min(row.level, 1); row.certainty = row.certainty === 'inferred' ? 'inferred' : 'unverified'; }
+      else { stats.found++; row.certainty = row.certainty === 'inferred' ? 'inferred' : 'observed'; }
+    }
     else { if (page.ok) stats.not_found++; else stats.unreadable++; row.level = Math.min(row.level, 1); row.certainty = row.certainty === 'inferred' ? 'inferred' : 'unverified'; }
   }
   item.account.metadata.hermes.verification = stats;
 }
 return items;`;
 
-export function build08({ mode = 'test', qualWorkflowId, ingestKeyCredId, webhookId = uuid() }) {
+export function build08({ mode = 'test', qualWorkflowId, admitWorkflowId, ingestKeyCredId, webhookId = uuid(), path: pathOverride }) {
   const pack = PACKS[mode];
-  const path = mode === 'test' ? 'atacama-prospects-ingest-test' : 'atacama-prospects-ingest';
+  const path = pathOverride || (mode === 'test' ? 'atacama-prospects-ingest-test' : 'atacama-prospects-ingest');
   const nodes = [
     { id: uuid(), name: 'Ingest Webhook', type: 'n8n-nodes-base.webhook', typeVersion: 2, position: [0, 0], webhookId,
       parameters: { httpMethod: 'POST', path, authentication: 'headerAuth', responseMode: 'lastNode', options: {} },
@@ -207,11 +217,28 @@ return [{ json: { batch_id: gate[0]?.json?.batch_id, icp_pack_id: gate[0]?.json?
       parameters: { source: 'database', workflowId: { __rl: true, value: qualWorkflowId, mode: 'id' },
         workflowInputs: { value: { icp_pack_id: '={{ $json.icp_pack_id }}', account_ids: '={{ $json.account_ids }}', limit: 25 }, schema: [] }, options: { waitForSubWorkflow: true } },
       onError: 'continueRegularOutput' },
+    ...(admitWorkflowId ? [
+      { id: uuid(), name: 'Run 18 Admit', type: 'n8n-nodes-base.executeWorkflow', typeVersion: 1.2, position: [1440, -100],
+        parameters: { source: 'database', workflowId: { __rl: true, value: admitWorkflowId, mode: 'id' },
+          workflowInputs: { value: { icp_pack_id: '={{ $("Summarize").first().json.icp_pack_id }}', account_ids: '={{ $("Summarize").first().json.account_ids }}', limit: 10 }, schema: [] }, options: { waitForSubWorkflow: true } },
+        onError: 'continueRegularOutput', alwaysOutputData: true },
+      { id: uuid(), name: 'Fetch Admission', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [1680, -100], executeOnce: true, credentials: SUPABASE_CRED,
+        parameters: { method: 'GET', url: '={{ "' + SUPABASE + '/rest/v1/prospects?account_id=in.(" + $("Summarize").first().json.account_ids.join(",") + ")&select=account_id,final_score,classification,crm_candidate,ghl_opportunity_id,metadata" }}',
+          authentication: 'predefinedCredentialType', nodeCredentialType: 'supabaseApi', options: fullResponse(20000) } },
+      { id: uuid(), name: 'Response (with qualification)', type: 'n8n-nodes-base.code', typeVersion: 2, position: [1920, -100],
+        parameters: { jsCode: `const s = $('Summarize').first().json;
+const q = $('Run 03 Qualification').all().map((i) => i.json);
+const qr = q.find((x) => x && (x.processed !== undefined || x.classification !== undefined || x.summary !== undefined)) ?? q[0] ?? null;
+const rows = Array.isArray($json.body) ? $json.body : [];
+const admission = rows.map((r) => ({ account_id: r.account_id, score: r.final_score, class: r.classification, crm_candidate: r.crm_candidate, in_ghl: Boolean(r.ghl_opportunity_id), admission: (r.metadata && r.metadata.admission) || null }));
+return [{ json: { ok: true, batch_id: s.batch_id, received: s.received, accepted: s.accepted, rejected: s.rejected, duplicates: s.duplicates, errors: s.errors, results: s.results, qualification: qr, admission } }];` } },
+    ] : [
     { id: uuid(), name: 'Response (with qualification)', type: 'n8n-nodes-base.code', typeVersion: 2, position: [1440, -100],
       parameters: { jsCode: `const s = $('Summarize').first().json;
 const q = $input.all().map((i) => i.json);
 const qr = q.find((x) => x && (x.processed !== undefined || x.classification !== undefined || x.summary !== undefined)) ?? q[0] ?? null;
 return [{ json: { ok: true, batch_id: s.batch_id, received: s.received, accepted: s.accepted, rejected: s.rejected, duplicates: s.duplicates, errors: s.errors, results: s.results, qualification: qr } }];` } },
+    ]),
     { id: uuid(), name: 'Response (nothing to qualify)', type: 'n8n-nodes-base.code', typeVersion: 2, position: [1200, 100],
       parameters: { jsCode: `const s = $input.first().json;
 return [{ json: { ok: true, batch_id: s.batch_id, received: s.received, accepted: 0, rejected: s.rejected, duplicates: s.duplicates, errors: s.errors, results: s.results, qualification: null } }];` } },
@@ -223,7 +250,9 @@ return [{ json: { ok: true, batch_id: s.batch_id, received: s.received, accepted
     'Ingest Prospect (RPC)': { main: [[{ node: 'Summarize', type: 'main', index: 0 }]] },
     'Summarize': { main: [[{ node: 'Any Accepted?', type: 'main', index: 0 }]] },
     'Any Accepted?': { main: [[{ node: 'Run 03 Qualification', type: 'main', index: 0 }], [{ node: 'Response (nothing to qualify)', type: 'main', index: 0 }]] },
-    'Run 03 Qualification': { main: [[{ node: 'Response (with qualification)', type: 'main', index: 0 }]] },
+    ...(admitWorkflowId
+      ? { 'Run 03 Qualification': { main: [[{ node: 'Run 18 Admit', type: 'main', index: 0 }]] }, 'Run 18 Admit': { main: [[{ node: 'Fetch Admission', type: 'main', index: 0 }]] }, 'Fetch Admission': { main: [[{ node: 'Response (with qualification)', type: 'main', index: 0 }]] } }
+      : { 'Run 03 Qualification': { main: [[{ node: 'Response (with qualification)', type: 'main', index: 0 }]] } }),
   };
   return { name: `Atacama Labs - 08 Prospect Ingest${mode === 'test' ? ' (TEST)' : ''}`, nodes, connections, settings: { executionOrder: 'v1' } };
 }
@@ -359,7 +388,7 @@ return [{ json: { ...base, valid: Boolean(subject && message), parse_errors: [],
 /* ------------------------------------------------------------------- CLI */
 if (process.argv[2] === 'write') {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const placeholder = { qualWorkflowId: 'QUALIFICATION_WORKFLOW_ID', crmWorkflowId: 'CRM_SYNC_WORKFLOW_ID', draftWorkflowId: 'OUTREACH_DRAFT_WORKFLOW_ID', ingestKeyCredId: 'INGEST_KEY_CREDENTIAL_ID', webhookId: '00000000-0000-0000-0000-000000000000' };
+  const placeholder = { qualWorkflowId: 'QUALIFICATION_WORKFLOW_ID', crmWorkflowId: 'CRM_SYNC_WORKFLOW_ID', draftWorkflowId: 'OUTREACH_DRAFT_WORKFLOW_ID', admitWorkflowId: 'ADMIT_WORKFLOW_ID', ingestKeyCredId: 'INGEST_KEY_CREDENTIAL_ID', webhookId: '00000000-0000-0000-0000-000000000000' };
   fs.writeFileSync(path.join(root, 'atacama-labs-08-prospect-ingest.json'), JSON.stringify(build08({ mode: 'test', ...placeholder }), null, 2));
   fs.writeFileSync(path.join(root, 'atacama-labs-09-prospect-approve.json'), JSON.stringify(build09({ mode: 'test', ...placeholder }), null, 2));
   const f04 = path.join(root, 'atacama-labs-04-crm-sync.json');

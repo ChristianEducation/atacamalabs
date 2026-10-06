@@ -223,3 +223,9 @@ El ritmo real observado en 02b Signals (llamadas OpenClaw reales contra contenid
 
 - No hay alerta ni notificación cuando un job llega a `failed` tras 4 intentos — hoy solo queda visible consultando `sync_jobs`/`lead_submissions` directamente. Agregar si Christian lo pide (p.ej. un nodo que notifique cuando `attempts>=4`).
 - Búsqueda de duplicados en GHL por "Lead ID" antes de crear: la API de búsqueda de GHL (`/opportunities/search?q=`) no filtra por valor de custom field (probado, devuelve 0 resultados aunque exista) — la idempotencia real depende de: (a) el `claim` atómico (un job se procesa una sola vez), y (b) los IDs de GHL persistidos en `lead_submissions` para reintentos. Documentado como limitación conocida, no un bug.
+
+## Prospección real (Bloque K, 6-oct-2026)
+- **17 Prospect Search** (`n8n/atacama-labs-17-prospect-search.json`): buscador autenticado para Hermes (Exa vía la credencial de n8n; tope de 80 búsquedas por día).
+- **18 Prospect Admit** (`n8n/atacama-labs-18-prospect-admit.json`): admisión a GHL (contacto + oportunidad en *Investigado* + nota de revisión) y borrador en Supabase; solo score ≥ 80 con todos los gates. No envía nada. Lo llama 08 después de 03; también puede invocarse por webhook (`/webhook/atacama-prospect-admit`, `X-Atacama-Key`, `{ "account_ids": [...] }`) para reintentar.
+- Ambos se generan con `node n8n/build/prospect-flow.mjs` (JSON de producción, con ids reales). 08 se genera con `n8n/build/atacama-os-workflows.mjs` (JSON versionado en modo test con marcadores; ahora encadena 18). 09 queda desactivado (aprobaba antes de CRM); 04/05 antiguos sin uso.
+- Pruebas: `node scripts/prospecting/admit-core.test.mjs` y `node n8n/build/prospect-flow.test.mjs`.

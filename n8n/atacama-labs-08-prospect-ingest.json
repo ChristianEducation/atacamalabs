@@ -2,7 +2,7 @@
   "name": "Atacama Labs - 08 Prospect Ingest (TEST)",
   "nodes": [
     {
-      "id": "2259839a-92b2-4cff-83f9-ba5b2bb7f6e8",
+      "id": "8e1dfb6b-01d0-430f-9441-fb2a048c419d",
       "name": "Ingest Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -26,7 +26,7 @@
       }
     },
     {
-      "id": "41883885-d17f-4858-8efd-b7242f0022da",
+      "id": "315457ee-0db6-4012-ac62-d1d2adbffa5b",
       "name": "Validate and Gate",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -35,11 +35,11 @@
         0
       ],
       "parameters": {
-        "jsCode": "// Gate de calidad de prospectos (Atacama OS). Un prospecto entra SOLO si tiene:\n// empresa real + dominio propio + evidencia citada del dolor y del fit + contacto PUBLICO con su fuente + razon concreta.\n// Si no pasa, se registra en prospect_inbox con los motivos y NO entra a accounts/research. Nunca se rellena una cuota.\nconst EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nconst EXPECTED_ICP_PACK_SLUG = 'atacama-labs-test';\nconst first = $input.first().json ?? {};\nconst body = first.body ?? first;\nif (!body || typeof body !== 'object') throw new Error('Cuerpo invalido');\nif (body.icp_pack_id !== EXPECTED_ICP_PACK_ID) throw new Error('SEGURIDAD: icp_pack_id no coincide con el pack de este workflow (' + EXPECTED_ICP_PACK_SLUG + ').');\nconst batchId = String(body.batch_id || '').trim();\nif (!/^[A-Za-z0-9._:-]{4,80}$/.test(batchId)) throw new Error('batch_id obligatorio (4-80 caracteres: letras, numeros, . _ : -)');\nconst list = Array.isArray(body.prospects) ? body.prospects : [];\nif (!list.length) throw new Error('prospects vacio');\nif (list.length > 50) throw new Error('maximo 50 prospectos por lote');\n\nconst FACTORS = ['pain', 'budget_proxy', 'volume', 'automation', 'access', 'urgency', 'fit'];\nconst NOT_COMPANY_DOMAINS = new Set(['facebook.com','instagram.com','linkedin.com','google.com','goo.gl','wa.me','whatsapp.com','linktr.ee','wixsite.com','wordpress.com','blogspot.com','youtube.com','tiktok.com','x.com','twitter.com','maps.app.goo.gl','sites.google.com','canva.site','carrd.co']);\nconst FREE_MAIL = new Set(['gmail.com','hotmail.com','outlook.com','yahoo.com','live.com','icloud.com','yahoo.es','hotmail.es']);\nconst isUrl = (u) => /^https?:\\/\\/[^\\s/$.?#][^\\s]*$/i.test(String(u || '')); // sin new URL(): el sandbox de Code no lo garantiza\nconst normDomain = (v) => { if (!v) return null; let s = String(v).trim().toLowerCase().replace(/^https?:\\/\\//, '').replace(/^www\\./, '').split(/[\\/?#]/)[0]; return /^[a-z0-9-]+(\\.[a-z0-9-]+)+$/.test(s) ? s : null; };\nconst isEmail = (e) => /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(e || '')) && !/^(no-?reply|noreply|donotreply)@/i.test(String(e));\nconst digits = (p) => String(p || '').replace(/\\D/g, '');\nconst txt = (v, max = 600) => (v == null ? null : String(v).trim().slice(0, max) || null);\nconst now = Date.now();\n\nconst seen = new Set();\nconst out = [];\nfor (const raw of list) {\n  const reasons = [];\n  const company = txt(raw?.company, 160);\n  const domain = normDomain(raw?.domain || raw?.website);\n  if (!company || company.length < 2) reasons.push('missing_company');\n  if (!domain) reasons.push('missing_or_invalid_domain');\n  else if (NOT_COMPANY_DOMAINS.has(domain) || [...NOT_COMPANY_DOMAINS].some((d) => domain.endsWith('.' + d))) reasons.push('domain_is_not_company_site');\n  if (domain && seen.has(domain)) reasons.push('duplicate_in_batch');\n  if (domain) seen.add(domain);\n\n  // Evidencia por factor\n  const rows = [];\n  const ev = Array.isArray(raw?.evidence) ? raw.evidence : [];\n  for (const e of ev) {\n    const factor = String(e?.factor || '').toLowerCase();\n    let level = Number(e?.level);\n    const quote = txt(e?.quote, 800);\n    const finding = txt(e?.finding || quote, 500);\n    if (!FACTORS.includes(factor) || ![1, 2].includes(level) || !isUrl(e?.url) || !finding || finding.length < 15) { reasons.push('invalid_evidence:' + (factor || '?')); continue; }\n    const certainty = e?.certainty === 'inferred' ? 'inferred' : 'observed';\n    if (certainty === 'inferred') level = Math.min(level, 1);\n    let sourceDate = e?.date && /^\\d{4}-\\d{2}-\\d{2}$/.test(String(e.date)) ? String(e.date) : null;\n    if (factor === 'urgency') { const t = sourceDate ? new Date(sourceDate).getTime() : NaN; if (!Number.isFinite(t) || (now - t) / 86400000 > 30) continue; }\n    rows.push({ research_type: 'factor:' + factor, finding, evidence_text: quote, source_url: String(e.url), source_date: sourceDate, level, certainty, confidence: certainty === 'observed' ? 0.9 : 0.6 });\n  }\n  const has = (f) => rows.some((r) => r.research_type === 'factor:' + f && r.level >= 1);\n  if (!has('pain')) reasons.push('missing_pain_evidence');\n  if (!has('fit')) reasons.push('missing_fit_evidence');\n\n  // Contacto publico y verificable\n  const c = raw?.contact ?? {};\n  const email = isEmail(c.email) ? String(c.email).trim().toLowerCase() : null;\n  const phone = digits(c.phone).length >= 8 ? txt(c.phone, 40) : null;\n  const whatsapp = digits(c.whatsapp).length >= 8 ? txt(c.whatsapp, 40) : null;\n  if (!(email || phone || whatsapp)) reasons.push('missing_public_contact');\n  else {\n    if (c.public !== true) reasons.push('contact_not_declared_public');\n    if (!isUrl(c.source_url)) reasons.push('contact_missing_source_url');\n  }\n  const reason = txt(raw?.reason, 600);\n  if (!reason || reason.length < 20) reasons.push('missing_specific_reason');\n\n  // Factor de acceso derivado del contacto (si Hermes no aporto uno)\n  if (!reasons.length && !has('access')) {\n    const generic = email && /^(info|contacto|contact|ventas|hola|hello|admin|administracion|reservas|recepcion|clinica|soporte)@/i.test(email);\n    const named = txt(c.name) && txt(c.job_title);\n    rows.push({ research_type: 'factor:access', finding: 'Canal de contacto publico: ' + (email ? 'correo' : whatsapp ? 'WhatsApp' : 'telefono') + (named ? ' (persona con cargo)' : generic ? ' (casilla generica)' : ''), evidence_text: null, source_url: String(c.source_url), source_date: null, level: named && !generic ? 2 : 1, certainty: 'observed', confidence: 0.8 });\n  }\n\n  const verdict = reasons.length ? 'rejected' : 'accepted';\n  const website = domain ? 'https://' + domain : null;\n  out.push({ json: {\n    batch_id: batchId,\n    icp_pack_id: EXPECTED_ICP_PACK_ID,\n    item: {\n      verdict, reasons: [...new Set(reasons)], company, domain,\n      account: { website, city: txt(raw?.city, 80), region: txt(raw?.region, 80), phone, whatsapp, email_general: email && FREE_MAIL.has(email.split('@')[1]) ? null : email,\n        source: 'hermes', source_url: rows[0]?.source_url ?? null,\n        metadata: { hermes: { vertical: txt(raw?.vertical, 80), signal: txt(raw?.signal), pain: txt(raw?.pain), fit: txt(raw?.fit), offer: txt(raw?.offer), reason, draft: txt(raw?.draft, 1500), draft_subject: txt(raw?.draft_subject, 200), batch_id: batchId, personal_email: Boolean(email && FREE_MAIL.has(email.split('@')[1])) } } },\n      research: verdict === 'accepted' ? rows : [],\n      contact: verdict === 'accepted' ? { name: txt(c.name, 120), job_title: txt(c.job_title, 120), email, phone, whatsapp, linkedin_url: isUrl(c.linkedin_url) ? String(c.linkedin_url) : null, source_url: String(c.source_url), is_decision_maker: c.is_decision_maker === true, confidence: 0.85 } : null,\n      raw: raw,\n    },\n  } });\n}\nreturn out;"
+        "jsCode": "// Gate de calidad de prospectos (Atacama OS). Un prospecto entra SOLO si tiene:\n// empresa real + dominio propio + evidencia citada del dolor y del fit + contacto PUBLICO con su fuente + razon concreta.\n// Si no pasa, se registra en prospect_inbox con los motivos y NO entra a accounts/research. Nunca se rellena una cuota.\nconst EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nconst EXPECTED_ICP_PACK_SLUG = 'atacama-labs-test';\nconst first = $input.first().json ?? {};\nconst body = first.body ?? first;\nif (!body || typeof body !== 'object') throw new Error('Cuerpo invalido');\nif (body.icp_pack_id !== EXPECTED_ICP_PACK_ID) throw new Error('SEGURIDAD: icp_pack_id no coincide con el pack de este workflow (' + EXPECTED_ICP_PACK_SLUG + ').');\nconst batchId = String(body.batch_id || '').trim();\nif (!/^[A-Za-z0-9._:-]{4,80}$/.test(batchId)) throw new Error('batch_id obligatorio (4-80 caracteres: letras, numeros, . _ : -)');\nconst list = Array.isArray(body.prospects) ? body.prospects : [];\nif (!list.length) throw new Error('prospects vacio');\nif (list.length > 50) throw new Error('maximo 50 prospectos por lote');\n\nconst FACTORS = ['pain', 'budget_proxy', 'volume', 'automation', 'access', 'urgency', 'fit'];\nconst NOT_COMPANY_DOMAINS = new Set(['facebook.com','instagram.com','linkedin.com','google.com','goo.gl','wa.me','whatsapp.com','linktr.ee','wixsite.com','wordpress.com','blogspot.com','youtube.com','tiktok.com','x.com','twitter.com','maps.app.goo.gl','sites.google.com','canva.site','carrd.co']);\nconst FREE_MAIL = new Set(['gmail.com','hotmail.com','outlook.com','yahoo.com','live.com','icloud.com','yahoo.es','hotmail.es']);\nconst isUrl = (u) => /^https?:\\/\\/[^\\s/$.?#][^\\s]*$/i.test(String(u || '')); // sin new URL(): el sandbox de Code no lo garantiza\nconst normDomain = (v) => { if (!v) return null; let s = String(v).trim().toLowerCase().replace(/^https?:\\/\\//, '').replace(/^www\\./, '').split(/[\\/?#]/)[0]; return /^[a-z0-9-]+(\\.[a-z0-9-]+)+$/.test(s) ? s : null; };\nconst isEmail = (e) => /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(String(e || '')) && !/^(no-?reply|noreply|donotreply)@/i.test(String(e));\nconst digits = (p) => String(p || '').replace(/\\D/g, '');\nconst txt = (v, max = 600) => (v == null ? null : String(v).trim().slice(0, max) || null);\nconst now = Date.now();\n\nconst seen = new Set();\nconst out = [];\nfor (const raw of list) {\n  const reasons = [];\n  const company = txt(raw?.company, 160);\n  const domain = normDomain(raw?.domain || raw?.website);\n  if (!company || company.length < 2) reasons.push('missing_company');\n  if (!domain) reasons.push('missing_or_invalid_domain');\n  else if (NOT_COMPANY_DOMAINS.has(domain) || [...NOT_COMPANY_DOMAINS].some((d) => domain.endsWith('.' + d))) reasons.push('domain_is_not_company_site');\n  if (domain && seen.has(domain)) reasons.push('duplicate_in_batch');\n  if (domain) seen.add(domain);\n\n  // Evidencia por factor (contrato v2: tambien se acepta la forma plana evidence_url + evidence_quote/evidence_summary como evidencia del dolor)\n  const rows = [];\n  let ev = Array.isArray(raw?.evidence) ? raw.evidence : [];\n  if (!ev.length && isUrl(raw?.evidence_url) && (raw?.evidence_quote || raw?.evidence_summary)) {\n    ev = [{ factor: 'pain', level: raw?.evidence_quote ? 2 : 1, url: raw.evidence_url, quote: raw?.evidence_quote || null, finding: raw?.evidence_summary || raw?.evidence_quote, certainty: raw?.evidence_quote ? 'observed' : 'inferred' }];\n  }\n  for (const e of ev) {\n    const factor = String(e?.factor || '').toLowerCase();\n    let level = Number(e?.level);\n    const quote = txt(e?.quote, 800);\n    const finding = txt(e?.finding || quote, 500);\n    if (!FACTORS.includes(factor) || ![1, 2].includes(level) || !isUrl(e?.url) || !finding || finding.length < 15) { reasons.push('invalid_evidence:' + (factor || '?')); continue; }\n    const certainty = e?.certainty === 'inferred' ? 'inferred' : 'observed';\n    if (certainty === 'inferred') level = Math.min(level, 1);\n    let sourceDate = e?.date && /^\\d{4}-\\d{2}-\\d{2}$/.test(String(e.date)) ? String(e.date) : null;\n    if (factor === 'urgency') { const t = sourceDate ? new Date(sourceDate).getTime() : NaN; if (!Number.isFinite(t) || (now - t) / 86400000 > 30) continue; }\n    rows.push({ research_type: 'factor:' + factor, finding, evidence_text: quote, source_url: String(e.url), source_date: sourceDate, level, certainty, confidence: certainty === 'observed' ? 0.9 : 0.6 });\n  }\n  const has = (f) => rows.some((r) => r.research_type === 'factor:' + f && r.level >= 1);\n  if (!has('pain')) reasons.push('missing_pain_evidence');\n  if (!has('fit')) reasons.push('missing_fit_evidence');\n\n  // Contacto publico y verificable\n  const c = raw?.contact ?? {};\n  const email = isEmail(c.email) ? String(c.email).trim().toLowerCase() : null;\n  const phone = digits(c.phone).length >= 8 ? txt(c.phone, 40) : null;\n  const whatsapp = digits(c.whatsapp).length >= 8 ? txt(c.whatsapp, 40) : null;\n  if (!(email || phone || whatsapp)) reasons.push('missing_public_contact');\n  else {\n    if (c.public !== true) reasons.push('contact_not_declared_public');\n    if (!isUrl(c.source_url)) reasons.push('contact_missing_source_url');\n  }\n  const reason = txt(raw?.why_now || raw?.reason, 600);\n  if (!reason || reason.length < 20) reasons.push('missing_specific_reason');\n\n  // Factor de acceso derivado del contacto (si Hermes no aporto uno)\n  if (!reasons.length && !has('access')) {\n    const generic = email && /^(info|contacto|contact|ventas|hola|hello|admin|administracion|reservas|recepcion|clinica|soporte)@/i.test(email);\n    const named = txt(c.name) && txt(c.job_title);\n    rows.push({ research_type: 'factor:access', finding: 'Canal de contacto publico: ' + (email ? 'correo' : whatsapp ? 'WhatsApp' : 'telefono') + (named ? ' (persona con cargo)' : generic ? ' (casilla generica)' : ''), evidence_text: null, source_url: String(c.source_url), source_date: null, level: named && !generic ? 2 : 1, certainty: 'observed', confidence: 0.8 });\n  }\n\n  const verdict = reasons.length ? 'rejected' : 'accepted';\n  const website = domain ? 'https://' + domain : null;\n  out.push({ json: {\n    batch_id: batchId,\n    icp_pack_id: EXPECTED_ICP_PACK_ID,\n    item: {\n      verdict, reasons: [...new Set(reasons)], company, domain,\n      account: { website, city: txt(raw?.city, 80), region: txt(raw?.region, 80), phone, whatsapp, email_general: email && FREE_MAIL.has(email.split('@')[1]) ? null : email,\n        source: 'hermes', source_url: rows[0]?.source_url ?? null,\n        metadata: { hermes: { vertical: txt(raw?.vertical, 80), signal: txt(raw?.signal || raw?.observed_signal), pain: txt(raw?.pain), fit: txt(raw?.fit), offer: txt(raw?.offer || raw?.possible_solution), reason, why_now: reason, commercial_angle: txt(raw?.commercial_angle, 500), confidence: Number.isFinite(Number(raw?.confidence)) ? Math.max(0, Math.min(1, Number(raw.confidence))) : null, source: txt(raw?.source, 60), contact_channel: txt(raw?.contact?.channel || raw?.contact_channel, 20), country: txt(raw?.country, 60) || 'Chile', contract: 'prospect-radar-v2', draft: txt(raw?.draft, 1500), draft_subject: txt(raw?.draft_subject, 200), batch_id: batchId, personal_email: Boolean(email && FREE_MAIL.has(email.split('@')[1])) } } },\n      research: verdict === 'accepted' ? rows : [],\n      contact: verdict === 'accepted' ? { name: txt(c.name, 120), job_title: txt(c.job_title, 120), email, phone, whatsapp, linkedin_url: isUrl(c.linkedin_url) ? String(c.linkedin_url) : null, source_url: String(c.source_url), is_decision_maker: c.is_decision_maker === true, confidence: 0.85 } : null,\n      raw: raw,\n    },\n  } });\n}\nreturn out;"
       }
     },
     {
-      "id": "7d9b4608-63d1-476c-9478-7ad52271b338",
+      "id": "54e4fade-e5b8-4efc-b94d-63fefed3b9a5",
       "name": "Verify Quotes",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -48,11 +48,11 @@
         0
       ],
       "parameters": {
-        "jsCode": "// Verifica las citas: la evidencia nivel 2 solo cuenta si la cita aparece de verdad en la URL indicada.\n// Si la página carga y la cita NO aparece, o la página no se puede leer, la evidencia baja a nivel 1 y queda marcada\n// como \"unverified\" (no se descarta ni se rechaza el prospecto: la revisión humana lo ve). Evita que una cita inventada\n// sume puntos como evidencia concreta.\nconst items = $input.all();\nconst norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\\s+/g, ' ').trim();\nconst cache = new Map();\nconst pageText = (url) => {\n  if (!cache.has(url)) {\n    cache.set(url, (async () => {\n      try {\n        const r = await this.helpers.httpRequest({ method: 'GET', url, timeout: 7000, returnFullResponse: true, ignoreHttpStatusErrors: true, json: false,\n          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AtacamaLabsBot/1.0; +https://atacamalabs.cl)', Accept: 'text/html,*/*' } });\n        const status = Number(r.statusCode || 0);\n        const body = typeof r.body === 'string' ? r.body : String(r.body || '');\n        if (status >= 200 && status < 300 && body.length > 300) {\n          return { ok: true, text: norm(body.replace(/<script[\\s\\S]*?<\\/script>/gi, ' ').replace(/<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<[^>]+>/g, ' ')) };\n        }\n        return { ok: false };\n      } catch (e) { return { ok: false }; }\n    })());\n  }\n  return cache.get(url);\n};\nfor (const it of items) {\n  const item = it.json.item;\n  if (!item || item.verdict !== 'accepted') continue;\n  const stats = { checked: 0, found: 0, not_found: 0, unreadable: 0, capped_no_quote: 0 };\n  for (const row of item.research) {\n    if (row.research_type === 'factor:access') continue;\n    if (!row.evidence_text) { if (row.level > 1) { row.level = 1; stats.capped_no_quote++; } row.certainty = row.certainty === 'inferred' ? 'inferred' : 'unverified'; continue; }\n    stats.checked++;\n    const page = await pageText(row.source_url);\n    const q = norm(row.evidence_text).slice(0, 90);\n    if (page.ok && q.length >= 12 && page.text.includes(q)) { stats.found++; row.certainty = row.certainty === 'inferred' ? 'inferred' : 'observed'; }\n    else { if (page.ok) stats.not_found++; else stats.unreadable++; row.level = Math.min(row.level, 1); row.certainty = row.certainty === 'inferred' ? 'inferred' : 'unverified'; }\n  }\n  item.account.metadata.hermes.verification = stats;\n}\nreturn items;"
+        "jsCode": "function evidenceSupports(factor, quote, finding) {\r\n  const words = (s) => String(s || '').replace(/[+()\\d·|/@_:;.,\\-–—]+/g, ' ').split(/\\s+/).filter((w) => w.length > 1);\r\n  const q = String(quote || '');\r\n  const wc = words(q).length;\r\n  if (String(factor) === 'pain') {\r\n    if (wc < 3) return false;\r\n    return /(whatsapp|cotiz|agend|reserv|solicit|formulario|escr[ií]b|mensaje|llam(a|e|ada)|pedido|consult|fuera de horario|respond|seguimiento|manual|planilla|excel|presupuesto|inscripci|vacante|trabaja con nosotros|recepcionista|atenci[oó]n al cliente|horario|demora|esper)/i.test(q);\r\n  }\r\n  return wc >= 4;\r\n}\n\n// Verifica las citas: la evidencia nivel 2 solo cuenta si la cita aparece de verdad en la URL indicada.\n// Si la página carga y la cita NO aparece, o la página no se puede leer, la evidencia baja a nivel 1 y queda marcada\n// como \"unverified\" (no se descarta ni se rechaza el prospecto: la revisión humana lo ve). Evita que una cita inventada\n// sume puntos como evidencia concreta.\nconst items = $input.all();\nconst norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\\s+/g, ' ').trim();\nconst cache = new Map();\nconst pageText = (url) => {\n  if (!cache.has(url)) {\n    cache.set(url, (async () => {\n      try {\n        const r = await this.helpers.httpRequest({ method: 'GET', url, timeout: 7000, returnFullResponse: true, ignoreHttpStatusErrors: true, json: false,\n          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AtacamaLabsBot/1.0; +https://atacamalabs.cl)', Accept: 'text/html,*/*' } });\n        const status = Number(r.statusCode || 0);\n        const body = typeof r.body === 'string' ? r.body : String(r.body || '');\n        if (status >= 200 && status < 300 && body.length > 300) {\n          return { ok: true, text: norm(body.replace(/<script[\\s\\S]*?<\\/script>/gi, ' ').replace(/<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<[^>]+>/g, ' ')) };\n        }\n        return { ok: false };\n      } catch (e) { return { ok: false }; }\n    })());\n  }\n  return cache.get(url);\n};\nfor (const it of items) {\n  const item = it.json.item;\n  if (!item || item.verdict !== 'accepted') continue;\n  const stats = { checked: 0, found: 0, not_found: 0, unreadable: 0, capped_no_quote: 0, not_supporting: 0 };\n  for (const row of item.research) {\n    if (row.research_type === 'factor:access') continue;\n    if (!row.evidence_text) { if (row.level > 1) { row.level = 1; stats.capped_no_quote++; } row.certainty = row.certainty === 'inferred' ? 'inferred' : 'unverified'; continue; }\n    stats.checked++;\n    const page = await pageText(row.source_url);\n    const q = norm(row.evidence_text).slice(0, 90);\n    if (page.ok && q.length >= 12 && page.text.includes(q)) {\n      // La cita existe, pero ¿demuestra el factor? (un título o un teléfono no demuestran dolor): si no, nivel 1 y sin verificar.\n      if (!evidenceSupports(row.research_type.replace('factor:', ''), row.evidence_text, row.finding)) { stats.not_supporting++; row.level = Math.min(row.level, 1); row.certainty = row.certainty === 'inferred' ? 'inferred' : 'unverified'; }\n      else { stats.found++; row.certainty = row.certainty === 'inferred' ? 'inferred' : 'observed'; }\n    }\n    else { if (page.ok) stats.not_found++; else stats.unreadable++; row.level = Math.min(row.level, 1); row.certainty = row.certainty === 'inferred' ? 'inferred' : 'unverified'; }\n  }\n  item.account.metadata.hermes.verification = stats;\n}\nreturn items;"
       }
     },
     {
-      "id": "add72fad-cabc-47c4-8aa1-6305867b7ca8",
+      "id": "6bf521f4-2278-45cf-b107-a5476e27d294",
       "name": "Ingest Prospect (RPC)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -87,7 +87,7 @@
       }
     },
     {
-      "id": "1750c0ee-640f-4e10-b796-cb903d40e18b",
+      "id": "7fa77a23-daf4-4fb5-9f0f-8078cf6402ca",
       "name": "Summarize",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -100,7 +100,7 @@
       }
     },
     {
-      "id": "a734eefa-91c4-403d-9807-2e959f6a602b",
+      "id": "8556371b-e381-4350-8b9b-ef838a78445c",
       "name": "Any Accepted?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -131,7 +131,7 @@
       }
     },
     {
-      "id": "740cbe08-a406-4adf-9eb2-be250ad45357",
+      "id": "5b8d4522-b0eb-4e36-8f57-3324352a3673",
       "name": "Run 03 Qualification",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
@@ -161,20 +161,84 @@
       "onError": "continueRegularOutput"
     },
     {
-      "id": "b9d77464-d5a5-47f4-bf45-215471f0d9e8",
-      "name": "Response (with qualification)",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "id": "a4868c7e-8219-45c7-951d-aae451a41a5e",
+      "name": "Run 18 Admit",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
       "position": [
         1440,
         -100
       ],
       "parameters": {
-        "jsCode": "const s = $('Summarize').first().json;\nconst q = $input.all().map((i) => i.json);\nconst qr = q.find((x) => x && (x.processed !== undefined || x.classification !== undefined || x.summary !== undefined)) ?? q[0] ?? null;\nreturn [{ json: { ok: true, batch_id: s.batch_id, received: s.received, accepted: s.accepted, rejected: s.rejected, duplicates: s.duplicates, errors: s.errors, results: s.results, qualification: qr } }];"
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "ADMIT_WORKFLOW_ID",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "value": {
+            "icp_pack_id": "={{ $(\"Summarize\").first().json.icp_pack_id }}",
+            "account_ids": "={{ $(\"Summarize\").first().json.account_ids }}",
+            "limit": 10
+          },
+          "schema": []
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "ecf37063-8263-4670-a7b3-1e2df9174ff2",
+      "name": "Fetch Admission",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        -100
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/prospects?account_id=in.(\" + $(\"Summarize\").first().json.account_ids.join(\",\") + \")&select=account_id,final_score,classification,crm_candidate,ghl_opportunity_id,metadata\" }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 20000
+        }
       }
     },
     {
-      "id": "e0c8d9a9-938f-4b48-b22e-750a42c44da4",
+      "id": "5a22fcec-06d8-4092-9be0-1a865beca326",
+      "name": "Response (with qualification)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        -100
+      ],
+      "parameters": {
+        "jsCode": "const s = $('Summarize').first().json;\nconst q = $('Run 03 Qualification').all().map((i) => i.json);\nconst qr = q.find((x) => x && (x.processed !== undefined || x.classification !== undefined || x.summary !== undefined)) ?? q[0] ?? null;\nconst rows = Array.isArray($json.body) ? $json.body : [];\nconst admission = rows.map((r) => ({ account_id: r.account_id, score: r.final_score, class: r.classification, crm_candidate: r.crm_candidate, in_ghl: Boolean(r.ghl_opportunity_id), admission: (r.metadata && r.metadata.admission) || null }));\nreturn [{ json: { ok: true, batch_id: s.batch_id, received: s.received, accepted: s.accepted, rejected: s.rejected, duplicates: s.duplicates, errors: s.errors, results: s.results, qualification: qr, admission } }];"
+      }
+    },
+    {
+      "id": "b82875e5-d978-41be-adaa-c44c9155d091",
       "name": "Response (nothing to qualify)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -262,6 +326,28 @@
       ]
     },
     "Run 03 Qualification": {
+      "main": [
+        [
+          {
+            "node": "Run 18 Admit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run 18 Admit": {
+      "main": [
+        [
+          {
+            "node": "Fetch Admission",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Admission": {
       "main": [
         [
           {

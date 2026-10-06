@@ -1,0 +1,128 @@
+{
+  "name": "Atacama Labs - 17 Prospect Search",
+  "nodes": [
+    {
+      "id": "041cd1e5-6d91-4a5c-940c-9431d55bb311",
+      "name": "Search Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "ba73ca15-7b4d-4031-80d6-8d625e1057b7",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "lUGhlXVaQBEiEh5S",
+          "name": "Atacama Labs - Ingest Key"
+        }
+      },
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "atacama-prospect-search",
+        "authentication": "headerAuth",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "646fd904-5f10-4758-9b1c-15c873a97a59",
+      "name": "Search Guard",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const first = $('Search Webhook').first().json || {};\nconst body = first.body || first;\nconst q = String(body.query || '').trim();\nif (q.length < 4 || q.length > 240) throw new Error('query obligatoria (4-240 caracteres)');\nconst n = Math.min(Math.max(parseInt(body.num_results, 10) || 5, 1), 8);\nconst sd = $getWorkflowStaticData('global');\nconst day = new Date().toISOString().slice(0, 10);\nif (sd.day !== day) { sd.day = day; sd.count = 0; }\nif (sd.count >= 80) throw new Error('Tope diario de búsquedas alcanzado (80); reintenta mañana o pide a Christian subir el tope.');\nsd.count += 1;\nconst dom = (v) => (Array.isArray(v) ? v.map((x) => String(x).toLowerCase().replace(/^https?:\\/\\//, '').replace(/^www\\./, '').split('/')[0]).filter((x) => /^[a-z0-9-]+(\\.[a-z0-9-]+)+$/.test(x)).slice(0, 25) : []);\nconst inc = dom(body.include_domains);\nconst exc = dom(body.exclude_domains);\nconst exa = { query: q, numResults: n, type: 'auto', contents: { text: { maxCharacters: 1800 }, highlights: { numSentences: 2, highlightsPerUrl: 2 } } };\nif (inc.length) exa.includeDomains = inc;\nif (exc.length) exa.excludeDomains = exc;\nif (/^\\d{4}-\\d{2}-\\d{2}/.test(String(body.start_published_date || ''))) exa.startPublishedDate = String(body.start_published_date).slice(0, 10) + 'T00:00:00.000Z';\nreturn [{ json: { exa, searches_today: sd.count, cap: 80 } }];"
+      }
+    },
+    {
+      "id": "de8a8e05-4b8e-4068-ad9e-aba2d2278f53",
+      "name": "Exa Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "5QZorcMwbYvcRpV5",
+          "name": "Exa API"
+        }
+      },
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.exa.ai/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.exa) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 40000
+        }
+      }
+    },
+    {
+      "id": "d7033efd-b41f-4acf-b129-3c925b0c6232",
+      "name": "Shape",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const res = $json || {};\nconst g = $('Search Guard').first().json;\nif ((res.statusCode || 0) >= 300) throw new Error('Exa respondió HTTP ' + res.statusCode + ': ' + JSON.stringify(res.body || {}).slice(0, 200));\nconst rows = Array.isArray(res.body && res.body.results) ? res.body.results : [];\nreturn [{ json: { ok: true, query: g.exa.query, count: rows.length, searches_today: g.searches_today, cap: g.cap,\n  results: rows.map((r) => ({ url: r.url, title: r.title || null, published_date: r.publishedDate || null, highlights: Array.isArray(r.highlights) ? r.highlights.slice(0, 2) : [], text: String(r.text || '').slice(0, 1500) })),\n  note: 'Cita SOLO texto que aparezca literalmente en text/highlights o en la página; el sistema vuelve a abrir la URL para verificarlo.' } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Search Webhook": {
+      "main": [
+        [
+          {
+            "node": "Search Guard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Guard": {
+      "main": [
+        [
+          {
+            "node": "Exa Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Exa Search": {
+      "main": [
+        [
+          {
+            "node": "Shape",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
