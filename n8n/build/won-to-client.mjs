@@ -30,16 +30,23 @@ export const ASSOC = {
 const SOLUCION_FIELD_ID = 'yY5sqFov8GeXcx5G9vuy';
 
 const GHL = 'https://services.leadconnectorhq.com';
-const GHL_CRED = { httpHeaderAuth: { id: 'GHL_ATACAMA_OS_CREDENTIAL_ID', name: 'Atacama Labs - GHL Atacama OS (token2)' } };
-const INGEST_CRED = { httpHeaderAuth: { id: 'INGEST_KEY_CREDENTIAL_ID', name: 'Atacama Labs - Ingest Key' } };
+const GHL_CRED = { httpHeaderAuth: { id: '4Vc6nfxyKjZ14Bep', name: 'GHL — Atacama OS' } };
+const INGEST_CRED = { httpHeaderAuth: { id: 'lUGhlXVaQBEiEh5S', name: 'Atacama Labs - Ingest Key' } };
 
 export const CODE = {
   validate: `const first = $input.first().json ?? {};
 const body = first.body ?? first;
-const id = String(body.opportunity_id || '').trim();
+// El Webhook estandar de GHL manda los Custom Data dentro de body.customData; tambien se acepta la raiz.
+const cd = body && typeof body.customData === 'object' && body.customData ? body.customData : {};
+const present = (v) => v !== undefined && v !== null && v !== '';
+const id = String(present(body.opportunity_id) ? body.opportunity_id : (cd.opportunity_id ?? '')).trim();
 if (!/^[A-Za-z0-9]{15,30}$/.test(id)) throw new Error('opportunity_id invalido');
-// SEGURIDAD: sin "dry_run": false explicito, solo se planifica (lecturas) y no se escribe nada.
-return [{ json: { opportunityId: id, dryRun: body.dry_run !== false } }];`,
+// SEGURIDAD: solo es dry_run=false si hay al menos un valor y TODOS los presentes (raiz y customData)
+// son false (booleano o "false"). Ausente, invalido, ambiguo o contradictorio => dry_run=true.
+const isFalse = (v) => v === false || (typeof v === 'string' && v.trim().toLowerCase() === 'false');
+const given = [body.dry_run, cd.dry_run].filter((v) => v !== undefined && v !== null);
+const dryRun = !(given.length > 0 && given.every(isFalse));
+return [{ json: { opportunityId: id, dryRun } }];`,
 
   guard: `const v = $('Validate Input').first().json;
 const opp = $json.opportunity;

@@ -2,7 +2,7 @@
   "name": "Atacama Labs - 11 Won to Client",
   "nodes": [
     {
-      "id": "ce6f848c-250f-43ef-bd27-481ecfa1bef9",
+      "id": "8ac5eecb-b2bd-45d8-b931-0b30a1b81820",
       "name": "Won Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -10,10 +10,10 @@
         0,
         0
       ],
-      "webhookId": "5162036a-b4ec-4830-9b8f-6e303e436270",
+      "webhookId": "2f1772ea-7104-4106-a552-94de1d0db3c2",
       "credentials": {
         "httpHeaderAuth": {
-          "id": "INGEST_KEY_CREDENTIAL_ID",
+          "id": "lUGhlXVaQBEiEh5S",
           "name": "Atacama Labs - Ingest Key"
         }
       },
@@ -26,7 +26,7 @@
       }
     },
     {
-      "id": "f0404b28-7679-4717-a0d3-7d5f6e3b8107",
+      "id": "44617108-adfb-49f5-a845-48aa3849c0da",
       "name": "Validate Input",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -35,11 +35,11 @@
         0
       ],
       "parameters": {
-        "jsCode": "const first = $input.first().json ?? {};\nconst body = first.body ?? first;\nconst id = String(body.opportunity_id || '').trim();\nif (!/^[A-Za-z0-9]{15,30}$/.test(id)) throw new Error('opportunity_id invalido');\n// SEGURIDAD: sin \"dry_run\": false explicito, solo se planifica (lecturas) y no se escribe nada.\nreturn [{ json: { opportunityId: id, dryRun: body.dry_run !== false } }];"
+        "jsCode": "const first = $input.first().json ?? {};\nconst body = first.body ?? first;\n// El Webhook estandar de GHL manda los Custom Data dentro de body.customData; tambien se acepta la raiz.\nconst cd = body && typeof body.customData === 'object' && body.customData ? body.customData : {};\nconst present = (v) => v !== undefined && v !== null && v !== '';\nconst id = String(present(body.opportunity_id) ? body.opportunity_id : (cd.opportunity_id ?? '')).trim();\nif (!/^[A-Za-z0-9]{15,30}$/.test(id)) throw new Error('opportunity_id invalido');\n// SEGURIDAD: solo es dry_run=false si hay al menos un valor y TODOS los presentes (raiz y customData)\n// son false (booleano o \"false\"). Ausente, invalido, ambiguo o contradictorio => dry_run=true.\nconst isFalse = (v) => v === false || (typeof v === 'string' && v.trim().toLowerCase() === 'false');\nconst given = [body.dry_run, cd.dry_run].filter((v) => v !== undefined && v !== null);\nconst dryRun = !(given.length > 0 && given.every(isFalse));\nreturn [{ json: { opportunityId: id, dryRun } }];"
       }
     },
     {
-      "id": "4d13b709-1d78-4892-8aed-3a3b8120f882",
+      "id": "5e601266-a39b-46e8-b2a1-ec089b280a8c",
       "name": "Get Opportunity",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -49,8 +49,8 @@
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "GHL_ATACAMA_OS_CREDENTIAL_ID",
-          "name": "Atacama Labs - GHL Atacama OS (token2)"
+          "id": "4Vc6nfxyKjZ14Bep",
+          "name": "GHL — Atacama OS"
         }
       },
       "continueOnFail": true,
@@ -78,7 +78,7 @@
       }
     },
     {
-      "id": "a2229b7c-f59c-481f-9811-c03bdfda527e",
+      "id": "16b89bc2-878c-45e9-906f-6c5d82ed2e6f",
       "name": "Guard Won",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -91,7 +91,7 @@
       }
     },
     {
-      "id": "8da78b14-ee9f-4a66-95e8-e45a715134a5",
+      "id": "c1aeb7ec-c3ba-4edc-82e7-06fd5b03c66e",
       "name": "Proceed?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -121,7 +121,7 @@
       }
     },
     {
-      "id": "337bfb4c-b0db-4679-a2f3-98fb0a82e1f8",
+      "id": "d6e34344-3aaa-4735-80e6-7404336ec48c",
       "name": "Get Contact",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -131,8 +131,8 @@
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "GHL_ATACAMA_OS_CREDENTIAL_ID",
-          "name": "Atacama Labs - GHL Atacama OS (token2)"
+          "id": "4Vc6nfxyKjZ14Bep",
+          "name": "GHL — Atacama OS"
         }
       },
       "continueOnFail": true,
@@ -160,7 +160,7 @@
       }
     },
     {
-      "id": "35c8cb9e-2393-4623-8f50-e77c70ce76f3",
+      "id": "ab2b2f73-a77b-490f-8b7e-e77c6e0201cf",
       "name": "Get Opp Relations",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -170,8 +170,8 @@
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "GHL_ATACAMA_OS_CREDENTIAL_ID",
-          "name": "Atacama Labs - GHL Atacama OS (token2)"
+          "id": "4Vc6nfxyKjZ14Bep",
+          "name": "GHL — Atacama OS"
         }
       },
       "continueOnFail": true,
@@ -199,7 +199,7 @@
       }
     },
     {
-      "id": "4843936f-9c0b-488d-86bb-3c0efcdfa091",
+      "id": "ec908915-05c7-4d11-a095-ac36fc8fc34c",
       "name": "List Businesses",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -209,8 +209,8 @@
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "GHL_ATACAMA_OS_CREDENTIAL_ID",
-          "name": "Atacama Labs - GHL Atacama OS (token2)"
+          "id": "4Vc6nfxyKjZ14Bep",
+          "name": "GHL — Atacama OS"
         }
       },
       "continueOnFail": true,
@@ -238,7 +238,7 @@
       }
     },
     {
-      "id": "86f8f33a-8f1e-4c1e-8a6b-7d9a399d4fdd",
+      "id": "4924c659-5dc3-4c83-a32c-69330a608f84",
       "name": "Plan",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -251,7 +251,7 @@
       }
     },
     {
-      "id": "f3cfae78-1c38-4c60-b3f5-ed57173d340d",
+      "id": "162299b1-d953-44a4-8255-f4dc5937c24e",
       "name": "Create?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -281,7 +281,7 @@
       }
     },
     {
-      "id": "e8ce3fa9-68ac-4042-b4ff-528f7f6bd16f",
+      "id": "b374b168-bfb7-4530-aead-443c4688313f",
       "name": "Dry Run?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -311,7 +311,7 @@
       }
     },
     {
-      "id": "2ad2418c-bae9-4642-8d0b-f6baccdaa76c",
+      "id": "a6936455-71c0-40cc-a0cc-9f86f819cded",
       "name": "Respond Dry Run",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -324,7 +324,7 @@
       }
     },
     {
-      "id": "df22ff73-6457-4953-ae23-7ad37d28f6c6",
+      "id": "357f6149-946d-4963-8ff1-99f2789bb17a",
       "name": "Needs Business?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -354,7 +354,7 @@
       }
     },
     {
-      "id": "435b75b9-52e2-432d-b395-c08acdcf6b1f",
+      "id": "e2c1a359-0475-4018-85a3-84768b74b51a",
       "name": "Create Business",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -364,8 +364,8 @@
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "GHL_ATACAMA_OS_CREDENTIAL_ID",
-          "name": "Atacama Labs - GHL Atacama OS (token2)"
+          "id": "4Vc6nfxyKjZ14Bep",
+          "name": "GHL — Atacama OS"
         }
       },
       "continueOnFail": false,
@@ -396,7 +396,7 @@
       }
     },
     {
-      "id": "da2db742-2335-4d08-a186-bd12e76bd6d1",
+      "id": "1d5a8b35-9202-4655-bf87-851ec121d322",
       "name": "Context",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -409,7 +409,7 @@
       }
     },
     {
-      "id": "439418c1-6155-42a1-93b6-184ca0c32d42",
+      "id": "8715ce2c-b901-4e2a-98e3-5f00f48bcacc",
       "name": "Create Servicio",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -419,8 +419,8 @@
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "GHL_ATACAMA_OS_CREDENTIAL_ID",
-          "name": "Atacama Labs - GHL Atacama OS (token2)"
+          "id": "4Vc6nfxyKjZ14Bep",
+          "name": "GHL — Atacama OS"
         }
       },
       "continueOnFail": false,
@@ -451,7 +451,7 @@
       }
     },
     {
-      "id": "74ce0f67-f712-4fc2-ae29-200a6d48b9ad",
+      "id": "0a5ed9be-0a63-4fa1-9337-7d49a81f0ac8",
       "name": "Has Proyecto?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -481,7 +481,7 @@
       }
     },
     {
-      "id": "436b2647-7a5d-415a-9249-0e07661df5cf",
+      "id": "65f71a64-c407-4281-b513-415c807b8ad1",
       "name": "Create Proyecto",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -491,8 +491,8 @@
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "GHL_ATACAMA_OS_CREDENTIAL_ID",
-          "name": "Atacama Labs - GHL Atacama OS (token2)"
+          "id": "4Vc6nfxyKjZ14Bep",
+          "name": "GHL — Atacama OS"
         }
       },
       "continueOnFail": false,
@@ -523,7 +523,7 @@
       }
     },
     {
-      "id": "5c3b7d6b-3dea-45c4-ba74-160af65de34d",
+      "id": "0855d94c-89e1-414f-86b6-91105896cc98",
       "name": "Build Relations",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -536,7 +536,7 @@
       }
     },
     {
-      "id": "83393f22-46e7-4c86-89ce-24bac3826cd9",
+      "id": "372359ba-1dc5-494d-920f-2035b9a428a0",
       "name": "Create Relation",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -546,8 +546,8 @@
       ],
       "credentials": {
         "httpHeaderAuth": {
-          "id": "GHL_ATACAMA_OS_CREDENTIAL_ID",
-          "name": "Atacama Labs - GHL Atacama OS (token2)"
+          "id": "4Vc6nfxyKjZ14Bep",
+          "name": "GHL — Atacama OS"
         }
       },
       "continueOnFail": true,
@@ -578,7 +578,7 @@
       }
     },
     {
-      "id": "2b1b79c4-76e2-4de8-af6a-d32cbf4d73be",
+      "id": "8b651d35-dda2-4a2d-b2e9-129316810309",
       "name": "Summary",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -591,7 +591,7 @@
       }
     },
     {
-      "id": "03a964a7-414f-4e43-ae18-078ff8adcad5",
+      "id": "48fa3572-a3da-42c2-9553-adbb6226055d",
       "name": "Respond Skipped",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -604,7 +604,7 @@
       }
     },
     {
-      "id": "463825b0-1de6-4ae7-aab6-96f88f21e046",
+      "id": "c8d63126-4f0a-44ba-a0bb-7a23099ef27e",
       "name": "Respond Not Create",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
