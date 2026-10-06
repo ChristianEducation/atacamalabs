@@ -397,3 +397,58 @@ Las 4 asociaciones previas (ver estado previo) quedaron intactas.
 - Vía 60–79 con gates en 03/09: decidida **no habilitar** hasta que el flujo de revisión sea visible.
 - Ocultar los campos legacy de EnBandeja, forzar el motivo al marcar Lost, rellenar `Origen detallado` desde Lead Sync (mejoras menores).
 - Sin resolver de bloques anteriores: `complete_territory_scan` ejecutable por anon, persistir el override de OpenClaw (requiere root), datos legales (razón social/RUT).
+
+## BLOQUE F — Automatizaciones operativas de GHL (6-oct-2026, por interfaz con Claude in Chrome) · ✅ CERRADO
+
+**Estado previo (auditado antes de tocar):** pipeline de 7 etapas intacto; Lead Sync v2.2 y Booking Sync con ejecuciones `success`; workflow GHL `Atacama — Oportunidad ganada` publicado con trigger *Opportunity Status Changed → Won* en el pipeline `Atacama Labs — Ventas` (verificado en la interfaz) y solo el webhook; n8n `11 Won to Client` activo; `dry_run=true`. El webhook no se tocó.
+
+### Workflows nativos creados (todos Published, responsable Christian Wevar, *Allow re-entry = OFF*, *Allow multiple opportunities = ON*)
+| Workflow | Trigger | Acción | Vencimiento |
+|---|---|---|---|
+| `Atacama — Tarea al investigar` (id `25f50c8c-1d17-4e98-810e-227e924d869e`) | *Opportunity Created* **y** *Pipeline Stage Changed*, ambos pipeline Atacama + etapa Investigado | Tarea `Revisar prospecto: {{contact.company_name}}` | 1 día, 9:00, **saltando fines de semana** |
+| `Atacama — Tarea al responder` (`fe26f533-eca5-47ae-b7ac-a04ac3ca765b`) | *Pipeline Stage Changed* → Respondió | Tarea `Revisar respuesta y definir próximo paso` | 1 día, 9:00, saltando fines de semana |
+| `Atacama — Seguimiento de propuesta` (`120d5496-0544-4aa1-bb51-0bb07fe30a84`) | *Pipeline Stage Changed* → Propuesta | If/else «Tiene próxima acción?»: si el contacto tiene la etiqueta `proxima-accion` → no hace nada; rama *None* → tarea `Seguimiento de propuesta` | 3 días corridos, 9:00 |
+| `Atacama — Oportunidad ganada` (`83ae56d7-da8b-4c1c-bf3a-e8a94cf17664`) | *Opportunity Status Changed* → Won (pipeline Atacama) | Webhook a n8n 11 (sin cambios) **+ 4 tareas de onboarding** | `Enviar bienvenida y confirmar alcance` 1 día · `Agendar kickoff` 3 días · `Pedir accesos y materiales` 3 días · `Completar Servicio contratado y Proyecto (MRR, fee, fechas)` 2 días (9:00, días corridos) |
+
+- **Mejora sobre lo documentado en E4:** GHL sí ofrece *Skip weekends* en la acción *Add task*; se activó en las dos tareas de «1 día» (equivale a «1 día hábil»). Las de 3 y 2 días quedan corridas, como decía la especificación.
+- **Antiduplicados:** *Allow re-entry = OFF* hace que la misma oportunidad no vuelva a entrar al workflow (es lo que evita que *Opportunity Created* + *Stage Changed* generen dos tareas); *Allow multiple opportunities = ON* permite que otra oportunidad del mismo contacto sí genere su tarea.
+- **Etiqueta nueva:** `proxima-accion` (id `BBjibpCkZaVCbIIZqdOz`). Se aplica al contacto cuando ya hay próxima acción definida y no se quiere la tarea de seguimiento.
+- **Observación del entorno:** hay dos usuarios llamados «Christian Wevar» en GHL; las tareas quedaron asignadas al primero de la lista (`OjkAjHMdUjnblO7W1kBZ`). Si es el usuario equivocado, se cambia en cada acción *Add task*.
+
+### Pruebas (solo datos TEST, borrados)
+| Prueba | Resultado |
+|---|---|
+| Crear oportunidad en *Nuevo* | 0 tareas (correcto) |
+| → Investigado | 1 tarea «Revisar prospecto: TEST Empresa Tareas», vence 7-oct 9:00 Chile; repetir la etapa no duplica |
+| → Respondió | +1 tarea «Revisar respuesta y definir próximo paso», 7-oct |
+| → Propuesta | +1 tarea «Seguimiento de propuesta», vence 9-oct (3 días); repetir no duplica |
+| → Propuesta con etiqueta `proxima-accion` | 0 tareas (la guarda funciona) |
+| → Won | webhook disparado solo (ejecución n8n 22893, `dry_run`, `wrote_nothing=true`) + **4 tareas de onboarding** con los vencimientos de la tabla; Business 3, Servicios 0, Proyectos 0 |
+| Limpieza | Oportunidades y contactos TEST borrados; conteos 43 contactos / 42 oportunidades / 5 tareas (solo las de ejemplo) |
+
+- **Lección:** al borrar un contacto, **sus tareas quedan huérfanas** y siguen listadas (sin contacto). Se borran con `DELETE /locations/{locationId}/tasks/{taskId}`; el `DELETE /contacts/{id}/tasks/{id}` de mis scripts devolvía 200 sin borrar. Se limpiaron las 8 tareas de prueba huérfanas.
+- **Lección de interfaz:** el editor de workflows de GHL se congela si se navega fuera con cambios recientes (diálogo `beforeunload`); se evita neutralizando `onbeforeunload` antes de navegar.
+- **Rollback:** poner cada workflow en *Draft* o eliminarlo (Automation → Workflows → ⋮); la etiqueta `proxima-accion` puede quedarse. El workflow Won vuelve a su estado anterior borrando las 4 acciones *Add task* tras el Webhook.
+
+**BLOQUE AUTOMATIZACIONES GHL CERRADO**
+
+## BLOQUE G — Dashboard `Atacama OS — Hoy` (6-oct-2026, por interfaz) · ✅ CREADO (con pulido de layout pendiente)
+
+**Capacidades reales de GHL en esta cuenta (auditadas en el editor de widgets, no supuestas):** categorías de widgets: Contacts (17), Appointments (25), Opportunities (17), Conversations (16), General (15, incluye **Tasks**), Servicios contratados (11), Proyectos (9), más Payments, Emails, SMS, Calls, Social Planner, Reputation, Ads y Analytics. Los objetos personalizados `Servicio contratado` y `Proyecto` **ya exponen widgets propios** (no hizo falta construir nada externo). Límites: no hay widget de «oportunidades estancadas / sin movimiento» ni de «conversaciones sin atender» más allá de *unread*; el rango de fechas del dashboard es global (cada widget puede sobrescribirlo).
+
+**Dashboard existente** (id `6ac3fc3626ac4365db388126`, ya creado en el Bloque C) — estado final:
+
+| Widget | Qué responde | Notas |
+|---|---|---|
+| **Tareas pendientes (vencidas primero)** — widget *Tasks* nativo, filtros Pendientes · Fecha ASC · Todos los usuarios | «¿Qué tengo que hacer hoy?» (aquí caen las tareas de las 4 automatizaciones) | Arriba a la izquierda |
+| **Oportunidades por etapa** (dona) | Dónde está cada prospecto | Arriba a la derecha |
+| **Oportunidades abiertas** (dona) | Cuántas hay en juego | Segunda fila |
+| **Reuniones próxima semana** (número; *Booked for*, rango «Next week», estados New/Confirmed) | Diagnósticos que vienen | Calendario semanal de GHL (lunes–domingo) |
+| **Respuestas por atender (sin leer)** (número, *Total unread conversations*) | Respuestas nuevas | Hoy 0 |
+
+- **Quitados por ser ruido:** *Valor del pipeline (abiertas)* — hoy siempre $0 porque las oportunidades no llevan monto (no es fiable); *Reuniones agendadas (30 días)* — duplicaba la de la próxima semana y mide el pasado.
+- **Lo que no cubre (y por qué):** *propuestas que requieren seguimiento* y *prospectos en Respondió* se ven con la **tarea** que crean los workflows (ver Tareas) y en **Opportunities → pipeline Atacama Labs — Ventas** (vista Kanban por etapa); GHL no tiene un widget de «estancadas». *Won/Lost recientes* y *Motivo de pérdida* están disponibles como widgets (*Won/Lost Opportunities*, *Lost by reason*) y se agregan cuando haya datos. *Onboarding pendiente* = las 4 tareas «Enviar bienvenida…», etc. en el widget de tareas.
+- **Datos que ensucian hoy:** las **5 tareas de ejemplo de GHL** (`(Example) …`, vencidas desde julio) aparecen primero en el widget de tareas. No se borraron (no son mías); conviene borrarlas desde Contactos → Tasks.
+- **Pulido pendiente (cosmético, por interfaz):** el widget *Respuestas por atender* quedó al final y grande; en modo edición se puede achicar (esquina inferior derecha) y moverlo junto a Tareas arrastrándolo por el icono ⋮⋮ del título. Se probó que el arrastre y el redimensionado funcionan.
+- **Smart Lists / vistas:** no se crearon; la navegación diaria recomendada es Dashboard → Opportunities (Kanban del pipeline Atacama) → Tasks → Conversations → Calendars. Pendiente opcional: una Smart List de contactos con la etiqueta `proxima-accion`.
+- **Rollback:** Dashboard → Edit dashboard → borrar/añadir widgets; los dos widgets quitados se pueden recrear (*Opportunity value*, *Appointments*).
