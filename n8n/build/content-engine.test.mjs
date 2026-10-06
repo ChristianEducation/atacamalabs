@@ -1,6 +1,6 @@
 // node n8n/build/content-engine.test.mjs — prueba los nodos Code de «12 Content Intake» con stubs de n8n.
 import fs from 'node:fs';
-import { buildContentIntake, ACCOUNTS, APPROVER_USER_ID, CATEGORY_IDS } from './content-engine.mjs';
+import { buildContentIntake, ACCOUNTS, APPROVER_USER_ID, CATEGORY_IDS, TAG_IDS } from './content-engine.mjs';
 
 const wf = buildContentIntake();
 const codeOf = (name) => wf.nodes.find((n) => n.name === name).parameters.jsCode;
@@ -28,6 +28,7 @@ t('fuentes con source_key y verified', r.sourcesBody[0].source_key.startsWith('r
 r = evaluate({ piece: base });
 t('sin test: sin prefijo', !r.ghlBody.summary.startsWith('[PRUEBA'));
 t('categoría de Social Planner según la pieza (Founder)', r.ghlBody.categoryId === CATEGORY_IDS.Founder);
+t('etiqueta de Social Planner según el formato (texto)', Array.isArray(r.ghlBody.tags) && r.ghlBody.tags[0] === TAG_IDS.texto && r.ghlBody.tags.length === 1);
 r = evaluate({ piece: base, submit_to_review: false });
 t('submit_to_review=false => hold', r.action === 'hold' && r.holdReason === 'submit_to_review_false');
 const bad = clone(base); bad.hook = 'x';
@@ -62,6 +63,7 @@ const ev = { ...evaluate({ piece: base, test: true }) };
 const nodes = { 'Upsert Piece': { statusCode: 201, body: [{ id: 'p1' }] }, 'Build Row': ev };
 const okRes = run('Check GHL', { nodes, json: { statusCode: 201, body: { results: { post: { _id: 'abc', status: 'in_review' } } } } })[0].json;
 t('Check GHL acepta in_review', okRes.ghl_post_id === 'abc' && okRes.patchBody.status === 'in_review');
+t('Check GHL guarda el hash del texto enviado (detección de edición)', /^[0-9a-f]{8}$/.test(okRes.patchBody.ghl_summary_hash) && okRes.patchBody.ghl_status === 'in_review');
 const guard = (res, n = nodes) => { try { run('Check GHL', { nodes: n, json: res }); return false; } catch (e) { return String(e.message); } };
 t('Check GHL aborta si GHL devuelve scheduled', /SEGURIDAD/.test(guard({ statusCode: 201, body: { results: { post: { _id: 'abc', status: 'scheduled' } } } }) || ''));
 t('Check GHL aborta si GHL falla', /no creó el post/.test(guard({ statusCode: 422, body: { message: 'x' } }) || ''));

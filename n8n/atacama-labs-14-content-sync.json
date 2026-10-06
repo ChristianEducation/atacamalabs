@@ -2,7 +2,7 @@
   "name": "Atacama Labs - 14 Content Sync (GHL → Supabase)",
   "nodes": [
     {
-      "id": "329876db-9ce0-4fa1-89dd-3ec0ce3f97c8",
+      "id": "18ae1997-7761-435d-8311-74a3b42db9cc",
       "name": "Every 30 Minutes",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -22,7 +22,7 @@
       }
     },
     {
-      "id": "07761114-3933-43ff-8412-c7788b71fc53",
+      "id": "26a3eda5-4d07-4a54-83b4-52a77f4dbaf8",
       "name": "Fetch Pending",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -38,7 +38,7 @@
       },
       "parameters": {
         "method": "GET",
-        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/content_pieces?icp_pack_id=eq.0ba54785-bff0-4a2d-a397-64e697d34e38&ghl_post_id=not.is.null&status=in.(drafted,in_review,approved,scheduled)&select=id,ghl_post_id,status,ghl_status,ghl_approval_status&limit=100",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/content_pieces?icp_pack_id=eq.0ba54785-bff0-4a2d-a397-64e697d34e38&ghl_post_id=not.is.null&status=in.(drafted,in_review,approved,scheduled)&select=id,ghl_post_id,status,ghl_status,ghl_approval_status,scheduled_at,approved_at,approved_seen_at,ghl_summary_hash,ghl_edited&limit=100",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "supabaseApi",
         "options": {
@@ -54,7 +54,7 @@
       }
     },
     {
-      "id": "d530f43d-6315-48f3-bac8-0589c4ed94ad",
+      "id": "e874bd6d-ff2b-442c-9789-f4c7c3acc03c",
       "name": "Any Pending?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -84,7 +84,7 @@
       }
     },
     {
-      "id": "0f755c8e-af68-4a6c-9a6c-5ca978e9da2d",
+      "id": "b38b697c-db02-4e02-8c89-95f58b7e426a",
       "name": "List GHL Posts",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -133,7 +133,7 @@
       }
     },
     {
-      "id": "e7e05869-e43e-46c1-b011-e9629902a911",
+      "id": "f8d9774a-e366-48bc-861e-3eab8ddb9306",
       "name": "Compute",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -142,11 +142,11 @@
         0
       ],
       "parameters": {
-        "jsCode": "function mapGhlToPiece(post, now) {\n  const approval = post && post.postApprovalDetails && post.postApprovalDetails.approvalStatus ? String(post.postApprovalDetails.approvalStatus) : null;\n  if (!post) return { status: 'discarded', ghl_status: 'deleted', ghl_approval_status: null };\n  const st = String(post.status || '').toLowerCase();\n  const out = { ghl_status: st, ghl_approval_status: approval };\n  if (post.scheduleDate) out.scheduled_at = new Date(post.scheduleDate).toISOString();\n  if (st === 'published') { out.status = 'published'; out.published_at = new Date(post.publishedAt || post.updatedAt || now).toISOString(); }\n  else if (st === 'scheduled' || st === 'in_progress' || st === 'publishing') out.status = 'scheduled';\n  else if (st === 'failed' || st === 'error') out.status = 'failed';\n  else if (st === 'draft') out.status = 'drafted';\n  else if (st === 'in_review') out.status = approval === 'rejected' ? 'discarded' : approval === 'approved' ? 'approved' : 'in_review';\n  else if (st === 'deleted') out.status = 'discarded';\n  else out.status = null; // estado desconocido: no se toca la pieza\n  return out;\n}\n\nconst pending = ($('Fetch Pending').first().json || {}).body;\nconst res = $json || {};\nconst posts = res.body && res.body.results && Array.isArray(res.body.results.posts) ? res.body.results.posts : null;\nif (!Array.isArray(pending) || !pending.length) return [];\nif (!posts || (res.statusCode || 0) >= 300) throw new Error('GHL posts/list fallo (HTTP ' + res.statusCode + '): ' + JSON.stringify(res.body || {}).slice(0, 300));\nconst byId = {};\nposts.forEach((p) => { byId[p._id] = p; });\nconst now = Date.now();\nconst out = [];\npending.forEach((piece) => {\n  const post = byId[piece.ghl_post_id] || null;\n  const m = mapGhlToPiece(post, now);\n  if (m.status === null) return;\n  const patch = { ...m, synced_at: new Date(now).toISOString(), updated_at: new Date(now).toISOString() };\n  const changed = m.status !== piece.status || (m.ghl_status || null) !== (piece.ghl_status || null) || (m.ghl_approval_status || null) !== (piece.ghl_approval_status || null);\n  if (changed) out.push({ json: { id: piece.id, from: piece.status, to: m.status, patch } });\n});\nreturn out;"
+        "jsCode": "function summaryHash(text) {\r\n  const n = String(text == null ? '' : text).replace(/\\r\\n?/g, '\\n').replace(/[ \\t]+/g, ' ').replace(/ *\\n */g, '\\n').replace(/\\n{3,}/g, '\\n\\n').trim();\r\n  let h = 0x811c9dc5;\r\n  for (let i = 0; i < n.length; i++) { h ^= n.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }\r\n  return h.toString(16).padStart(8, '0');\r\n}\n\nfunction mapGhlToPiece(post, now, piece) {\r\n  const cur = piece || {};\r\n  if (!post) return { status: 'discarded', ghl_status: 'deleted', ghl_approval_status: null };\r\n  const det = post.postApprovalDetails || {};\r\n  const approval = det.approvalStatus ? String(det.approvalStatus) : null;\r\n  const st = String(post.status || '').toLowerCase();\r\n  const out = { ghl_status: st, ghl_approval_status: approval };\r\n  if (post.scheduleDate) out.scheduled_at = new Date(post.scheduleDate).toISOString();\r\n  if (st === 'published') { out.status = 'published'; out.published_at = new Date(post.publishedAt || post.updatedAt || now).toISOString(); }\r\n  else if (st === 'scheduled' || st === 'in_progress' || st === 'publishing') out.status = 'scheduled';\r\n  else if (st === 'failed' || st === 'error') out.status = 'failed';\r\n  else if (st === 'draft') out.status = 'drafted';\r\n  else if (st === 'in_review') out.status = approval === 'rejected' ? 'discarded' : approval === 'approved' ? 'approved' : 'in_review';\r\n  else if (st === 'deleted') out.status = 'discarded';\r\n  else out.status = null; // estado desconocido: no se toca la pieza\r\n  if (out.status === null) return out;\r\n  // Fecha de aprobación: solo si GHL la expone en el post; si no, se registra cuándo se VIO aprobado (aproximada, por la frecuencia de sincronización).\r\n  const exact = det.approvedAt || det.approvalDate || det.approvedOn || null;\r\n  if (exact && !cur.approved_at && Number.isFinite(Date.parse(exact))) out.approved_at = new Date(exact).toISOString();\r\n  const approvedNow = approval === 'approved' || out.status === 'scheduled' || out.status === 'published';\r\n  if (approvedNow && !cur.approved_seen_at && (cur.status === 'in_review' || cur.status === 'approved' || cur.status === 'drafted' || approval === 'approved')) out.approved_seen_at = new Date(now).toISOString();\r\n  // Edición humana: el texto del post ya no coincide con el que envió Atacama OS.\r\n  if (cur.ghl_summary_hash && typeof post.summary === 'string' && summaryHash(post.summary) !== cur.ghl_summary_hash && cur.ghl_edited !== true) { out.ghl_edited = true; out.ghl_edited_seen_at = new Date(now).toISOString(); }\r\n  return out;\r\n}\n\nconst pending = ($('Fetch Pending').first().json || {}).body;\nconst res = $json || {};\nconst posts = res.body && res.body.results && Array.isArray(res.body.results.posts) ? res.body.results.posts : null;\nif (!Array.isArray(pending) || !pending.length) return [];\nif (!posts || (res.statusCode || 0) >= 300) throw new Error('GHL posts/list fallo (HTTP ' + res.statusCode + '): ' + JSON.stringify(res.body || {}).slice(0, 300));\nconst byId = {};\nposts.forEach((p) => { byId[p._id] = p; });\nconst now = Date.now();\nconst out = [];\npending.forEach((piece) => {\n  const post = byId[piece.ghl_post_id] || null;\n  const m = mapGhlToPiece(post, now, piece);\n  if (m.status === null) return;\n  const patch = { ...m, synced_at: new Date(now).toISOString(), updated_at: new Date(now).toISOString() };\n  const same = (a, b) => (a || null) === (b || null);\n  const changed = m.status !== piece.status || !same(m.ghl_status, piece.ghl_status) || !same(m.ghl_approval_status, piece.ghl_approval_status)\n    || (m.scheduled_at && Date.parse(m.scheduled_at) !== Date.parse(piece.scheduled_at || 0)) || Boolean(m.approved_seen_at) || Boolean(m.approved_at) || m.ghl_edited === true;\n  if (changed) out.push({ json: { id: piece.id, from: piece.status, to: m.status, patch } });\n});\nreturn out;"
       }
     },
     {
-      "id": "dc64d3aa-bee2-4250-ad3f-aaa699d6d67b",
+      "id": "efcdb78e-5457-4cfb-b401-b9371ea7541c",
       "name": "Patch Piece",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,

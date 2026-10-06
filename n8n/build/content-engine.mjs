@@ -17,6 +17,7 @@
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import { evaluatePiece } from '../../scripts/content/engine-core.mjs';
+import { summaryHash } from '../../scripts/content/metrics-core.mjs';
 
 const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 const PACK_ID = '0ba54785-bff0-4a2d-a397-64e697d34e38'; // icp_packs.atacama-labs
@@ -28,6 +29,8 @@ export const ACCOUNTS = {
 };
 // Categorías de Social Planner (creadas por interfaz el 6-oct-2026; la API de integración no puede crearlas)
 export const CATEGORY_IDS = { Educativo: '6ac5265a4f30bdd64eaa5807', Caso: '6ac52690faf51cff54e27cf4', Demo: '6ac52699faf51cff54e29123', Noticia: '6ac527bf0c6e2434babc5054', Evergreen: '6ac527cc3abea0cc82a7ad8a', Founder: '6ac527f0d3e22f4c60cc70d4' };
+// Etiquetas de Social Planner por formato (creadas por interfaz el 6-oct-2026; los posts exigen ObjectIds existentes)
+export const TAG_IDS = { texto: '6ac53738c1fd27a1b5e78aa3', imagen: '6ac53738c1fd27a1b5e78aa4', carrusel: '6ac53738c1fd27a1b5e78aa5', demo: '6ac53738c1fd27a1b5e78aa6', reel: '6ac53738c1fd27a1b5e78aa7' };
 export const APPROVER_USER_ID = 'OjkAjHMdUjnblO7W1kBZ'; // usuario operativo de Social Planner (ver docs, Bloque I)
 const SUPABASE_CRED = { supabaseApi: { id: 'XOmXUuyLVSazDIh5', name: 'Atacama Labs - Supabase' } };
 const GHL_CRED = { httpHeaderAuth: { id: '4Vc6nfxyKjZ14Bep', name: 'GHL — Atacama OS' } };
@@ -49,6 +52,7 @@ const PACK_ID = '${PACK_ID}';
 const ACCOUNTS = ${JSON.stringify(ACCOUNTS)};
 const APPROVER = '${APPROVER_USER_ID}';
 const CATEGORIES = ${JSON.stringify(CATEGORY_IDS)};
+const TAGS = ${JSON.stringify(TAG_IDS)};
 const first = $('Intake Webhook').first().json ?? {};
 const body = first.body ?? first;
 if (body.icp_pack_id && body.icp_pack_id !== PACK_ID) throw new Error('SEGURIDAD: icp_pack_id no coincide con el pack de Atacama Labs.');
@@ -91,7 +95,7 @@ if (!Number.isFinite(when) || when < minDate) { const d = new Date(Date.now() + 
 const summary = (isTest ? '[PRUEBA ATACAMA OS — NO PUBLICAR] ' : '') + ev.post_text;
 // Las etiquetas/categorías de Social Planner exigen ObjectIds creados desde la interfaz (la API con token de integración no puede crearlos): por ahora formato y categoría viajan en Supabase.
 const ghlBody = { accountIds: [ACCOUNTS[piece.channel]], summary, type: 'post', status: 'in_review', userId: APPROVER, media: media.map((m) => ({ url: m.url, type: m.type || 'image/png' })),
-  scheduleDate: new Date(when).toISOString(), postApprovalDetails: { approver: APPROVER }, ...(CATEGORIES[piece.category] ? { categoryId: CATEGORIES[piece.category] } : {}) };
+  scheduleDate: new Date(when).toISOString(), postApprovalDetails: { approver: APPROVER }, ...(CATEGORIES[piece.category] ? { categoryId: CATEGORIES[piece.category] } : {}), ...(TAGS[piece.format] ? { tags: [TAGS[piece.format]] } : {}) };
 if (ghlBody.status !== 'in_review') throw new Error('SEGURIDAD: este workflow solo puede crear posts en in_review.');
 return [{ json: { ...base, action, holdReason, sourcesBody, existingSourceIds, pieceRow, ghlBody } }];`;
 
@@ -100,14 +104,16 @@ const ev = $('Evaluate').first().json;
 const ids = (Array.isArray($json.body) ? $json.body : []).map((r) => r.id).filter(Boolean).concat(ev.existingSourceIds || []);
 return [{ json: { ...ev, pieceRowFull: { ...ev.pieceRow, source_ids: ids } } }];`;
 
-const CHECK_GHL = `const up = $('Upsert Piece').first().json;
+const CHECK_GHL = `${summaryHash.toString()}
+
+const up = $('Upsert Piece').first().json;
 if ((up.statusCode || 0) >= 300) throw new Error('Supabase content_pieces falló (HTTP ' + up.statusCode + '): ' + JSON.stringify(up.body || {}).slice(0, 300));
 const ev = $('Build Row').first().json;
 const res = $json || {};
 const post = (res.body && res.body.results && res.body.results.post) || null;
 if (!post || !post._id) throw new Error('GHL no creó el post (HTTP ' + res.statusCode + '): ' + JSON.stringify(res.body || {}).slice(0, 300));
 if (post.status !== 'in_review') throw new Error('SEGURIDAD: GHL devolvió estado ' + post.status + ' (se esperaba in_review). Revisar/borrar el post ' + post._id);
-return [{ json: { ...ev, ghl_post_id: post._id, patchBody: { status: 'in_review', ghl_post_id: post._id, updated_at: new Date().toISOString() } } }];`;
+return [{ json: { ...ev, ghl_post_id: post._id, patchBody: { status: 'in_review', ghl_post_id: post._id, ghl_status: 'in_review', ghl_summary_hash: summaryHash(post.summary || ev.ghlBody.summary), updated_at: new Date().toISOString() } } }];`;
 
 const RESP_REJECT = `const e = $json.evaluation;
 return [{ json: { ok: false, action: 'rejected', errors: e.errors, warnings: e.warnings, score: e.score } }];`;

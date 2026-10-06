@@ -12,6 +12,7 @@
  */
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
+import { summaryHash } from '../../scripts/content/metrics-core.mjs';
 
 const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 const PACK_ID = '0ba54785-bff0-4a2d-a397-64e697d34e38';
@@ -26,10 +27,17 @@ const GHL_CRED = { httpHeaderAuth: { id: '4Vc6nfxyKjZ14Bep', name: 'GHL — Atac
 const full = (timeout = 30000) => ({ response: { response: { fullResponse: true, neverError: true, responseFormat: 'json' } }, timeout });
 const code = (name, jsCode, pos) => ({ id: randomUUID(), name, type: 'n8n-nodes-base.code', typeVersion: 2, position: pos, parameters: { jsCode } });
 
-/** Mapea el estado de GHL al de la pieza. Autocontenida (se prueba y se incrusta tal cual). */
-export function mapGhlToPiece(post, now) {
-  const approval = post && post.postApprovalDetails && post.postApprovalDetails.approvalStatus ? String(post.postApprovalDetails.approvalStatus) : null;
+/**
+ * Mapea el post de GHL a los campos de la pieza. Autocontenida salvo `summaryHash` (se incrusta junto).
+ * piece (opcional) = fila actual de content_pieces: permite detectar edición humana (hash del texto) y no pisar fechas ya conocidas.
+ * Estados: draft→drafted · in_review→in_review | approved (aprobación ya figura aprobada) · scheduled/in_progress/publishing→scheduled ·
+ * published→published (+published_at) · failed/error→failed · rechazado o borrado en GHL→discarded · desconocido→status null (no se toca).
+ */
+export function mapGhlToPiece(post, now, piece) {
+  const cur = piece || {};
   if (!post) return { status: 'discarded', ghl_status: 'deleted', ghl_approval_status: null };
+  const det = post.postApprovalDetails || {};
+  const approval = det.approvalStatus ? String(det.approvalStatus) : null;
   const st = String(post.status || '').toLowerCase();
   const out = { ghl_status: st, ghl_approval_status: approval };
   if (post.scheduleDate) out.scheduled_at = new Date(post.scheduleDate).toISOString();
@@ -40,10 +48,20 @@ export function mapGhlToPiece(post, now) {
   else if (st === 'in_review') out.status = approval === 'rejected' ? 'discarded' : approval === 'approved' ? 'approved' : 'in_review';
   else if (st === 'deleted') out.status = 'discarded';
   else out.status = null; // estado desconocido: no se toca la pieza
+  if (out.status === null) return out;
+  // Fecha de aprobación: solo si GHL la expone en el post; si no, se registra cuándo se VIO aprobado (aproximada, por la frecuencia de sincronización).
+  const exact = det.approvedAt || det.approvalDate || det.approvedOn || null;
+  if (exact && !cur.approved_at && Number.isFinite(Date.parse(exact))) out.approved_at = new Date(exact).toISOString();
+  const approvedNow = approval === 'approved' || out.status === 'scheduled' || out.status === 'published';
+  if (approvedNow && !cur.approved_seen_at && (cur.status === 'in_review' || cur.status === 'approved' || cur.status === 'drafted' || approval === 'approved')) out.approved_seen_at = new Date(now).toISOString();
+  // Edición humana: el texto del post ya no coincide con el que envió Atacama OS.
+  if (cur.ghl_summary_hash && typeof post.summary === 'string' && summaryHash(post.summary) !== cur.ghl_summary_hash && cur.ghl_edited !== true) { out.ghl_edited = true; out.ghl_edited_seen_at = new Date(now).toISOString(); }
   return out;
 }
 
-export const COMPUTE = `${mapGhlToPiece.toString()}
+export const COMPUTE = `${summaryHash.toString()}
+
+${mapGhlToPiece.toString()}
 
 const pending = ($('Fetch Pending').first().json || {}).body;
 const res = $json || {};
@@ -56,10 +74,12 @@ const now = Date.now();
 const out = [];
 pending.forEach((piece) => {
   const post = byId[piece.ghl_post_id] || null;
-  const m = mapGhlToPiece(post, now);
+  const m = mapGhlToPiece(post, now, piece);
   if (m.status === null) return;
   const patch = { ...m, synced_at: new Date(now).toISOString(), updated_at: new Date(now).toISOString() };
-  const changed = m.status !== piece.status || (m.ghl_status || null) !== (piece.ghl_status || null) || (m.ghl_approval_status || null) !== (piece.ghl_approval_status || null);
+  const same = (a, b) => (a || null) === (b || null);
+  const changed = m.status !== piece.status || !same(m.ghl_status, piece.ghl_status) || !same(m.ghl_approval_status, piece.ghl_approval_status)
+    || (m.scheduled_at && Date.parse(m.scheduled_at) !== Date.parse(piece.scheduled_at || 0)) || Boolean(m.approved_seen_at) || Boolean(m.approved_at) || m.ghl_edited === true;
   if (changed) out.push({ json: { id: piece.id, from: piece.status, to: m.status, patch } });
 });
 return out;`;
@@ -68,7 +88,7 @@ export function buildContentSync() {
   const nodes = [
     { id: randomUUID(), name: 'Every 30 Minutes', type: 'n8n-nodes-base.scheduleTrigger', typeVersion: 1.2, position: [0, 0], parameters: { rule: { interval: [{ field: 'minutes', minutesInterval: 30 }] } } },
     { id: randomUUID(), name: 'Fetch Pending', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [240, 0], credentials: SUPABASE_CRED,
-      parameters: { method: 'GET', url: `${SUPABASE}/rest/v1/content_pieces?icp_pack_id=eq.${PACK_ID}&ghl_post_id=not.is.null&status=in.(drafted,in_review,approved,scheduled)&select=id,ghl_post_id,status,ghl_status,ghl_approval_status&limit=100`,
+      parameters: { method: 'GET', url: `${SUPABASE}/rest/v1/content_pieces?icp_pack_id=eq.${PACK_ID}&ghl_post_id=not.is.null&status=in.(drafted,in_review,approved,scheduled)&select=id,ghl_post_id,status,ghl_status,ghl_approval_status,scheduled_at,approved_at,approved_seen_at,ghl_summary_hash,ghl_edited&limit=100`,
         authentication: 'predefinedCredentialType', nodeCredentialType: 'supabaseApi', options: full() } },
     { id: randomUUID(), name: 'Any Pending?', type: 'n8n-nodes-base.if', typeVersion: 2.2, position: [360, 0], parameters: { conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'loose' }, combinator: 'and', conditions: [{ leftValue: '={{ (Array.isArray($json.body) && $json.body.length > 0) ? "yes" : "no" }}', rightValue: 'yes', operator: { type: 'string', operation: 'equals' } }] } } },
     { id: randomUUID(), name: 'List GHL Posts', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [600, 0], credentials: GHL_CRED, alwaysOutputData: true,

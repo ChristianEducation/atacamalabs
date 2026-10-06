@@ -1,0 +1,529 @@
+{
+  "name": "Atacama Labs - 15 Content Metrics",
+  "nodes": [
+    {
+      "id": "18ef2bc4-bdd2-4f14-89ba-0474acf451ed",
+      "name": "Every 3 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "92794f8a-a720-44bf-ba56-9c51afdb45a7",
+      "name": "Fetch Published",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "parameters": {
+        "method": "GET",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/content_pieces?icp_pack_id=eq.0ba54785-bff0-4a2d-a397-64e697d34e38&status=eq.published&ghl_post_id=not.is.null&published_at=not.is.null&select=id,ghl_post_id,channel,category,format,score,topic,published_at,learning,is_test,hook:piece->>hook&limit=200",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": false,
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "2e300591-eb0d-41fb-84d6-065c7c677bf8",
+      "name": "Fetch Metrics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "parameters": {
+        "method": "GET",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/content_metrics?icp_pack_id=eq.0ba54785-bff0-4a2d-a397-64e697d34e38&select=*&limit=2000",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": false,
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "955628e2-1779-4ac9-a1e5-98fc7f811679",
+      "name": "Plan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "jsCode": "function planMetrics(pieces, metrics, now) {\r\n  const WINDOWS = [{ w: '24h', h: 24, grace: 12 }, { w: '72h', h: 72, grace: 24 }, { w: '7d', h: 168, grace: 48 }];\r\n  const have = {};\r\n  (Array.isArray(metrics) ? metrics : []).forEach((m) => { (have[m.content_piece_id] = have[m.content_piece_id] || {})[m.metric_window] = m.status || 'ok'; });\r\n  const snapshots = [];\r\n  const learn = [];\r\n  (Array.isArray(pieces) ? pieces : []).forEach((p) => {\r\n    if (!p || !p.ghl_post_id || !p.published_at) return;\r\n    const pub = Date.parse(p.published_at);\r\n    if (!Number.isFinite(pub)) return;\r\n    const mine = have[p.id] || {};\r\n    WINDOWS.forEach((win) => {\r\n      if (mine[win.w]) return;\r\n      const due = pub + win.h * 3600000;\r\n      if (now < due) return;\r\n      const hours = Math.round(((now - pub) / 3600000) * 100) / 100;\r\n      const expired = now > due + win.grace * 3600000;\r\n      snapshots.push({ piece_id: p.id, ghl_post_id: p.ghl_post_id, channel: p.channel, is_test: p.is_test === true, window: win.w, due_at: new Date(due).toISOString(), hours_since_published: hours, missed: expired });\r\n    });\r\n    const sevenDone = Boolean(mine['7d']);\r\n    const sevenExpired = now > pub + (168 + 48) * 3600000;\r\n    if (!p.learning && (sevenDone || sevenExpired)) learn.push({ piece_id: p.id });\r\n  });\r\n  return { snapshots, learn };\r\n}\n\nfunction extractPostMetrics(post) {\r\n  const ins = post && post.insights && typeof post.insights === 'object' ? post.insights : null;\r\n  const num = (...vals) => { for (const v of vals) { if (typeof v === 'number' && Number.isFinite(v)) return Math.round(v); if (typeof v === 'string' && /^\\d+$/.test(v)) return Number(v); } return null; };\r\n  if (!ins) return { likes: null, comments: null, shares: null, extra: {}, available: [] };\r\n  const out = { likes: num(ins.like, ins.likes), comments: num(ins.comment, ins.comments), shares: num(ins.share, ins.shares), extra: {} };\r\n  const known = ['like', 'likes', 'comment', 'comments', 'share', 'shares'];\r\n  Object.keys(ins).forEach((k) => { if (!known.includes(k) && typeof ins[k] === 'number') out.extra[k] = ins[k]; });\r\n  out.available = ['likes', 'comments', 'shares'].filter((k) => out[k] !== null).concat(Object.keys(out.extra));\r\n  return out;\r\n}\n\nfunction extractAccountStats(res, platform) {\r\n  const r = res && res.results ? res.results : res;\r\n  if (!r || typeof r !== 'object' || !r.totals) return null;\r\n  const n = (v) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : null);\r\n  const eng = r.breakdowns && r.breakdowns.engagement && r.breakdowns.engagement[platform] ? r.breakdowns.engagement[platform] : {};\r\n  return {\r\n    impressions: n(r.totals.impressions), reach: n(r.breakdowns && r.breakdowns.reach ? r.breakdowns.reach.total : null), followers: n(r.totals.followers), posts: n(r.totals.posts),\r\n    likes: n(r.totals.likes), comments: n(r.totals.comments), shares: n(eng.shares),\r\n    daily_impressions: Array.isArray(r.postPerformance && r.postPerformance.impressions) ? r.postPerformance.impressions : null, day_range: r.dayRange || null,\r\n  };\r\n}\n\nfunction buildSnapshot(input) {\r\n  const d = input.due || {};\r\n  const base = { content_piece_id: d.piece_id, ghl_post_id: d.ghl_post_id, platform: input.platform, account_id: input.account_id, metric_window: d.window, due_at: d.due_at, captured_at: new Date(input.now).toISOString(), hours_since_published: d.hours_since_published, late: false };\r\n  if (d.missed) return { ...base, status: 'error', error: 'ventana_perdida: no se capturó dentro de la tolerancia; no se estima', late: true, raw_metrics: { reason: 'missed' } };\r\n  const pm = input.postMetrics || { likes: null, comments: null, shares: null, extra: {}, available: [] };\r\n  const acc = input.accountStats || null;\r\n  const hasPost = pm.available && pm.available.length > 0;\r\n  if (!input.postFound && !acc) return null;\r\n  const errors = [];\r\n  if (!input.postFound) errors.push('post_no_encontrado');\r\n  else if (!hasPost) errors.push('post_sin_insights');\r\n  if (!acc) errors.push('sin_estadisticas_de_cuenta');\r\n  return {\r\n    ...base, status: errors.length ? 'partial' : 'ok', error: errors.length ? errors.join(',') : null,\r\n    likes: pm.likes, comments: pm.comments, shares: pm.shares,\r\n    account_impressions_7d: acc ? acc.impressions : null, account_reach_7d: acc ? acc.reach : null, account_followers: acc ? acc.followers : null, account_posts_7d: acc ? acc.posts : null,\r\n    raw_metrics: { post_insights: input.postFound && input.rawInsights ? input.rawInsights : null, post_insights_extra: pm.extra || {}, account_stats: acc },\r\n  };\r\n}\n\nfunction actionsOf(row) {\r\n  if (!row) return null;\r\n  const v = [row.likes, row.comments, row.shares].filter((x) => typeof x === 'number');\r\n  return v.length ? v.reduce((a, b) => a + b, 0) : null;\r\n}\n\nfunction buildLearning(piece, rows, peers, now) {\r\n  const sorted = ['24h', '72h', '7d'];\r\n  const byWin = {};\r\n  (Array.isArray(rows) ? rows : []).forEach((r) => { byWin[r.metric_window] = r; });\r\n  const windows = {};\r\n  sorted.forEach((w) => { const r = byWin[w]; windows[w] = r ? { status: r.status, late: r.late === true, likes: r.likes ?? null, comments: r.comments ?? null, shares: r.shares ?? null, actions: actionsOf(r) } : null; });\r\n  const last = byWin['7d'] && byWin['7d'].status !== 'error' ? byWin['7d'] : (byWin['72h'] && byWin['72h'].status !== 'error' ? byWin['72h'] : (byWin['24h'] && byWin['24h'].status !== 'error' ? byWin['24h'] : null));\r\n  const lastWin = last ? last.metric_window : null;\r\n  const actions = last ? actionsOf(last) : null;\r\n  const pj = piece.piece || {};\r\n  const hook = (pj.hook || piece.hook || '').toString();\r\n  const platform = piece.channel === 'instagram' ? 'instagram' : 'linkedin';\r\n  const samePlatform = (Array.isArray(peers) ? peers : []).filter((p) => p && p.id !== piece.id && (p.channel === 'instagram' ? 'instagram' : 'linkedin') === platform && typeof p.actions === 'number');\r\n  const caveats = ['Las impresiones, el alcance y los seguidores son de la cuenta, no de esta publicación.', 'GHL no entrega clics.'];\r\n  const worked = [];\r\n  const notWorked = [];\r\n  const hypotheses = [];\r\n  const guidance = [];\r\n  const comparison = { basis: 'sin_base', peers_n: samePlatform.length, peer_median_actions: null, ratio: null };\r\n\r\n  if (lastWin !== '7d') caveats.push(lastWin ? 'Falta la ventana de 7 días: el aprendizaje usa la última ventana disponible (' + lastWin + ').' : 'No hay ninguna ventana de métricas válida: no se puede evaluar el desempeño.');\r\n  Object.keys(windows).forEach((w) => { if (windows[w] && windows[w].late) caveats.push('La ventana ' + w + ' se capturó fuera de su tolerancia.'); });\r\n\r\n  if (actions === null) {\r\n    notWorked.push('GHL no entregó interacciones de esta publicación: no se puede evaluar.');\r\n  } else {\r\n    const c = last.comments;\r\n    if (actions === 0) notWorked.push('0 interacciones (me gusta, comentarios y compartidos) a ' + lastWin + '.');\r\n    if (typeof c === 'number' && c > 0) worked.push('Generó ' + c + ' comentario' + (c === 1 ? '' : 's') + ' a ' + lastWin + '.');\r\n    if (typeof last.shares === 'number' && last.shares > 0) worked.push('Fue compartida ' + last.shares + ' vez' + (last.shares === 1 ? '' : 'es') + ' a ' + lastWin + '.');\r\n    if (samePlatform.length >= 3) {\r\n      const a = samePlatform.map((p) => p.actions).sort((x, y) => x - y);\r\n      const mid = a.length % 2 ? a[(a.length - 1) / 2] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2;\r\n      comparison.basis = 'misma_plataforma'; comparison.peer_median_actions = mid; comparison.ratio = mid > 0 ? Math.round((actions / mid) * 100) / 100 : null;\r\n      if (mid > 0 && actions >= mid * 1.25) worked.push('Más interacciones (' + actions + ') que la mediana de tus publicaciones en ' + platform + ' (' + mid + ').');\r\n      else if (mid > 0 && actions <= mid * 0.75) notWorked.push('Menos interacciones (' + actions + ') que la mediana de tus publicaciones en ' + platform + ' (' + mid + ').');\r\n      else if (mid === 0 && actions > 0) worked.push('Primera con interacciones entre tus publicaciones en ' + platform + '.');\r\n      else if (!worked.length && !notWorked.length) caveats.push('Interacciones dentro del rango habitual de tus publicaciones en ' + platform + '.');\r\n    } else {\r\n      caveats.push('Sin base de comparación suficiente en ' + platform + ' (pares: ' + samePlatform.length + ', se piden 3): no se puede decir si el resultado es alto o bajo.');\r\n    }\r\n  }\r\n  const score = Number(piece.score);\r\n  if (Number.isFinite(score) && actions === 0 && score >= 80) hypotheses.push('Hipótesis (no demostrada): el score inicial (' + score + ') mide calidad editorial, no interés; con una sola publicación no se puede saber si el tema, el canal o el horario influyeron.');\r\n  if (piece.category === 'Founder' && typeof (last && last.comments) === 'number' && last.comments > 0) hypotheses.push('Hipótesis (no demostrada): el texto en primera persona con una pregunta final podría invitar a comentar; hay que repetir el patrón para confirmarlo.');\r\n  if (piece.format === 'carrusel' && typeof (last && last.shares) === 'number' && last.shares > 0) hypotheses.push('Hipótesis (no demostrada): los carruseles podrían guardarse o compartirse más que el texto; falta comparar con más piezas.');\r\n  if (!hypotheses.length) hypotheses.push('Con ' + (samePlatform.length + 1) + ' publicación(es) medida(s) en ' + platform + ' no hay base para una hipótesis útil; seguir acumulando datos antes de cambiar el enfoque.');\r\n\r\n  if (hook) guidance.push({ rule: 'no_repetir_hook', text: 'No repetir exactamente este hook: «' + hook + '».' });\r\n  if (actions === 0) guidance.push({ rule: 'variar_angulo', text: 'Probar otro ángulo o canal antes de repetir este tema (muestra n=1, no concluyente).' });\r\n  if (typeof (last && last.comments) === 'number' && last.comments > 0) guidance.push({ rule: 'conservar_pregunta', text: 'La pregunta final generó conversación: conservar el patrón y medirlo de nuevo.' });\r\n\r\n  return {\r\n    version: 1, generated_at: new Date(now).toISOString(), piece_id: piece.id, topic: piece.topic || pj.topic || null, channel: piece.channel, platform, format: piece.format, category: piece.category, hook,\r\n    initial_score: Number.isFinite(score) ? score : null, published_at: piece.published_at || null,\r\n    metrics: { windows, used_window: lastWin, actions, available: ['likes', 'comments', 'shares'].filter((k) => last && typeof last[k] === 'number'), not_available: ['clicks', 'impresiones por publicación', 'alcance por publicación'],\r\n      account_context: last ? { impressions_7d: last.account_impressions_7d ?? null, reach_7d: last.account_reach_7d ?? null, followers: last.account_followers ?? null, posts_7d: last.account_posts_7d ?? null, note: 'Estadísticas de la cuenta (últimos 7 días al capturar), no de esta publicación.' } : null },\r\n    comparison, worked, not_worked: notWorked, hypotheses, guidance, caveats, confidence: samePlatform.length >= 5 ? 'media' : 'baja',\r\n  };\r\n}\n\nconst ACCOUNTS = {\"instagram\":{\"platform\":\"instagram\",\"account_id\":\"6ac43e3ecfe0752734a5fe1e_pxHuOsiz2i3lM6BtC9IM_17841424613699090\",\"profile_id\":\"6ac43e4357e651b3b0bd331e\"},\"linkedin_page\":{\"platform\":\"linkedin\",\"account_id\":\"6ac4fabe3356d12d204557ea_pxHuOsiz2i3lM6BtC9IM_145278681_page\",\"profile_id\":\"6ac4fbc04f30bdd64e6f06b3\"},\"linkedin_profile\":{\"platform\":\"linkedin\",\"account_id\":\"6ac4fabe3356d12d204557ea_pxHuOsiz2i3lM6BtC9IM_D9Z-EPMxLu_profile\",\"profile_id\":\"6ac4fbbcafbada9ab4d51f8d\"}};\nconst pubRes = $('Fetch Published').first().json || {};\nconst metRes = $json || {};\nif ((pubRes.statusCode || 0) >= 300 || (metRes.statusCode || 0) >= 300) throw new Error('Supabase falló (piezas HTTP ' + pubRes.statusCode + ', métricas HTTP ' + metRes.statusCode + ')');\nconst pieces = Array.isArray(pubRes.body) ? pubRes.body : [];\nconst metrics = Array.isArray(metRes.body) ? metRes.body : [];\nconst now = Date.now();\nconst plan = planMetrics(pieces, metrics, now);\nconst byId = {};\npieces.forEach((p) => { byId[p.id] = p; });\nconst out = [];\nplan.snapshots.forEach((d) => {\n  const acc = ACCOUNTS[d.channel];\n  if (!acc) return;\n  out.push({ json: { kind: 'snapshot', missed: d.missed, due: d, ghl_post_id: d.ghl_post_id, platform: acc.platform, account_id: acc.account_id, profile_id: acc.profile_id } });\n});\nif (plan.learn.length) {\n  const rowsBy = {};\n  metrics.forEach((m) => { (rowsBy[m.content_piece_id] = rowsBy[m.content_piece_id] || []).push(m); });\n  const peers = pieces.map((p) => {\n    const r7 = (rowsBy[p.id] || []).find((m) => m.metric_window === '7d' && m.status !== 'error');\n    return { id: p.id, channel: p.channel, category: p.category, format: p.format, actions: r7 ? actionsOf(r7) : null };\n  }).filter((p) => typeof p.actions === 'number');\n  plan.learn.forEach((l) => {\n    const piece = byId[l.piece_id];\n    if (piece) out.push({ json: { kind: 'learn', piece_id: piece.id, learning: buildLearning(piece, rowsBy[piece.id] || [], peers, now) } });\n  });\n}\nreturn out;"
+      }
+    },
+    {
+      "id": "56100c08-f37f-45ca-b682-d71da61bb9c3",
+      "name": "Is Learn?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        960,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.kind === \"learn\" ? \"yes\" : \"no\" }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "17e1c382-09ac-4f0e-82c5-1051a13af36d",
+      "name": "Learning Patch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        -140
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const l = $json.learning;\nreturn { json: { piece_id: $json.piece_id, body: { learning: l, learned_at: l.generated_at, updated_at: l.generated_at } } };"
+      }
+    },
+    {
+      "id": "44111b62-4d0b-401f-b1cf-d722651cbaf5",
+      "name": "Patch Learning",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        -140
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/content_pieces?id=eq.\" + $json.piece_id + \"&learning=is.null\" }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "7091f865-9de5-4c90-9ac8-f91661879f63",
+      "name": "Is Missed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1200,
+        120
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.missed ? \"yes\" : \"no\" }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "6978b851-c4fa-47bc-8097-7b13bc0acb76",
+      "name": "Build Missed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        40
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "function planMetrics(pieces, metrics, now) {\r\n  const WINDOWS = [{ w: '24h', h: 24, grace: 12 }, { w: '72h', h: 72, grace: 24 }, { w: '7d', h: 168, grace: 48 }];\r\n  const have = {};\r\n  (Array.isArray(metrics) ? metrics : []).forEach((m) => { (have[m.content_piece_id] = have[m.content_piece_id] || {})[m.metric_window] = m.status || 'ok'; });\r\n  const snapshots = [];\r\n  const learn = [];\r\n  (Array.isArray(pieces) ? pieces : []).forEach((p) => {\r\n    if (!p || !p.ghl_post_id || !p.published_at) return;\r\n    const pub = Date.parse(p.published_at);\r\n    if (!Number.isFinite(pub)) return;\r\n    const mine = have[p.id] || {};\r\n    WINDOWS.forEach((win) => {\r\n      if (mine[win.w]) return;\r\n      const due = pub + win.h * 3600000;\r\n      if (now < due) return;\r\n      const hours = Math.round(((now - pub) / 3600000) * 100) / 100;\r\n      const expired = now > due + win.grace * 3600000;\r\n      snapshots.push({ piece_id: p.id, ghl_post_id: p.ghl_post_id, channel: p.channel, is_test: p.is_test === true, window: win.w, due_at: new Date(due).toISOString(), hours_since_published: hours, missed: expired });\r\n    });\r\n    const sevenDone = Boolean(mine['7d']);\r\n    const sevenExpired = now > pub + (168 + 48) * 3600000;\r\n    if (!p.learning && (sevenDone || sevenExpired)) learn.push({ piece_id: p.id });\r\n  });\r\n  return { snapshots, learn };\r\n}\n\nfunction extractPostMetrics(post) {\r\n  const ins = post && post.insights && typeof post.insights === 'object' ? post.insights : null;\r\n  const num = (...vals) => { for (const v of vals) { if (typeof v === 'number' && Number.isFinite(v)) return Math.round(v); if (typeof v === 'string' && /^\\d+$/.test(v)) return Number(v); } return null; };\r\n  if (!ins) return { likes: null, comments: null, shares: null, extra: {}, available: [] };\r\n  const out = { likes: num(ins.like, ins.likes), comments: num(ins.comment, ins.comments), shares: num(ins.share, ins.shares), extra: {} };\r\n  const known = ['like', 'likes', 'comment', 'comments', 'share', 'shares'];\r\n  Object.keys(ins).forEach((k) => { if (!known.includes(k) && typeof ins[k] === 'number') out.extra[k] = ins[k]; });\r\n  out.available = ['likes', 'comments', 'shares'].filter((k) => out[k] !== null).concat(Object.keys(out.extra));\r\n  return out;\r\n}\n\nfunction extractAccountStats(res, platform) {\r\n  const r = res && res.results ? res.results : res;\r\n  if (!r || typeof r !== 'object' || !r.totals) return null;\r\n  const n = (v) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : null);\r\n  const eng = r.breakdowns && r.breakdowns.engagement && r.breakdowns.engagement[platform] ? r.breakdowns.engagement[platform] : {};\r\n  return {\r\n    impressions: n(r.totals.impressions), reach: n(r.breakdowns && r.breakdowns.reach ? r.breakdowns.reach.total : null), followers: n(r.totals.followers), posts: n(r.totals.posts),\r\n    likes: n(r.totals.likes), comments: n(r.totals.comments), shares: n(eng.shares),\r\n    daily_impressions: Array.isArray(r.postPerformance && r.postPerformance.impressions) ? r.postPerformance.impressions : null, day_range: r.dayRange || null,\r\n  };\r\n}\n\nfunction buildSnapshot(input) {\r\n  const d = input.due || {};\r\n  const base = { content_piece_id: d.piece_id, ghl_post_id: d.ghl_post_id, platform: input.platform, account_id: input.account_id, metric_window: d.window, due_at: d.due_at, captured_at: new Date(input.now).toISOString(), hours_since_published: d.hours_since_published, late: false };\r\n  if (d.missed) return { ...base, status: 'error', error: 'ventana_perdida: no se capturó dentro de la tolerancia; no se estima', late: true, raw_metrics: { reason: 'missed' } };\r\n  const pm = input.postMetrics || { likes: null, comments: null, shares: null, extra: {}, available: [] };\r\n  const acc = input.accountStats || null;\r\n  const hasPost = pm.available && pm.available.length > 0;\r\n  if (!input.postFound && !acc) return null;\r\n  const errors = [];\r\n  if (!input.postFound) errors.push('post_no_encontrado');\r\n  else if (!hasPost) errors.push('post_sin_insights');\r\n  if (!acc) errors.push('sin_estadisticas_de_cuenta');\r\n  return {\r\n    ...base, status: errors.length ? 'partial' : 'ok', error: errors.length ? errors.join(',') : null,\r\n    likes: pm.likes, comments: pm.comments, shares: pm.shares,\r\n    account_impressions_7d: acc ? acc.impressions : null, account_reach_7d: acc ? acc.reach : null, account_followers: acc ? acc.followers : null, account_posts_7d: acc ? acc.posts : null,\r\n    raw_metrics: { post_insights: input.postFound && input.rawInsights ? input.rawInsights : null, post_insights_extra: pm.extra || {}, account_stats: acc },\r\n  };\r\n}\n\nfunction actionsOf(row) {\r\n  if (!row) return null;\r\n  const v = [row.likes, row.comments, row.shares].filter((x) => typeof x === 'number');\r\n  return v.length ? v.reduce((a, b) => a + b, 0) : null;\r\n}\n\nfunction buildLearning(piece, rows, peers, now) {\r\n  const sorted = ['24h', '72h', '7d'];\r\n  const byWin = {};\r\n  (Array.isArray(rows) ? rows : []).forEach((r) => { byWin[r.metric_window] = r; });\r\n  const windows = {};\r\n  sorted.forEach((w) => { const r = byWin[w]; windows[w] = r ? { status: r.status, late: r.late === true, likes: r.likes ?? null, comments: r.comments ?? null, shares: r.shares ?? null, actions: actionsOf(r) } : null; });\r\n  const last = byWin['7d'] && byWin['7d'].status !== 'error' ? byWin['7d'] : (byWin['72h'] && byWin['72h'].status !== 'error' ? byWin['72h'] : (byWin['24h'] && byWin['24h'].status !== 'error' ? byWin['24h'] : null));\r\n  const lastWin = last ? last.metric_window : null;\r\n  const actions = last ? actionsOf(last) : null;\r\n  const pj = piece.piece || {};\r\n  const hook = (pj.hook || piece.hook || '').toString();\r\n  const platform = piece.channel === 'instagram' ? 'instagram' : 'linkedin';\r\n  const samePlatform = (Array.isArray(peers) ? peers : []).filter((p) => p && p.id !== piece.id && (p.channel === 'instagram' ? 'instagram' : 'linkedin') === platform && typeof p.actions === 'number');\r\n  const caveats = ['Las impresiones, el alcance y los seguidores son de la cuenta, no de esta publicación.', 'GHL no entrega clics.'];\r\n  const worked = [];\r\n  const notWorked = [];\r\n  const hypotheses = [];\r\n  const guidance = [];\r\n  const comparison = { basis: 'sin_base', peers_n: samePlatform.length, peer_median_actions: null, ratio: null };\r\n\r\n  if (lastWin !== '7d') caveats.push(lastWin ? 'Falta la ventana de 7 días: el aprendizaje usa la última ventana disponible (' + lastWin + ').' : 'No hay ninguna ventana de métricas válida: no se puede evaluar el desempeño.');\r\n  Object.keys(windows).forEach((w) => { if (windows[w] && windows[w].late) caveats.push('La ventana ' + w + ' se capturó fuera de su tolerancia.'); });\r\n\r\n  if (actions === null) {\r\n    notWorked.push('GHL no entregó interacciones de esta publicación: no se puede evaluar.');\r\n  } else {\r\n    const c = last.comments;\r\n    if (actions === 0) notWorked.push('0 interacciones (me gusta, comentarios y compartidos) a ' + lastWin + '.');\r\n    if (typeof c === 'number' && c > 0) worked.push('Generó ' + c + ' comentario' + (c === 1 ? '' : 's') + ' a ' + lastWin + '.');\r\n    if (typeof last.shares === 'number' && last.shares > 0) worked.push('Fue compartida ' + last.shares + ' vez' + (last.shares === 1 ? '' : 'es') + ' a ' + lastWin + '.');\r\n    if (samePlatform.length >= 3) {\r\n      const a = samePlatform.map((p) => p.actions).sort((x, y) => x - y);\r\n      const mid = a.length % 2 ? a[(a.length - 1) / 2] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2;\r\n      comparison.basis = 'misma_plataforma'; comparison.peer_median_actions = mid; comparison.ratio = mid > 0 ? Math.round((actions / mid) * 100) / 100 : null;\r\n      if (mid > 0 && actions >= mid * 1.25) worked.push('Más interacciones (' + actions + ') que la mediana de tus publicaciones en ' + platform + ' (' + mid + ').');\r\n      else if (mid > 0 && actions <= mid * 0.75) notWorked.push('Menos interacciones (' + actions + ') que la mediana de tus publicaciones en ' + platform + ' (' + mid + ').');\r\n      else if (mid === 0 && actions > 0) worked.push('Primera con interacciones entre tus publicaciones en ' + platform + '.');\r\n      else if (!worked.length && !notWorked.length) caveats.push('Interacciones dentro del rango habitual de tus publicaciones en ' + platform + '.');\r\n    } else {\r\n      caveats.push('Sin base de comparación suficiente en ' + platform + ' (pares: ' + samePlatform.length + ', se piden 3): no se puede decir si el resultado es alto o bajo.');\r\n    }\r\n  }\r\n  const score = Number(piece.score);\r\n  if (Number.isFinite(score) && actions === 0 && score >= 80) hypotheses.push('Hipótesis (no demostrada): el score inicial (' + score + ') mide calidad editorial, no interés; con una sola publicación no se puede saber si el tema, el canal o el horario influyeron.');\r\n  if (piece.category === 'Founder' && typeof (last && last.comments) === 'number' && last.comments > 0) hypotheses.push('Hipótesis (no demostrada): el texto en primera persona con una pregunta final podría invitar a comentar; hay que repetir el patrón para confirmarlo.');\r\n  if (piece.format === 'carrusel' && typeof (last && last.shares) === 'number' && last.shares > 0) hypotheses.push('Hipótesis (no demostrada): los carruseles podrían guardarse o compartirse más que el texto; falta comparar con más piezas.');\r\n  if (!hypotheses.length) hypotheses.push('Con ' + (samePlatform.length + 1) + ' publicación(es) medida(s) en ' + platform + ' no hay base para una hipótesis útil; seguir acumulando datos antes de cambiar el enfoque.');\r\n\r\n  if (hook) guidance.push({ rule: 'no_repetir_hook', text: 'No repetir exactamente este hook: «' + hook + '».' });\r\n  if (actions === 0) guidance.push({ rule: 'variar_angulo', text: 'Probar otro ángulo o canal antes de repetir este tema (muestra n=1, no concluyente).' });\r\n  if (typeof (last && last.comments) === 'number' && last.comments > 0) guidance.push({ rule: 'conservar_pregunta', text: 'La pregunta final generó conversación: conservar el patrón y medirlo de nuevo.' });\r\n\r\n  return {\r\n    version: 1, generated_at: new Date(now).toISOString(), piece_id: piece.id, topic: piece.topic || pj.topic || null, channel: piece.channel, platform, format: piece.format, category: piece.category, hook,\r\n    initial_score: Number.isFinite(score) ? score : null, published_at: piece.published_at || null,\r\n    metrics: { windows, used_window: lastWin, actions, available: ['likes', 'comments', 'shares'].filter((k) => last && typeof last[k] === 'number'), not_available: ['clicks', 'impresiones por publicación', 'alcance por publicación'],\r\n      account_context: last ? { impressions_7d: last.account_impressions_7d ?? null, reach_7d: last.account_reach_7d ?? null, followers: last.account_followers ?? null, posts_7d: last.account_posts_7d ?? null, note: 'Estadísticas de la cuenta (últimos 7 días al capturar), no de esta publicación.' } : null },\r\n    comparison, worked, not_worked: notWorked, hypotheses, guidance, caveats, confidence: samePlatform.length >= 5 ? 'media' : 'baja',\r\n  };\r\n}\n\nconst plan = $json;\nconst row = buildSnapshot({ due: plan.due, platform: plan.platform, account_id: plan.account_id, now: Date.now() });\nreturn { json: { skipped: false, row: { icp_pack_id: '0ba54785-bff0-4a2d-a397-64e697d34e38', ...row } } };"
+      }
+    },
+    {
+      "id": "716219da-c694-4ce2-a11a-f7622aa3a6aa",
+      "name": "Fetch GHL Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        220
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4Vc6nfxyKjZ14Bep",
+          "name": "GHL — Atacama OS"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://services.leadconnectorhq.com/social-media-posting/pxHuOsiz2i3lM6BtC9IM/posts/\" + $json.ghl_post_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "a805505b-a69d-46ea-b20e-52652662c482",
+      "name": "Fetch Account Stats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        220
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "4Vc6nfxyKjZ14Bep",
+          "name": "GHL — Atacama OS"
+        }
+      },
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/social-media-posting/statistics?locationId=pxHuOsiz2i3lM6BtC9IM",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ profileIds: [$(\"Plan\").item.json.profile_id], platforms: [] }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "3c7009a2-2828-49ad-9c16-351a3cd0d998",
+      "name": "Build Snapshot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        220
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "function planMetrics(pieces, metrics, now) {\r\n  const WINDOWS = [{ w: '24h', h: 24, grace: 12 }, { w: '72h', h: 72, grace: 24 }, { w: '7d', h: 168, grace: 48 }];\r\n  const have = {};\r\n  (Array.isArray(metrics) ? metrics : []).forEach((m) => { (have[m.content_piece_id] = have[m.content_piece_id] || {})[m.metric_window] = m.status || 'ok'; });\r\n  const snapshots = [];\r\n  const learn = [];\r\n  (Array.isArray(pieces) ? pieces : []).forEach((p) => {\r\n    if (!p || !p.ghl_post_id || !p.published_at) return;\r\n    const pub = Date.parse(p.published_at);\r\n    if (!Number.isFinite(pub)) return;\r\n    const mine = have[p.id] || {};\r\n    WINDOWS.forEach((win) => {\r\n      if (mine[win.w]) return;\r\n      const due = pub + win.h * 3600000;\r\n      if (now < due) return;\r\n      const hours = Math.round(((now - pub) / 3600000) * 100) / 100;\r\n      const expired = now > due + win.grace * 3600000;\r\n      snapshots.push({ piece_id: p.id, ghl_post_id: p.ghl_post_id, channel: p.channel, is_test: p.is_test === true, window: win.w, due_at: new Date(due).toISOString(), hours_since_published: hours, missed: expired });\r\n    });\r\n    const sevenDone = Boolean(mine['7d']);\r\n    const sevenExpired = now > pub + (168 + 48) * 3600000;\r\n    if (!p.learning && (sevenDone || sevenExpired)) learn.push({ piece_id: p.id });\r\n  });\r\n  return { snapshots, learn };\r\n}\n\nfunction extractPostMetrics(post) {\r\n  const ins = post && post.insights && typeof post.insights === 'object' ? post.insights : null;\r\n  const num = (...vals) => { for (const v of vals) { if (typeof v === 'number' && Number.isFinite(v)) return Math.round(v); if (typeof v === 'string' && /^\\d+$/.test(v)) return Number(v); } return null; };\r\n  if (!ins) return { likes: null, comments: null, shares: null, extra: {}, available: [] };\r\n  const out = { likes: num(ins.like, ins.likes), comments: num(ins.comment, ins.comments), shares: num(ins.share, ins.shares), extra: {} };\r\n  const known = ['like', 'likes', 'comment', 'comments', 'share', 'shares'];\r\n  Object.keys(ins).forEach((k) => { if (!known.includes(k) && typeof ins[k] === 'number') out.extra[k] = ins[k]; });\r\n  out.available = ['likes', 'comments', 'shares'].filter((k) => out[k] !== null).concat(Object.keys(out.extra));\r\n  return out;\r\n}\n\nfunction extractAccountStats(res, platform) {\r\n  const r = res && res.results ? res.results : res;\r\n  if (!r || typeof r !== 'object' || !r.totals) return null;\r\n  const n = (v) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : null);\r\n  const eng = r.breakdowns && r.breakdowns.engagement && r.breakdowns.engagement[platform] ? r.breakdowns.engagement[platform] : {};\r\n  return {\r\n    impressions: n(r.totals.impressions), reach: n(r.breakdowns && r.breakdowns.reach ? r.breakdowns.reach.total : null), followers: n(r.totals.followers), posts: n(r.totals.posts),\r\n    likes: n(r.totals.likes), comments: n(r.totals.comments), shares: n(eng.shares),\r\n    daily_impressions: Array.isArray(r.postPerformance && r.postPerformance.impressions) ? r.postPerformance.impressions : null, day_range: r.dayRange || null,\r\n  };\r\n}\n\nfunction buildSnapshot(input) {\r\n  const d = input.due || {};\r\n  const base = { content_piece_id: d.piece_id, ghl_post_id: d.ghl_post_id, platform: input.platform, account_id: input.account_id, metric_window: d.window, due_at: d.due_at, captured_at: new Date(input.now).toISOString(), hours_since_published: d.hours_since_published, late: false };\r\n  if (d.missed) return { ...base, status: 'error', error: 'ventana_perdida: no se capturó dentro de la tolerancia; no se estima', late: true, raw_metrics: { reason: 'missed' } };\r\n  const pm = input.postMetrics || { likes: null, comments: null, shares: null, extra: {}, available: [] };\r\n  const acc = input.accountStats || null;\r\n  const hasPost = pm.available && pm.available.length > 0;\r\n  if (!input.postFound && !acc) return null;\r\n  const errors = [];\r\n  if (!input.postFound) errors.push('post_no_encontrado');\r\n  else if (!hasPost) errors.push('post_sin_insights');\r\n  if (!acc) errors.push('sin_estadisticas_de_cuenta');\r\n  return {\r\n    ...base, status: errors.length ? 'partial' : 'ok', error: errors.length ? errors.join(',') : null,\r\n    likes: pm.likes, comments: pm.comments, shares: pm.shares,\r\n    account_impressions_7d: acc ? acc.impressions : null, account_reach_7d: acc ? acc.reach : null, account_followers: acc ? acc.followers : null, account_posts_7d: acc ? acc.posts : null,\r\n    raw_metrics: { post_insights: input.postFound && input.rawInsights ? input.rawInsights : null, post_insights_extra: pm.extra || {}, account_stats: acc },\r\n  };\r\n}\n\nfunction actionsOf(row) {\r\n  if (!row) return null;\r\n  const v = [row.likes, row.comments, row.shares].filter((x) => typeof x === 'number');\r\n  return v.length ? v.reduce((a, b) => a + b, 0) : null;\r\n}\n\nfunction buildLearning(piece, rows, peers, now) {\r\n  const sorted = ['24h', '72h', '7d'];\r\n  const byWin = {};\r\n  (Array.isArray(rows) ? rows : []).forEach((r) => { byWin[r.metric_window] = r; });\r\n  const windows = {};\r\n  sorted.forEach((w) => { const r = byWin[w]; windows[w] = r ? { status: r.status, late: r.late === true, likes: r.likes ?? null, comments: r.comments ?? null, shares: r.shares ?? null, actions: actionsOf(r) } : null; });\r\n  const last = byWin['7d'] && byWin['7d'].status !== 'error' ? byWin['7d'] : (byWin['72h'] && byWin['72h'].status !== 'error' ? byWin['72h'] : (byWin['24h'] && byWin['24h'].status !== 'error' ? byWin['24h'] : null));\r\n  const lastWin = last ? last.metric_window : null;\r\n  const actions = last ? actionsOf(last) : null;\r\n  const pj = piece.piece || {};\r\n  const hook = (pj.hook || piece.hook || '').toString();\r\n  const platform = piece.channel === 'instagram' ? 'instagram' : 'linkedin';\r\n  const samePlatform = (Array.isArray(peers) ? peers : []).filter((p) => p && p.id !== piece.id && (p.channel === 'instagram' ? 'instagram' : 'linkedin') === platform && typeof p.actions === 'number');\r\n  const caveats = ['Las impresiones, el alcance y los seguidores son de la cuenta, no de esta publicación.', 'GHL no entrega clics.'];\r\n  const worked = [];\r\n  const notWorked = [];\r\n  const hypotheses = [];\r\n  const guidance = [];\r\n  const comparison = { basis: 'sin_base', peers_n: samePlatform.length, peer_median_actions: null, ratio: null };\r\n\r\n  if (lastWin !== '7d') caveats.push(lastWin ? 'Falta la ventana de 7 días: el aprendizaje usa la última ventana disponible (' + lastWin + ').' : 'No hay ninguna ventana de métricas válida: no se puede evaluar el desempeño.');\r\n  Object.keys(windows).forEach((w) => { if (windows[w] && windows[w].late) caveats.push('La ventana ' + w + ' se capturó fuera de su tolerancia.'); });\r\n\r\n  if (actions === null) {\r\n    notWorked.push('GHL no entregó interacciones de esta publicación: no se puede evaluar.');\r\n  } else {\r\n    const c = last.comments;\r\n    if (actions === 0) notWorked.push('0 interacciones (me gusta, comentarios y compartidos) a ' + lastWin + '.');\r\n    if (typeof c === 'number' && c > 0) worked.push('Generó ' + c + ' comentario' + (c === 1 ? '' : 's') + ' a ' + lastWin + '.');\r\n    if (typeof last.shares === 'number' && last.shares > 0) worked.push('Fue compartida ' + last.shares + ' vez' + (last.shares === 1 ? '' : 'es') + ' a ' + lastWin + '.');\r\n    if (samePlatform.length >= 3) {\r\n      const a = samePlatform.map((p) => p.actions).sort((x, y) => x - y);\r\n      const mid = a.length % 2 ? a[(a.length - 1) / 2] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2;\r\n      comparison.basis = 'misma_plataforma'; comparison.peer_median_actions = mid; comparison.ratio = mid > 0 ? Math.round((actions / mid) * 100) / 100 : null;\r\n      if (mid > 0 && actions >= mid * 1.25) worked.push('Más interacciones (' + actions + ') que la mediana de tus publicaciones en ' + platform + ' (' + mid + ').');\r\n      else if (mid > 0 && actions <= mid * 0.75) notWorked.push('Menos interacciones (' + actions + ') que la mediana de tus publicaciones en ' + platform + ' (' + mid + ').');\r\n      else if (mid === 0 && actions > 0) worked.push('Primera con interacciones entre tus publicaciones en ' + platform + '.');\r\n      else if (!worked.length && !notWorked.length) caveats.push('Interacciones dentro del rango habitual de tus publicaciones en ' + platform + '.');\r\n    } else {\r\n      caveats.push('Sin base de comparación suficiente en ' + platform + ' (pares: ' + samePlatform.length + ', se piden 3): no se puede decir si el resultado es alto o bajo.');\r\n    }\r\n  }\r\n  const score = Number(piece.score);\r\n  if (Number.isFinite(score) && actions === 0 && score >= 80) hypotheses.push('Hipótesis (no demostrada): el score inicial (' + score + ') mide calidad editorial, no interés; con una sola publicación no se puede saber si el tema, el canal o el horario influyeron.');\r\n  if (piece.category === 'Founder' && typeof (last && last.comments) === 'number' && last.comments > 0) hypotheses.push('Hipótesis (no demostrada): el texto en primera persona con una pregunta final podría invitar a comentar; hay que repetir el patrón para confirmarlo.');\r\n  if (piece.format === 'carrusel' && typeof (last && last.shares) === 'number' && last.shares > 0) hypotheses.push('Hipótesis (no demostrada): los carruseles podrían guardarse o compartirse más que el texto; falta comparar con más piezas.');\r\n  if (!hypotheses.length) hypotheses.push('Con ' + (samePlatform.length + 1) + ' publicación(es) medida(s) en ' + platform + ' no hay base para una hipótesis útil; seguir acumulando datos antes de cambiar el enfoque.');\r\n\r\n  if (hook) guidance.push({ rule: 'no_repetir_hook', text: 'No repetir exactamente este hook: «' + hook + '».' });\r\n  if (actions === 0) guidance.push({ rule: 'variar_angulo', text: 'Probar otro ángulo o canal antes de repetir este tema (muestra n=1, no concluyente).' });\r\n  if (typeof (last && last.comments) === 'number' && last.comments > 0) guidance.push({ rule: 'conservar_pregunta', text: 'La pregunta final generó conversación: conservar el patrón y medirlo de nuevo.' });\r\n\r\n  return {\r\n    version: 1, generated_at: new Date(now).toISOString(), piece_id: piece.id, topic: piece.topic || pj.topic || null, channel: piece.channel, platform, format: piece.format, category: piece.category, hook,\r\n    initial_score: Number.isFinite(score) ? score : null, published_at: piece.published_at || null,\r\n    metrics: { windows, used_window: lastWin, actions, available: ['likes', 'comments', 'shares'].filter((k) => last && typeof last[k] === 'number'), not_available: ['clicks', 'impresiones por publicación', 'alcance por publicación'],\r\n      account_context: last ? { impressions_7d: last.account_impressions_7d ?? null, reach_7d: last.account_reach_7d ?? null, followers: last.account_followers ?? null, posts_7d: last.account_posts_7d ?? null, note: 'Estadísticas de la cuenta (últimos 7 días al capturar), no de esta publicación.' } : null },\r\n    comparison, worked, not_worked: notWorked, hypotheses, guidance, caveats, confidence: samePlatform.length >= 5 ? 'media' : 'baja',\r\n  };\r\n}\n\nconst plan = $('Plan').item.json;\nconst postRes = $('Fetch GHL Post').item.json || {};\nconst statRes = $input.item.json || {};\nconst post = postRes.body && postRes.body.results && postRes.body.results.post ? postRes.body.results.post : null;\nconst postFound = Boolean(post) && (postRes.statusCode || 0) < 300;\nconst stats = (statRes.statusCode || 0) < 300 ? extractAccountStats(statRes.body, plan.platform) : null;\nconst row = buildSnapshot({ due: plan.due, platform: plan.platform, account_id: plan.account_id, now: Date.now(), postFound, postMetrics: postFound ? extractPostMetrics(post) : null, rawInsights: postFound ? (post.insights || null) : null, accountStats: stats });\nif (!row) return { json: { skipped: true, reason: 'sin datos; se reintenta en la próxima corrida', piece_id: plan.due.piece_id, window: plan.due.window, post_http: postRes.statusCode, stats_http: statRes.statusCode } };\nreturn { json: { skipped: false, row: { icp_pack_id: '0ba54785-bff0-4a2d-a397-64e697d34e38', ...row } } };"
+      }
+    },
+    {
+      "id": "46f1bea7-884a-4f12-90be-6b16da7853ad",
+      "name": "Upsert Metric",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2160,
+        120
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "parameters": {
+        "method": "POST",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/content_metrics?on_conflict=content_piece_id,metric_window",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "resolution=ignore-duplicates,return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.skipped ? \"[]\" : JSON.stringify([$json.row]) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every 3 Hours": {
+      "main": [
+        [
+          {
+            "node": "Fetch Published",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Published": {
+      "main": [
+        [
+          {
+            "node": "Fetch Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Metrics": {
+      "main": [
+        [
+          {
+            "node": "Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan": {
+      "main": [
+        [
+          {
+            "node": "Is Learn?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Learn?": {
+      "main": [
+        [
+          {
+            "node": "Learning Patch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Missed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Learning Patch": {
+      "main": [
+        [
+          {
+            "node": "Patch Learning",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Missed?": {
+      "main": [
+        [
+          {
+            "node": "Build Missed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch GHL Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Missed": {
+      "main": [
+        [
+          {
+            "node": "Upsert Metric",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch GHL Post": {
+      "main": [
+        [
+          {
+            "node": "Fetch Account Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Account Stats": {
+      "main": [
+        [
+          {
+            "node": "Build Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Upsert Metric",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

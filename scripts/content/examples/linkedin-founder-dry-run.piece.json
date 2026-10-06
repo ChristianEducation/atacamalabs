@@ -26,7 +26,7 @@
       "external": false
     },
     {
-      "text": "Las dos primeras pruebas desde GHL llegaron con el ID de la oportunidad vacío y el flujo las rechazó",
+      "text": "Las primeras pruebas desde GHL llegaron con el ID de la oportunidad vacío y el flujo las rechazó",
       "external": false
     },
     {
@@ -82,7 +82,7 @@
   },
   "rationale": "Cuenta una decisión de producto real y verificable (ensayo por defecto) con un detalle vivido: las dos primeras pruebas llegaron vacías y el flujo las rechazó. Sin frases de founder genéricas; cierra con una pregunta concreta. Voz en primera persona: Christian debe confirmar que refleja su criterio antes de aprobar.",
   "hook": "Automatizamos el alta de clientes y lo primero que hicimos fue impedir que escribiera algo.",
-  "body": "Cuando una oportunidad pasa a «Ganada» en Atacama Labs, un flujo debe crear la empresa, el servicio contratado y el proyecto, y dejarlos relacionados.\n\nLo armamos al revés de lo habitual: primero devuelve el plan de lo que haría, y no escribe nada hasta que se le diga de forma explícita. Si esa señal falta o llega ambigua, asume ensayo.\n\nLas dos primeras pruebas desde GHL llegaron con el ID de la oportunidad vacío. El flujo las rechazó en vez de adivinar. La siguiente, ya con una oportunidad de prueba ganada de verdad en GHL, salió completa: empresa, servicio, proyecto y seis relaciones previstas, y cero registros escritos.\n\nTodavía no hay un cliente real pasando por ahí, y el ensayo no se apaga hasta que lo haya.\n\nSi hoy automatizaras un proceso de tu empresa, ¿cómo revisarías lo que hace antes de dejarlo solo?",
+  "body": "Cuando una oportunidad pasa a «Ganada» en Atacama Labs, un flujo debe crear la empresa, el servicio contratado y el proyecto, y dejarlos relacionados.\n\nLo armamos al revés de lo habitual: primero devuelve el plan de lo que haría, y no escribe nada hasta que se le diga de forma explícita. Si esa señal falta o llega ambigua, asume ensayo.\n\nLas primeras pruebas desde GHL llegaron con el ID de la oportunidad vacío. El flujo las rechazó en vez de adivinar. Cuando probamos con una oportunidad de prueba ganada de verdad en GHL, salió completa: empresa, servicio, proyecto y seis relaciones previstas, y cero registros escritos.\n\nTodavía no hay un cliente real pasando por ahí, y el ensayo no se apaga hasta que lo haya.\n\nSi hoy automatizaras un proceso de tu empresa, ¿cómo revisarías lo que hace antes de dejarlo solo?",
   "slides": [],
   "cta": {
     "type": "none",
