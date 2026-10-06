@@ -591,3 +591,76 @@ Cero publicaciones, cero aprobaciones, cero programaciones automáticas; los cue
 2. **Etiquetas:** Social Planner → Planner → Create post; en el campo *Tags* escribir `texto` y confirmar con Enter para crearla; repetir con `imagen`, `carrusel`, `demo`, `reel`; cerrar sin publicar.
 3. Decidir la cadencia del radar (reanudar el job `a46bd3138a0b` o mantenerlo manual).
 4. Confirmar que `c.wevarh@gmail.com` es quien aprueba (ver I4).
+
+## BLOQUE J — Aprobación + publicación + métricas + aprendizaje (6-oct-2026) · ✅ CICLO PREPARADO DE PUNTA A PUNTA
+
+Objetivo: Hermes / trabajo real → fuente → scoring → pieza → GHL `in_review` → **Christian aprueba** → `scheduled`/`published` → métricas 24 h / 72 h / 7 d → aprendizaje → mejor contenido siguiente. GHL sigue siendo la interfaz de aprobación; la aprobación **no** se automatiza.
+
+### J1. Piezas reales revisadas (antes de pedir aprobación)
+- **Noticia · LinkedIn Atacama Labs:** sin cambios (fuente de Anthropic verificada, tono y claim correctos, cierre con pregunta).
+- **Founder · LinkedIn Christian Wevar:** una corrección objetiva: decía «las dos primeras pruebas… la siguiente salió completa», pero las ejecuciones de n8n (workflow 11) muestran más pruebas entre medio. Ahora: «Las primeras pruebas desde GHL llegaron con el ID vacío… Cuando probamos con una oportunidad ganada de verdad, salió completa». Texto, claims, repo (`scripts/content/examples/`), GHL y Supabase quedaron iguales.
+
+### J2. Ciclo de aprobación observado en GHL (hechos verificados por API y en pantalla)
+| Paso | Qué pasa |
+|---|---|
+| Creación (workflow 12) | `status: in_review`, `postApprovalDetails: { approver, approvalStatus: "pending" }`, `scheduleDate` propuesta, `categoryId`, `tags` |
+| Quién aprueba | El usuario `approver` (`OjkAjHMdUjnblO7W1kBZ`); en la interfaz: Planner → lista → **⋮ de la fila → View / Edit / Approve / Reject / Delete** |
+| **Edit** (cambiar fecha/texto) | Guarda y **mantiene `in_review` + `pending`**: editar NO aprueba. Cambia `scheduleDate`/`displayDate` y `updatedAt` |
+| **Approve** | `status: in_review → scheduled`, `postApprovalDetails.approvalStatus: pending → approved`, y aparece **`approvalActionAt`** (timestamp exacto de la acción; está en la raíz del post, no dentro de `postApprovalDetails`). Respeta el `scheduleDate` vigente: no hace falta programar aparte |
+| Reject | `approvalStatus: rejected` (el mismo `approvalActionAt` se llena) → el sync lo marca `discarded` |
+| Publicación | `status: scheduled → published` y `publishedAt` se rellena (aún no observado: ninguna fecha ha llegado) |
+| Fallo | `status: failed` |
+| Borrado | el post desaparece de `posts/list` → `discarded` |
+| Edición humana del texto | `summary` cambia; el sync lo detecta por hash (`ghl_edited`) |
+
+Resultado real (6-oct, 18:51 UTC): ambos posts `scheduled` + `approved`. Founder → 7-oct 16:00 (Chile) = `2026-10-07T19:00Z`, `approvalActionAt 18:51:08Z`; Atacama Labs → 8-oct 10:00 (Chile) = `2026-10-08T13:00Z`, `approvalActionAt 18:51:04Z`. Cuando Christian dijo «aprobé» la primera vez, solo había editado fechas (seguían `in_review`/`pending`); la API y la pantalla lo mostraron y se pidió el clic en **Approve**. Lección: **la interfaz de GHL tiene dos acciones distintas (Edit y Approve); el estado manda, no el aviso.**
+
+### J3. Sincronización GHL → Supabase (workflow 14, cada 30 min, solo lectura en GHL)
+- Mapea: `draft→drafted`, `in_review→in_review | approved`, `scheduled/in_progress/publishing→scheduled`, `published→published (+published_at)`, `failed→failed`, rechazado o borrado→`discarded`.
+- Campos nuevos en `content_pieces`: `approved_at` (= `approvalActionAt`, solo si la aprobación figura `approved`), `approved_seen_at` (respaldo aproximado si GHL no diera la hora), `scheduled_at`, `published_at`, `ghl_status`, `ghl_approval_status`, `ghl_summary_hash` + `ghl_edited`/`ghl_edited_seen_at` (el texto fue editado en GHL), `synced_at`.
+- Solo escribe cuando algo cambió (estado, aprobación, fecha reprogramada, edición, aprobación vista); sin piezas abiertas no llama a GHL. Las piezas `published` dejan de consultarse.
+
+### J4. Métricas reales que entrega GHL (verificado el 6-oct-2026)
+| Dato | Instagram | LinkedIn página | LinkedIn personal | Notas |
+|---|---|---|---|---|
+| Por publicación (`post.insights`): me gusta, comentarios, compartidos | campo presente (sin verificar con una publicación real) | campo presente (sin verificar) | campo presente (sin verificar) | `{like, comment, share}`; hoy llega en 0 en los posts programados; los valores reales se confirmarán con la primera publicación |
+| Clics | **no** | **no** | **no** | no se inventan |
+| Por **cuenta** (`POST /social-media-posting/statistics?locationId=`, `profileIds`=`profileId` de la cuenta, **no** `id`): impresiones, alcance, seguidores, publicaciones, me gusta, comentarios | sí | sí | sí (ceros hasta tener publicaciones) | siempre **últimos 7 días, por día**; sin rango de fechas; compartidos solo dentro de `breakdowns.engagement` |
+| Impresiones / alcance **por publicación** | **no** | **no** | **no** | solo se puede inferir por día si hubo una sola publicación ese día; **no se hace** |
+| Posts nativos (publicados fuera de GHL) | aparecen en la pantalla, **no** en `posts/list` | — | — | por eso no se miden |
+- No hay métrica común entre plataformas. `actions` = me gusta + comentarios + compartidos es solo un comparador orientativo **dentro de la misma plataforma**.
+
+### J5. Estructura de datos (migración `20261007_content_metrics_learning.sql`, aplicada)
+- `content_metrics` (RLS activado, sin políticas, `revoke` a anon/authenticated): una fila por (`content_piece_id`, `metric_window` ∈ 24h/72h/7d) — **única**, no se repite. Columnas: `ghl_post_id`, `platform`, `account_id`, `due_at`, `captured_at`, `hours_since_published`, `late`, `status` (ok/partial/error), `error`, **por publicación** `likes`, `comments`, `shares`; **por cuenta (contexto, no atribuible)** `account_impressions_7d`, `account_reach_7d`, `account_followers`, `account_posts_7d`; `raw_metrics` JSONB (insights y estadísticas tal cual llegan).
+- `content_pieces`: `approved_at`, `approved_seen_at`, `ghl_summary_hash`, `ghl_edited`, `ghl_edited_seen_at`, `learning` JSONB, `learned_at`.
+
+### J6. Workflow n8n `Atacama Labs - 15 Content Metrics` (id `HDUZ0nrGFiO01hYN`, activo)
+Cada **3 horas**: lee piezas `published` + sus snapshots → **decide sin llamar a GHL** si toca 24 h / 72 h / 7 d → solo si toca: lee el post (`insights`) y las estadísticas de la cuenta (solo lectura) → guarda una fila (`ignore-duplicates`). Tolerancias: 24 h (+12 h), 72 h (+24 h), 7 d (+48 h); pasada la tolerancia la ventana se registra como `ventana_perdida` (no se estima ni se mide tarde). Fallos de GHL no rompen el workflow: si el post y las estadísticas fallan no se guarda nada y se reintenta en la siguiente corrida; si falta una de las dos fuentes, el snapshot queda `partial` con el motivo. No aprueba, no programa, no publica.
+- **Prueba en vivo** (copia desechable por webhook + pieza TEST con el reloj de la fila adelantado como fixture, todo borrado): 24 h guardada → misma corrida otra vez no duplica → 72 h → 7 d → siguiente corrida genera el aprendizaje → corridas posteriores no repiten nada. Pruebas unitarias: `scripts/content/metrics-core.test.mjs` (38) y `n8n/build/content-metrics.test.mjs` (30).
+- **Estado real:** no hay snapshots reales todavía; la primera publicación es el 7-oct 16:00 (Chile), el 24 h cae el 8-oct ~16:00 y el 7 d el 14-oct.
+
+### J7. Aprendizaje (determinista, sin LLM, sin causalidad)
+A los 7 días el workflow 15 guarda en `content_pieces.learning`: tema, canal, formato, hook, categoría, score inicial, ventanas de métricas, qué funcionó, qué no, hipótesis (siempre marcadas «no demostrada»), guía (`no_repetir_hook`, etc.), advertencias y `confidence` (**baja** salvo ≥5 pares de la misma plataforma; nunca alta). Compara contra la mediana de piezas **de la misma plataforma** solo con ≥3 pares; sin pares lo dice. Las métricas de cuenta se marcan como contexto, y los clics como no disponibles.
+- **Consulta:** workflow `16 Content Learnings` (`f29HJ40N7Vz8M3Rm`): `GET /webhook/atacama-content-learnings` con `X-Atacama-Key` → hooks a no repetir, piezas recientes, agregados por canal/categoría/formato (n<5 = tentativo), aprendizajes. CLI: `node scripts/content/learnings.mjs`. El prompt de Hermes `content-radar` lo consulta antes de buscar (1 llamada).
+
+### J8. Etiquetas y categorías de Social Planner
+Categorías (6) y etiquetas (`texto`, `imagen`, `carrusel`, `demo`, `reel`) existen. Las etiquetas solo se crean al **guardar** un post desde el compositor (Advanced options → Social tags); se creó un borrador de configuración y se borró. El workflow 12 envía `categoryId` según la categoría y `tags` según el formato. Las dos piezas reales llevan categoría y etiqueta `texto`.
+
+### J9. Cadencia editorial objetivo (acordada con Christian, 6-oct-2026)
+| Día | Publicar |
+|---|---|
+| **Día A** | LinkedIn personal (Christian Wevar) **+** Instagram Atacama Labs |
+| **Día B** | LinkedIn Atacama Labs |
+| **Día C** | Descanso |
+Repetir A → B → C. **No se fuerza publicación:** si no existe contenido con score ≥ 70 para el canal del día, ese día no se publica (0 publicaciones es válido). Sobre la cadencia: Founder = Día A (7-oct) y Atacama Labs = Día B (8-oct); el 9-oct sería Día C (descanso). Cada pieza sigue pasando por `in_review` y la aprobación humana.
+
+### J10. Content Radar (Hermes)
+Job `a46bd3138a0b` **pausado** (semanal, lunes 12:00 UTC si se reanuda). No se hizo otra corrida real. Recomendación: reanudar **1 vez por semana (lunes)**, y pasar a 2 por semana (lunes y jueves, días hábiles) solo después de tener los primeros aprendizajes de 7 días y si hay capacidad de revisar lo que genera; nunca diario mientras la aprobación sea manual.
+
+### J11. Seguridad y límites
+Cero publicaciones automáticas (ninguna aprobación ni programación fue hecha por el sistema; las dos aprobaciones las hizo Christian en la interfaz de GHL; GHL publicará en las fechas programadas). No se creó ningún post público de prueba. Sin Gmail, prospección, leads 60–79, `dry_run` de Won, clientes reales, EnBandeja ni web de producción. **Limitaciones:** métricas por publicación = solo me gusta/comentarios/compartidos; impresiones y alcance por cuenta (7 días); posts nativos de Instagram no medibles por API; los datos reales de 24 h/72 h/7 d dependen del paso del tiempo; `approvalActionAt` también se llena al rechazar; sin historial de ediciones (solo detección por hash).
+
+### J12. Verificación final (6-oct-2026, 19:01 UTC)
+- **Sync real (ejecución programada de las 19:00, n8n 23347):** ambas piezas `scheduled`, `ghl_approval_status = approved`, `approved_at` exacto (`18:51:08Z` Founder, `18:51:04Z` Atacama Labs, de `approvalActionAt`), `scheduled_at` correcto, `ghl_edited = false`, `published_at` vacío (aún no publicadas).
+- **Workflow 15:** activo; la corrida programada de las 18:00 UTC terminó OK sin tocar GHL (no había publicaciones). `content_metrics` = 0 filas reales (correcto); 0 piezas/fuentes TEST residuales.
+- **GHL:** exactamente 2 posts programados (7-oct 19:00Z y 8-oct 13:00Z); ninguna otra publicación o programación creada por el sistema.

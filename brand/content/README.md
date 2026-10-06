@@ -52,3 +52,13 @@ hecho verificable no se inventa una noticia; se usa evergreen o no se publica. D
 
 Los exportables de `social/exports/` (C01–C06) usan la **paleta anterior (marrón `#4E2E1E` / crema) y el isotipo antiguo de 5 curvas**.
 No son la identidad actual y no deben publicarse ni usarse de base visual sin rehacerlos.
+
+## Cadencia editorial objetivo (acordada el 6-oct-2026)
+
+| Día | Publicar |
+|---|---|
+| **A** | LinkedIn personal (Christian Wevar) + Instagram Atacama Labs |
+| **B** | LinkedIn Atacama Labs |
+| **C** | Descanso |
+
+Se repite A → B → C. **No se fuerza publicación:** si no existe contenido con score ≥ 70 para el canal del día, ese día no se publica. Toda pieza pasa por revisión y aprobación humana en GHL Social Planner (detalle: `docs/ATACAMA-OS-IMPLEMENTATION.md`, Bloque J).

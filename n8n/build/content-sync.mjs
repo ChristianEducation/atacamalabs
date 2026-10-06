@@ -49,8 +49,9 @@ export function mapGhlToPiece(post, now, piece) {
   else if (st === 'deleted') out.status = 'discarded';
   else out.status = null; // estado desconocido: no se toca la pieza
   if (out.status === null) return out;
-  // Fecha de aprobación: solo si GHL la expone en el post; si no, se registra cuándo se VIO aprobado (aproximada, por la frecuencia de sincronización).
-  const exact = det.approvedAt || det.approvalDate || det.approvedOn || null;
+  // Fecha de aprobación: GHL la entrega como `post.approvalActionAt` (verificado el 6-oct-2026 al aprobar los dos posts reales; el mismo campo se llena al rechazar, por eso solo cuenta si la aprobación figura approved).
+  // Si no viniera, se registra cuándo se VIO aprobado (aproximada, por la frecuencia de sincronización).
+  const exact = (approval === 'approved' && post.approvalActionAt) || det.approvedAt || det.approvalDate || det.approvedOn || null;
   if (exact && !cur.approved_at && Number.isFinite(Date.parse(exact))) out.approved_at = new Date(exact).toISOString();
   const approvedNow = approval === 'approved' || out.status === 'scheduled' || out.status === 'published';
   if (approvedNow && !cur.approved_seen_at && (cur.status === 'in_review' || cur.status === 'approved' || cur.status === 'drafted' || approval === 'approved')) out.approved_seen_at = new Date(now).toISOString();

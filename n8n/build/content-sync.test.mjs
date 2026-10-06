@@ -32,6 +32,10 @@ t('frecuencia moderada (30 min)', wf.nodes[0].parameters.rule.interval[0].minute
 const inRev = { status: 'in_review', ghl_summary_hash: summaryHash('Texto original'), ghl_edited: false, approved_seen_at: null, approved_at: null };
 let r2 = mapGhlToPiece({ status: 'scheduled', scheduleDate: '2026-10-13T13:00:00.000Z', summary: 'Texto original', postApprovalDetails: { approvalStatus: 'approved' } }, now, inRev);
 t('aprobado y programado: status scheduled + approved_seen_at', r2.status === 'scheduled' && r2.approved_seen_at === new Date(now).toISOString() && !r2.ghl_edited && !r2.approved_at, JSON.stringify(r2));
+r2 = mapGhlToPiece({ status: 'scheduled', scheduleDate: '2026-10-07T19:00:00.000Z', summary: 'Texto original', approvalActionAt: '2026-10-06T18:51:08.149Z', postApprovalDetails: { approvalStatus: 'approved' } }, now, inRev);
+t('forma real de GHL: approvalActionAt => approved_at exacto + scheduled', r2.approved_at === '2026-10-06T18:51:08.149Z' && r2.status === 'scheduled' && r2.scheduled_at === '2026-10-07T19:00:00.000Z', JSON.stringify(r2));
+r2 = mapGhlToPiece({ status: 'in_review', summary: 'Texto original', approvalActionAt: '2026-10-06T18:51:08.149Z', postApprovalDetails: { approvalStatus: 'rejected' } }, now, inRev);
+t('rechazo: approvalActionAt NO se toma como aprobación', r2.approved_at === undefined && r2.status === 'discarded');
 r2 = mapGhlToPiece({ status: 'scheduled', summary: 'Texto original', postApprovalDetails: { approvalStatus: 'approved', approvedAt: '2026-10-12T20:00:00.000Z' } }, now, inRev);
 t('si GHL expone la fecha de aprobación se guarda exacta', r2.approved_at === '2026-10-12T20:00:00.000Z');
 r2 = mapGhlToPiece({ status: 'scheduled', summary: 'Texto original', postApprovalDetails: { approvalStatus: 'approved' } }, now, { ...inRev, approved_seen_at: '2026-10-12T00:00:00.000Z' });
