@@ -18,6 +18,9 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import { evaluatePiece } from '../../scripts/content/engine-core.mjs';
 import { summaryHash } from '../../scripts/content/metrics-core.mjs';
+import * as schedule from '../../scripts/content/schedule-core.mjs';
+
+const SCHEDULE_LIB = Object.values(schedule).filter((f) => typeof f === 'function').map((f) => f.toString()).join('\n\n');
 
 const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 const PACK_ID = '0ba54785-bff0-4a2d-a397-64e697d34e38'; // icp_packs.atacama-labs
@@ -47,6 +50,8 @@ const sb = (name, method, urlExpr, bodyExpr, pos, prefer) => ({ id: randomUUID()
     ...(bodyExpr ? { sendBody: true, specifyBody: 'json', jsonBody: bodyExpr } : {}), options: full() } });
 
 const EVALUATE = `${evaluatePiece.toString()}
+
+${SCHEDULE_LIB}
 
 const PACK_ID = '${PACK_ID}';
 const ACCOUNTS = ${JSON.stringify(ACCOUNTS)};
@@ -88,16 +93,23 @@ const pieceRow = { icp_pack_id: PACK_ID, idea_key: ev.idea_key, topic: piece.top
   category: piece.category, score: ev.score, score_breakdown: ev.breakdown, rationale: piece.rationale, evidence_urls: ev.evidence_urls, piece,
   status: action === 'submit' ? 'drafted' : 'scored', ghl_account_id: ACCOUNTS[piece.channel], is_test: isTest, updated_at: new Date().toISOString() };
 
-// Propuesta de fecha: la sugerida si es ≥ 2 días en el futuro; si no, en 7 días a las 13:00 UTC (10:00 Chile). Es solo una propuesta: nada se programa sin aprobación.
-const minDate = Date.now() + 2 * 86400000;
-let when = piece.schedule_suggestion ? new Date(piece.schedule_suggestion).getTime() : NaN;
-if (!Number.isFinite(when) || when < minDate) { const d = new Date(Date.now() + 7 * 86400000); d.setUTCHours(13, 0, 0, 0); when = d.getTime(); }
+// Fecha PROPUESTA — NUNCA hay fallback a +7 días (regla del 7-oct-2026; ver scripts/content/schedule-core.mjs): Noticia → próximo hueco (≤ 24 h), normal → ≤ 48 h,
+// Evergreen → ≤ 72 h, siempre America/Santiago y máx. 1 publicación por cuenta y día (se consideran los posts de Atacama OS y los manuales). Una fecha sugerida posterior
+// a 72 h solo vale con schedule_justification escrita. Es solo una propuesta: el post nace in_review y nada se programa ni publica sin aprobación.
+const nodeJson = (n) => { try { return $(n).first().json || {}; } catch (e) { return {}; } };
+const taken = [];
+const rowsSched = nodeJson('Fetch Scheduled').body;
+(Array.isArray(rowsSched) ? rowsSched : []).forEach((r) => { if (r && r.scheduled_at) taken.push({ account: r.ghl_account_id, at: Date.parse(r.scheduled_at) }); });
+const gp = (nodeJson('List GHL Posts').body || {}).results;
+((gp && Array.isArray(gp.posts)) ? gp.posts : []).forEach((q) => { if (q && q.scheduleDate && !['deleted', 'failed'].includes(q.status)) (q.accountIds || []).forEach((a) => taken.push({ account: a, at: Date.parse(q.scheduleDate) })); });
+const sched = proposeSlot({ now: Date.now(), channel: piece.channel, category: piece.category, account: ACCOUNTS[piece.channel], suggestion: piece.schedule_suggestion, justification: piece.schedule_justification, taken });
+const when = sched.ms;
 const summary = (isTest ? '[PRUEBA ATACAMA OS — NO PUBLICAR] ' : '') + ev.post_text;
 // Las etiquetas/categorías de Social Planner exigen ObjectIds creados desde la interfaz (la API con token de integración no puede crearlos): por ahora formato y categoría viajan en Supabase.
 const ghlBody = { accountIds: [ACCOUNTS[piece.channel]], summary, type: 'post', status: 'in_review', userId: APPROVER, media: media.map((m) => ({ url: m.url, type: m.type || 'image/png' })),
   scheduleDate: new Date(when).toISOString(), postApprovalDetails: { approver: APPROVER }, ...(CATEGORIES[piece.category] ? { categoryId: CATEGORIES[piece.category] } : {}), ...(TAGS[piece.format] ? { tags: [TAGS[piece.format]] } : {}) };
 if (ghlBody.status !== 'in_review') throw new Error('SEGURIDAD: este workflow solo puede crear posts en in_review.');
-return [{ json: { ...base, action, holdReason, sourcesBody, existingSourceIds, pieceRow, ghlBody } }];`;
+return [{ json: { ...base, action, holdReason, sourcesBody, existingSourceIds, pieceRow, ghlBody, schedule: sched } }];`;
 
 const BUILD_ROW = `if (($json.statusCode || 0) >= 300) throw new Error('Supabase content_sources falló (HTTP ' + $json.statusCode + '): ' + JSON.stringify($json.body || {}).slice(0, 300));
 const ev = $('Evaluate').first().json;
@@ -122,7 +134,8 @@ const saved = Array.isArray($('Upsert Piece').first().json.body) ? $('Upsert Pie
 return [{ json: { ok: true, action: 'held', reason: ev.holdReason, score: ev.evaluation.score, piece_id: saved && saved.id, status: saved && saved.status, breakdown: ev.evaluation.breakdown, lint_hits: ev.evaluation.lint_hits } }];`;
 const RESP_SUBMITTED = `const c = $('Check GHL').first().json;
 return [{ json: { ok: true, action: 'in_review', ghl_post_id: c.ghl_post_id, piece_id: ((($('Mark In Review').first().json.body) || [])[0] || {}).id || null, score: c.evaluation.score, channel: c.pieceRow.channel, status: 'in_review',
-  note: 'Quedó en GHL Social Planner como in_review. Nada se programó ni publicó.' } }];`;
+  proposed_for: c.schedule.iso, proposed_label: c.schedule.label, proposed_in_hours: c.schedule.hours_ahead, schedule_warnings: c.schedule.warnings,
+  note: 'Quedó en GHL Social Planner como in_review (fecha propuesta: ' + c.schedule.label + ' hora de Chile). Nada se programó ni publicó.' } }];`;
 
 export function buildContentIntake() {
   const nodes = [
@@ -130,7 +143,12 @@ export function buildContentIntake() {
       parameters: { httpMethod: 'POST', path: 'atacama-content-intake', authentication: 'headerAuth', responseMode: 'lastNode', options: {} } },
     sb('Fetch Keys', 'GET', `${SUPABASE}/rest/v1/content_pieces?icp_pack_id=eq.${PACK_ID}&select=idea_key&limit=1000`, null, [240, 0]),
     sb('Fetch Sources', 'GET', `${SUPABASE}/rest/v1/content_sources?icp_pack_id=eq.${PACK_ID}&select=id,source_key,verified&limit=3000`, null, [360, 0]),
-    code('Evaluate', EVALUATE, [600, 0]),
+    { ...sb('Fetch Scheduled', 'GET', `={{ "${SUPABASE}/rest/v1/content_pieces?icp_pack_id=eq.${PACK_ID}&scheduled_at=gte." + new Date(Date.now() - 36 * 3600000).toISOString() + "&status=in.(drafted,in_review,approved,scheduled,published)&select=ghl_account_id,scheduled_at,status&limit=300" }}`, null, [480, 0]), continueOnFail: true, alwaysOutputData: true },
+    { id: randomUUID(), name: 'List GHL Posts', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [600, 0], credentials: GHL_CRED, continueOnFail: true, alwaysOutputData: true,
+      parameters: { method: 'POST', url: `https://services.leadconnectorhq.com/social-media-posting/${GHL_LOCATION}/posts/list`, authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth',
+        sendHeaders: true, headerParameters: { parameters: [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', value: 'application/json' }] },
+        sendBody: true, specifyBody: 'json', jsonBody: `={{ JSON.stringify({ type: 'all', accounts: ${JSON.stringify(Object.values(ACCOUNTS).join(','))}, skip: '0', limit: '100', fromDate: new Date(Date.now() - 2 * 86400000).toISOString(), toDate: new Date(Date.now() + 45 * 86400000).toISOString(), includeUsers: 'false' }) }}`, options: full() } },
+    code('Evaluate', EVALUATE, [720, 0]),
     iff('Rejected?', '$json.action === "reject"', [720, 0]),
     code('Respond Rejected', RESP_REJECT, [960, -140]),
     sb('Upsert Sources', 'POST', `${SUPABASE}/rest/v1/content_sources?on_conflict=icp_pack_id,source_key`, '={{ JSON.stringify($json.sourcesBody) }}', [960, 60], 'resolution=merge-duplicates,return=representation'),
@@ -151,7 +169,9 @@ export function buildContentIntake() {
   const connections = {
     'Intake Webhook': { main: [to('Fetch Keys')] },
     'Fetch Keys': { main: [to('Fetch Sources')] },
-    'Fetch Sources': { main: [to('Evaluate')] },
+    'Fetch Sources': { main: [to('Fetch Scheduled')] },
+    'Fetch Scheduled': { main: [to('List GHL Posts')] },
+    'List GHL Posts': { main: [to('Evaluate')] },
     'Evaluate': { main: [to('Rejected?')] },
     'Rejected?': { main: [to('Respond Rejected'), to('Upsert Sources')] },
     'Upsert Sources': { main: [to('Build Row')] },

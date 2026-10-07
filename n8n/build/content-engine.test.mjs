@@ -14,14 +14,45 @@ const run = (name, { nodes = {}, json = {}, input }) => {
   const f = new Function('$', '$json', '$input', '$items', codeOf(name));
   return f($, json, { first: () => ({ json: input ?? json }) }, null);
 };
-const evaluate = (body, keys = [], db = []) => run('Evaluate', { nodes: { 'Intake Webhook': { body }, 'Fetch Keys': { body: keys.map((k) => ({ idea_key: k })) }, 'Fetch Sources': { body: db } }, json: { statusCode: 200, body: [] } })[0].json;
+const evaluate = (body, keys = [], db = [], extra = {}) => {
+  const realNow = Date.now; if (extra.now) Date.now = () => extra.now;
+  try {
+    return run('Evaluate', { nodes: { 'Intake Webhook': { body }, 'Fetch Keys': { body: keys.map((k) => ({ idea_key: k })) }, 'Fetch Sources': { body: db }, 'Fetch Scheduled': { body: extra.scheduled || [] }, 'List GHL Posts': { body: { results: { posts: extra.ghlPosts || [] } } } }, json: { statusCode: 200, body: [] } })[0].json;
+  } finally { Date.now = realNow; }
+};
 
 // Evaluate
 let r = evaluate({ piece: base, test: true });
 t('LinkedIn texto candidato => submit', r.action === 'submit' && r.evaluation.score >= 70, JSON.stringify(r.evaluation.errors));
 t('post a GHL: in_review, cuenta y aprobador correctos', r.ghlBody.status === 'in_review' && r.ghlBody.accountIds[0] === ACCOUNTS.linkedin_profile && r.ghlBody.postApprovalDetails.approver === APPROVER_USER_ID && r.ghlBody.userId === APPROVER_USER_ID);
 t('post de prueba lleva el prefijo NO PUBLICAR', r.ghlBody.summary.startsWith('[PRUEBA ATACAMA OS — NO PUBLICAR]'));
-t('scheduleDate en el futuro (>= 2 días)', new Date(r.ghlBody.scheduleDate).getTime() > Date.now() + 1.9 * 86400000);
+t('scheduleDate propuesta: futuro y dentro de 72 h (sin fallback a +7 días)', new Date(r.ghlBody.scheduleDate).getTime() > Date.now() && new Date(r.ghlBody.scheduleDate).getTime() <= Date.now() + 72 * 3600000, r.ghlBody.scheduleDate);
+{
+  // REGLA (7-oct-2026): sin solicitud explícita de publicar el 14, ninguna pieza termina el 14 por fallback.
+  const NOW7 = Date.parse('2026-10-07T19:30:00Z');
+  const dayCL = (iso) => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+  ['linkedin_profile', 'linkedin_page', 'instagram'].forEach((ch) => ['Noticia', 'Educativo', 'Evergreen', 'Founder'].forEach((cat) => [null, '2026-10-14T13:00:00Z'].forEach((sug) => {
+    const pc = clone(base); pc.channel = ch; pc.category = cat; pc.schedule_suggestion = sug;
+    if (ch === 'instagram') { pc.format = 'carrusel'; pc.visual_direction = 'Fondo claro'; pc.render = { media: [{ url: 'https://x/1.png' }, { url: 'https://x/2.png' }, { url: 'https://x/3.png' }] }; }
+    const q = evaluate({ piece: pc }, [], [], { now: NOW7 });
+    if (q.action !== 'submit') return;
+    t('7-oct: ' + ch + '/' + cat + '/' + (sug ? 'sugiere 14' : 'sin sugerencia') + ' no termina el 14 (' + q.ghlBody.scheduleDate + ')', dayCL(q.ghlBody.scheduleDate) !== '2026-10-14' && Date.parse(q.ghlBody.scheduleDate) - NOW7 <= 72 * 3600000);
+  })));
+  // una sugerencia a +7 días CON justificación explícita sí se respeta; sin ella, no
+  const pj = clone(base); pj.schedule_suggestion = '2026-10-14T13:00:00Z';
+  t('sugerencia al 14 sin justificación => ignorada con aviso', (() => { const q = evaluate({ piece: pj }, [], [], { now: NOW7 }); return dayCL(q.ghlBody.scheduleDate) !== '2026-10-14' && q.schedule.warnings.includes('sugerencia_posterior_a_72h_sin_justificacion_ignorada'); })());
+  pj.schedule_justification = 'Coincide con el lanzamiento del producto el 14 de octubre.';
+  t('sugerencia al 14 con justificación explícita => se respeta', dayCL(evaluate({ piece: pj }, [], [], { now: NOW7 }).ghlBody.scheduleDate) === '2026-10-14');
+  // choque: un post ya programado (Supabase o GHL, incluso manual) en la misma cuenta ese día => pasa al siguiente día; otra cuenta no estorba
+  const first = evaluate({ piece: base }, [], [], { now: NOW7 }).ghlBody.scheduleDate;
+  const q1 = evaluate({ piece: base }, [], [], { now: NOW7, scheduled: [{ ghl_account_id: ACCOUNTS.linkedin_profile, scheduled_at: first }] }).ghlBody.scheduleDate;
+  t('choque con un post de Supabase de la misma cuenta => otro día', dayCL(q1) !== dayCL(first), q1);
+  const q2 = evaluate({ piece: base }, [], [], { now: NOW7, ghlPosts: [{ _id: 'manual', status: 'scheduled', scheduleDate: first, accountIds: [ACCOUNTS.linkedin_profile] }] }).ghlBody.scheduleDate;
+  t('choque con un post manual de GHL de la misma cuenta => otro día', dayCL(q2) !== dayCL(first), q2);
+  const q3 = evaluate({ piece: base }, [], [], { now: NOW7, ghlPosts: [{ _id: 'otra', status: 'scheduled', scheduleDate: first, accountIds: [ACCOUNTS.instagram] }] }).ghlBody.scheduleDate;
+  t('un post de OTRA cuenta no estorba', q3 === first, q3);
+  t('la fecha propuesta sigue siendo solo propuesta: el post nace in_review', evaluate({ piece: base }, [], [], { now: NOW7 }).ghlBody.status === 'in_review');
+}
 t('sin media para texto', r.ghlBody.media.length === 0);
 t('fila de pieza: drafted, is_test, cuenta GHL', r.pieceRow.status === 'drafted' && r.pieceRow.is_test === true && r.pieceRow.ghl_account_id === ACCOUNTS.linkedin_profile);
 t('fuentes con source_key y verified', r.sourcesBody[0].source_key.startsWith('real_work:') && r.sourcesBody[0].verified === true);
