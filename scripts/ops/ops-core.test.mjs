@@ -1,0 +1,236 @@
+import assert from 'node:assert/strict';
+import * as oc from './ops-core.mjs';
+
+let n = 0;
+const ok = (name, fn) => { try { fn(); n++; } catch (e) { console.error('FAIL', name, '\n', e.stack.split('\n').slice(0, 4).join('\n')); process.exitCode = 1; } };
+
+const NOW = Date.parse('2026-10-08T11:30:00Z');            // jueves 08:30 Chile
+const iso = (msAgo) => new Date(NOW - msAgo).toISOString();
+const H = 3600000, D = 86400000;
+const STAGES = { nuevo: 'S-nuevo', investigado: 'S-inv', contactado: 'S-con', respondio: 'S-resp', diagnostico: 'S-diag', propuesta: 'S-prop', seguimiento: 'S-seg' };
+const CFG = { tz: 'America/Santiago', stages: STAGES };
+const opp = (name, stage, daysAgo, o) => ({ id: 'o-' + name, name: name + ' — Prospecto', pipelineStageId: STAGES[stage], contactId: 'c-' + name, lastStageChangeAt: iso(daysAgo * D), createdAt: iso(daysAgo * D), ...(o || {}) });
+const msg = (o) => ({ id: 'm' + Math.random().toString(36).slice(2, 7), candidate_id: 'k1', company_name: 'Alfa', kind: 'other', direction: 'inbound', status: 'received', created_at: iso(2 * H), metadata: {}, ...(o || {}) });
+const WF_ACTIVE = oc.monitoredWorkflows().map((w) => ({ id: w.id, name: w.label, active: true }));
+const execs = (status, mins) => Array.from({ length: 3 }, (_, i) => ({ status, startedAt: iso((mins + i * 5) * 60000) }));
+const HEALTHY_EXECS = () => { const e = {}; oc.monitoredWorkflows().forEach((w) => { e[w.id] = execs('success', w.every ? Math.min(w.every, 5) : 120); }); return e; };
+const HERMES_OK = () => ({ gateway_ok: true, disk_pct: 40, jobs: [{ id: 'j1', name: 'Atacama Labs — Prospect Radar', state: 'paused', enabled: false }, { id: 'j2', name: 'Atacama Labs — Content Radar', state: 'paused', enabled: false }, { id: 'j3', name: 'atacama-daily', state: 'scheduled', enabled: true, last_status: 'ok', last_run_at: iso(23 * H), next_run_at: new Date(NOW + 1 * H).toISOString(), failure_streak: 0 }] });
+const base = (o) => ({ now: NOW, cfg: CFG, opps: [], tasks: [], messages: [], candidates: [], pieces: [], metrics: [], signals_candidate: 0, alerts: [], runs: [], outreach: { mode: 'off' }, workflows: WF_ACTIVE, execs: HEALTHY_EXECS(), hermes: HERMES_OK(), errors24h: [], gmail: null, ...(o || {}) });
+
+ok('fechas Chile: día, diferencia de días y formato', () => {
+  assert.equal(oc.dayKey(NOW, 'America/Santiago'), '2026-10-08');
+  assert.equal(oc.dayKey(Date.parse('2026-10-08T02:00:00Z'), 'America/Santiago'), '2026-10-07');
+  assert.equal(oc.daysSince(NOW - 3 * D, NOW, 'America/Santiago'), 3);
+  assert.equal(oc.fmtDate(NOW, 'America/Santiago'), 'jue 8 oct');
+  assert.equal(oc.plural(1, 'tarea', 'tareas'), '1 tarea'); assert.equal(oc.names(['a', 'b', 'c', 'd', 'e']), 'a, b, c y 2 más'); assert.equal(oc.ageText(30 * 60000), '30 min'); assert.equal(oc.ageText(5 * H), '5 h'); assert.equal(oc.ageText(3 * D), '3 días');
+});
+ok('execHealth: ok, error aislado, racha, desactivado y programados atrasados', () => {
+  const w = { critical: true, every: 10 }, wh = { critical: true, every: null };
+  assert.equal(oc.execHealth(w, execs('success', 4), true, NOW).status, 'ok');
+  assert.equal(oc.execHealth(w, [{ status: 'error', startedAt: iso(3 * 60000) }, ...execs('success', 8)], true, NOW).status, 'atencion');
+  assert.equal(oc.execHealth(w, execs('error', 3), true, NOW).status, 'fallo');
+  assert.equal(oc.execHealth(wh, [{ status: 'success', startedAt: iso(60000) }, { status: 'error', startedAt: iso(2 * 60000) }], true, NOW).status, 'ok');
+  assert.equal(oc.execHealth(w, execs('success', 4), false, NOW).status, 'fallo');
+  assert.equal(oc.execHealth({ critical: false, every: 10 }, execs('success', 4), false, NOW).status, 'atencion');
+  assert.equal(oc.execHealth(w, execs('success', 45), true, NOW).status, 'atencion');
+  assert.equal(oc.execHealth(w, execs('success', 90), true, NOW).status, 'fallo');
+  assert.equal(oc.execHealth(w, [], true, NOW).status, 'atencion'); assert.equal(oc.execHealth(wh, [], true, NOW).status, 'ok');
+});
+ok('jobs de Hermes: pausado esperado, fallos seguidos, corrida perdida', () => {
+  const j = oc.hermesJobChecks({ jobs: [{ id: '1', name: 'Atacama Labs — Prospect Radar', state: 'paused' }, { id: '2', name: 'atacama-alerts', state: 'scheduled', enabled: true, failure_streak: 2, last_status: 'error' }, { id: '3', name: 'atacama-daily', state: 'scheduled', enabled: true, last_status: 'ok', next_run_at: iso(5 * H) }, { id: '4', name: 'otro job', state: 'scheduled' }] }, NOW);
+  assert.equal(j.length, 3); assert.equal(j[0].status, 'ok'); assert.ok(j[0].paused); assert.equal(j[1].status, 'fallo'); assert.equal(j[2].status, 'atencion');
+});
+
+// ---------- A. Daily con datos actuales
+const rich = () => base({
+  opps: [opp('Ramis', 'respondio', 1), opp('Vet24', 'respondio', 0), opp('Rentalin', 'diagnostico', 6), opp('Maipú', 'investigado', 2), opp('Kennedy', 'propuesta', 2), opp('Smile', 'contactado', 12)],
+  tasks: [{ id: 't1', title: 'Revisar respuesta y definir próximo paso', dueDate: iso(30 * H), contactId: 'c-Ramis' }, { id: 't2', title: 'Revisar prospecto: A', dueDate: iso(2 * D), contactId: 'x' }, { id: 't3', title: 'Revisar prospecto: B', dueDate: iso(2 * D), contactId: 'y' }, { id: 't4', title: '(Example) tarea', dueDate: iso(9 * D) }, { id: 't5', title: 'Futura', dueDate: new Date(NOW + 3 * D).toISOString(), contactId: 'c-Vet24' }],
+  messages: [
+    msg({ id: 'in1', company_name: 'Ramis', direction: 'inbound', classification: 'reply', body: 'Me interesa, ¿hablamos?', created_at: iso(5 * H) }),
+    msg({ id: 'i1', candidate_id: 'k2', company_name: 'Dentaline', kind: 'initial', direction: 'outbound', status: 'sent', sent_at: iso(10 * D), metadata: { followup_state: 'active', followup_tasks: { f1: { id: 'a', due: iso(5 * D) }, f2: { id: 'b', due: new Date(NOW + 2 * D).toISOString() } } } }),
+    msg({ id: 'i2', candidate_id: 'k3', company_name: 'CIPO', kind: 'initial', direction: 'outbound', status: 'sent', sent_at: iso(6 * D), metadata: { followup_state: 'active', followup_tasks: { f1: { id: 'c', due: iso(0.1 * D) }, f2: { id: 'd', due: new Date(NOW + 4 * D).toISOString() } } } }),
+    msg({ id: 'f1', candidate_id: 'k3', company_name: 'CIPO', kind: 'followup_1', direction: 'outbound', status: 'draft' }),
+    msg({ id: 'ok1', candidate_id: 'k4', company_name: 'Cerrado', kind: 'initial', direction: 'outbound', status: 'sent', metadata: { followup_state: 'stopped:respondio', followup_tasks: { f1: { due: iso(5 * D) } } } }),
+  ],
+  candidates: [
+    { company_name: 'Radar1', status: 'in_ghl', ghl_stage: 'investigado', band: 'alta', priority_score: 85, source_name: 'Prospect Radar v2', created_at: iso(3 * H) },
+    { company_name: 'Radar2', status: 'in_ghl', ghl_stage: 'investigado', band: 'valida', priority_score: 70, source_name: 'Prospect Radar v2', created_at: iso(3 * H) },
+    { company_name: 'Lote1', status: 'in_ghl', ghl_stage: 'investigado', band: 'alta', priority_score: 84, source_name: 'Primer lote', created_at: iso(5 * D) },
+  ],
+  pieces: [
+    { id: 'p1', topic: 'Agentes que piden permiso', channel: 'linkedin_page', status: 'in_review', ghl_status: 'in_review', ghl_approval_status: 'pending' },
+    { id: 'p2', topic: 'Alta automática de clientes', channel: 'linkedin_profile', status: 'scheduled', scheduled_at: new Date(NOW + 5 * H).toISOString(), is_test: false },
+    { id: 'p3', topic: 'Publicada ayer', channel: 'instagram', status: 'published', published_at: iso(30 * H) },
+    { id: 'pt', topic: 'TEST', channel: 'instagram', status: 'failed', is_test: true },
+  ],
+  metrics: [{ content_piece_id: 'p3', metric_window: '24h', status: 'ok', captured_at: iso(2 * H), likes: 12, comments: 3, shares: 1 }],
+  signals_candidate: 2, errors24h: [{ name: 'Prospect Ingest', count: 2 }],
+});
+ok('A. Daily con datos reales: secciones por prioridad, nombres y conteos correctos', () => {
+  const r = oc.composeDaily(rich());
+  const t = r.text;
+  assert.match(t, /^ATACAMA DAILY · jue 8 oct/); assert.ok(t.indexOf('NECESITA TU ACCIÓN') < t.indexOf('PARA REVISAR') && t.indexOf('PARA REVISAR') < t.indexOf('TODO BIEN'));
+  assert.match(t, /2 respuestas por atender: Ramis, Vet24/); assert.match(t, /1 llegó en las últimas 36 h/);
+  assert.match(t, /1 seguimiento vencido: Dentaline \(sin borrador\)/); assert.match(t, /1 seguimiento para hoy: CIPO \(borrador listo\)/);
+  assert.match(t, /1 oportunidad estancada: Rentalin \(diagnostico, 6 d\)/); assert.match(t, /Ramis|Vet24/);
+  assert.match(t, /1 publicación pendiente de aprobación: «Agentes que piden permiso»/);
+  assert.match(t, /2 candidatos nuevos \(1 prioridad alta\) · del Radar: Radar1, Radar2/); assert.match(t, /3 prospectos en Investigado sin decisión \(el más antiguo: 5 d\)/);
+  assert.match(t, /Programadas: «Alta automática de clientes»/); assert.match(t, /Métricas 24h listas: «Publicada ayer».*12 likes, 3 comentarios, 1 compartidos/);
+  assert.match(t, /2 señales candidatas de contenido sin pieza/); assert.match(t, /Ejecuciones fallidas en 24 h: Prospect Ingest \(2\)/);
+  assert.match(t, /2 tareas vencidas: 2 «Revisar prospecto»|tareas vencidas/); assert.ok(!t.includes('(Example)')); assert.ok(!/TEST/.test(t));
+  assert.ok(t.length < 2600, 'largo ' + t.length); assert.ok(r.action_count >= 5);
+});
+ok('A. Daily: oportunidad sin próximo paso y tareas importantes', () => {
+  const d = rich();
+  d.tasks = d.tasks.filter((t) => t.contactId !== 'c-Ramis');
+  const r = oc.composeDaily(d);
+  assert.match(r.text, /oportunidad(es)? sin próximo paso: .*Ramis/);
+});
+ok('B. Daily sin novedades: corto, sin secciones vacías ni relleno', () => {
+  const r = oc.composeDaily(base());
+  assert.match(r.text, /Sin novedades: nada que requiera tu acción hoy/); assert.ok(!r.text.includes('NECESITA TU ACCIÓN') && !r.text.includes('PARA REVISAR')); assert.match(r.text, /TODO BIEN[\s\S]*Sistema operativo/); assert.equal(r.action_count, 0);
+  assert.ok(r.text.length < 500);
+});
+ok('C. respuesta nueva controlada → aparece como acción y dispara alerta de evento', () => {
+  const d = base({ messages: [msg({ id: 'inX', company_name: 'Clínica TEST', direction: 'inbound', classification: 'reply', body: 'Hola, me interesa', created_at: iso(10 * 60000) })] });
+  assert.match(oc.composeDaily(d).text, /1 respuesta nueva: Clínica TEST/);
+  const a = oc.evaluateAlerts(d, []);
+  assert.equal(a.notify.length, 1); assert.equal(a.notify[0].key, 'reply:inX'); assert.equal(a.notify[0].severity, 'high'); assert.ok(a.notify[0].event);
+  assert.match(oc.alertsText(a.notify), /IMPORTANTE · Respondió: Clínica TEST — Hola, me interesa/);
+});
+ok('D. seguimiento vencido y de hoy se distinguen; los detenidos/enviados no cuentan', () => {
+  const c = oc.summarizeCommercial(rich());
+  assert.equal(c.followups.overdue.length, 1); assert.equal(c.followups.today.length, 1); assert.equal(c.followups.drafts.length, 1);
+  assert.ok(!c.followups.overdue.concat(c.followups.today).some((f) => f.company === 'Cerrado'));
+  const d = rich(); d.messages.push(msg({ candidate_id: 'k2', company_name: 'Dentaline', kind: 'followup_1', direction: 'outbound', status: 'sent' }));
+  assert.equal(oc.summarizeCommercial(d).followups.overdue.length, 0);
+});
+ok('E. oportunidad estancada por etapa (umbrales) y Investigado no cuenta como estancada', () => {
+  const c = oc.summarizeCommercial(base({ opps: [opp('A', 'propuesta', 8), opp('B', 'propuesta', 3), opp('C', 'investigado', 40), opp('D', 'contactado', 10), opp('E', 'nuevo', 2)] }));
+  assert.deepEqual(c.stale.map((s) => s.company).sort(), ['A', 'D', 'E']);
+});
+ok('F. prospectos nuevos del Radar v2 y backlog', () => {
+  const c = oc.summarizeCommercial(rich());
+  assert.equal(c.prospects.new_24h, 2); assert.equal(c.prospects.radar_new.length, 2); assert.equal(c.prospects.backlog, 3); assert.equal(c.prospects.backlog_alta, 2); assert.deepEqual(c.prospects.backlog_top[0], 'Radar1');
+});
+ok('G. contenido pendiente / programado / publicado / métricas / error de publicación', () => {
+  const ct = oc.summarizeContent(rich());
+  assert.equal(ct.pending_review.length, 1); assert.equal(ct.scheduled.length, 1); assert.equal(ct.published_recent.length, 1); assert.equal(ct.snapshots.length, 1); assert.equal(ct.total_pieces, 3);
+  const late = oc.summarizeContent(base({ pieces: [{ id: 'z', topic: 'Se atrasó', channel: 'linkedin_page', status: 'scheduled', scheduled_at: iso(3 * H) }] }));
+  assert.equal(late.late.length, 1);
+  assert.match(oc.composeDaily(base({ pieces: [{ id: 'z', topic: 'Se atrasó', channel: 'linkedin_page', status: 'scheduled', scheduled_at: iso(3 * H) }] })).text, /Publicación con problema: «Se atrasó»/);
+});
+ok('H. fallo simulado de workflow → fallo en health, acción en el Daily y alerta crítica', () => {
+  const ex = HEALTHY_EXECS(); ex['Bx4tC1Qn5H6097BL'] = execs('error', 2);
+  const d = base({ execs: ex });
+  const h = oc.healthReport(d);
+  assert.equal(h.overall, 'fallo'); assert.match(oc.healthText(h), /FALLO · Gmail Sync: 3 errores seguidos/);
+  assert.match(oc.composeDaily(d).text, /FALLO · Gmail Sync/);
+  const a = oc.evaluateAlerts(d, []);
+  assert.equal(a.notify.filter((x) => x.key === 'wf_down:Bx4tC1Qn5H6097BL' && x.severity === 'critical').length, 1);
+});
+ok('I. health general: OK, atención y fallo con motivo; incluye modo de envío', () => {
+  const ok1 = oc.healthReport(base());
+  assert.equal(ok1.overall, 'ok'); assert.match(oc.healthText(ok1), /^ESTADO DE ATACAMA OS: OK · todo funcionando/); assert.match(oc.healthText(ok1), /Envío real de correos: apagado \(modo off\)/);
+  ['Prospect Gateway', 'Hermes Operator', 'Outreach Engine', 'Gmail Sender', 'Gmail Sync', 'Followup Planner', 'Prospect Radar', 'Content Radar', 'Content Engine', 'Métricas de contenido'].forEach((nm) => assert.ok(ok1.components.some((c) => c.name === nm), nm));
+  const wfs = WF_ACTIVE.map((w) => (w.id === 'rWulaiKeio0CsXrs' ? { ...w, active: false } : w));
+  const bad = oc.healthReport(base({ workflows: wfs }));
+  assert.equal(bad.overall, 'fallo'); assert.match(oc.healthText(bad), /Followup Planner: está desactivado/);
+  const gm = oc.healthReport(base({ gmail: { w22: { credential_access: false }, w23: { credential_access: true, account: 'x@y.cl' } } }));
+  assert.equal(gm.components.find((c) => c.name === 'Gmail Sender').status, 'fallo'); assert.match(gm.components.find((c) => c.name === 'Gmail Sync').reason, /Gmail conectado \(x@y.cl\)/);
+  const jobBad = oc.healthReport(base({ hermes: { ...HERMES_OK(), jobs: [{ id: 'j', name: 'Atacama Labs — Prospect Radar', state: 'scheduled', enabled: true, failure_streak: 3, last_status: 'error' }] } }));
+  assert.equal(jobBad.components.find((c) => c.name === 'Prospect Radar').status, 'fallo');
+  assert.equal(oc.healthReport(base({ hermes: { ...HERMES_OK(), disk_pct: 91 } })).components.find((c) => /servidor/.test(c.name)).status, 'atencion');
+});
+ok('J. dedupe de alertas: una vez, no se repite, crítica se repite a las 12 h (máx. 3), se resuelve al limpiarse y reabre', () => {
+  const ex = HEALTHY_EXECS(); ex['aRvzG87Qg4uqI5bD'] = execs('error', 1);
+  const d = base({ execs: ex });
+  let a = oc.evaluateAlerts(d, []);
+  assert.equal(a.notify.length, 1); const key = a.notify[0].key;
+  const row = (o) => ({ alert_key: key, severity: 'critical', status: 'open', event: false, last_notified_at: iso(10 * 60000), notify_count: 1, ...(o || {}) });
+  a = oc.evaluateAlerts(d, [row()]); assert.equal(a.notify.length, 0); assert.equal(a.upserts[0].op, 'touch');
+  a = oc.evaluateAlerts(d, [row({ last_notified_at: iso(13 * H) })]); assert.equal(a.notify.length, 1); assert.ok(a.notify[0].repeat); assert.match(oc.alertsText(a.notify), /sigue sin resolverse/);
+  a = oc.evaluateAlerts(d, [row({ last_notified_at: iso(13 * H), notify_count: 3 })]); assert.equal(a.notify.length, 0);
+  a = oc.evaluateAlerts(base(), [row()]); assert.deepEqual(a.resolve, [key]); assert.equal(a.notify.length, 0);
+  a = oc.evaluateAlerts(d, [row({ status: 'resolved' })]); assert.equal(a.notify.length, 1); assert.ok(a.upserts[0].reopen);
+  const ev = base({ messages: [msg({ id: 'r1', direction: 'inbound', classification: 'reply', created_at: iso(H) })] });
+  assert.equal(oc.evaluateAlerts(ev, []).notify.length, 1);
+  assert.equal(oc.evaluateAlerts(ev, [{ alert_key: 'reply:r1', severity: 'high', status: 'open', event: true, last_notified_at: iso(H), notify_count: 1 }]).notify.length, 0);
+  assert.equal(oc.evaluateAlerts(ev, [{ alert_key: 'reply:r1', severity: 'high', status: 'resolved', event: true, last_notified_at: iso(H), notify_count: 1 }]).notify.length, 0);   // un evento ya avisado y cerrado NO se repite en cada ciclo
+  assert.equal(oc.alertsText([]), '');
+});
+ok('alertas: solo lo que merece interrumpir (ejecución normal, jobs pausados y autorrespuestas no alertan)', () => {
+  const a = oc.evaluateAlerts(base({ messages: [msg({ direction: 'inbound', classification: 'auto_reply', created_at: iso(H) }), msg({ direction: 'inbound', classification: 'unsubscribe', created_at: iso(H) })] }), []);
+  assert.equal(a.notify.length, 0);
+  const ex = HEALTHY_EXECS(); ex['ZlYTYp9AVdCYPdwS'] = [{ status: 'error', startedAt: iso(10 * 60000) }, { status: 'error', startedAt: iso(30 * 60000) }, { status: 'success', startedAt: iso(50 * 60000) }];
+  assert.ok(oc.evaluateAlerts(base({ execs: ex }), []).notify.some((x) => x.key === 'gateway_blocked'));
+  assert.ok(oc.evaluateAlerts(base({ gmail: { w22: { credential_access: true }, w23: { credential_access: false } } }), []).notify.some((x) => x.key === 'gmail_auth:w23'));
+  assert.ok(oc.evaluateAlerts(base({ pieces: [{ id: 'q', topic: 'No salió', channel: 'instagram', status: 'approved', scheduled_at: iso(2 * H) }] }), []).notify.some((x) => x.key === 'publish_failed:q'));
+  assert.ok(oc.evaluateAlerts(base({ hermes: { ...HERMES_OK(), gateway_ok: false } }), []).notify.some((x) => x.key === 'hermes_gateway'));
+});
+ok('compuerta del Radar: corre, se salta por backlog / tope semanal / corrida reciente', () => {
+  const cands = (k) => Array.from({ length: k }, (_, i) => ({ company_name: 'c' + i, status: 'in_ghl', ghl_stage: 'investigado', created_at: iso(2 * D) }));
+  const run = (h, mode) => ({ kind: 'prospect_radar', status: 'ok', summary: { mode: mode || 'import' }, created_at: iso(h * H) });
+  let g = oc.radarGate(base({ candidates: cands(14), runs: [run(72)] })); assert.equal(g.mode, 'import'); assert.equal(g.max_imports, 5);
+  g = oc.radarGate(base({ candidates: cands(23) })); assert.equal(g.mode, 'import'); assert.equal(g.max_imports, 2);
+  g = oc.radarGate(base({ candidates: cands(25) })); assert.equal(g.mode, 'skip'); assert.match(g.reason, /Investigado sin decisión/);
+  g = oc.radarGate(base({ candidates: cands(2), runs: [run(5)] })); assert.equal(g.mode, 'skip'); assert.match(g.reason, /ya corrió/);
+  g = oc.radarGate(base({ candidates: cands(2), runs: [run(30), run(80), run(120)] })); assert.equal(g.mode, 'skip'); assert.match(g.reason, /tope semanal/);
+  g = oc.radarGate(base({ candidates: cands(2), runs: [{ kind: 'prospect_radar', status: 'skipped', summary: { mode: 'skip' }, created_at: iso(30 * H) }] })); assert.equal(g.mode, 'import');
+});
+ok('rendimiento del contenido: sin publicaciones, sin snapshots y con cifras (sin inventar impresiones)', () => {
+  assert.match(oc.composePerformance(base({ pieces: [{ id: 'p', topic: 'X', channel: 'linkedin_page', status: 'scheduled', scheduled_at: new Date(NOW + 5 * H).toISOString() }] })).text, /Todavía no hay publicaciones publicadas con métricas\. La próxima: «X»/);
+  assert.match(oc.composePerformance(base({ pieces: [{ id: 'p', topic: 'X', channel: 'instagram', status: 'published', published_at: iso(5 * H) }] })).text, /1 pieza publicada pero aún sin snapshots/);
+  const r = oc.composePerformance(base({ pieces: [{ id: 'a', topic: 'A', channel: 'instagram', status: 'published', published_at: iso(5 * D) }, { id: 'b', topic: 'B', channel: 'linkedin_page', status: 'published', published_at: iso(5 * D) }], metrics: [{ content_piece_id: 'a', metric_window: '72h', status: 'ok', likes: 5, comments: 1, shares: 0, captured_at: iso(D) }, { content_piece_id: 'b', metric_window: '72h', status: 'ok', likes: 20, comments: 4, shares: 2, captured_at: iso(D) }] }));
+  assert.match(r.text, /1\. «B» \(linkedin_page, 72h\): 26/); assert.match(r.text, /no entrega impresiones por publicación/); assert.match(r.text, /Muestra pequeña \(n=2\)/); assert.ok(!/impresiones: \d/.test(r.text));
+});
+ok('urgente: solo lo que requiere acción; nada urgente no inventa', () => {
+  assert.match(oc.composeUrgent(rich()).text, /^URGENTE \(\d+\):/);
+  assert.match(oc.composeUrgent(base()).text, /^Nada urgente ahora \(jue 8 oct\)\. Todo en orden\./);
+  assert.ok(oc.composeUrgent(base({ candidates: [{ company_name: 'x', status: 'in_ghl', ghl_stage: 'investigado', created_at: iso(H), source_name: 'Radar' }] })).text.includes('Para revisar'));
+});
+ok('el núcleo no contiene secretos ni usa constantes de módulo', () => {
+  const src = Object.values(oc).filter((f) => typeof f === 'function').map((f) => f.toString()).join('\n');
+  assert.ok(!/pit-[0-9a-f-]{20,}|eyJ[A-Za-z0-9_-]{20,}|ya29\./.test(src));
+});
+ok('ignore_opps: las oportunidades de prueba configuradas no ensucian el Daily', () => {
+  const d = base({ opps: [opp('Sushi 72', 'respondio', 30), opp('Prueba Atacama', 'propuesta', 30), opp('Real', 'propuesta', 10)], cfg: { ...CFG, ignore_opps: ['Sushi 72', 'Prueba Atacama'] } });
+  const c = oc.summarizeCommercial(d);
+  assert.deepEqual(c.stale.map((s) => s.company), ['Real']);
+  assert.ok(!/Sushi|Prueba Atacama/.test(oc.composeDaily(d).text));
+});
+ok('sin estado de Hermes: «no informado», no una falsa falla ni un falso OK', () => {
+  const h = oc.healthReport(base({ hermes: undefined }));
+  assert.notEqual(h.overall, 'fallo');
+  assert.match(h.components.find((c) => c.name === 'Prospect Radar').reason, /no informado/i);
+  assert.match(h.components.find((c) => c.name === 'Content Radar').reason, /no informado/i);
+});
+ok('vistas de consulta de Hermes: hoy, quietas, respuestas, seguimientos, radar y contenido', () => {
+  const d = rich();
+  assert.match(oc.composeToday(d).text, /Ramis/); assert.match(oc.composeStale(d).text, /Rentalin/);
+  assert.match(oc.composeReplies(d).text, /Ramis/); assert.match(oc.composeFollowups(d).text, /Dentaline/);
+  assert.match(oc.composeRadarNew(d).text, /Radar1/); assert.match(oc.composeContentStatus(d).text, /Agentes que piden permiso/);
+  const v = base();
+  [oc.composeToday(v), oc.composeStale(v), oc.composeReplies(v), oc.composeFollowups(v), oc.composeRadarNew(v), oc.composeContentStatus(v)].forEach((r) => assert.ok(r.text && r.text.length < 400 && !/undefined|NaN|\[object/.test(r.text)));
+});
+ok('aprendizajes: sin datos no inventa; con datos marca lo tentativo', () => {
+  assert.match(oc.composeLearnings({ ok: true, n_learnings: 0 }).text, /Todavía no hay aprendizajes/);
+  assert.match(oc.composeLearnings(null).text, /No pude leer/);
+  const r = oc.composeLearnings({ ok: true, n_learnings: 2, by_channel: [{ key: 'instagram', n: 2, avg_actions: 7, tentative: true }], do_not_repeat_hooks: ['Hook viejo'] });
+  assert.match(r.text, /instagram \(n=2, promedio 7 interacciones, tentativo\)/); assert.match(r.text, /Hook viejo/); assert.ok(!/impresion/i.test(r.text));
+});
+ok('compuerta del Content Radar: corre, o se salta por cadencia / revisión pendiente / señales sin usar', () => {
+  const piece = (i) => ({ id: 'pr' + i, topic: 'T' + i, channel: 'instagram', status: 'in_review', ghl_status: 'in_review', ghl_approval_status: 'pending' });
+  let g = oc.contentGate(base()); assert.equal(g.mode, 'run'); assert.equal(g.max_signals, 5);
+  g = oc.contentGate(base({ runs: [{ kind: 'content_radar', status: 'ok', created_at: iso(2 * D) }] })); assert.equal(g.mode, 'skip'); assert.match(g.reason, /ya corrió/);
+  g = oc.contentGate(base({ runs: [{ kind: 'content_radar', status: 'skipped', created_at: iso(1 * D) }] })); assert.equal(g.mode, 'run');
+  g = oc.contentGate(base({ pieces: [piece(1), piece(2), piece(3)] })); assert.equal(g.mode, 'skip'); assert.match(g.reason, /esperando tu revisión/);
+  g = oc.contentGate(base({ signals_candidate: 5 })); assert.equal(g.mode, 'skip'); assert.match(g.reason, /señales candidatas/);
+});
+ok('alerta guardada pero nunca confirmada (Telegram falló) se reintenta; un evento ya avisado no', () => {
+  const ev = base({ messages: [msg({ id: 'r9', direction: 'inbound', classification: 'reply', created_at: iso(H) })] });
+  const a = oc.evaluateAlerts(ev, [{ alert_key: 'reply:r9', severity: 'high', status: 'open', event: true, last_notified_at: null, notify_count: 0 }]);
+  assert.equal(a.notify.length, 1);
+  assert.equal(oc.evaluateAlerts(ev, [{ alert_key: 'reply:r9', severity: 'high', status: 'open', event: true, last_notified_at: iso(H), notify_count: 1 }]).notify.length, 0);
+});
+console.log(n + ' ok');

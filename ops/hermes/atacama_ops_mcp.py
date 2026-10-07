@@ -264,6 +264,68 @@ def do_not_contact(target: str, reason: str, christian_order: str, request_id: s
     return _call("do_not_contact", {"target": target, "reason": reason}, order_text=christian_order, request_id=request_id)
 
 
+def _ops(action, deep=False):
+    """Consulta de SOLO LECTURA al workflow 25 Atacama Ops (GHL + Supabase + n8n + Hermes). No escribe ni envía nada."""
+    try:
+        from atacama_common import hermes_state, post_ops
+        body = {"action": action, "hermes": hermes_state()}
+        if deep:
+            body["deep"] = True
+        r = post_ops(body, timeout=120)
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "red", "message": "No pude consultar Atacama OS: %s" % type(ex).__name__}, ensure_ascii=False)
+    keep = {k: r.get(k) for k in ("ok", "text", "overall", "count", "missing", "action_count", "review_count", "components", "errors24h", "mode", "reason") if k in r}
+    return json.dumps(keep, ensure_ascii=False)
+
+
+@mcp.tool()
+def get_daily(deep: bool = False) -> str:
+    """El resumen diario completo de Atacama OS (el mismo que llega a las 08:30): NECESITA TU ACCIÓN / PARA REVISAR / TODO BIEN, con comercial, prospección, contenido y sistema, leído de GHL, Supabase y n8n. Resume lo importante; no inventes nada que no esté en `text`."""
+    return _ops("daily", deep)
+
+
+@mcp.tool()
+def get_today() -> str:
+    """«¿Qué tengo que hacer hoy?»: lo urgente + tareas que vencen hoy + seguimientos y publicaciones de hoy."""
+    return _ops("today")
+
+
+@mcp.tool()
+def get_urgent() -> str:
+    """«Dame solo lo urgente»: únicamente lo que necesita acción de Christian ahora (o dice que no hay nada)."""
+    return _ops("urgent")
+
+
+@mcp.tool()
+def get_health(deep: bool = False) -> str:
+    """«¿Está todo funcionando?»: OK / ATENCIÓN / FALLO por componente (Gateway, Hermes Operator, Outreach, Gmail Sender/Sync, Followup Planner, Prospect Radar, Content Radar, Content Engine, métricas, jobs) con el motivo, y las ejecuciones fallidas de 24 h. deep=true además prueba la conexión real a Gmail (solo lectura). También sirve para «¿falló algo hoy?»."""
+    return _ops("health", deep)
+
+
+@mcp.tool()
+def get_stale_opportunities() -> str:
+    """«¿Qué oportunidades llevan demasiado tiempo quietas?»: oportunidades por encima del umbral de su etapa y las que no tienen próximo paso (sin tarea abierta)."""
+    return _ops("stale")
+
+
+@mcp.tool()
+def get_radar_new() -> str:
+    """«¿Qué prospectos nuevos encontró el radar?»: candidatos del Prospect Radar de los últimos 7 días con score y banda, y datos de su última corrida."""
+    return _ops("radar_new")
+
+
+@mcp.tool()
+def get_content_status() -> str:
+    """«¿Qué publicaciones tengo pendientes?»: piezas pendientes de aprobación, programadas, publicadas (72 h), con problemas y señales candidatas sin pieza. Nunca publica ni aprueba."""
+    return _ops("content_status")
+
+
+@mcp.tool()
+def get_content_performance() -> str:
+    """«¿Cómo rindieron las últimas publicaciones? / ¿qué funcionó mejor? / ¿qué aprendimos?»: ranking por interacciones reales (me gusta + comentarios + compartidos que entrega GHL; NO hay impresiones por publicación) y aprendizajes del Content Engine; con n pequeño es tentativo y no se compara Instagram con LinkedIn."""
+    return _ops("content_performance")
+
+
 @mcp.tool()
 def send_email(target: str, subject: str = "", body: str = "", confirmation_code: str = "", request_id: str = "") -> str:
     """Envío directo: DESHABILITADO siempre. Para enviar un correo usa save_draft y luego approve_outreach (confirmación de Christian con código); el sistema lo envía en la ventana permitida. No simules ni intentes otra vía."""

@@ -115,3 +115,24 @@ Las conversaciones de GHL de los contactos de prueba solo tenían entradas de ac
 2. Confirmación humana más fuerte para el nivel 2 (botón de Telegram en vez de texto libre).
 3. Importar de verdad las 43 empresas cuando Christian lo ordene («mete las buenas», en tandas de ≤ 25).
 4. Reanudar el Prospect Radar solo cuando Christian lo decida.
+
+## 10. Operación diaria (Bloque 2, 7-oct-2026) — 8 herramientas nuevas, solo lectura
+
+El MCP `atacama-os` pasó de 27 a **35 herramientas**. Todas llaman a n8n `25 Atacama Ops` (`POST /webhook/atacama-ops`) con la misma clave de ingesta y **no escriben nada** (ni publican, ni aprueban, ni envían):
+
+| Herramienta | Responde a |
+|---|---|
+| `get_daily` | «Dame el resumen / el Daily» |
+| `get_today` | «¿Qué tengo que hacer hoy?» |
+| `get_urgent` | «Dame solo lo urgente» |
+| `get_health` (`deep`) | «¿Está todo funcionando?» · «¿Falló algo hoy?» |
+| `get_stale_opportunities` | «¿Qué oportunidades llevan demasiado tiempo quietas?» |
+| `get_radar_new` | «¿Qué prospectos nuevos encontró el radar?» |
+| `get_content_status` | «¿Qué publicaciones tengo pendientes?» |
+| `get_content_performance` | «¿Cómo rindieron las últimas publicaciones?» · «¿Qué aprendimos?» |
+
+(`¿Quién respondió?` y `¿Qué seguimientos tengo?` usan `get_replies` / `get_followups` de los bloques anteriores.)
+
+**Lección aprendida (importante):** la primera prueba mostró que Hermes respondía «¿qué oportunidades están quietas?» y «¿qué prospectos nuevos hay?» desde sus ledgers personales antiguos (`agent-os/RADAR_LEDGER.md`), porque `HERMES.md` los declara estado operativo. Se agregó a `HERMES.md` (respaldo `HERMES.md.bak-bloque2`) una sección fija «Atacama OS — operación comercial y de contenido» que obliga a usar estas herramientas para el negocio de Atacama Labs, y la descripción de la skill `atacama-ops` ahora lista esas frases. Fuente: `ops/hermes/HERMES-atacama-os-section.md`. Después del cambio las 9 preguntas se respondieron con datos reales de GHL/Supabase/n8n.
+
+**Jobs de cron de Hermes (sin IA):** `atacama-daily` (08:30 Chile), `atacama-alerts` (cada 15 min, silencioso) — ver [`OPERATIONS.md`](OPERATIONS.md). Archivos en la VPS: `/opt/data/atacama-ops/{atacama_common.py,atacama_ops_cli.py,atacama_ops_mcp.py}`, `/opt/data/scripts/{atacama_daily,atacama_alerts,radar_gate,content_gate}.sh`. Reiniciar el agente tras tocar el MCP: `sudo hermes-restart agent` (corta las corridas `hermes -z` en curso).

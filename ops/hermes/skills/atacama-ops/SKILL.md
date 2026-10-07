@@ -1,6 +1,6 @@
 ---
 name: atacama-ops
-description: "Operar Atacama OS (GHL, prospectos, seguimiento) desde el chat de Christian, con permisos por nivel."
+description: "Operar y consultar Atacama OS (GHL, prospectos, correo, seguimiento, contenido, salud) desde el chat de Christian. Úsala para: qué tengo que hacer hoy, quién respondió, seguimientos pendientes, oportunidades quietas, prospectos nuevos del radar, publicaciones pendientes y su rendimiento, ¿falló algo?, ¿está todo funcionando?, dame solo lo urgente, el Daily, y para analizar/importar prospectos."
 ---
 
 # Atacama Ops — Christian opera Atacama OS por aquí
@@ -53,6 +53,25 @@ Tú NUNCA envías. Preparas, Christian confirma, y el sistema (n8n + Gmail) env�
 5. «¿Respondieron?» → `get_replies` (o `get_draft(target)` para un prospecto). Resume lo importante (qué quiere, tono, siguiente paso). `decline` y `unsubscribe` detienen el seguimiento solos; `auto_reply` no es una respuesta real. Para responder: `save_draft(kind='reply', body=...)` y el mismo flujo de aprobación. **Nunca respondas sin aprobación.**
 6. «No le escribas más a X» → `do_not_contact` (nivel 2: sus palabras exactas + motivo).
 7. **Seguimiento (+3 y +7 días hábiles desde el primer envío, y después se para).** El sistema crea solo las tareas en GHL y deja el borrador `followup_1` / `followup_2` cuando toca; **nunca se envía solo**. «¿Qué seguimientos tengo?» → `get_followups` (lo pendiente) y muéstrale el borrador con `get_draft(target)`; si lo quiere, ajústalo con `save_draft(kind='followup_1')` y apruébalo con el mismo flujo de dos pasos (`approve_outreach(target, kind='followup_1')`). Se cancelan solos si el prospecto responde, rebota, se da de baja, se descarta o la oportunidad queda Won/Lost: no insistas ni los recrees. Si Christian no quiere seguir con uno, `cancel_outreach(kind=...)`.
+
+## Operación diaria (consultas de solo lectura)
+
+Cada mañana (08:30 Chile) llega solo el «ATACAMA DAILY» y, durante el día, únicamente las alertas que merecen interrumpir. Para todo lo demás Christian te pregunta y tú **consultas la fuente real** (GHL, Supabase, n8n), nunca de memoria ni de lo que recuerdes del Daily:
+
+| Christian pregunta | Herramienta |
+|---|---|
+| «¿Qué tengo que hacer hoy?» | `get_today` |
+| «Dame solo lo urgente» | `get_urgent` |
+| «Dame el resumen / el Daily» | `get_daily` |
+| «¿Quién respondió?» | `get_replies` (texto de las respuestas) y `get_today` |
+| «¿Qué seguimientos tengo pendientes?» | `get_followups` |
+| «¿Qué oportunidades llevan demasiado tiempo quietas?» | `get_stale_opportunities` |
+| «¿Qué prospectos nuevos encontró el radar?» | `get_radar_new` |
+| «¿Qué publicaciones tengo pendientes?» | `get_content_status` |
+| «¿Cómo rindieron las últimas publicaciones? / ¿qué funcionó mejor? / ¿qué aprendimos?» | `get_content_performance` |
+| «¿Está todo funcionando? / ¿falló algo hoy?» | `get_health` (con `deep=true` si pide revisar Gmail a fondo) |
+
+Reglas de estas consultas: (1) responde con lo que dice `text`, resumido y con nombres; si la herramienta informa `missing` o «no pude leer X», dilo — **no lo conviertas en «no hay nada»**; (2) **no inventes impresiones ni alcance** de las publicaciones: GHL solo entrega me gusta, comentarios y compartidos, y con pocas piezas es tentativo; no compares Instagram con LinkedIn; (3) estas herramientas **no publican, no aprueban, no envían ni mueven nada**: si Christian quiere actuar sobre algo (aprobar una publicación, un correo, un seguimiento), usa el flujo que corresponde (correo → `approve_outreach`; las publicaciones se aprueban en GHL Social Planner con **Approve**); (4) el Prospect Radar y el Content Radar corren solos con su propia compuerta de costo; tú no los activas ni los reanudas.
 
 ## Reglas
 

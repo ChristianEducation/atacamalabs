@@ -49,3 +49,13 @@ El scoring del Gateway **no cambió** (fit 35 + señal 35 + alcance 30; alta ≥
 - **Reanudar (solo cuando Christian lo decida):** `hermes cron resume 8421589d0902`. Costo esperado ≈ US$ 0,2–0,4 por corrida. Recomendación: primero una semana con `MODO=analyze` (editar la primera línea del prompt del job) y revisar el resumen en Telegram.
 - **Rollback / pausa:** `hermes cron pause 8421589d0902`. Todo lo que entra queda en *Investigado* con nota de revisión: nada se envía ni pasa a *Contactado* sin aprobación.
 - **Hermes no es la única fuente:** listas de otras IAs, HTML/CSV/JSON, URLs y entradas manuales siguen entrando por el mismo Gateway (`analyze_prospects` / `import_prospects` desde Telegram).
+
+## 6. Actualización Bloque 2 (7-oct-2026) — Radar ACTIVO en modo seguro
+
+- **Estado:** el job `8421589d0902` quedó **ACTIVO**, entregando a Telegram. Horario **martes y jueves 13:30 UTC (10:30 Chile)**, con **compuerta previa** (`radar_gate.sh` → n8n `25 Atacama Ops`, acción `radar_gate`): se salta si hubo una corrida OK en las últimas 20 h, ya hubo 3 en la semana, o hay ≥ 25 prospectos en Investigado sin decisión; si corre, `max_imports = min(5, 25 − backlog)`. Lo omitido queda en `ops_runs` como `skipped` y no gasta IA (el agente responde `[SILENT]`).
+- **Prompt:** primera línea `MODO=auto` (obedece la compuerta), reporte final a `atacama-ops` (`radar_report`, queda en `ops_runs`). Todo lo demás igual (señal verdadera, hecho/inferencia/hipótesis, único camino = Prospect Gateway).
+- **Modo seguro:** investiga → analiza → importa a GHL **Investigado** con nota y borradores para revisión. No envía, no aprueba, no mueve a Contactado. `outreach_config.mode` sigue `off`.
+- **Primera corrida real (7-oct, 12:02 Chile):** 6 búsquedas, 10 páginas, 5 candidatos → 5 importados (Maxservicios 91, Laboratorio Clínico Luis Pasteur Antofagasta 91, EDL Servicios y Maquinarias 91, SETECMA 85, Sel Otec 85), 3 min. Costo informado por el agente: US$ 0,04 (la validación anterior midió ≈ US$ 0,19–0,20; se toma el rango alto como referencia presupuestaria).
+- **Dónde se ve:** `get_radar_new` / el Daily («Prospección: N candidatos nuevos…»). Los prospectos esperan decisión de Christian en *Investigado*.
+- **Pausa / rollback:** `hermes cron pause 8421589d0902`.
+- Detalle operativo y de costos: [`OPERATIONS.md`](OPERATIONS.md).

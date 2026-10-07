@@ -1,0 +1,506 @@
+/**
+ * Atacama OS · Operación diaria — núcleo puro (Bloque 2): resumen diario, preguntas operativas, alertas con deduplicación, health y compuerta de costo del Radar.
+ * AUTOCONTENIDO: se incrusta tal cual (Function.prototype.toString) en el workflow n8n «25 Atacama Ops». Sin red ni secretos: recibe datos ya leídos
+ * de GHL / Supabase / n8n / Hermes y devuelve texto + decisiones. No inventa estados: si un dato no llegó, lo dice.
+ */
+
+export function tzParts(ms, tz) {
+  const p = new Intl.DateTimeFormat('en-US', { timeZone: tz || 'America/Santiago', hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', weekday: 'short' }).formatToParts(new Date(ms));
+  const g = (t) => (p.find((x) => x.type === t) || {}).value;
+  return { key: g('year') + '-' + g('month') + '-' + g('day'), hh: Number(g('hour')), mm: Number(g('minute')), dow: { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }[g('weekday')], day: Number(g('day')), month: Number(g('month')) };
+}
+export function dayKey(ms, tz) { return tzParts(ms, tz).key; }
+/** Días de calendario (zona Chile) entre dos instantes: hoy - antes. */
+export function daysSince(thenMs, nowMs, tz) {
+  const a = Date.parse(dayKey(thenMs, tz) + 'T00:00:00Z'), b = Date.parse(dayKey(nowMs, tz) + 'T00:00:00Z');
+  return Math.round((b - a) / 86400000);
+}
+export function fmtDate(ms, tz) {
+  const p = tzParts(ms, tz);
+  const dows = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+  const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  return dows[p.dow] + ' ' + p.day + ' ' + months[p.month - 1];
+}
+export function fmtDateTime(ms, tz) { const p = tzParts(ms, tz); return fmtDate(ms, tz) + ' ' + String(p.hh).padStart(2, '0') + ':' + String(p.mm).padStart(2, '0'); }
+export function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
+export function names(list, max) {
+  const l = (list || []).filter(Boolean);
+  const m = max || 3;
+  return l.slice(0, m).join(', ') + (l.length > m ? ' y ' + (l.length - m) + ' más' : '');
+}
+export function ageText(ms) {
+  const mins = Math.max(0, Math.round(ms / 60000));
+  if (mins < 90) return mins + ' min';
+  if (mins < 60 * 36) return Math.round(mins / 60) + ' h';
+  return Math.round(mins / 1440) + ' días';
+}
+
+/** Workflows de n8n vigilados. every = minutos entre ejecuciones programadas (null = se dispara por webhook). */
+export function monitoredWorkflows() {
+  return [
+    { id: 'ZlYTYp9AVdCYPdwS', label: 'Prospect Gateway', every: null, critical: true },
+    { id: 'Pm5XfYBocmWR3YgY', label: 'Hermes Operator', every: null, critical: true },
+    { id: '7yRgPPDkiVyjmb3t', label: 'Outreach Engine', every: null, critical: true },
+    { id: 'aRvzG87Qg4uqI5bD', label: 'Gmail Sender', every: 10, critical: true },
+    { id: 'Bx4tC1Qn5H6097BL', label: 'Gmail Sync', every: 10, critical: true },
+    { id: 'rWulaiKeio0CsXrs', label: 'Followup Planner', every: 30, critical: true },
+    { id: 'idniXY0Du2qet57O', label: 'Lead Sync (formulario web)', every: 2, critical: true },
+    { id: 'VsLCMZ6MeDsNvGzI', label: 'Booking Sync (reservas)', every: 2, critical: true },
+    { id: 'wKrn00R0x4XXcfvR', label: 'Content Intake', every: null, critical: false },
+    { id: '8EI8YcBJ5lQaPK0L', label: 'Content Signals', every: null, critical: false },
+    { id: 'E9KMwNH7QmWbuy8Q', label: 'Content Sync', every: 30, critical: true },
+    { id: 'HDUZ0nrGFiO01hYN', label: 'Content Metrics', every: 180, critical: false },
+    { id: 'f29HJ40N7Vz8M3Rm', label: 'Content Learnings', every: null, critical: false },
+    { id: 'aGe77cEyCmobdAg7', label: 'Prospect Search (Radar)', every: null, critical: false },
+  ];
+}
+
+/** Estado de un workflow vigilado: ok | atencion | fallo, con motivo. list = últimas ejecuciones [{status, startedAt}]. */
+export function execHealth(w, list, active, nowMs) {
+  const ex = (list || []).slice().sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt));
+  if (active === false) return { status: w.critical ? 'fallo' : 'atencion', reason: 'está desactivado en n8n' };
+  let streak = 0;
+  for (const e of ex) { if (['error', 'crashed'].includes(e.status)) streak++; else break; }
+  if (streak >= 3) return { status: 'fallo', reason: streak + ' errores seguidos (último hace ' + ageText(nowMs - Date.parse(ex[0].startedAt)) + ')' };
+  if (w.every) {
+    if (!ex.length) return { status: 'atencion', reason: 'aún sin ejecuciones' };
+    const age = nowMs - Date.parse(ex[0].startedAt);
+    if (age > (6 * w.every + 10) * 60000) return { status: 'fallo', reason: 'sin ejecutarse hace ' + ageText(age) + ' (debería correr cada ' + w.every + ' min)' };
+    if (age > (3 * w.every + 5) * 60000) return { status: 'atencion', reason: 'sin ejecutarse hace ' + ageText(age) };
+  }
+  if (streak >= 1) return { status: 'atencion', reason: (streak === 1 ? 'su última ejecución falló' : streak + ' errores seguidos') + ' (hace ' + ageText(nowMs - Date.parse(ex[0].startedAt)) + ')' };
+  if (!ex.length) return { status: 'ok', reason: 'sin uso reciente' };
+  return { status: 'ok', reason: 'última ejecución OK hace ' + ageText(nowMs - Date.parse(ex[0].startedAt)) };
+}
+
+/** Jobs de Hermes que nos importan (por nombre). */
+export function hermesJobChecks(hermes, nowMs) {
+  const out = [];
+  const jobs = (hermes && hermes.jobs) || [];
+  for (const j of jobs) {
+    const nm = String(j.name || '');
+    if (!/(Prospect Radar|Content Radar|^atacama-)/i.test(nm)) continue;
+    const last = j.last_run_at ? Date.parse(j.last_run_at) : null;
+    const paused = j.state === 'paused' || j.enabled === false;
+    let status = 'ok', reason = paused ? 'pausado (esperado)' : 'activo';
+    if (!paused) {
+      const streak = Number(j.failure_streak) || 0;
+      if (streak >= 2) { status = 'fallo'; reason = streak + ' fallos seguidos'; }
+      else if (j.last_status && j.last_status !== 'ok') { status = 'atencion'; reason = 'su última corrida terminó «' + j.last_status + '»'; }
+      else if (j.next_run_at && Date.parse(j.next_run_at) < nowMs - 3 * 3600000) { status = 'atencion'; reason = 'tenía que correr hace ' + ageText(nowMs - Date.parse(j.next_run_at)) + ' y no lo hizo'; }
+      else reason = 'activo' + (last ? ' · última corrida hace ' + ageText(nowMs - last) : '');
+    }
+    out.push({ id: j.id, name: nm, status, reason, paused });
+  }
+  return out;
+}
+
+export function stageKey(stages, id) { return Object.keys(stages || {}).find((k) => stages[k] === id) || null; }
+
+/** Todo lo comercial: respuestas, seguimientos, tareas, estancadas, prospectos. */
+export function summarizeCommercial(d) {
+  const now = d.now, tz = (d.cfg && d.cfg.tz) || 'America/Santiago';
+  const ign = ((d.cfg && d.cfg.ignore_opps) || []).map((x) => String(x).toLowerCase());
+  const opps = (d.opps || []).filter((o) => !ign.some((x) => String(o.name || '').toLowerCase().includes(x))), msgs = d.messages || [], tasks = (d.tasks || []).filter((t) => !/^\(Example\)/i.test(String(t.title || '')));
+  const cands = d.candidates || [];
+  const stages = (d.cfg && d.cfg.stages) || {};
+  const todayKey = dayKey(now, tz);
+  const oppName = (o) => String(o.name || '').replace(/\s+—\s+Prospecto$/i, '').trim();
+  // respuestas
+  const newReplies = msgs.filter((m) => m.direction === 'inbound' && ['reply', 'decline'].includes(m.classification) && now - Date.parse(m.created_at) <= 36 * 3600000).map((m) => ({ company: m.company_name, cls: m.classification, at: m.created_at, preview: String(m.body || '').slice(0, 120) }));
+  const awaiting = opps.filter((o) => stageKey(stages, o.pipelineStageId) === 'respondio').map((o) => ({ company: oppName(o), days: daysSince(Date.parse(o.lastStageChangeAt || o.updatedAt || o.createdAt), now, tz), id: o.id }));
+  // seguimientos
+  const fu = { today: [], overdue: [], drafts: [] };
+  for (const m of msgs.filter((x) => x.kind === 'initial' && x.direction === 'outbound' && x.status === 'sent')) {
+    const meta = m.metadata || {};
+    if (/^(stopped|done)/.test(String(meta.followup_state || ''))) continue;
+    const ft = meta.followup_tasks || {};
+    for (const [kind, slot] of [['followup_1', 'f1'], ['followup_2', 'f2']]) {
+      const due = ft[slot] && ft[slot].due ? Date.parse(ft[slot].due) : null;
+      if (!due) continue;
+      const mine = msgs.filter((x) => x.candidate_id === m.candidate_id && x.kind === kind && x.direction === 'outbound');
+      if (mine.some((x) => x.status === 'sent')) continue;
+      const draft = mine.find((x) => ['draft', 'approved'].includes(x.status));
+      const dk = dayKey(due, tz);
+      const item = { company: m.company_name, kind, due: new Date(due).toISOString(), draft: draft ? draft.status : null };
+      if (draft && draft.status === 'draft') fu.drafts.push(item);
+      if (dk === todayKey) fu.today.push(item); else if (dk < todayKey) fu.overdue.push(item);
+    }
+  }
+  // tareas vencidas (agrupadas por tipo)
+  const overdueTasks = tasks.filter((t) => t.dueDate && Date.parse(t.dueDate) < now && !t.completed);
+  const groups = {};
+  overdueTasks.forEach((t) => { const k = String(t.title || 'Tarea').split(/[:·]/)[0].trim().slice(0, 40); (groups[k] = groups[k] || []).push(t); });
+  const taskGroups = Object.keys(groups).map((k) => ({ type: k, count: groups[k].length, oldest_days: Math.max(...groups[k].map((t) => daysSince(Date.parse(t.dueDate), now, tz))) })).sort((a, b) => b.count - a.count);
+  // oportunidades estancadas / sin próximo paso
+  const limits = { nuevo: 1, respondio: 3, contactado: 9, diagnostico: 5, propuesta: 7, seguimiento: 7 };
+  const stale = opps.map((o) => ({ o, st: stageKey(stages, o.pipelineStageId), days: daysSince(Date.parse(o.lastStageChangeAt || o.updatedAt || o.createdAt), now, tz) }))
+    .filter((x) => x.st && limits[x.st] != null && x.days >= limits[x.st] && x.st !== 'investigado').map((x) => ({ company: oppName(x.o), stage: x.st, days: x.days, id: x.o.id }));
+  const taskContacts = new Set(tasks.filter((t) => !t.completed).map((t) => t.contactId));
+  const noNext = opps.filter((o) => ['respondio', 'diagnostico', 'propuesta', 'seguimiento'].includes(stageKey(stages, o.pipelineStageId)) && !taskContacts.has(o.contactId)).map((o) => ({ company: oppName(o), stage: stageKey(stages, o.pipelineStageId), id: o.id }));
+  // prospectos
+  const newCands = cands.filter((c) => now - Date.parse(c.created_at) <= 24 * 3600000);
+  const radarNew = newCands.filter((c) => /radar/i.test(String(c.source_name || '')));
+  const backlog = cands.filter((c) => c.status === 'in_ghl' && c.ghl_stage === 'investigado');
+  const oldest = backlog.length ? Math.max(...backlog.map((c) => daysSince(Date.parse(c.created_at), now, tz))) : 0;
+  const approved = msgs.filter((m) => m.direction === 'outbound' && ['approved', 'sending'].includes(m.status));
+  const drafts = msgs.filter((m) => m.direction === 'outbound' && m.status === 'draft' && m.kind === 'initial');
+  return { new_replies: newReplies, awaiting_reply: awaiting, followups: fu, task_groups: taskGroups, overdue_tasks_total: overdueTasks.length, stale, no_next_step: noNext,
+    prospects: { new_24h: newCands.length, new_alta: newCands.filter((c) => c.band === 'alta').length, radar_new: radarNew.map((c) => ({ company: c.company_name, band: c.band, score: c.priority_score })), backlog: backlog.length, backlog_alta: backlog.filter((c) => c.band === 'alta').length, backlog_oldest_days: oldest, backlog_top: backlog.slice().sort((a, b) => (b.priority_score || 0) - (a.priority_score || 0)).slice(0, 3).map((c) => c.company_name) },
+    outreach: { mode: (d.outreach && d.outreach.mode) || 'desconocido', approved_pending: approved.length, drafts_initial: drafts.length } };
+}
+
+/** Todo lo de contenido. */
+export function summarizeContent(d) {
+  const now = d.now, tz = (d.cfg && d.cfg.tz) || 'America/Santiago';
+  const pcs = (d.pieces || []).filter((p) => !p.is_test);
+  const ch = { instagram: 'Instagram Atacama', linkedin_page: 'LinkedIn Atacama Labs', linkedin_profile: 'LinkedIn Christian' };
+  const lab = (p) => '«' + String(p.topic || 'pieza').slice(0, 60) + '» (' + (ch[p.channel] || p.channel) + ')';
+  const pending = pcs.filter((p) => p.status === 'in_review' || (p.ghl_status === 'in_review' && p.ghl_approval_status !== 'approved'));
+  const scheduled = pcs.filter((p) => p.status === 'scheduled' && p.scheduled_at).map((p) => ({ label: lab(p), at: p.scheduled_at, in_h: Math.round((Date.parse(p.scheduled_at) - now) / 3600000) })).sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+  const late = pcs.filter((p) => ['scheduled', 'approved'].includes(p.status) && p.scheduled_at && now - Date.parse(p.scheduled_at) > 60 * 60000 && !p.published_at);
+  const failed = pcs.filter((p) => p.status === 'failed' || p.ghl_status === 'failed');
+  const published = pcs.filter((p) => p.status === 'published' && p.published_at && now - Date.parse(p.published_at) <= 72 * 3600000).map((p) => ({ label: lab(p), at: p.published_at }));
+  const snaps = (d.metrics || []).filter((m) => now - Date.parse(m.captured_at) <= 26 * 3600000 && m.status !== 'error').map((m) => {
+    const p = pcs.find((x) => x.id === m.content_piece_id);
+    return { label: p ? lab(p) : 'pieza', window: m.metric_window, likes: m.likes, comments: m.comments, shares: m.shares, partial: m.status === 'partial' };
+  });
+  const metricErrors = (d.metrics || []).filter((m) => m.status === 'error' && now - Date.parse(m.captured_at) <= 48 * 3600000).length;
+  const learned = pcs.filter((p) => p.learning && p.learned_at && now - Date.parse(p.learned_at) <= 7 * 86400000).map((p) => lab(p));
+  return { pending_review: pending.map(lab), scheduled, late: late.map(lab), failed: failed.map(lab), published_recent: published, snapshots: snaps, metric_errors: metricErrors, learned, candidate_signals: Number(d.signals_candidate) || 0, total_pieces: pcs.length, tz };
+}
+
+/** Estado de cada componente (health). */
+export function healthReport(d) {
+  const now = d.now;
+  const wfs = d.workflows || [];
+  const comp = [];
+  const by = {};
+  for (const w of monitoredWorkflows()) {
+    const meta = wfs.find((x) => x.id === w.id);
+    const h = execHealth(w, (d.execs || {})[w.id] || [], meta ? meta.active : undefined, now);
+    by[w.id] = { ...h, label: w.label, critical: w.critical };
+  }
+  const pick = (ids, name, extra) => {
+    const parts = ids.map((id) => by[id]).filter(Boolean);
+    const worst = parts.some((p) => p.status === 'fallo') ? 'fallo' : parts.some((p) => p.status === 'atencion') ? 'atencion' : 'ok';
+    const bad = parts.filter((p) => p.status !== 'ok');
+    comp.push({ name, status: worst, reason: bad.length ? bad.map((p) => (parts.length === 1 && p.label === name ? '' : p.label + ': ') + p.reason).join(' · ') + (extra || '') : (parts[0] ? parts[0].reason : 'sin datos') + (extra || '') });
+  };
+  pick(['ZlYTYp9AVdCYPdwS'], 'Prospect Gateway');
+  pick(['Pm5XfYBocmWR3YgY'], 'Hermes Operator');
+  pick(['7yRgPPDkiVyjmb3t'], 'Outreach Engine');
+  const gm = d.gmail || null;
+  const gmailNote = (w) => (gm && gm[w] ? (gm[w].credential_access ? ' · Gmail conectado (' + (gm[w].account || 'cuenta') + ')' : ' · Gmail NO responde (credencial)') : '');
+  pick(['aRvzG87Qg4uqI5bD'], 'Gmail Sender', gmailNote('w22'));
+  pick(['Bx4tC1Qn5H6097BL'], 'Gmail Sync', gmailNote('w23'));
+  if (gm) { ['w22', 'w23'].forEach((k) => { const c = comp.find((x) => x.name === (k === 'w22' ? 'Gmail Sender' : 'Gmail Sync')); if (gm[k] && !gm[k].credential_access) c.status = 'fallo'; else if (gm[k] && k === 'w22' && gm[k].send_scope_ok === false) { c.status = 'fallo'; c.reason += ' · sin permiso de envío'; } }); }
+  pick(['rWulaiKeio0CsXrs'], 'Followup Planner');
+  const jobs = hermesJobChecks(d.hermes, now);
+  const noHermes = !d.hermes || !Array.isArray(d.hermes.jobs);
+  const jb = (re) => jobs.find((j) => re.test(j.name));
+  const pr = jb(/Prospect Radar/i), cr = jb(/Content Radar/i);
+  const lastRadar = (d.runs || []).filter((r) => r.kind === 'prospect_radar')[0];
+  comp.push(pr ? { name: 'Prospect Radar', status: pr.status, reason: pr.reason + (lastRadar ? ' · último reporte hace ' + ageText(now - Date.parse(lastRadar.created_at)) : '') } : { name: 'Prospect Radar', status: noHermes ? 'ok' : 'atencion', reason: noHermes ? 'estado del job no informado (se lee desde Hermes)' : 'no aparece el job en Hermes' });
+  comp.push(cr ? { name: 'Content Radar', status: cr.status, reason: cr.reason } : { name: 'Content Radar', status: noHermes ? 'ok' : 'atencion', reason: noHermes ? 'estado del job no informado (se lee desde Hermes)' : 'no aparece el job en Hermes' });
+  pick(['wKrn00R0x4XXcfvR', '8EI8YcBJ5lQaPK0L', 'E9KMwNH7QmWbuy8Q'], 'Content Engine');
+  const cont = summarizeContent(d);
+  const ce = comp[comp.length - 1];
+  if (cont.failed.length || cont.late.length) { ce.status = 'fallo'; ce.reason += ' · publicación con problema: ' + names(cont.failed.concat(cont.late), 2); }
+  pick(['HDUZ0nrGFiO01hYN', 'f29HJ40N7Vz8M3Rm'], 'Métricas de contenido', cont.metric_errors ? ' · ' + cont.metric_errors + ' snapshot(s) con error' : '');
+  const mc = comp[comp.length - 1]; if (cont.metric_errors && mc.status === 'ok') mc.status = 'atencion';
+  pick(['idniXY0Du2qet57O', 'VsLCMZ6MeDsNvGzI'], 'Captura de leads y reservas (web)');
+  const other = jobs.filter((j) => /^atacama-/i.test(j.name));
+  other.forEach((j) => comp.push({ name: 'Job Hermes · ' + j.name, status: j.status, reason: j.reason }));
+  const h = d.hermes || {};
+  if (h.gateway_ok === false) comp.push({ name: 'Hermes / Telegram', status: 'fallo', reason: 'el gateway de mensajería no responde' });
+  else if (h.disk_pct != null) comp.push({ name: 'Hermes / servidor', status: Number(h.disk_pct) >= 85 ? 'atencion' : 'ok', reason: 'disco al ' + h.disk_pct + '%' });
+  const mode = (d.outreach && d.outreach.mode) || 'desconocido';
+  const overall = comp.some((c) => c.status === 'fallo') ? 'fallo' : comp.some((c) => c.status === 'atencion') ? 'atencion' : 'ok';
+  return { overall, components: comp, outreach_mode: mode, by_workflow: by };
+}
+
+export function healthText(h) {
+  const icon = { ok: 'OK', atencion: 'ATENCIÓN', fallo: 'FALLO' };
+  const lines = ['ESTADO DE ATACAMA OS: ' + icon[h.overall] + (h.overall === 'ok' ? ' · todo funcionando' : '')];
+  const bad = h.components.filter((c) => c.status !== 'ok');
+  bad.forEach((c) => lines.push('• ' + icon[c.status] + ' · ' + c.name + ': ' + c.reason));
+  const ok = h.components.filter((c) => c.status === 'ok');
+  if (ok.length) lines.push('OK (' + ok.length + '): ' + ok.map((c) => c.name).join(', '));
+  lines.push('Envío real de correos: ' + (h.outreach_mode === 'off' ? 'apagado (modo off)' : 'modo ' + h.outreach_mode));
+  return lines.join('\n');
+}
+
+/** Construye las secciones del Daily. */
+export function buildSections(d) {
+  const c = summarizeCommercial(d), ct = summarizeContent(d), h = healthReport(d);
+  const tz = (d.cfg && d.cfg.tz) || 'America/Santiago';
+  const action = [], review = [], good = [];
+  const push = (arr, key, text) => arr.push({ key, text });
+  // --- NECESITA TU ACCIÓN
+  const respNames = c.awaiting_reply.map((r) => r.company);
+  if (c.awaiting_reply.length) push(action, 'replies', plural(c.awaiting_reply.length, 'respuesta por atender', 'respuestas por atender') + ': ' + names(respNames, 3) + (c.new_replies.length ? ' (' + plural(c.new_replies.length, 'llegó', 'llegaron') + ' en las últimas 36 h)' : ''));
+  else if (c.new_replies.length) push(action, 'replies', plural(c.new_replies.length, 'respuesta nueva', 'respuestas nuevas') + ': ' + names(c.new_replies.map((r) => r.company), 3));
+  if (c.followups.overdue.length) push(action, 'fu_overdue', plural(c.followups.overdue.length, 'seguimiento vencido', 'seguimientos vencidos') + ': ' + names(c.followups.overdue.map((f) => f.company + (f.draft ? ' (borrador listo)' : ' (sin borrador)')), 3));
+  if (c.followups.today.length) push(action, 'fu_today', plural(c.followups.today.length, 'seguimiento para hoy', 'seguimientos para hoy') + ': ' + names(c.followups.today.map((f) => f.company + (f.draft ? ' (borrador listo)' : '')), 3));
+  if (c.no_next_step.length) push(action, 'no_next', plural(c.no_next_step.length, 'oportunidad sin próximo paso', 'oportunidades sin próximo paso') + ': ' + names(c.no_next_step.map((o) => o.company), 3));
+  const staleHot = c.stale.filter((s) => ['nuevo', 'respondio', 'propuesta', 'diagnostico'].includes(s.stage));
+  if (staleHot.length) push(action, 'stale_hot', plural(staleHot.length, 'oportunidad estancada', 'oportunidades estancadas') + ': ' + names(staleHot.map((s) => s.company + ' (' + s.stage + ', ' + s.days + ' d)'), 3));
+  if (ct.pending_review.length) push(action, 'content_pending', plural(ct.pending_review.length, 'publicación pendiente de aprobación', 'publicaciones pendientes de aprobación') + ': ' + names(ct.pending_review, 2));
+  if (ct.failed.length || ct.late.length) push(action, 'content_failed', 'Publicación con problema: ' + names(ct.failed.concat(ct.late), 2));
+  if (c.outreach.approved_pending) push(action, 'approved_pending', plural(c.outreach.approved_pending, 'correo aprobado esperando salir', 'correos aprobados esperando salir') + (c.outreach.mode === 'off' ? ' (el envío está apagado)' : ''));
+  const sysBad = h.components.filter((x) => x.status !== 'ok');
+  sysBad.filter((x) => x.status === 'fallo').forEach((x) => push(action, 'sys_' + x.name, 'FALLO · ' + x.name + ': ' + x.reason));
+  if (c.overdue_tasks_total) {
+    const imp = c.task_groups.filter((g) => /respuesta|reuni|propuesta|diagn/i.test(g.type));
+    if (imp.length) push(action, 'tasks_important', 'Tareas vencidas importantes: ' + imp.map((g) => g.count + ' «' + g.type + '»').join(', '));
+  }
+  missingNotes(d).forEach((m, i) => push(action, 'missing' + i, m));
+  // --- PARA REVISAR
+  const p = c.prospects;
+  if (p.new_24h || p.backlog) {
+    const bits = [];
+    if (p.new_24h) bits.push(plural(p.new_24h, 'candidato nuevo', 'candidatos nuevos') + (p.new_alta ? ' (' + p.new_alta + ' prioridad alta)' : '') + (p.radar_new.length ? ' · del Radar: ' + names(p.radar_new.map((r) => r.company), 3) : ''));
+    if (p.backlog) bits.push(plural(p.backlog, 'prospecto en Investigado', 'prospectos en Investigado') + ' sin decisión' + (p.backlog_oldest_days ? ' (el más antiguo: ' + p.backlog_oldest_days + ' d)' : '') + (p.backlog_alta ? ', ' + p.backlog_alta + ' de prioridad alta' : ''));
+    push(review, 'prospects', 'Prospección: ' + bits.join(' · '));
+  }
+  if (c.followups.drafts.length && !c.followups.overdue.length && !c.followups.today.length) push(review, 'fu_drafts', plural(c.followups.drafts.length, 'borrador de seguimiento esperando tu aprobación', 'borradores de seguimiento esperando tu aprobación') + ': ' + names(c.followups.drafts.map((f) => f.company), 3));
+  const staleOther = c.stale.filter((s) => !['nuevo', 'respondio', 'propuesta', 'diagnostico'].includes(s.stage));
+  if (staleOther.length) push(review, 'stale_other', plural(staleOther.length, 'oportunidad quieta', 'oportunidades quietas') + ': ' + names(staleOther.map((s) => s.company + ' (' + s.stage + ', ' + s.days + ' d)'), 3));
+  if (c.task_groups.length) push(review, 'tasks', plural(c.overdue_tasks_total, 'tarea vencida', 'tareas vencidas') + ': ' + c.task_groups.slice(0, 3).map((g) => g.count + ' «' + g.type + '»').join(', '));
+  if (ct.scheduled.length) push(review, 'content_sched', 'Programadas: ' + ct.scheduled.slice(0, 3).map((s) => s.label + ' ' + fmtDateTime(Date.parse(s.at), tz)).join(' · '));
+  if (ct.published_recent.length) push(review, 'content_pub', 'Publicadas (72 h): ' + names(ct.published_recent.map((x) => x.label), 2));
+  ct.snapshots.slice(0, 3).forEach((s, i) => push(review, 'snap' + i, 'Métricas ' + s.window + ' listas: ' + s.label + ' → ' + (s.likes == null && s.comments == null && s.shares == null ? 'sin cifras de GHL' : [s.likes != null ? s.likes + ' likes' : null, s.comments != null ? s.comments + ' comentarios' : null, s.shares != null ? s.shares + ' compartidos' : null].filter(Boolean).join(', ')) + (s.partial ? ' (parcial)' : '')));
+  if (ct.learned.length) push(review, 'learned', 'Aprendizaje nuevo (7 d): ' + names(ct.learned, 2));
+  if (ct.candidate_signals) push(review, 'signals', plural(ct.candidate_signals, 'señal candidata de contenido sin pieza', 'señales candidatas de contenido sin pieza'));
+  sysBad.filter((x) => x.status === 'atencion').forEach((x) => push(review, 'sys_' + x.name, 'Sistema · ' + x.name + ': ' + x.reason));
+  const errs = d.errors24h || [];
+  if (errs.length) push(review, 'errors24', 'Ejecuciones fallidas en 24 h: ' + errs.slice(0, 4).map((e) => e.name + ' (' + e.count + ')').join(', '));
+  // --- TODO BIEN
+  if (!sysBad.length) push(good, 'sys_ok', 'Sistema operativo (' + h.components.length + ' componentes revisados)');
+  push(good, 'outreach', 'Envío real de correos: ' + (c.outreach.mode === 'off' ? 'apagado (modo off)' : 'modo ' + c.outreach.mode));
+  return { action, review, good, health: h, commercial: c, content: ct };
+}
+
+/** Texto del Daily (corto, por prioridad). */
+export function composeDaily(d) {
+  const tz = (d.cfg && d.cfg.tz) || 'America/Santiago';
+  const s = buildSections(d);
+  const head = 'ATACAMA DAILY · ' + fmtDate(d.now, tz);
+  const out = [head];
+  const sect = (title, items) => { if (!items.length) return; out.push('', title); items.forEach((i) => out.push('• ' + i.text)); };
+  if (!s.action.length && !s.review.length) {
+    out.push('', 'Sin novedades: nada que requiera tu acción hoy.');
+    sect('TODO BIEN', s.good);
+  } else {
+    sect('NECESITA TU ACCIÓN', s.action);
+    sect('PARA REVISAR', s.review);
+    sect('TODO BIEN', s.good);
+  }
+  out.push('', 'Pregúntame: «¿qué tengo que hacer hoy?», «¿quién respondió?», «¿qué falló?»');
+  return { text: out.join('\n'), action_count: s.action.length, review_count: s.review.length, sections: s };
+}
+
+/** Solo lo urgente / qué hacer hoy. */
+export function composeUrgent(d) {
+  const s = buildSections(d);
+  const tz = (d.cfg && d.cfg.tz) || 'America/Santiago';
+  if (!s.action.length) return { text: 'Nada urgente ahora (' + fmtDate(d.now, tz) + '). ' + (s.review.length ? 'Para revisar: ' + s.review.map((r) => r.text).slice(0, 3).join(' · ') : 'Todo en orden.'), count: 0 };
+  return { text: 'URGENTE (' + s.action.length + '):\n' + s.action.map((a) => '• ' + a.text).join('\n'), count: s.action.length };
+}
+
+/** Compuerta de costo/calidad del Prospect Radar: ¿corre y en qué modo? */
+export function radarGate(d) {
+  const now = d.now;
+  const c = summarizeCommercial(d);
+  const runs = (d.runs || []).filter((r) => r.kind === 'prospect_radar' && r.status === 'ok');
+  const last = runs[0] ? Date.parse(runs[0].created_at) : null;
+  const week = runs.filter((r) => now - Date.parse(r.created_at) <= 7 * 86400000 && (r.summary || {}).mode !== 'skip').length;
+  const backlog = c.prospects.backlog;
+  const maxBacklog = 25;
+  if (last && now - last < 20 * 3600000) return { mode: 'skip', max_imports: 0, reason: 'ya corrió hace ' + ageText(now - last), backlog, week };
+  if (week >= 3) return { mode: 'skip', max_imports: 0, reason: 'tope semanal de corridas alcanzado (' + week + ' de 3)', backlog, week };
+  if (backlog >= maxBacklog) return { mode: 'skip', max_imports: 0, reason: 'hay ' + backlog + ' prospectos en Investigado sin decisión (tope ' + maxBacklog + '): primero se revisan', backlog, week };
+  return { mode: 'import', max_imports: Math.max(1, Math.min(5, maxBacklog - backlog)), reason: 'ok (' + backlog + ' en Investigado, ' + week + ' corridas esta semana)', backlog, week };
+}
+
+/**
+ * Alertas: reglas SOLO para lo que merece interrumpir. existing = filas de ops_alerts. Devuelve el conjunto actual, qué notificar ahora y qué resolver.
+ * Deduplicación por alert_key: un evento se avisa una vez; una condición abierta no se repite salvo si es crítica (cada 12 h, máx. 3 veces).
+ */
+export function evaluateAlerts(d, existing) {
+  const now = d.now, tz = (d.cfg && d.cfg.tz) || 'America/Santiago';
+  const cur = [];
+  const add = (key, severity, title, detail, event, meta) => cur.push({ key, severity, title, detail: detail || '', event: Boolean(event), meta: meta || {} });
+  const h = healthReport(d);
+  // 1) automatizaciones críticas caídas / con fallos repetidos / Gmail Sync
+  for (const w of monitoredWorkflows().filter((x) => x.critical)) {
+    const r = h.by_workflow[w.id];
+    if (r && r.status === 'fallo') add('wf_down:' + w.id, 'critical', w.label + ' caído', r.reason, false);
+  }
+  const wfFlag = (d.gmail && d.gmail.w22 && d.gmail.w22.credential_access === false);
+  if (wfFlag) add('gmail_auth:w22', 'critical', 'Gmail: la credencial no responde (envío)', 'Gmail Sender no puede conectarse; revisa la credencial OAuth en n8n.', false);
+  if (d.gmail && d.gmail.w23 && d.gmail.w23.credential_access === false) add('gmail_auth:w23', 'critical', 'Gmail: la credencial no responde (lectura)', 'Gmail Sync no puede leer respuestas; revisa la credencial OAuth en n8n.', false);
+  // 2) Gateway bloqueado: ≥2 errores en las últimas 3 ejecuciones, dentro de 2 h
+  const gw = ((d.execs || {})['ZlYTYp9AVdCYPdwS'] || []).slice().sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt)).slice(0, 3);
+  if (gw.filter((e) => ['error', 'crashed'].includes(e.status) && now - Date.parse(e.startedAt) <= 2 * 3600000).length >= 2) add('gateway_blocked', 'critical', 'Prospect Gateway con errores repetidos', 'Dos de sus últimas 3 ejecuciones fallaron: puede estar bloqueando el ingreso de prospectos.', false);
+  // 3) respuestas de prospectos (evento, una vez por mensaje)
+  for (const m of (d.messages || []).filter((x) => x.direction === 'inbound' && ['reply', 'decline', 'unsubscribe', 'bounce'].includes(x.classification) && now - Date.parse(x.created_at) <= 24 * 3600000)) {
+    const label = { reply: 'Respondió', decline: 'Rechazó', unsubscribe: 'Pidió baja', bounce: 'Rebote' }[m.classification];
+    const sev = ['reply', 'decline'].includes(m.classification) ? 'high' : 'info';
+    if (sev === 'info') continue;
+    add('reply:' + m.id, sev, label + ': ' + (m.company_name || 'prospecto'), String(m.body || '').replace(/\s+/g, ' ').slice(0, 160), true);
+  }
+  // 4) publicación aprobada que no salió / fallida
+  const cont = summarizeContent(d);
+  (d.pieces || []).filter((p) => !p.is_test && (p.status === 'failed' || p.ghl_status === 'failed' || (['scheduled', 'approved'].includes(p.status) && p.scheduled_at && now - Date.parse(p.scheduled_at) > 60 * 60000 && !p.published_at))).forEach((p) => add('publish_failed:' + p.id, 'high', 'Publicación sin salir: «' + String(p.topic || '').slice(0, 60) + '»', 'Estaba programada para ' + (p.scheduled_at ? fmtDateTime(Date.parse(p.scheduled_at), tz) : 's/f') + ' y no figura publicada.', false));
+  // 5) jobs de Hermes con fallos repetidos
+  for (const j of hermesJobChecks(d.hermes, now).filter((x) => x.status === 'fallo' && !x.paused)) add('hermes_job:' + j.id, 'high', 'Job de Hermes con fallos: ' + j.name, j.reason, false);
+  if (d.hermes && d.hermes.gateway_ok === false) add('hermes_gateway', 'critical', 'Hermes: el gateway de mensajería no responde', 'Telegram puede no estar entregando mensajes.', false);
+  if (d.hermes && Number(d.hermes.disk_pct) >= 90) add('disk_full', 'high', 'Servidor de Hermes con el disco al ' + d.hermes.disk_pct + '%', 'Se puede quedar sin espacio.', false);
+  // --- dedupe
+  const ex = {}; (existing || []).forEach((e) => { ex[e.alert_key] = e; });
+  const curKeys = new Set(cur.map((c) => c.key));
+  const upserts = [], notify = [];
+  for (const c of cur) {
+    const e = ex[c.key];
+    if (e && e.status === 'open' && !((e.notify_count || 0) > 0)) { upserts.push({ ...c, op: 'touch' }); notify.push(c); continue; }   // guardada pero nunca confirmada (falló la entrega): se reintenta
+    if (e && e.event) { upserts.push({ ...c, op: 'touch' }); continue; }   // un evento (respuesta) se avisa UNA vez, aunque la fila esté cerrada
+    if (!e || e.status === 'resolved') { upserts.push({ ...c, op: 'insert', reopen: Boolean(e) }); notify.push(c); continue; }
+    upserts.push({ ...c, op: 'touch' });
+    const age = e.last_notified_at ? now - Date.parse(e.last_notified_at) : Infinity;
+    if (!e.event && c.severity === 'critical' && age >= 12 * 3600000 && (e.notify_count || 0) < 3) notify.push({ ...c, repeat: true });
+  }
+  const resolve = (existing || []).filter((e) => e.status === 'open' && !curKeys.has(e.alert_key) && !e.event).map((e) => e.alert_key);
+  return { current: cur, upserts, notify, resolve, health: h.overall };
+}
+
+export function alertsText(notify) {
+  if (!notify || !notify.length) return '';
+  const sev = { critical: 'CRÍTICO', high: 'IMPORTANTE', info: 'AVISO' };
+  const lines = ['ATACAMA OS · ' + (notify.length === 1 ? 'alerta' : notify.length + ' alertas')];
+  notify.forEach((a) => lines.push('• ' + sev[a.severity] + ' · ' + a.title + (a.detail ? ' — ' + a.detail : '') + (a.repeat ? ' (sigue sin resolverse)' : '')));
+  return lines.join('\n');
+}
+
+/** Rendimiento del contenido para «¿qué funcionó mejor?»: solo cifras reales de GHL. */
+export function composePerformance(d) {
+  const ct = summarizeContent(d);
+  const pcs = (d.pieces || []).filter((p) => !p.is_test);
+  const metrics = (d.metrics || []).filter((m) => m.status !== 'error');
+  if (!pcs.some((p) => p.status === 'published')) {
+    const nxt = ct.scheduled[0];
+    return { text: 'Todavía no hay publicaciones publicadas con métricas.' + (nxt ? ' La próxima: ' + nxt.label + ' ' + fmtDateTime(Date.parse(nxt.at), (d.cfg && d.cfg.tz) || 'America/Santiago') + '. Los snapshots se toman a 24 h, 72 h y 7 días de publicar.' : ''), pieces: [] };
+  }
+  const rows = pcs.filter((p) => p.status === 'published').map((p) => {
+    const ms = metrics.filter((m) => m.content_piece_id === p.id);
+    const best = ms.slice().sort((a, b) => ['24h', '72h', '7d'].indexOf(b.metric_window) - ['24h', '72h', '7d'].indexOf(a.metric_window))[0];
+    const eng = best ? (best.likes || 0) + (best.comments || 0) + (best.shares || 0) : null;
+    return { topic: p.topic, channel: p.channel, window: best ? best.metric_window : null, likes: best ? best.likes : null, comments: best ? best.comments : null, shares: best ? best.shares : null, engagement: eng, learning: p.learning && p.learning.guia ? p.learning.guia : null };
+  });
+  const withData = rows.filter((r) => r.engagement != null).sort((a, b) => b.engagement - a.engagement);
+  const lines = [];
+  if (!withData.length) lines.push('Hay ' + plural(rows.length, 'pieza publicada', 'piezas publicadas') + ' pero aún sin snapshots de métricas (24 h / 72 h / 7 d).');
+  else {
+    lines.push('Mejores por interacción visible (likes + comentarios + compartidos; GHL no entrega impresiones por publicación):');
+    withData.slice(0, 3).forEach((r, i) => lines.push((i + 1) + '. «' + String(r.topic).slice(0, 60) + '» (' + r.channel + ', ' + r.window + '): ' + r.engagement + ' (' + (r.likes || 0) + ' likes, ' + (r.comments || 0) + ' comentarios, ' + (r.shares || 0) + ' compartidos)'));
+    if (withData.length < 5) lines.push('Muestra pequeña (n=' + withData.length + '): son indicios, no conclusiones; no se comparan canales entre sí.');
+  }
+  return { text: lines.join('\n'), pieces: rows };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Vistas para las preguntas de Hermes («¿qué tengo que hacer hoy?», «¿quién respondió?», …). Todas leen del mismo conjunto de datos reales.
+// ---------------------------------------------------------------------------------------------------------------------
+export function missingNotes(d) {
+  const lab = { ghl: 'GHL (oportunidades y tareas)', supabase: 'Supabase (mensajes y prospectos)', n8n: 'n8n (ejecuciones)' };
+  return (d.missing || []).map((m) => 'No pude leer ' + (lab[m] || m) + ': esa parte está incompleta, no es que no haya nada.');
+}
+export function composeToday(d) {
+  const tz = (d.cfg && d.cfg.tz) || 'America/Santiago';
+  const s = buildSections(d), c = s.commercial;
+  const lines = ['HOY · ' + fmtDate(d.now, tz)];
+  if (s.action.length) { lines.push('Necesita tu acción:'); s.action.forEach((a) => lines.push('• ' + a.text)); } else lines.push('Nada urgente.');
+  const dueToday = (d.tasks || []).filter((t) => !t.completed && t.dueDate && dayKey(Date.parse(t.dueDate), tz) === dayKey(d.now, tz) && !/^\(Example\)/i.test(String(t.title || '')));
+  if (dueToday.length) lines.push('Tareas que vencen hoy (' + dueToday.length + '): ' + names(dueToday.map((t) => t.title), 3));
+  if (c.followups.today.length && !s.action.some((a) => a.key === 'fu_today')) lines.push('Seguimientos de hoy: ' + names(c.followups.today.map((f) => f.company), 3));
+  const todayPub = s.content.scheduled.filter((x) => dayKey(Date.parse(x.at), tz) === dayKey(d.now, tz));
+  if (todayPub.length) lines.push('Publicaciones de hoy: ' + todayPub.map((x) => x.label + ' ' + fmtDateTime(Date.parse(x.at), tz).slice(-5)).join(' · '));
+  return { text: lines.join('\n'), count: s.action.length };
+}
+export function composeStale(d) {
+  const c = summarizeCommercial(d);
+  if (!c.stale.length && !c.no_next_step.length) return { text: 'No hay oportunidades quietas ni sin próximo paso (umbrales: Nuevo 1 d, Respondió 3 d, Contactado 9 d, Diagnóstico 5 d, Propuesta/Seguimiento 7 d).', count: 0 };
+  const lines = [];
+  if (c.stale.length) { lines.push('Oportunidades quietas (' + c.stale.length + '):'); c.stale.slice().sort((a, b) => b.days - a.days).forEach((s) => lines.push('• ' + s.company + ' — ' + s.stage + ', ' + s.days + ' días sin moverse')); }
+  if (c.no_next_step.length) { lines.push('Sin próximo paso (sin tarea abierta) (' + c.no_next_step.length + '):'); c.no_next_step.forEach((s) => lines.push('• ' + s.company + ' — ' + s.stage)); }
+  return { text: lines.join('\n'), count: c.stale.length + c.no_next_step.length };
+}
+export function composeReplies(d) {
+  const c = summarizeCommercial(d);
+  if (!c.new_replies.length && !c.awaiting_reply.length) return { text: 'Nadie ha respondido que siga pendiente de atender.', count: 0 };
+  const lines = [];
+  if (c.new_replies.length) { lines.push('Respuestas recientes (36 h):'); c.new_replies.forEach((r) => lines.push('• ' + r.company + ' [' + r.cls + ']: «' + r.preview + '»')); }
+  if (c.awaiting_reply.length) lines.push('En «Respondió» esperando que las atiendas (' + c.awaiting_reply.length + '): ' + c.awaiting_reply.map((r) => r.company + ' (' + r.days + ' d)').join(', '));
+  return { text: lines.join('\n'), count: c.new_replies.length + c.awaiting_reply.length };
+}
+export function composeFollowups(d) {
+  const f = summarizeCommercial(d).followups;
+  const tz = (d.cfg && d.cfg.tz) || 'America/Santiago';
+  if (!f.today.length && !f.overdue.length && !f.drafts.length) return { text: 'No hay seguimientos pendientes hoy ni vencidos.', count: 0 };
+  const line = (x) => '• ' + x.company + ' — ' + x.kind.replace('followup_', 'seguimiento ') + ' (vence ' + fmtDate(Date.parse(x.due), tz) + ')' + (x.draft ? ' · borrador ' + (x.draft === 'draft' ? 'listo para aprobar' : 'aprobado') : ' · aún sin borrador');
+  const lines = [];
+  if (f.overdue.length) { lines.push('Vencidos (' + f.overdue.length + '):'); f.overdue.forEach((x) => lines.push(line(x))); }
+  if (f.today.length) { lines.push('Para hoy (' + f.today.length + '):'); f.today.forEach((x) => lines.push(line(x))); }
+  const extra = f.drafts.filter((x) => !f.overdue.concat(f.today).some((y) => y.company === x.company && y.kind === x.kind));
+  if (extra.length) { lines.push('Borradores esperando aprobación (' + extra.length + '):'); extra.forEach((x) => lines.push(line(x))); }
+  return { text: lines.join('\n'), count: f.today.length + f.overdue.length + extra.length };
+}
+export function composeRadarNew(d) {
+  const now = d.now, tz = (d.cfg && d.cfg.tz) || 'America/Santiago';
+  const rc = (d.candidates || []).filter((c) => /radar/i.test(String(c.source_name || '')) && now - Date.parse(c.created_at) <= 7 * 86400000).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+  const last = (d.runs || []).filter((r) => r.kind === 'prospect_radar')[0];
+  const lines = [];
+  if (!rc.length) lines.push('El Radar no ha traído candidatos nuevos en los últimos 7 días.');
+  else { lines.push('Candidatos del Radar (7 d): ' + rc.length); rc.slice(0, 8).forEach((c) => lines.push('• ' + c.company_name + ' — ' + c.priority_score + ' (' + c.band + ')' + (c.ghl_stage ? ' · ' + c.ghl_stage : ''))); }
+  lines.push(last ? 'Última corrida: ' + fmtDateTime(Date.parse(last.created_at), tz) + ' · modo ' + ((last.summary || {}).mode || last.status) + (last.est_cost_usd != null ? ' · costo estimado US$ ' + last.est_cost_usd : '') : 'Sin corridas registradas todavía.');
+  return { text: lines.join('\n'), count: rc.length };
+}
+export function composeContentStatus(d) {
+  const tz = (d.cfg && d.cfg.tz) || 'America/Santiago';
+  const ct = summarizeContent(d);
+  const lines = [];
+  if (ct.pending_review.length) lines.push('Pendientes de tu aprobación (' + ct.pending_review.length + '): ' + ct.pending_review.join(' · '));
+  if (ct.scheduled.length) lines.push('Programadas: ' + ct.scheduled.map((s) => s.label + ' ' + fmtDateTime(Date.parse(s.at), tz)).join(' · '));
+  if (ct.published_recent.length) lines.push('Publicadas (72 h): ' + ct.published_recent.map((p) => p.label + ' ' + fmtDateTime(Date.parse(p.at), tz)).join(' · '));
+  if (ct.failed.length || ct.late.length) lines.push('CON PROBLEMA: ' + ct.failed.concat(ct.late).join(' · '));
+  if (ct.candidate_signals) lines.push(plural(ct.candidate_signals, 'señal candidata', 'señales candidatas') + ' esperando que se redacte la pieza');
+  if (!lines.length) lines.push('No hay piezas en revisión, programadas ni publicadas recientemente.');
+  return { text: lines.join('\n'), count: lines.length };
+}
+
+/** Aprendizajes del Content Engine (workflow 16): solo lo que ya existe; con n pequeño se dice que es tentativo. */
+export function composeLearnings(L) {
+  if (!L || L.ok === false || typeof L !== 'object') return { text: 'No pude leer los aprendizajes del Content Engine.', count: 0 };
+  const n = Number(L.n_learnings) || 0;
+  if (!n) return { text: 'Todavía no hay aprendizajes: se generan 7 días después de publicar cada pieza (la primera publicación es del 7-oct, así que el primero llegaría hacia el 14-oct).', count: 0 };
+  const lines = ['Aprendizajes del Content Engine (' + n + (n === 1 ? ' pieza' : ' piezas') + ' con 7 días de datos):'];
+  const grp = (title, arr) => { if (arr && arr.length) lines.push(title + ': ' + arr.map((g) => g.key + ' (n=' + g.n + (g.avg_actions != null ? ', promedio ' + g.avg_actions + ' interacciones' : '') + (g.tentative ? ', tentativo' : '') + ')').join(' · ')); };
+  grp('Por canal', L.by_channel); grp('Por categoría', L.by_category); grp('Por formato', L.by_format);
+  (L.learnings || []).slice(-3).forEach((l) => { if (l.guidance || l.worked) lines.push('• «' + String(l.topic || '').slice(0, 50) + '»: ' + [l.worked ? 'funcionó: ' + [].concat(l.worked).join('; ').slice(0, 100) : null, l.guidance ? 'guía: ' + (typeof l.guidance === 'string' ? l.guidance : JSON.stringify(l.guidance)).slice(0, 100) : null].filter(Boolean).join(' · ')); });
+  if (L.do_not_repeat_hooks && L.do_not_repeat_hooks.length) lines.push('No repetir ganchos: ' + names(L.do_not_repeat_hooks.map((h) => String(h).slice(0, 40)), 3));
+  lines.push(String(L.note || 'Con n<5 es tentativo; no se compara Instagram con LinkedIn.'));
+  return { text: lines.join('\n'), count: n };
+}
+
+/** Compuerta de costo/calidad del Content Radar: no investiga si ya hay material sin usar o piezas sin revisar. */
+export function contentGate(d) {
+  const now = d.now;
+  const ct = summarizeContent(d);
+  const runs = (d.runs || []).filter((r) => r.kind === 'content_radar' && r.status === 'ok');
+  const last = runs[0] ? Date.parse(runs[0].created_at) : null;
+  if (last && now - last < 5 * 86400000) return { mode: 'skip', reason: 'ya corrió hace ' + ageText(now - last) + ' (cadencia semanal)', pending_review: ct.pending_review.length, candidate_signals: ct.candidate_signals };
+  if (ct.pending_review.length >= 3) return { mode: 'skip', reason: 'hay ' + ct.pending_review.length + ' piezas esperando tu revisión: primero se revisan', pending_review: ct.pending_review.length, candidate_signals: ct.candidate_signals };
+  if (ct.candidate_signals >= 5) return { mode: 'skip', reason: 'ya hay ' + ct.candidate_signals + ' señales candidatas sin convertir en pieza', pending_review: ct.pending_review.length, candidate_signals: ct.candidate_signals };
+  return { mode: 'run', max_signals: 5, reason: 'ok (' + ct.pending_review.length + ' piezas en revisión, ' + ct.candidate_signals + ' señales candidatas)', pending_review: ct.pending_review.length, candidate_signals: ct.candidate_signals };
+}

@@ -877,3 +877,33 @@ Guías: [`OUTREACH.md`](OUTREACH.md) §7 (seguimiento) · [`PROSPECTING-V2.md`](
 
 ### B1.11. Pendiente (acciones de Christian, ver informe final)
 Buzón remitente · credencial OAuth de Gmail en n8n · datos legales del pie · OK explícito para un único envío de prueba a su propio correo · decidir cuándo reanudar el Radar (Bloque 2).
+
+## BLOQUE 2 — Operación diaria automática (7-oct-2026) · ✅ OPERATIVO, ENVÍO REAL APAGADO
+
+Guía operativa completa (cadencias, alertas, costos, qué corre dónde): [`OPERATIONS.md`](OPERATIONS.md).
+
+### B2.1. Arquitectura
+- **n8n `25 Atacama Ops`** (`OxLcj12RP0qLVLVc`) calcula todo en **solo lectura** (GHL, Supabase, n8n, Gmail `deep`) y solo escribe `ops_alerts` / `ops_runs` (migración `20261009_ops_daily.sql`). **Hermes cron programa y entrega** con jobs `--no-agent` (cero IA): `atacama-daily` (`99484078e80e`, 08:30 Chile) y `atacama-alerts` (`f21880a598b8`, cada 15 min, silencioso). Los radares son jobs de agente con **compuerta previa** de costo/calidad.
+- Núcleo puro y testeable: `scripts/ops/ops-core.mjs` (25 pruebas) + builder `n8n/build/ops.mjs` (38 pruebas nodo a nodo).
+
+### B2.2. Entregables
+1. **Atacama Daily** (NECESITA TU ACCIÓN / PARA REVISAR / TODO BIEN; comercial, prospección, contenido, sistema).
+2. **8 herramientas MCP nuevas** (35 en total) para las 9 preguntas diarias; `HERMES.md` y la skill `atacama-ops` corregidos para que Hermes use las herramientas y no sus ledgers viejos.
+3. **Alertas** con dedupe (`ops_alerts`): solo respuestas humanas, workflows críticos caídos, Gmail sin acceso, Gateway bloqueado, publicación que no salió, jobs de Hermes con fallas seguidas, Hermes/disco; nunca por ejecución aislada.
+4. **Health** (`get_health`): 12 componentes con OK / atención / fallo + motivo; `deep` prueba Gmail real. Sin panel web.
+5. **Prospect Radar v2 ACTIVO en modo seguro**: martes y jueves 10:30 Chile, compuerta (≥ 20 h entre corridas, ≤ 3/semana, backlog < 25), entrada única = Prospect Gateway, solo deja prospectos en *Investigado*.
+6. **Content Radar ACTIVO**: lunes 09:00 Chile, compuerta (≥ 5 días, < 3 piezas por revisar, < 5 señales sin usar); nada se publica solo.
+7. **Métricas/aprendizaje**: el pipeline 14/15/16 ya existente se consulta desde el Daily y `get_content_performance`; sin impresiones inventadas (GHL no las entrega), n pequeño = tentativo.
+8. `10 Atacama Daily (PREVIEW)` desactivado (no borrado).
+
+### B2.3. Pruebas (todas seguras, sin mensajes comerciales ni publicaciones reales)
+Offline: A–J en `ops-core.test.mjs` + simulación nodo a nodo. **En vivo:** Daily con datos reales desde la VPS (A); respuesta TEST controlada → aparece en el Daily como acción y alerta «Respondió» una sola vez, reintento solo si no se confirmó, silencio tras el ack (C, J); fallo simulado: reloj +3 h en `health`/`alerts_poll dry_run` → 6 alertas críticas sin escribir nada, y workflow TMP que falla de verdad → aparece en «fallidas 24 h» sin alertar (H); health general OK (I); 9 preguntas a Hermes (`hermes -z`) con datos reales; corrida real del Prospect Radar (5 importados a *Investigado*) y del Content Radar (7-oct, 4 min, 8 búsquedas, 5 señales enviadas → 7 señales candidatas sin pieza; ninguna pieza creada ni publicada; por tener ≥ 5 señales sin usar la compuerta saltará la corrida del lunes hasta que se conviertan en piezas). Costo informado por los agentes: US$ 0,03–0,04 por corrida (la validación previa del Radar midió ≈ US$ 0,19–0,20; el presupuesto usa el rango alto). Limpieza por ID exacto: mensaje TEST, fila `ops_alerts` TEST y workflow TMP borrados; verificado 0 restos.
+
+### B2.4. Errores reales encontrados y corregidos
+1. Hermes contestaba «oportunidades quietas» y «prospectos nuevos» desde `agent-os/RADAR_LEDGER.md` (HERMES.md lo declaraba estado operativo): sección fija nueva + descripción de skill; revalidado.
+2. Evento de respuesta ya avisado se re-notificaba mientras el mensaje tuviera < 24 h: dedupe por evento corregido.
+3. Oportunidades de prueba (`Sushi 72`, `Prueba Atacama`) ensuciaban «estancadas»: lista de ignorados configurable.
+4. Estado de Hermes no informado se leía como falla: ahora «no informado».
+
+### B2.5. Estado de seguridad al cierre
+`outreach_config.mode = off`; 0 mensajes aprobados/enviando/enviados; 13 borradores intactos; los 14 prospectos del primer lote sin tocar (en *Investigado*); +5 del Radar v2 en *Investigado* (sin contacto). EnBandeja intacto. Sin secretos en repo/docs.
