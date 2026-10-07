@@ -25,7 +25,23 @@ export type Prospect = {
   is_new: boolean;
 };
 
+export type PiecePreview = {
+  hook: string | null;
+  body: string | null;
+  cta: string | null;
+  hashtags: string[];
+  slides: { layout: string | null; kicker: string | null; title: string; body: string | null; items: string[]; compare: string[]; figure: string | null }[];
+  media: string[];
+  sources: { title: string; url: string }[];
+  rationale: string | null;
+  format: string | null;
+  proposed_at: string | null;
+  proposed_label: string | null;
+  ghl_post: boolean;
+};
+
 export type PieceRow = {
+  preview?: PiecePreview | null;
   id: string;
   title: string;
   channel: string;
