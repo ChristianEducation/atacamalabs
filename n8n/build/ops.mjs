@@ -36,7 +36,7 @@ const get = (name, urlExpr, cred, credKind, pos, extra) => ({ id: uuid(), name, 
   parameters: { method: 'GET', url: urlExpr, ...(credKind === 'supabase' ? { authentication: 'predefinedCredentialType', nodeCredentialType: 'supabaseApi' } : { authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth' }),
     ...(extra && extra.headers ? { sendHeaders: true, headerParameters: { parameters: extra.headers } } : {}), options: full(extra && extra.timeout) } });
 const u = (k) => `={{ $("Parse").first().json.u.${k} }}`;
-const sbApply = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: pos, credentials: SUPABASE_CRED, continueOnFail: true, alwaysOutputData: true,
+const sbApply = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: pos, credentials: SUPABASE_CRED, continueOnFail: true, alwaysOutputData: true, retryOnFail: true, maxTries: 3, waitBetweenTries: 1500,
   parameters: { method: '={{ $json.method || "POST" }}', url: `={{ $json.skip ? "${NONE}" : "${SUPABASE}/rest/v1/" + $json.path }}`, authentication: 'predefinedCredentialType', nodeCredentialType: 'supabaseApi', sendHeaders: true,
     headerParameters: { parameters: [{ name: 'Prefer', value: '={{ $json.prefer || "return=minimal" }}' }] }, sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full() } });
 const GH_HEADERS = [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', value: 'application/json' }];
@@ -67,7 +67,7 @@ export const parseCode = `try {
   const iso = (ms) => new Date(ms).toISOString();
   const n8n = '${N8N_BASE}/api/v1/';
   const u = {
-    messages: sb + 'outreach_messages?created_at=gte.' + iso(now - 45 * 86400000) + '&select=id,candidate_id,company_name,kind,direction,status,classification,subject,body,sent_at,created_at,metadata&order=created_at.desc&limit=700',
+    messages: sb + 'outreach_messages?created_at=gte.' + iso(now - 45 * 86400000) + '&select=id,candidate_id,company_name,kind,direction,status,classification,subject,body,sent_at,created_at,updated_at,metadata&order=created_at.desc&limit=700',
     cands: sb + 'prospect_candidates?status=in.(in_ghl,accepted,contacted)&select=id,company_name,status,band,priority_score,source_name,created_at,ghl_stage,ghl_opportunity_id,ghl_contact_id,next_action_at,channel_state,industry,location,domain,angle:canonical->>outreach_angle,quote:canonical->evidence_quotes->0->>quote&order=created_at.desc&limit=400',
     pieces: sb + 'content_pieces?select=id,topic,channel,status,ghl_status,ghl_approval_status,scheduled_at,published_at,is_test,learning,learned_at,created_at,format,category,score,hook:piece->>hook&order=created_at.desc&limit=80',
     metrics: sb + 'content_metrics?captured_at=gte.' + iso(now - 30 * 86400000) + '&select=content_piece_id,metric_window,status,likes,comments,shares,captured_at&order=captured_at.desc&limit=200',
@@ -119,7 +119,7 @@ const d = { now: p.now, cfg: CFG, opps: p.need.ghl && oppBody && Array.isArray(o
   messages: arr('SB Messages'), candidates: arr('SB Candidates'), pieces: arr('SB Pieces'), metrics: arr('SB Metrics'), signals_candidate: arr('SB Signals').length, signals_list: arr('SB Signals'), review_pieces: arr('SB Review Pieces'), alerts: arr('SB Alerts'), runs: arr('SB Runs'), outreach: arr('SB Config')[0] || null,
   workflows, execs, errors24h, hermes: p.hermes, gmail, missing };
 const A = p.action, writes = [], nowIso = new Date(p.now).toISOString();
-if (!d.hermes) { const hs = d.alerts.find((a) => a.alert_key === '_state:hermes'); if (hs && hs.meta && Array.isArray(hs.meta.jobs) && p.now - Date.parse(hs.last_seen_at) < 40 * 60000) d.hermes = hs.meta; }
+if (!d.hermes) { const hs = d.alerts.find((a) => a.alert_key === '_state:hermes'); if (hs && hs.meta && Array.isArray(hs.meta.jobs)) { d.hermes = hs.meta; d.hermes_age_ms = Math.max(0, p.now - Date.parse(hs.last_seen_at)); } }
 let out;
 if (A === 'daily') { const r = composeDaily(d); const br = composeBrief(d); out = { text: r.text, brief: br.text, action_count: r.action_count, review_count: r.review_count }; }
 else if (A === 'panel') { out = { panel: composePanel(d) }; }
@@ -158,9 +158,10 @@ else if (A === 'alerts_ack') {
 return [{ json: { out: { ok: true, action: A, missing, ...out }, writes: p.dry ? [] : writes, dry: p.dry } }];`;
 
 export const respondCode = `const c = $('Compute').first().json;
-const bad = $('Apply Writes').all().map((i) => i.json).filter((j) => (j.statusCode || 0) >= 300);
+const nW = ($('Compute').first().json.writes || []).length;
+const bad = $('Apply Writes').all().map((i) => i.json).slice(0, nW).filter((j) => !j.statusCode || j.statusCode >= 300);
 const r = { ...c.out };
-if (bad.length) { r.ok = false; r.persist_error = 'Supabase HTTP ' + bad[0].statusCode + ': ' + JSON.stringify(bad[0].body || {}).slice(0, 160); }
+if (bad.length) { r.ok = false; r.persist_error = 'Supabase ' + (bad[0].statusCode ? 'HTTP ' + bad[0].statusCode : 'sin respuesta (red)') + ': ' + JSON.stringify(bad[0].body || {}).slice(0, 160); }
 if (c.dry) r.dry_run = true;
 r.safety = { messages_sent: 0, writes: 'solo ops_alerts/ops_runs' };
 return [{ json: r }];`;

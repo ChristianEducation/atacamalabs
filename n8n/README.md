@@ -248,3 +248,8 @@ El ritmo real observado en 02b Signals (llamadas OpenClaw reales contra contenid
 - Lo agenda Hermes (cron `atacama-daily` / `atacama-alerts`), no n8n: n8n calcula, Hermes programa y entrega. Detalle en [`../docs/OPERATIONS.md`](../docs/OPERATIONS.md).
 - El preview anterior `10 Atacama Daily (PREVIEW)` (`LzZCCKXLMctkJRUo`) quedó **desactivado** (no borrado) por este reemplazo.
 - Migración: [`../supabase/migrations/20261009_ops_daily.sql`](../supabase/migrations/20261009_ops_daily.sql) (`ops_alerts`, `ops_runs`; RLS activa, sin acceso para anon/authenticated).
+
+## 26 LinkedIn Engine (Bloque 3, 7-oct-2026)
+- `Atacama Labs - 26 LinkedIn Engine` (`ve4uKTMQkGWzzmBV`, activo, etiqueta PRODUCCIÓN), webhook `POST /webhook/atacama-linkedin` (`X-Atacama-Key`). Generado por `node n8n/build/linkedin.mjs`; pruebas `node n8n/build/linkedin.test.mjs` (36).
+- Acciones: `list | status | recommend | approve | event | config | set_config | lists | test`. Waalaxy vía la credencial `Waalaxy — Atacama OS` (`S6oCbITh4Z93ZRjx`); el único POST a Waalaxy es el alta (`/prospects/addProspectFromIntegration`). Escribe `prospect_candidates.channel_state`, `outreach_config.linkedin_*` y `operator_audit_log`; GHL siempre por el Prospect Gateway (`act`).
+- Reconstruir los workflows de correo exige `GMAIL_CRED_ID=rA6hBRbpf0nbDWmh node n8n/build/outreach.mjs` (sin la variable se generan sin la credencial de Gmail).

@@ -2,7 +2,7 @@
   "name": "Atacama Labs - 26 LinkedIn Engine",
   "nodes": [
     {
-      "id": "32b31b98-f717-4262-b0d1-7bb5ba230fa8",
+      "id": "dc4d211f-fdc9-41b6-8837-b66d28dd1d15",
       "name": "LI Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -10,7 +10,7 @@
         0,
         0
       ],
-      "webhookId": "5782b58d-fde4-42b3-bc0f-be8c421e9f5d",
+      "webhookId": "1eebeb03-aaa6-446f-a8e3-c2e18d5a654b",
       "credentials": {
         "httpHeaderAuth": {
           "id": "lUGhlXVaQBEiEh5S",
@@ -26,7 +26,7 @@
       }
     },
     {
-      "id": "88db58fe-bf53-4d33-810d-bc82d19beafe",
+      "id": "bbda97dc-5a6f-47f0-8bbb-dc4bb03c55ec",
       "name": "Parse",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -39,7 +39,7 @@
       }
     },
     {
-      "id": "193548c0-6da3-435c-847b-df195d750100",
+      "id": "55ac394c-ef61-4270-bd5a-e1f33a567460",
       "name": "Valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -70,7 +70,7 @@
       }
     },
     {
-      "id": "14b79a1b-acf8-417d-b801-a0e9e401b022",
+      "id": "9df4692b-93e6-43bd-ab3d-6aafa66150d1",
       "name": "Respond Error",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -83,7 +83,7 @@
       }
     },
     {
-      "id": "d60e31ea-a7a3-4f9a-af18-b57c3c7ef28b",
+      "id": "6e19bc39-aaea-4da7-8b57-4c86d9ce12f4",
       "name": "SB Config",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -117,7 +117,7 @@
       }
     },
     {
-      "id": "348f5bc0-03ea-4447-987f-667d736ff2c4",
+      "id": "707191d3-95c9-4280-a6a5-78539f5a7320",
       "name": "SB Candidates",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -151,7 +151,7 @@
       }
     },
     {
-      "id": "9f1b3f04-35b0-4052-ab39-d1f41f865759",
+      "id": "a5f01906-5ebe-462e-ada8-b3cd4f8fca73",
       "name": "SB Messages",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -185,7 +185,7 @@
       }
     },
     {
-      "id": "57d55843-4f34-4ec9-a8e1-8392a901e378",
+      "id": "2ec6901a-52c2-4ea0-97c1-7aa7547aaaa1",
       "name": "SB Suppression",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -219,7 +219,7 @@
       }
     },
     {
-      "id": "76ad9d38-9a9c-4116-ae4e-0b3e37618b91",
+      "id": "79ea14cb-a00b-4426-9109-04c69a0007f1",
       "name": "Waalaxy Lists",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -262,7 +262,7 @@
       }
     },
     {
-      "id": "1136728c-3fd4-4f54-9757-dc992dc4a737",
+      "id": "241190b5-03d6-44b6-9705-f94663ef71ca",
       "name": "Waalaxy Campaigns",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -305,7 +305,7 @@
       }
     },
     {
-      "id": "548daa7a-c245-40c3-8034-d997c466bb99",
+      "id": "e597b0cd-b868-4cff-bfeb-7074e4afaf20",
       "name": "Waalaxy Test",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -348,7 +348,7 @@
       }
     },
     {
-      "id": "979ba471-aaf2-4d1a-b937-1a8ac620f18c",
+      "id": "e51ed626-d900-4021-bf8d-0a5caedc7da8",
       "name": "Compute",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -361,7 +361,7 @@
       }
     },
     {
-      "id": "8f5713c8-2e84-405b-b9f4-32702046f2c7",
+      "id": "b0f2cd7c-c586-4940-9540-f70d1b387b27",
       "name": "Waalaxy Import",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -407,7 +407,7 @@
       }
     },
     {
-      "id": "ef65cff0-4c18-4256-be53-dd8f91710cc2",
+      "id": "ae826a06-e13f-4dcf-8fa5-c5f37daebff9",
       "name": "Finish",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -420,7 +420,7 @@
       }
     },
     {
-      "id": "65ce0f0b-6206-4b73-8a1a-b1b4f69df8f6",
+      "id": "ae52eec2-1429-41a3-b7b0-f632471bca9f",
       "name": "Expand Writes",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -433,7 +433,7 @@
       }
     },
     {
-      "id": "631502e7-c0b6-43d4-82df-e44daa2d71ae",
+      "id": "b1d782d5-a0e0-46a0-940a-61d273190c7c",
       "name": "Apply Writes",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -449,6 +449,9 @@
       },
       "continueOnFail": true,
       "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1500,
       "parameters": {
         "method": "={{ $json.method || \"POST\" }}",
         "url": "={{ $json.skip ? \"https://localhost.invalid/\" : \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/\" + $json.path }}",
@@ -479,7 +482,7 @@
       }
     },
     {
-      "id": "3e898de3-9077-4512-b9bc-2a3696f425e0",
+      "id": "0b45d2bf-a432-4ef8-bf02-c985a93e3ae0",
       "name": "Expand Gateway",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -492,7 +495,7 @@
       }
     },
     {
-      "id": "38323d9b-ae79-4ff9-a81e-d3ab971d7725",
+      "id": "c8fbc6c3-a774-4e84-86fe-a5616185b216",
       "name": "Gateway Act",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -529,7 +532,7 @@
       }
     },
     {
-      "id": "2e6b45df-79b6-469c-afe0-9161528dc546",
+      "id": "a0fbdb53-6acd-409e-ab58-53507d68502a",
       "name": "Respond",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -538,7 +541,7 @@
         0
       ],
       "parameters": {
-        "jsCode": "const f = $('Finish').first().json;\nconst bad = $('Apply Writes').all().map((i) => i.json).filter((j) => (j.statusCode || 0) >= 300);\nconst gwBad = $('Gateway Act').all().map((i) => i.json).filter((j) => (j.statusCode || 0) >= 300);\nconst r = { ...f.resp };\nif (bad.length) { r.persist_error = 'Supabase HTTP ' + bad[0].statusCode + ': ' + JSON.stringify(bad[0].body || {}).slice(0, 160); }\nif (gwBad.length) { r.ghl_error = 'Gateway HTTP ' + gwBad[0].statusCode + ': ' + JSON.stringify(gwBad[0].body || {}).slice(0, 160); }\nr.safety = { messages_sent: 0, note: 'Waalaxy ejecuta la secuencia; Atacama OS solo inserta prospectos aprobados y registra el estado' };\nreturn [{ json: r }];"
+        "jsCode": "const f = $('Finish').first().json;\nconst nW = ($('Finish').first().json.writes || []).length;\nconst bad = $('Apply Writes').all().map((i) => i.json).slice(0, nW).filter((j) => !j.statusCode || j.statusCode >= 300);\nconst nG = ($('Finish').first().json.gw || []).filter((x) => !x.skip).length;\nconst gwBad = $('Gateway Act').all().map((i) => i.json).slice(0, nG).filter((j) => !j.statusCode || j.statusCode >= 300);\nconst r = { ...f.resp };\nif (bad.length) { r.ok = false; r.persist_error = 'Supabase ' + (bad[0].statusCode ? 'HTTP ' + bad[0].statusCode : 'sin respuesta (red)') + ': ' + JSON.stringify(bad[0].body || {}).slice(0, 160); }\nif (gwBad.length) { r.ghl_error = 'Gateway ' + (gwBad[0].statusCode ? 'HTTP ' + gwBad[0].statusCode : 'sin respuesta (red)') + ': ' + JSON.stringify(gwBad[0].body || {}).slice(0, 160); }\nr.safety = { messages_sent: 0, note: 'Waalaxy ejecuta la secuencia; Atacama OS solo inserta prospectos aprobados y registra el estado' };\nreturn [{ json: r }];"
       }
     }
   ],

@@ -42,7 +42,7 @@ async function call(body, fx) {
   const comp = (await run('Compute', store, { 'Expand Execs': ex, 'N8N Execs': execRes }))[0].json; store.Compute = comp;
   const w = (await run('Expand Writes', store)).map((x) => x.json);
   store['Apply Writes'] = ok200({});
-  const resp = (await run('Respond', store, { 'Apply Writes': w.map(() => ({ statusCode: f.writeStatus || 201, body: {} })) }))[0].json;
+  const resp = (await run('Respond', store, { 'Apply Writes': w.map(() => ({ statusCode: f.writeNet ? undefined : (f.writeStatus || 201), body: {} })) }))[0].json;
   return { parsed, comp, writes: w.filter((x) => !x.skip), resp, ex };
 }
 

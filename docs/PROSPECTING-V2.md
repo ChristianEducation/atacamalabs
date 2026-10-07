@@ -59,3 +59,7 @@ El scoring del Gateway **no cambió** (fit 35 + señal 35 + alcance 30; alta ≥
 - **Dónde se ve:** `get_radar_new` / el Daily («Prospección: N candidatos nuevos…»). Los prospectos esperan decisión de Christian en *Investigado*.
 - **Pausa / rollback:** `hermes cron pause 8421589d0902`.
 - Detalle operativo y de costos: [`OPERATIONS.md`](OPERATIONS.md).
+
+## 7. Persona y LinkedIn (Bloque 3)
+- El prompt del Radar pide `contact.name` + `contact.job_title` reales y, si la empresa o una búsqueda enlaza un perfil **personal** de LinkedIn, `contact.linkedin_url` con `linkedin_source_url` (la página donde se vio). Prohibido adivinar URLs, usar páginas de empresa o scrapear LinkedIn. El Gateway normaliza (`normLinkedInProfile`) y descarta lo que no sea `/in/<perfil>`.
+- El canal lo decide Atacama OS (`recommendChannel`): LinkedIn solo con persona + cargo confiable + perfil verificable + evidencia; si no, correo o «investigar más». Hoy 0 de 19 prospectos cumplen para LinkedIn.

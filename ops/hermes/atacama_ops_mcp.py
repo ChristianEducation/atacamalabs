@@ -350,10 +350,6 @@ def delete_record(what: str, confirmation_code: str = "", request_id: str = "") 
     return _call("delete_record", {"what": what}, confirmation_code=confirmation_code, request_id=request_id)
 
 
-if __name__ == "__main__":
-    mcp.run()
-
-
 # ---------------------------------------------------------------- LinkedIn (Waalaxy como ejecutor) · Bloque 3
 def _li(body):
     """Llama al workflow n8n 26 «LinkedIn Engine». Waalaxy solo recibe altas aprobadas; Atacama OS NO puede saber por API si una invitación se envió, se aceptó o hubo respuesta."""
@@ -406,3 +402,7 @@ def linkedin_config() -> str:
 def waalaxy_lists() -> str:
     """Listas y campañas (pausadas o en curso) que existen hoy en Waalaxy, para elegir destino. Solo lectura."""
     return _li({"action": "lists"})
+
+if __name__ == "__main__":
+    mcp.run()
+

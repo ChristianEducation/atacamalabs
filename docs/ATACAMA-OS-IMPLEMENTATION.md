@@ -916,3 +916,28 @@ Offline: A–J en `ops-core.test.mjs` + simulación nodo a nodo. **En vivo:** Da
 4. **`sudo hermes-restart agent` corta corridas en curso** (`hermes -z` y, potencialmente, jobs de radar): reiniciar solo sin corridas activas.
 5. **Candidatos para Bloque 3 que salieron de esto:** (a) vigilante externo del Daily/alertas (p. ej. un chequeo desde n8n que avise si no hubo Daily a las 09:15 o si `atacama-alerts` lleva 2 fallos); (b) paso de despliegue con *canary* para los scripts de Hermes; (c) `display.tool_progress: all` en la config de Hermes manda trazas técnicas a las sesiones interactivas de Telegram (hoy solo se apagó el verifier de archivos); (d) 5 ejecuciones fallidas en 24 h (08 Prospect Ingest ×2, 17 Prospect Search, 13 Content Signal Intake, 12 Content Intake) sin diagnosticar; (e) 4 correos que salieron del buzón de envío sin pasar por Atacama OS (Bloque 1).
 6. **Panel `/ops`:** construido y validado en local; **pendiente publicarlo y validarlo en producción** (variables `OPS_PANEL_PASSWORD`, `N8N_BASE_URL`, `ATACAMA_INGEST_KEY` en Vercel y despliegue de la rama). `ATACAMA_PANEL_URL` en Hermes se define después de validarlo.
+
+## BLOQUE 3 — Cierre y blindaje final (7-oct-2026) · ✅ TÉCNICAMENTE LISTO, ENVÍO REAL APAGADO
+
+Resumen ejecutivo, arquitectura, activación y pendientes: [`ATACAMA-OS-ARQUITECTURA-FINAL.md`](ATACAMA-OS-ARQUITECTURA-FINAL.md). Aquí el registro de lo hecho y hallado.
+
+### B3.1. Auditoría inicial (antes de cambiar nada) — correcto / inconsistente / riesgo
+- **Correcto:** `main` = rama de trabajo; 25 workflows de producción activos sin triggers duplicados (22/23/24 tienen schedule + webhook a propósito); 01–05 «(PROD)» solo por `executeWorkflow` y dormidos; GHL sin duplicados, sin oportunidades sin contacto y sin tareas huérfanas (41 contactos sin oportunidad = 36 EnBandeja legacy + 5 ejemplos de GHL); 2 oportunidades heredadas de pruebas web (`Sushi 72`, `Prueba Atacama`) intactas e ignoradas en el Daily; VPS sin runaway (carga 0,05, 4,4 GB libres, disco 59 %) y sin reinicios en bucle.
+- **Inconsistente (corregido):** (1) `complete_territory_scan` y otras 4 funciones solo-servidor eran ejecutables por `anon`/`authenticated`/`public` → revocado y probado; (2) los workflows 25 y 26 respondían «ok» ante un fallo de red al escribir en Supabase → reintentos + `ok:false`; (3) correos colgados en `sending` sin vigilancia → alerta a los 15 min; (4) si el job de alertas de Hermes se caía nadie lo veía → el panel avisa a los 35/90 min; (5) el workflow de prueba manual de Waalaxy se llamaba «My workflow» → renombrado e inactivo.
+- **Riesgo real que queda (requiere root, ver arquitectura §10):** Crawl4AI público en `0.0.0.0:32774` (responde 401), override de OpenClaw sin persistir en el compose original y publicación `0.0.0.0:32781` del contenedor de Hermes.
+- **Ejecuciones fallidas (diagnóstico):** 16 en 48 h, todas rechazos de validación de pruebas negativas del 5–6 oct (más un error de GHL del Content Engine ya corregido); ninguna recurrente.
+
+### B3.2. LinkedIn / Waalaxy
+- API pública real: solo importar, listar listas/campañas y probar conexión; **sin webhooks ni estado** (detalle y consecuencias en la arquitectura §5). Credencial de n8n `Waalaxy — Atacama OS` verificada; la cuenta tiene 3 listas y 0 campañas.
+- **Migración `20261011_linkedin_channel.sql`:** `prospect_candidates.channel_state` + `outreach_config.linkedin_*` (sin tablas nuevas).
+- **n8n `26 LinkedIn Engine`** (`ve4uKTMQkGWzzmBV`, generado por `n8n/build/linkedin.mjs`; núcleo `scripts/linkedin/linkedin-core.mjs`, 13 + 36 pruebas): `list | status | recommend | approve | event | config | set_config | lists | test`. Gateway: normaliza perfiles personales de LinkedIn y conserva la fuente (`linkedin_source_url`); `mark_contacted` acepta canal `linkedin`. Los seguimientos de correo se detienen si hay respuesta o rechazo por LinkedIn. `/ops`: sección LinkedIn (pendiente, conexión, mensaje, follow-up, respondió, error); alerta por error de Waalaxy.
+- **Radar:** el prompt ahora pide persona (nombre y cargo reales) y perfil personal verificable con su fuente; nunca adivinar ni scrapear LinkedIn.
+
+### B3.3. Protecciones contra los incidentes del 7-oct
+Job de alertas roto por sintaxis → `ops/hermes/deploy-to-vps.sh` (valida antes de reemplazar). Archivo vacío desplegado por ruta relativa → rutas absolutas + `test -s`. Herramientas del MCP definidas después de `mcp.run()` (nunca se registraban; lo detectó el E2E) → `ops/hermes/mcp-shape.test.mjs`. Deploy de Vercel roto por un archivo sin commitear → `scripts/run-all-tests.mjs` + `tsc`/`lint`/`build` antes de empujar a `main`. Avisos no anunciados → regla documentada en `OPERATIONS.md`.
+
+### B3.4. Prueba E2E real y Won → Cliente
+Ver arquitectura §7. Hallazgos del E2E: la falla silenciosa de red (corregida), las herramientas del MCP que no se registraban (corregido) y la ausencia de persona + LinkedIn en los 19 prospectos actuales (decisión de canal: 18 correo, 1 investigar más). **Won→Cliente validado con `dry_run:false` sobre una oportunidad TEST** (Business, Servicio, Proyecto y relaciones correctas, idempotente) y limpiado por ID exacto; el interruptor de producción es el `dry_run` del webhook de la automatización de GHL (pendiente humano).
+
+### B3.5. Estado final de los datos
+`outreach_config.mode=off`, `linkedin_mode=off`; 0 correos aprobados/enviando/enviados; 13 borradores; los 14 prospectos del primer lote y los 5 del Radar v2 intactos en Investigado; 0 datos TEST; 2 filas de auditoría de cambios de configuración de LinkedIn se conservan como evidencia.

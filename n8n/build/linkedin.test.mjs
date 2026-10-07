@@ -26,7 +26,7 @@ async function call(body, fx) {
   const importCalled = Boolean(store.Compute.out.waalaxy && !store.Compute.out.waalaxy.skip);
   store['Waalaxy Import'] = importCalled ? (f.waImport || ok200({ result: [{ importCode: 'success', prospect: { _id: 'WX1' } }] })) : { statusCode: 0 };
   store.Finish = (await run('Finish', store))[0].json;
-  const w = (await run('Expand Writes', store)).map((x) => x.json); store['Apply Writes'] = ok200({}); store['Apply Writes#all'] = w.map(() => ({ statusCode: f.writeStatus || 204, body: {} }));
+  const w = (await run('Expand Writes', store)).map((x) => x.json); store['Apply Writes'] = ok200({}); store['Apply Writes#all'] = w.map(() => ({ statusCode: f.writeNet ? undefined : (f.writeStatus || 204), body: {} }));
   const gw = (await run('Expand Gateway', store)).map((x) => x.json); store['Gateway Act'] = ok200({}); store['Gateway Act#all'] = gw.map(() => ({ statusCode: f.gwStatus || 200, body: {} }));
   const resp = (await run('Respond', store))[0].json;
   return { parsed: store.Parse, comp: store.Compute, importCalled, fin: store.Finish, writes: w.filter((x) => !x.skip), gw: gw.filter((x) => !x.skip), resp };
@@ -102,6 +102,8 @@ r = await call({ action: 'test' }, FIX({ wa: { test: ok200({ ok: true }) } })); 
 r = await call({ action: 'test' }, FIX({ wa: { test: { statusCode: 401, body: {} } } })); t('test: credencial inválida se informa', r.resp.ok === false && /no responde/.test(r.resp.message));
 r = await call({ action: 'approve', target: 'prueba.cl' }, { ...fxTest, writeStatus: 500 });
 t('si Supabase falla al guardar, la respuesta lo informa', /Supabase HTTP 500/.test(r.resp.persist_error || ''));
+r = await call({ action: 'recommend', target: 'prueba.cl' }, { ...FIX(), writeNet: true });
+t('error de RED al guardar (sin código HTTP) tampoco pasa en silencio: ok=false y persist_error', r.resp.ok === false && /sin respuesta \(red\)/.test(r.resp.persist_error || ''), JSON.stringify(r.resp).slice(0, 200));
 r = await call({ action: 'status', target: 'prueba.cl' }); t('toda respuesta declara que no se envió ningún mensaje', r.resp.safety.messages_sent === 0);
 console.log(`\n${pass} ok, ${fail} fallos`);
 process.exit(fail ? 1 : 0);

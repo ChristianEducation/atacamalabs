@@ -321,4 +321,14 @@ ok('LinkedIn Engine es un workflow vigilado (no crítico): su falla se ve, pero 
   assert.ok(oc.monitoredWorkflows().some((w) => w.id === 've4uKTMQkGWzzmBV' && w.critical === false));
   const h = oc.healthReport(base()); assert.ok(h.components.some((c) => c.name === 'LinkedIn Engine'));
 });
+ok('correo colgado en «enviando» > 15 min genera alerta; uno recién reclamado no', () => {
+  const m = (min) => ({ id: 'q1', direction: 'outbound', status: 'sending', company_name: 'Alfa', created_at: iso(3 * D), updated_at: iso(min * 60000), kind: 'initial' });
+  assert.ok(oc.evaluateAlerts(base({ messages: [m(40)] }), []).notify.some((x) => x.key === 'sending_stuck:q1' && x.severity === 'high'));
+  assert.ok(!oc.evaluateAlerts(base({ messages: [m(3)] }), []).notify.some((x) => /^sending_stuck/.test(x.key)));
+});
+ok('si Hermes deja de reportar, el panel lo muestra (atención a los 35 min, fallo a los 90)', () => {
+  const st = (min) => oc.healthReport(base({ hermes_age_ms: min * 60000 })).components.find((c) => /reporte de alertas/.test(c.name));
+  assert.equal(st(10).status, 'ok'); assert.equal(st(50).status, 'atencion'); assert.equal(st(120).status, 'fallo'); assert.match(st(120).reason, /no reporta hace 120 min/);
+  assert.ok(!oc.healthReport(base()).components.some((c) => /reporte de alertas/.test(c.name)), 'sin snapshot no se inventa el componente');
+});
 console.log(n + ' ok');

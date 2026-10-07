@@ -28,7 +28,7 @@ const ifNode = (name, expr, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.i
   parameters: { conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'loose' }, combinator: 'and', conditions: [{ leftValue: `={{ (${expr}) ? "yes" : "no" }}`, rightValue: 'yes', operator: { type: 'string', operation: 'equals' } }] }, options: {} } });
 const sbGet = (name, urlExpr, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: pos, credentials: SUPABASE_CRED, continueOnFail: true, alwaysOutputData: true,
   parameters: { method: 'GET', url: urlExpr, authentication: 'predefinedCredentialType', nodeCredentialType: 'supabaseApi', options: full() } });
-const sbApply = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: pos, credentials: SUPABASE_CRED, continueOnFail: true, alwaysOutputData: true,
+const sbApply = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: pos, credentials: SUPABASE_CRED, continueOnFail: true, alwaysOutputData: true, retryOnFail: true, maxTries: 3, waitBetweenTries: 1500,
   parameters: { method: '={{ $json.method || "POST" }}', url: `={{ $json.skip ? "${NONE}" : "${SUPABASE}/rest/v1/" + $json.path }}`, authentication: 'predefinedCredentialType', nodeCredentialType: 'supabaseApi', sendHeaders: true,
     headerParameters: { parameters: [{ name: 'Prefer', value: '={{ $json.prefer || "return=minimal" }}' }] }, sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full() } });
 const waGet = (name, pathExpr, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: pos, credentials: WAALAXY_CRED, continueOnFail: true, alwaysOutputData: true,
@@ -155,11 +155,13 @@ const gw = effects.filter((e) => e.type === 'gateway_act' && c.cand).map((e, i) 
 return [{ json: { resp, writes: writes.concat(audit), gw: gw.length ? gw : [{ skip: true, body: {} }] } }];`;
 
 export const respondCode = `const f = $('Finish').first().json;
-const bad = $('Apply Writes').all().map((i) => i.json).filter((j) => (j.statusCode || 0) >= 300);
-const gwBad = $('Gateway Act').all().map((i) => i.json).filter((j) => (j.statusCode || 0) >= 300);
+const nW = ($('Finish').first().json.writes || []).length;
+const bad = $('Apply Writes').all().map((i) => i.json).slice(0, nW).filter((j) => !j.statusCode || j.statusCode >= 300);
+const nG = ($('Finish').first().json.gw || []).filter((x) => !x.skip).length;
+const gwBad = $('Gateway Act').all().map((i) => i.json).slice(0, nG).filter((j) => !j.statusCode || j.statusCode >= 300);
 const r = { ...f.resp };
-if (bad.length) { r.persist_error = 'Supabase HTTP ' + bad[0].statusCode + ': ' + JSON.stringify(bad[0].body || {}).slice(0, 160); }
-if (gwBad.length) { r.ghl_error = 'Gateway HTTP ' + gwBad[0].statusCode + ': ' + JSON.stringify(gwBad[0].body || {}).slice(0, 160); }
+if (bad.length) { r.ok = false; r.persist_error = 'Supabase ' + (bad[0].statusCode ? 'HTTP ' + bad[0].statusCode : 'sin respuesta (red)') + ': ' + JSON.stringify(bad[0].body || {}).slice(0, 160); }
+if (gwBad.length) { r.ghl_error = 'Gateway ' + (gwBad[0].statusCode ? 'HTTP ' + gwBad[0].statusCode : 'sin respuesta (red)') + ': ' + JSON.stringify(gwBad[0].body || {}).slice(0, 160); }
 r.safety = { messages_sent: 0, note: 'Waalaxy ejecuta la secuencia; Atacama OS solo inserta prospectos aprobados y registra el estado' };
 return [{ json: r }];`;
 

@@ -139,3 +139,11 @@ Carga extra en n8n: ~96 consultas/día de alertas (cada una lee unas 10 tablas/e
 - **En `/ops` (Contenido → Por aprobar):** texto completo del post, slides del carrusel (miniaturas deslizables, tocar para ampliar), por qué se eligió, fuentes, fecha propuesta y enlace a Social Planner. **Aprobar o rechazar se hace en GHL** (`In Review → Approve`); `/ops` es de solo lectura.
 - **Piezas de la prueba:** `scripts/content/generated/2026-10-07-*` (selección de Hermes, carrusel de Instagram sobre compactación de conversaciones —score 79— y texto de LinkedIn Atacama Labs sobre la Account Usage API de Resend —score 80—).
 - **Aprendizaje:** el radar ya lee `atacama-content-learnings` (métricas 24 h/72 h/7 d); no se construyó un subsistema nuevo.
+
+## 12. LinkedIn y protecciones del Bloque 3
+
+- **LinkedIn**: ver [`ATACAMA-OS-ARQUITECTURA-FINAL.md`](ATACAMA-OS-ARQUITECTURA-FINAL.md) §5. En `/ops` aparece como sección propia; el Daily pide acción si hay altas por confirmar o errores de Waalaxy.
+- **Desplegar a la VPS**: siempre con `ops/hermes/deploy-to-vps.sh <archivo> <ruta en /opt/data> ["prueba posterior"]` (valida antes de reemplazar y revierte solo si la prueba falla). Evita comillas simples dentro de la prueba.
+- **Antes de llevar algo a `main`**: `node scripts/run-all-tests.mjs` + `npx tsc --noEmit` + `npx eslint src` + `npx next build`.
+- **Vigilancia**: alerta por correo colgado en «enviando» > 15 min; el panel marca «Hermes · reporte de alertas» si Hermes no reporta en 35/90 min; los workflows 25 y 26 reintentan las escrituras y delatan los fallos de red.
+- **Aviso de operación**: reiniciar el agente (`sudo hermes-restart agent`) corta las corridas en curso; al desplegar una regla de avisos nueva pueden llegar mensajes de Telegram inesperados la primera vez (sembrar `ops_alerts` o anunciarlo antes).

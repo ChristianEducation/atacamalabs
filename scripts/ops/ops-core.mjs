@@ -216,6 +216,7 @@ export function healthReport(d) {
   pick(['idniXY0Du2qet57O', 'VsLCMZ6MeDsNvGzI'], 'Captura de leads y reservas (web)');
   const other = jobs.filter((j) => /^atacama-/i.test(j.name));
   other.forEach((j) => comp.push({ name: 'Job Hermes · ' + j.name, status: j.status, reason: j.reason }));
+  if (d.hermes_age_ms != null) { const m = Math.round(d.hermes_age_ms / 60000); comp.push({ name: 'Hermes · reporte de alertas', status: m <= 35 ? 'ok' : m <= 90 ? 'atencion' : 'fallo', reason: m <= 35 ? 'reportó hace ' + m + ' min' : 'no reporta hace ' + m + ' min: el job de alertas puede estar caído' }); }
   const h = d.hermes || {};
   if (h.gateway_ok === false) comp.push({ name: 'Hermes / Telegram', status: 'fallo', reason: 'el gateway de mensajería no responde' });
   else if (h.disk_pct != null) comp.push({ name: 'Hermes / servidor', status: Number(h.disk_pct) >= 85 ? 'atencion' : 'ok', reason: 'disco al ' + h.disk_pct + '%' });
@@ -360,6 +361,7 @@ export function evaluateAlerts(d, existing) {
   (d.pieces || []).filter((p) => !p.is_test && (p.status === 'failed' || p.ghl_status === 'failed' || (['scheduled', 'approved'].includes(p.status) && p.scheduled_at && now - Date.parse(p.scheduled_at) > 60 * 60000 && !p.published_at))).forEach((p) => add('publish_failed:' + p.id, 'high', 'Publicación sin salir: «' + String(p.topic || '').slice(0, 60) + '»', 'Estaba programada para ' + (p.scheduled_at ? fmtDateTime(Date.parse(p.scheduled_at), tz) : 's/f') + ' y no figura publicada.', false));
   // 5) jobs de Hermes con fallos repetidos
   for (const j of hermesJobChecks(d.hermes, now).filter((x) => x.status === 'fallo' && !x.paused)) add('hermes_job:' + j.id, 'high', 'Job de Hermes con fallos: ' + j.name, j.reason, false);
+  for (const m of (d.messages || []).filter((x) => x.direction === 'outbound' && x.status === 'sending' && x.updated_at && now - Date.parse(x.updated_at) > 15 * 60000)) add('sending_stuck:' + m.id, 'high', 'Correo colgado en «enviando» hace ' + ageText(now - Date.parse(m.updated_at)) + ': ' + (m.company_name || 'prospecto'), 'El envío no terminó ni falló: revisa Gmail Sender antes de aprobar otro correo a esa empresa.', false);
   for (const x of (d.candidates || []).filter((c) => ((c.channel_state || {}).linkedin || {}).state === 'error')) add('li_error:' + x.id, 'high', 'LinkedIn: no se pudo insertar en Waalaxy — ' + x.company_name, String(x.channel_state.linkedin.next_action || 'Revisar el error').slice(0, 160), false);
   if (d.hermes && d.hermes.gateway_ok === false) add('hermes_gateway', 'critical', 'Hermes: el gateway de mensajería no responde', 'Telegram puede no estar entregando mensajes.', false);
   if (d.hermes && Number(d.hermes.disk_pct) >= 90) add('disk_full', 'high', 'Servidor de Hermes con el disco al ' + d.hermes.disk_pct + '%', 'Se puede quedar sin espacio.', false);

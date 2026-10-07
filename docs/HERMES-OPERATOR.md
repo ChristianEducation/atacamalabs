@@ -136,3 +136,16 @@ El MCP `atacama-os` pasó de 27 a **35 herramientas**. Todas llaman a n8n `25 At
 **Lección aprendida (importante):** la primera prueba mostró que Hermes respondía «¿qué oportunidades están quietas?» y «¿qué prospectos nuevos hay?» desde sus ledgers personales antiguos (`agent-os/RADAR_LEDGER.md`), porque `HERMES.md` los declara estado operativo. Se agregó a `HERMES.md` (respaldo `HERMES.md.bak-bloque2`) una sección fija «Atacama OS — operación comercial y de contenido» que obliga a usar estas herramientas para el negocio de Atacama Labs, y la descripción de la skill `atacama-ops` ahora lista esas frases. Fuente: `ops/hermes/HERMES-atacama-os-section.md`. Después del cambio las 9 preguntas se respondieron con datos reales de GHL/Supabase/n8n.
 
 **Jobs de cron de Hermes (sin IA):** `atacama-daily` (08:30 Chile), `atacama-alerts` (cada 15 min, silencioso) — ver [`OPERATIONS.md`](OPERATIONS.md). Archivos en la VPS: `/opt/data/atacama-ops/{atacama_common.py,atacama_ops_cli.py,atacama_ops_mcp.py}`, `/opt/data/scripts/{atacama_daily,atacama_alerts,radar_gate,content_gate}.sh`. Reiniciar el agente tras tocar el MCP: `sudo hermes-restart agent` (corta las corridas `hermes -z` en curso).
+
+## 11. Canal LinkedIn (Bloque 3) — 7 herramientas más (42 en total)
+
+| Herramienta | Nivel | Qué hace |
+|---|---|---|
+| `linkedin_ready` | 1 (lectura) | Separa Investigado en LinkedIn / correo / investigar más, con motivo y faltantes |
+| `linkedin_status` | 1 | Estado de un prospecto en LinkedIn y canal recomendado hoy |
+| `recommend_channel` | 1 | Calcula y guarda la recomendación |
+| `approve_linkedin` | **3** | Alta en Waalaxy en dos pasos (código + palabras de Christian); bloqueada si el modo es `off`, si hay correo activo o si el perfil no es verificable |
+| `log_linkedin_event` | 1 | Registra lo que Christian ve en Waalaxy (conexión, mensaje, follow-up, respuesta, rechazo, detener) |
+| `linkedin_config` · `waalaxy_lists` | 1 | Modo/destinos y listas/campañas de Waalaxy |
+
+**Lección:** las herramientas definidas después de `mcp.run()` no se registran; `ops/hermes/mcp-shape.test.mjs` lo impide y `hermes mcp test atacama-os` debe mostrar 42.
