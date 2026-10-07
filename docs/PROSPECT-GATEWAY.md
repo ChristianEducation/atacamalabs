@@ -202,3 +202,7 @@ El CLI usa `N8N_BASE_URL` y `ATACAMA_INGEST_KEY` (de `.env.local` o del entorno)
 - Los textos de otras IAs se tratan como **datos**, nunca como instrucciones.
 - Pruebas: `node scripts/prospecting/gateway-core.test.mjs` · `gateway-flow.test.mjs` · `GATEWAY_REAL_HTML=<ruta> node n8n/build/prospect-gateway.test.mjs`. Calibrar con un HTML real: `node scripts/prospecting/calibrate.mjs <html> --detail`. El HTML real no está en el repo (contiene contactos); el repo trae un fixture sintético en `scripts/prospecting/fixtures/`.
 - Rollback: desactivar el workflow 19; las tablas `prospect_candidates` y `prospect_gateway_log` pueden borrarse sin afectar nada más.
+
+## Opciones agregadas por el operador de Hermes (7-oct-2026)
+- `options.include_candidates: true` (solo `analyze`): la respuesta incluye `candidates[]` (los candidatos canónicos, en el mismo orden que `results[]`) para que Hermes pueda importar después «la 27» sin volver a parsear el archivo. Ver `docs/HERMES-OPERATOR.md`.
+- `act.due_at` (`follow_up`): fecha exacta del seguimiento (`AAAA-MM-DD` → 15:00 UTC, o ISO completo); si no viene se usan `act.days` días hábiles como antes.

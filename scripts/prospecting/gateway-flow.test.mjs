@@ -89,5 +89,11 @@ r = run({ action: 'import', request_id: 'e1', options: {}, candidates: [good()] 
 t('contacto duplicado detectado por GHL al crear: no se crea oportunidad, se informa y no se modifica el existente', !r.p2.ops.some((o) => o.kind === 'opp_create') && /ya_existe_en_ghl/.test(r.fin.response.results[0].error) && r.fin.rows[0].status === 'accepted' && !r.fin.rows[0].ghl_contact_id);
 t('buildEntries: indexa contactos y oportunidades de GHL por correo, teléfono y dominio', (() => { const e = buildEntries([], [{ id: 'c1', email: 'A@empresa.cl', phone: '+56 9 1111 2222', website: 'https://www.empresa.cl' }], [{ id: 'o1', name: 'X', contact: { email: 'b@otra.cl' }, customFields: [{ fieldValueString: 'd:otra.cl' }] }]); return e[0].keys.includes('e:a@empresa.cl') && e[0].keys.includes('p:911112222') && e[0].keys.includes('d:empresa.cl') && e[1].keys.includes('d:otra.cl'); })());
 
+// ---------- soporte del operador (Hermes): candidatos en el análisis y fecha exacta de seguimiento
+r = run({ action: 'analyze', request_id: null, options: { include_candidates: true }, candidates: [good()] }, emptyState);
+t('ANALYZE con include_candidates devuelve los candidatos canónicos (para importarlos después sin volver a parsear)', analyzeResponse({ action: 'analyze', options: { include_candidates: true } }, r.ev).candidates[0].company_name === 'Clínica Rica TEST' && analyzeResponse({ action: 'analyze' }, r.ev).candidates === undefined);
+r = run({ action: 'act', request_id: 'a20', act: { type: 'follow_up', due_at: '2026-10-09', title: 'Llamar el viernes' }, candidates: [good()] }, existing);
+t('ACT follow_up con fecha exacta (viernes) usa esa fecha a las 12:00 de Chile', r.p2.ops.some((o) => o.kind === 'task_create' && o.body.dueDate === '2026-10-09T15:00:00.000Z' && o.body.title === 'Llamar el viernes'));
+
 console.log(`\n${pass} ok ${fail} fallos`);
 process.exit(fail ? 1 : 0);

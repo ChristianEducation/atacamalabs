@@ -233,3 +233,6 @@ El ritmo real observado en 02b Signals (llamadas OpenClaw reales contra contenid
 ## Prospect Gateway (Bloque L, 7-oct-2026)
 - **19 Prospect Gateway** (`n8n/atacama-labs-19-prospect-gateway.json`, id `ZlYTYp9AVdCYPdwS`): puerta universal de prospectos (`POST /webhook/atacama-prospect-gateway`, `X-Atacama-Key`; acciones `analyze | import | prepare | act`; `request_id` idempotente). Generador: `node n8n/build/prospect-gateway.mjs` (el JSON versionado es el de producción; `MODE=test` genera la copia de pruebas con otro pack y ruta). Guía y contrato: `docs/PROSPECT-GATEWAY.md`.
 - Tests: `node scripts/prospecting/gateway-core.test.mjs` · `node scripts/prospecting/gateway-flow.test.mjs` · `GATEWAY_REAL_HTML=<ruta> node n8n/build/prospect-gateway.test.mjs`.
+
+## Hermes Operator (Bloque M, 7-oct-2026)
+- **20 Hermes Operator** (`n8n/atacama-labs-20-hermes-operator.json`, id `Pm5XfYBocmWR3YgY`): única puerta por la que Hermes opera Atacama OS (`POST /webhook/atacama-hermes-operator`, `X-Atacama-Key`; `{ tool, request_id, params, order_text?, confirmation_code? }`). Aplica niveles de permiso 1/2/3, idempotencia y auditoría (`operator_audit_log`), y delega en el Prospect Gateway (19) o lee GHL de forma acotada. Generador: `node n8n/build/hermes-operator.mjs`; prueba nodo a nodo: `node n8n/build/hermes-operator.test.mjs`. Guía: `docs/HERMES-OPERATOR.md`.

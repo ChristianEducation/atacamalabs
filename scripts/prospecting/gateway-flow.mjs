@@ -202,5 +202,5 @@ export function finalizeRun(req, items, s2ops, s2res, contactIds, errors, cfg, c
 export function analyzeResponse(req, ev) {
   const results = ev.items.map((it) => briefResult({ candidate: it.candidate, key: it.key, scores: it.scores, decision: it.decision, reasons: it.reasons, matches: it.matches, manual_override: it.manual_override }));
   const by = (k) => results.reduce((a, r) => { a[r[k]] = (a[r[k]] || 0) + 1; return a; }, {});
-  return { ok: true, action: 'analyze', request_id: req.request_id || null, replayed: false, wrote_nothing: true, ghl_index_complete: ev.ghl_index_complete, source: req.source || {}, summary: { received: results.length, by_band: by('band'), by_decision: by('decision'), would_enter_ghl: results.filter((r) => r.decision === 'create_in_ghl').length }, safety: { messages_sent: 0 }, results };
+  return { ok: true, action: 'analyze', request_id: req.request_id || null, replayed: false, wrote_nothing: true, ...(req.options && req.options.include_candidates ? { candidates: ev.items.map((it) => it.candidate) } : {}), ghl_index_complete: ev.ghl_index_complete, source: req.source || {}, summary: { received: results.length, by_band: by('band'), by_decision: by('decision'), would_enter_ghl: results.filter((r) => r.decision === 'create_in_ghl').length }, safety: { messages_sent: 0 }, results };
 }

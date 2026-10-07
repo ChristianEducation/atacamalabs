@@ -160,7 +160,9 @@ export function planAct(act, target, cfg, nowMs) {
   }
   if (t === 'follow_up') {
     const days = Number.isFinite(Number(act && act.days)) ? Number(act.days) : 3;
-    plan.ghl.task = { title: String((act && act.title) || ('Seguimiento: ' + target.candidate.company_name)).slice(0, 120), body: noteBase || 'Seguimiento de prospecto.', dueDate: businessDaysFrom(nowMs, days), completed: false, assignedTo: cfg.userId };
+    // due_at (fecha exacta, p. ej. «el viernes») manda sobre days; se normaliza a las 12:00 de Chile si viene solo la fecha
+    const exact = act && act.due_at && Number.isFinite(Date.parse(act.due_at)) ? (/^\d{4}-\d{2}-\d{2}$/.test(String(act.due_at)) ? new Date(String(act.due_at) + 'T15:00:00Z').toISOString() : new Date(act.due_at).toISOString()) : null;
+    plan.ghl.task = { title: String((act && act.title) || ('Seguimiento: ' + target.candidate.company_name)).slice(0, 120), body: noteBase || 'Seguimiento de prospecto.', dueDate: exact || businessDaysFrom(nowMs, days), completed: false, assignedTo: cfg.userId };
     plan.ghl.note = noteBase || null; plan.supabase = { next_action_at: plan.ghl.task.dueDate };
     if (!ghl.contact_id) plan.warnings.push('sin_contacto_en_ghl_la_tarea_no_se_crea');
     return plan;

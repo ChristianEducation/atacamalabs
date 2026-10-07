@@ -66,7 +66,7 @@ const srcIn = body.source;
 const source = typeof srcIn === 'string' ? { type: 'external', name: srcIn } : { type: (srcIn && srcIn.type) || 'external', name: (srcIn && srcIn.name) || null, reference: (srcIn && srcIn.reference) || null };
 const o = body.options && typeof body.options === 'object' ? body.options : {};
 const options = { force_import: o.force_import === true || body.force_import === true, manual_override_reason: String(o.manual_override_reason || body.manual_override_reason || '').trim(), by: String(o.by || body.by || 'Christian').slice(0, 60),
-  validate: o.validate === 'none' ? 'none' : o.validate === 'light' ? 'light' : (action === 'analyze' ? 'none' : 'light'), enrich: o.enrich === true, min_ghl_score: Number.isFinite(Number(o.min_ghl_score)) ? Number(o.min_ghl_score) : 60 };
+  include_candidates: o.include_candidates === true, validate: o.validate === 'none' ? 'none' : o.validate === 'light' ? 'light' : (action === 'analyze' ? 'none' : 'light'), enrich: o.enrich === true, min_ghl_score: Number.isFinite(Number(o.min_ghl_score)) ? Number(o.min_ghl_score) : 60 };
 if (options.force_import && action !== 'import') throw new Error('force_import solo aplica a action=import');
 if (options.force_import && options.manual_override_reason.length < 5) throw new Error('FORCE_IMPORT exige manual_override_reason (mínimo 5 caracteres): queda registrado en Supabase y GHL.');
 const now = Date.now();

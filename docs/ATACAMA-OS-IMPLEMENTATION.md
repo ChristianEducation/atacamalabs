@@ -791,3 +791,30 @@ Detalle en `PROSPECT-GATEWAY.md` §5. Resumen: `priority = FIT(≤35) + SEÑAL(�
 2. **Import real** de las 140 fichas (o de las 43 que entrarían) cuando Christian lo decida: `import` en lotes de ≤25 con `request_id` fijo; revisar primero con `analyze`.
 3. **Prospecting v2 de Hermes** (investigar con el Gateway como puerta y la nueva calibración).
 4. Mejoras: hipótesis automática para URLs individuales (hoy quedan pendientes de hipótesis), panel de revisión de candidatos en `pendiente`, y paginar el índice de GHL si crece sobre 100 contactos u oportunidades (hoy falla cerrado).
+
+## BLOQUE M — Hermes como operador de Atacama OS (7-oct-2026) · ✅ OPERATIVO, SIN ENVÍOS
+
+Guía de uso, herramientas y permisos: **[`HERMES-OPERATOR.md`](HERMES-OPERATOR.md)**. Aquí queda el registro.
+
+### M1. Qué se construyó
+| Pieza | Detalle |
+|---|---|
+| **Workflow n8n `20 Hermes Operator`** | `Pm5XfYBocmWR3YgY`, activo, etiqueta PRODUCCIÓN. `POST /webhook/atacama-hermes-operator` (`X-Atacama-Key`; sin clave o con clave errónea → 403). Parse + política de permisos → idempotencia → rechazos auditados → lectura acotada de Supabase → Prospect Gateway (19) o lectura de GHL → respuesta + auditoría + caché del análisis. Generador `n8n/build/hermes-operator.mjs`. |
+| **Núcleo puro** | `scripts/operator/operator-core.mjs` (19 herramientas con niveles 1/2/3, resolución de objetivos por número/nombre/dominio/correo, construcción de llamadas, respuestas, auditoría). |
+| **Supabase** (migración `20261007_hermes_operator.sql`) | `operator_audit_log` (única por `request_id`) y `operator_analysis_cache` (último análisis numerado). RLS activado, `revoke` a anon/authenticated. No es una segunda base de prospectos. |
+| **Prospect Gateway (19)** | Solo dos opciones nuevas, redesplegado: `options.include_candidates` (devuelve los candidatos canónicos en `analyze`) y `act.due_at` (seguimiento con fecha exacta). Scoring sin cambios. |
+| **Hermes (VPS)** | Servidor MCP `atacama-os` (`/opt/data/atacama-ops/atacama_ops_mcp.py`, 19 herramientas) + skill `atacama-ops`; registrado con `hermes mcp add` (backup de `config.yaml`). **Canal móvil: Telegram ya existente, reutilizado**; el agente se reinició una vez para cargar las herramientas (Telegram reconectó solo). Sin acciones manuales pendientes. |
+
+### M2. Seguridad
+Hermes no recibe el token de GHL (solo la clave de ingesta de n8n, ya existente); la política de permisos vive en n8n; el MCP lee archivos solo de `/opt/data` y `/tmp`; el `request_id` lo emite el servidor (los inventados por el modelo se ignoran); los fallos no ocupan el `request_id`. Nivel 3 (`send_email`, `send_whatsapp`, `publish_content`, `delete_record`) nunca ejecuta en este bloque. Límite conocido: un LLM podría autocompletar `order_text` del nivel 2 (se audita y la skill lo prohíbe).
+
+### M3. Pruebas
+- **Unitarias:** `operator-core` **30**, workflow 20 simulado nodo a nodo **24**; gateway-core 73, gateway-flow 29 (+ include_candidates/due_at), workflow 19 **37** (la prueba que usa el HTML real de 140 fichas requiere `GATEWAY_REAL_HTML`).
+- **En vivo con Hermes real** (datos TEST, workflows de producción): las 8 frases del bloque (pendientes, analizar, importar, registrar Instagram, mover a Contactado/Respondió, crear tarea, FORCE_IMPORT, send_email → «no enviado») + oportunidades en Investigado + negativa a forzar sin orden. Verificado por id en GHL: etapa, notas, tareas (viernes 9-oct), etiquetas, override manual con motivo; **0 mensajes** (las conversaciones solo contienen actividad de oportunidad). Directo al webhook: 403 sin/mala clave, nivel 2 sin orden/motivo, objetivo ambiguo, etapa inválida, replay idempotente.
+- **Hallazgos corregidos durante las pruebas:** el MCP de Hermes es v2 (`mcp.server.mcpserver`, no `fastmcp`); `hermes cron list` oculta los pausados (usar `--all`); Hermes inventaba `request_id`; rechazos/errores no deben ocupar el `request_id`; un script mío vació por error el archivo del VPS al usar una ruta relativa tras un `cd` (se repuso al instante, antes de registrar).
+- **Limpieza:** solo por ids exactos (2 contactos, 2 oportunidades, 5 tareas en GHL; 2 candidatos, 8 filas de bitácora del Gateway, 28 de auditoría y 1 de caché en Supabase). GHL: **43 contactos y 2 oportunidades**; 0 filas en las tablas. También se borraron antes 22 tareas TEST huérfanas de bloques previos.
+
+### M4. Pendientes
+1. **Gmail y envío con aprobación** (siguiente bloque): habilitar `send_email` tras `confirmation_required` (idealmente botón de Telegram).
+2. Importar las 43 empresas cuando Christian lo ordene («mete las buenas», tandas de ≤ 25).
+3. Prospect Radar sigue **pausado** (`8421589d0902`; contenido `a46bd3138a0b` también).
