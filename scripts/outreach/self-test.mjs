@@ -30,8 +30,8 @@ export const SELF = {
   company: 'Autoprueba Christian Wevar',
   sender: 'christian.wevar@atacamalabs.cl',
   recipient: (flag('to') || 'c.wevarh@gmail.com').toLowerCase(),
-  subject: 'Autoprueba de Atacama OS: verificación del correo',
-  body: 'Hola Christian,\n\nEste es el correo de autoprueba del sistema de envío de Atacama OS: confirma que Gmail, el hilo y el pie de firma funcionan antes de escribirle a ningún prospecto real.\n\nPara probar la detección de respuestas, responde a este correo con la palabra «prueba» (puedes hacerlo desde tu teléfono). En unos minutos la oportunidad de esta autoprueba debería pasar a «Respondió» en GHL.\n\nNo hay nada más que hacer.',
+  subject: 'Autoprueba 2 de Atacama OS: firma y logo',
+  body: 'Hola Christian,\n\nEsta es la segunda autoprueba del sistema de envío de Atacama OS. Sirve para revisar cómo se ve la firma nueva (nombre, sitio y logo) en tu correo y en el teléfono, antes de escribirle a ningún prospecto real.\n\nPara comprobar de nuevo la detección de respuestas, responde a este correo con las palabras «prueba 2». En unos minutos la oportunidad de esta autoprueba debería pasar a «Respondió» en GHL, con tu respuesta limpia (sin el texto citado).\n\nNo hay nada más que hacer.',
 };
 
 const sb = async (path, method = 'GET', body) => { const r = await fetch(SB + path, { method, headers: { apikey: SBK, Authorization: 'Bearer ' + SBK, 'Content-Type': 'application/json', Prefer: 'return=representation' }, body: body ? JSON.stringify(body) : undefined }); const t = await r.text(); let j; try { j = JSON.parse(t); } catch { j = t.slice(0, 200); } return { s: r.status, j }; };
@@ -63,7 +63,7 @@ async function prepare() {
   if (await cand()) { console.log('La autoprueba ya existe; usa `status`.'); return; }
   const p = { company_name: SELF.company, website: 'https://autoprueba-christian-wevar.invalid', industry: 'Autoprueba interna', location: 'Antofagasta', contact: { name: 'Christian Wevar', role: 'Fundador (autoprueba)', email: SELF.recipient },
     facts: ['Prueba interna del circuito de envío de Atacama OS con un correo propio'], commercial_hypotheses: ['Verificar el envío real, el hilo y la detección de respuestas antes de contactar prospectos'], proposed_solution: 'Autoprueba del motor de correo', evidence_urls: ['https://autoprueba-christian-wevar.invalid'] };
-  const r = await hook('atacama-prospect-gateway', { action: 'import', request_id: 'autoprueba-2026-10-08b', source: { type: 'manual', name: 'Autoprueba de envío' }, options: { force_import: true, manual_override_reason: 'Autoprueba del envío real a Christian (no es un prospecto)', by: 'Claude Code · autoprueba', validate: 'none' }, prospects: [p] });
+  const r = await hook('atacama-prospect-gateway', { action: 'import', request_id: 'autoprueba-2026-10-08c', source: { type: 'manual', name: 'Autoprueba de envío' }, options: { force_import: true, manual_override_reason: 'Autoprueba del envío real a Christian (no es un prospecto)', by: 'Claude Code · autoprueba', validate: 'none' }, prospects: [p] });
   console.log('Gateway:', r.s, JSON.stringify(r.j.summary), r.j.persist_error || '');
   await new Promise((x) => setTimeout(x, 2000));
   const c = await cand(); if (!c) die('el Gateway no guardó el prospecto de autoprueba');
@@ -119,7 +119,9 @@ async function cleanup() {
   if (c.ghl_contact_id) console.log('contacto', (await ghl('DELETE', '/contacts/' + c.ghl_contact_id)).s);
   for (const m of ms) await sb('outreach_messages?id=eq.' + m.id, 'DELETE');
   await sb('prospect_candidates?id=eq.' + c.id, 'DELETE');
-  const log = (await sb('prospect_gateway_log?select=id&request_id=like.autoprueba-*')).j; for (const l of log) await sb('prospect_gateway_log?id=eq.' + l.id, 'DELETE');
+  // bitácoras del Gateway de ESTA autoprueba (importación, efectos del envío y de la respuesta), por request_id exacto
+  const mine = (l) => String(l.request_id).startsWith('autoprueba-') || ms.some((m) => l.request_id === 'ob-' + m.id) || String(l.request_id).startsWith('in-' + c.id.slice(0, 8) + '-');
+  for (const l of (await sb('prospect_gateway_log?select=id,request_id')).j.filter(mine)) await sb('prospect_gateway_log?id=eq.' + l.id, 'DELETE');
   console.log('Autoprueba borrada por id exacto (' + ms.length + ' mensajes). El hilo en Gmail queda en tu buzón (puedes archivarlo).');
 }
 
@@ -128,9 +130,35 @@ async function preview() {
   const c = await cand(); const live = c ? (await msgs(c)).find((m) => m.kind === 'initial' && m.direction === 'outbound') : null;
   if (!live) die('no hay borrador de la autoprueba (corre `prepare`)');
   const rendered = renderEmail({ subject: live.subject, body: live.body }, cfgNow);
+  const outHtml = flag('html');
+  if (outHtml) { const png = fs.readFileSync(new URL('../../public/brand/email/logo-horizontal-email.png', import.meta.url)).toString('base64'); const h = renderEmail({ subject: live.subject, body: live.body }, cfgNow, { logo: 'data:image/png;base64,' + png }).html; fs.writeFileSync(outHtml, '<!doctype html><meta charset="utf-8"><title>Vista previa del correo</title><body style="margin:0;background:#f3f4f6;font-family:Arial,sans-serif"><div style="max-width:720px;margin:24px auto;background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden"><div style="padding:14px 22px;border-bottom:1px solid #e5e7eb;font-size:13px;color:#374151;line-height:1.6"><div><b>De:</b> ' + (cfgNow.from_name || 'Christian Wevar') + ' &lt;' + cfgNow.from_email + '&gt;</div><div><b>Para:</b> ' + live.to_email + '</div><div><b>Asunto:</b> ' + rendered.subject + '</div></div><div style="padding:20px 22px">' + h.replace(/^<!DOCTYPE html><html lang="es"><body[^>]*>/, '').replace(/<\/body><\/html>$/, '') + '</div></div></body>'); console.log('Vista previa HTML escrita en', outHtml); }
   console.log('Estado del borrador:', live.status, '\nDe: ' + (cfgNow.from_name || 'Christian Wevar') + ' <' + cfgNow.from_email + '>\nPara: ' + live.to_email + '\nAsunto: ' + rendered.subject + '\n\n' + rendered.text);
 }
 
-const fns = { status, prepare, preview, arm, sync, disarm, cleanup };
+/** Envía el mensaje YA aprobado de la autoprueba: live restringido, espera a la hora programada (máx. 8 min) y dispara el sender hasta que salga UNO; si no sale, apaga. */
+async function send() {
+  const c = await cand(); if (!c) die('primero `prepare`');
+  const m = (await msgs(c)).find((x) => x.kind === 'initial' && x.direction === 'outbound');
+  if (!m || m.status !== 'approved') die('no hay un mensaje aprobado de la autoprueba (estado: ' + (m && m.status) + ')');
+  const cfg = (await sb('outreach_config?select=*&id=eq.1')).j[0];
+  if ((cfg.send_allowlist || []).length !== 1 || cfg.send_allowlist[0].toLowerCase() !== SELF.recipient || m.to_email.toLowerCase() !== SELF.recipient) die('lista blanca/destinatario no coinciden con el autorizado');
+  const others = (await sb('outreach_messages?select=id,company_name&status=in.(approved,sending)')).j.filter((x) => x.company_name !== SELF.company);
+  if (others.length) die('hay otros mensajes aprobados: ' + others.map((x) => x.company_name).join(', '));
+  await setCfg({ mode: 'live', daily_cap: 1 });
+  console.log('mode = live (restringido). Programado para', m.scheduled_for);
+  try {
+    for (let i = 0; i < 17; i++) {
+      const s = await hook('atacama-outreach-send-due', { manual: true });
+      console.log('Sender:', s.s, JSON.stringify(s.j));
+      if (s.j.status === 'sent') { console.log('✔ Enviado UNA vez. El modo sigue live (restringido) para leer tu respuesta; al terminar: `disarm`.'); return; }
+      if (s.j.status === 'failed' || s.j.ok === false) break;
+      await new Promise((x) => setTimeout(x, 30000));
+    }
+  } catch (e) { console.error(e.message); }
+  await setCfg({ mode: 'off' });
+  die('no se envió; mode vuelto a off');
+}
+
+const fns = { status, prepare, preview, arm, send, sync, disarm, cleanup };
 if (!fns[cmd]) die('comando desconocido: ' + cmd);
 await fns[cmd]();

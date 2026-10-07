@@ -98,3 +98,19 @@ Destinatario propuesto: **c.wevarh@gmail.com** (se cambia con `--to`). Remitente
 7. **Limpiar:** `self-test.mjs cleanup` borra el prospecto de autoprueba por id exacto (GHL + Supabase). El hilo queda en tu Gmail.
 
 **Después de la prueba:** vaciar `send_allowlist` (o ampliarla al lote) y pasar `daily_cap = 5` se hace solo con tu orden explícita, junto con los primeros 3–5 contactos del lote 1 aprobados de a uno.
+
+## 9. Resultado de la primera autoprueba real (7-oct-2026) y firma nueva
+
+**Primera autoprueba (un correo a `c.wevarh@gmail.com`, autorizado por Christian):** el envío real por Gmail funcionó (hilo `1a116aa3739cdaad`, oportunidad → *Contactado*). Christian respondió «prueba» desde su teléfono; Gmail Sync (forzado) lo detectó en el mismo hilo, lo clasificó `reply`, guardó la fila entrante idempotente (`recv:<id>`), movió la oportunidad a **Respondió** con la nota «RESPUESTA por correo…» y el planificador dejó la secuencia en `stopped:respondio` (0 borradores de seguimiento; las tareas de seguimiento ni se habían creado). Después: `disarm` (`mode = off`) y limpieza por id exacto (contacto, oportunidad, tareas, mensajes, bitácoras).
+
+**Defectos que salieron de la prueba real (corregidos):**
+1. La nota de GHL decía «CONTACTO REGISTRADO MANUALMENTE… Atacama OS no envió este mensaje» para envíos del propio sistema. Ahora el Gateway acepta `act.by_system` y escribe «CORREO ENVIADO POR ATACAMA OS · canal: email…» con la etiqueta `contactado-por-correo` (los contactos manuales siguen igual).
+2. La respuesta guardada arrastraba la atribución de Gmail en español partida en dos líneas («El mié, 7 oct 2026 a la(s) 11:00 a.m., Christian Wevar\n(correo) escribió:»); `newText` ahora la corta.
+3. El primer intento de `arm` no envió porque el sender corrió segundos antes de la hora programada (siguiente marca de 5 min de la ventana); se agregó `self-test.mjs send`, que espera y dispara una sola vez.
+
+**Firma del motor (desde el 8-oct):** `Christian Wevar | Atacama Labs` · `atacamalabs.cl` (enlace) · logo oficial, y debajo, en gris pequeño, el pie legal (solo si es distinto de la marca) y la línea de baja. No hay firma ni pie duplicados: el cuerpo aprobado se limpia de firmas/despedidas (`cleanDraftText`) y el pie temporal «Atacama Labs · atacamalabs.cl» no se repite (`isBrandOnlyFooter`).
+- **Logo:** Gmail y la mayoría de clientes **no muestran SVG** en correos. Se usa el asset oficial `public/brand/logo-horizontal.svg` rasterizado **sin redibujar** con `node scripts/outreach/build-email-logo.mjs` → `public/brand/email/logo-horizontal-email.png` (440×41 px, 3,9 KB, transparente; se muestra a 220 px de ancho) e incrustado en el correo (imagen inline `cid:atacama-logo`; no depende de que el sitio esté publicado).
+- **Formato del mensaje:** `multipart/alternative` [texto plano · `multipart/related` [HTML + PNG inline]]. El texto plano lleva la misma firma sin imagen.
+- **Vista previa:** `node scripts/outreach/self-test.mjs preview [--html <archivo>]` (texto exacto y HTML con el logo real).
+
+**Segunda autoprueba (preparada, SIN enviar):** «Autoprueba Christian Wevar» en *Investigado* con el borrador «Autoprueba 2 de Atacama OS: firma y logo». Mismo procedimiento (§8) con la autorización de Christian: `self-test.mjs arm`/`send`, responder «prueba 2», `sync`, `disarm`, `cleanup`.

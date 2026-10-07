@@ -179,8 +179,12 @@ return [{ json: { now, config, approved,
   sent_url: sb + 'outreach_messages?status=eq.sent&direction=eq.outbound&sent_at=gte.' + new Date(startOfZonedDay(now, config.tz)).toISOString() + '&select=id',
   recent_url: sb + 'outreach_messages?status=eq.sent&direction=eq.outbound&sent_at=gte.' + new Date(now - 10 * 86400000).toISOString() + '&select=candidate_id,sent_at&limit=500' } }];`;
 
+// Logo oficial (public/brand/logo-horizontal.svg → PNG con scripts/outreach/build-email-logo.mjs), incrustado en el correo (Gmail no muestra SVG).
+export const LOGO_B64 = fs.readFileSync(new URL('../../public/brand/email/logo-horizontal-email.png', import.meta.url)).toString('base64');
+
 export const senderDecideCode = `${LIB}
 
+const LOGO_B64 = '${LOGO_B64}';
 const p = $('Prep').first().json;
 const arr = (n) => { const x = $(n).first().json || {}; return (x.statusCode || 0) < 300 && Array.isArray(x.body) ? x.body : []; };
 const cands = {}; arr('Load Candidates').forEach((c) => { cands[c.id] = c; });
@@ -194,7 +198,7 @@ if (d.action === 'send') {
   const cfg = p.config;
   if (cfg.mode === 'live' && !isValidEmail(cfg.from_email)) return [{ json: { ...base, decision: { action: 'none', reason: 'falta from_email en outreach_config (modo live)' } } }];
   const r = renderEmail(m, cfg);
-  const mime = buildMime({ from: cfg.from_email || 'simulado@atacamalabs.cl', from_name: cfg.from_name, to: m.to_email, subject: r.subject, text: r.text, in_reply_to: m.in_reply_to, references: m.in_reply_to, now: p.now });
+  const mime = buildMime({ from: cfg.from_email || 'simulado@atacamalabs.cl', from_name: cfg.from_name, to: m.to_email, subject: r.subject, text: r.text, html: r.html, inline_png_b64: LOGO_B64, in_reply_to: m.in_reply_to, references: m.in_reply_to, now: p.now });
   return [{ json: { ...base, go_live: cfg.mode === 'live', message: m, candidate: d.candidate, mime, thread_id: m.gmail_thread_id || null } }];
 }
 if (d.action === 'cancel') return [{ json: { ...base, message: d.message, candidate: d.candidate || null } }];

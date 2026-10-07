@@ -64,11 +64,6 @@ ok('validateDraft', () => {
   assert.ok(!oc.validateDraft(good, { allowed_emails: ['otro@clinicarica.cl'] }).ok);
   assert.ok(oc.validateDraft(good, { allowed_emails: ['otro@clinicarica.cl'], override_to: true }).ok);
 });
-ok('renderEmail agrega firma, pie y línea de baja', () => {
-  const r = oc.renderEmail({ subject: 'S', body: BODY }, CFG);
-  assert.ok(r.text.includes('Christian Wevar') && r.text.includes('responde «baja»') && r.text.includes('atacamalabs.cl'));
-  assert.ok(oc.renderEmail({ subject: 'S', body: BODY }, { ...CFG, legal_footer: 'Atacama Labs SpA · RUT 76.000.000-0' }).text.includes('RUT 76.000.000-0'));
-});
 ok('buildMime: cabeceras, UTF-8 y encadenado', () => {
   const m = oc.buildMime({ from: 'christian@atacamalabs.cl', from_name: 'Christian Wevar', to: 'dra@clinicarica.cl', subject: 'Una idea ñandú', text: 'Hola ñ', in_reply_to: '<abc@x.cl>', now: WED });
   const raw = Buffer.from(m.raw.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
@@ -352,7 +347,47 @@ ok('lista blanca de envío: en live solo sale a los correos autorizados (el rest
   assert.equal(oc.pickDue([appr()], { ...allow, send_allowlist: [] }, WED, 0, [], cb).action, 'send');
   assert.equal(oc.pickDue([appr()], { ...allow, mode: 'test_sim' }, WED, 0, [], { 'c-1': cand({ company_name: 'Clínica TEST' }) }).action, 'send');
 });
-ok('renderEmail: si el pie legal es igual a la firma no se repite', () => { const r = oc.renderEmail({ subject: 'S', body: BODY }, CFG); assert.equal(r.text.split('Atacama Labs · atacamalabs.cl').length, 2); assert.ok(r.text.includes('responde «baja»')); });
+ok('renderEmail: firma «Christian Wevar | Atacama Labs» + atacamalabs.cl + logo, sin duplicar firma ni pie', () => {
+  const r = oc.renderEmail({ subject: 'S', body: BODY }, CFG);
+  assert.ok(r.text.includes('Christian Wevar | Atacama Labs\natacamalabs.cl')); assert.ok(r.text.includes('responde «baja»')); assert.ok(!r.text.includes('Atacama Labs · atacamalabs.cl'));
+  assert.equal(r.text.split('Christian Wevar').length, 2); assert.equal(r.text.split('atacamalabs.cl').length, 2);
+  assert.ok(r.html.includes('Christian Wevar | Atacama Labs') && r.html.includes('href="https://atacamalabs.cl"') && r.html.includes('src="cid:atacama-logo"') && r.html.includes('width="220"'));
+  assert.equal(r.html.split('Christian Wevar').length, 2);
+  const legal = oc.renderEmail({ subject: 'S', body: BODY }, { ...CFG, legal_footer: 'Atacama Labs SpA · RUT 76.000.000-0 · Antofagasta' });
+  assert.ok(legal.text.includes('RUT 76.000.000-0') && legal.html.includes('RUT 76.000.000-0'));
+  assert.ok(!oc.renderEmail({ subject: 'S', body: BODY }, CFG, { logo: null }).html.includes('<img'));
+  assert.ok(oc.renderEmail({ subject: 'S', body: BODY }, CFG, { logo: 'data:image/png;base64,AAA' }).html.includes('src="data:image/png;base64,AAA"'));
+  for (const f of [null, '', 'Atacama Labs · atacamalabs.cl', 'atacamalabs.cl', ' Atacama Labs | atacamalabs.cl ']) assert.ok(oc.isBrandOnlyFooter(f), String(f));
+  assert.ok(!oc.isBrandOnlyFooter('Atacama Labs SpA · RUT 76.000.000-0'));
+});
+ok('renderEmail: el HTML escapa el cuerpo y respeta párrafos y saltos', () => {
+  const r = oc.renderEmail({ subject: 'S', body: 'Hola <b>x</b> & «y»\nlínea 2\n\nSegundo párrafo' }, CFG);
+  assert.ok(r.html.includes('Hola &lt;b&gt;x&lt;/b&gt; &amp; «y»<br>línea 2') && r.html.includes('<p style="margin:0 0 14px 0;">Segundo párrafo</p>') && !r.html.includes('<b>x</b>'));
+});
+ok('buildMime con HTML: multipart/alternative [texto, related [html, logo PNG inline cid]]', () => {
+  const png = Buffer.from('PNGDATA-1234567890-PNGDATA-1234567890-PNGDATA-1234567890-PNGDATA-1234567890').toString('base64');
+  const r = oc.renderEmail({ subject: 'Asunto ñ', body: 'Hola ñ\n\nTexto.' }, CFG);
+  const m = oc.buildMime({ from: 'christian@atacamalabs.cl', from_name: 'Christian Wevar', to: 'x@y.cl', subject: r.subject, text: r.text, html: r.html, inline_png_b64: png, now: WED });
+  const raw = Buffer.from(m.raw, 'base64url').toString('utf8');
+  assert.match(raw, /^Content-Type: multipart\/alternative; boundary="(alt_\w+)"/m);
+  const alt = raw.match(/boundary="(alt_\w+)"/)[1], rel = raw.match(/boundary="(rel_\w+)"/)[1];
+  assert.ok(raw.includes('--' + alt + '--') && raw.includes('--' + rel + '--'));
+  const decode = (re) => { const mm = raw.match(re); return mm ? Buffer.from(mm[1].replace(/\r?\n/g, ''), 'base64') : null; };
+  assert.equal(decode(/Content-Type: text\/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n([A-Za-z0-9+/=\r\n]+)/).toString('utf8'), r.text);
+  assert.equal(decode(/Content-Type: text\/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n([A-Za-z0-9+/=\r\n]+)/).toString('utf8'), r.html);
+  assert.ok(/Content-ID: <atacama-logo>/.test(raw) && /Content-Disposition: inline; filename="logo-atacama-labs.png"/.test(raw));
+  assert.equal(decode(/Content-Type: image\/png; name="logo-atacama-labs.png"[^]*?\r\n\r\n([A-Za-z0-9+/=\r\n]+)/).toString('base64'), png);
+  assert.match(raw, /^List-Unsubscribe: <mailto:christian@atacamalabs.cl\?subject=baja>/m);
+  const plain = oc.buildMime({ from: 'a@b.cl', to: 'x@y.cl', subject: 'S', text: 'hola', now: WED });
+  assert.match(Buffer.from(plain.raw, 'base64url').toString('utf8'), /Content-Type: text\/plain/);
+});
+ok('cleanDraftText: quita la firma nueva («Christian Wevar | Atacama Labs» + atacamalabs.cl)', () => {
+  assert.equal(oc.cleanDraftText('S', 'Cuerpo. ¿Hablamos?\n\nChristian Wevar | Atacama Labs\natacamalabs.cl').body, 'Cuerpo. ¿Hablamos?');
+});
+ok('newText: quita la atribución de Gmail partida en dos líneas', () => {
+  assert.equal(oc.newText('prueba\n\nEl mié, 7 oct 2026 a la(s) 11:00 a.m., Christian Wevar\n(christian.wevar@atacamalabs.cl) escribió:'), 'prueba');
+  assert.equal(oc.newText('Me interesa.\nEl producto lo conocí el año pasado y me gustó.\nGracias'), 'Me interesa.\nEl producto lo conocí el año pasado y me gustó.\nGracias');
+});
 ok('el núcleo no contiene secretos', () => {
   assert.ok(!/pit-[0-9a-f-]{20,}|eyJ[A-Za-z0-9_-]{20,}|ya29\./.test(Object.values(oc).map((f) => f.toString()).join('\n')));
 });

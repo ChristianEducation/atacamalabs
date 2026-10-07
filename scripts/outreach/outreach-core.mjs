@@ -70,7 +70,13 @@ export function quoteCut() { return /^(>|el .{5,120} escribi[oó]:?\s*$|on .{5,1
 export function newText(body) {
   const lines = String(body == null ? '' : body).replace(/\r/g, '').split('\n');
   const out = [];
-  for (const l of lines) { if (quoteCut().test(l.trim())) break; out.push(l); }
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i].trim();
+    if (quoteCut().test(l)) break;
+    // atribución de Gmail partida en 2-3 líneas: «El mié, 7 oct 2026 a la(s) 11:00 a.m., Nombre\n(correo) escribió:»
+    if (/^(el|on)\s.{3,200}$/i.test(l) && /(escribi[oó]|wrote):?\s*$/i.test(lines.slice(i, i + 3).join(' ').trim())) break;
+    out.push(lines[i]);
+  }
   return out.join('\n').trim();
 }
 
@@ -123,7 +129,7 @@ export function cleanDraftText(subject, body) {
   while (lines.length && guard++ < 5) {
     const last = lines[lines.length - 1].trim();
     if (!last) { lines.pop(); continue; }
-    if (/^(saludos|atentamente|cordialmente|un abrazo|un saludo|cari[ñn]os|gracias)[,.!]?$/i.test(last) || /^christian( wevar)?\s*([·|,\-–—].*)?$/i.test(last) || /^atacama labs\s*([·|,\-–—].*)?$/i.test(last)) { lines.pop(); continue; }
+    if (/^(saludos|atentamente|cordialmente|un abrazo|un saludo|cari[ñn]os|gracias)[,.!]?$/i.test(last) || /^christian( wevar)?\s*([·|,\-–—].*)?$/i.test(last) || /^atacama labs\s*([·|,\-–—].*)?$/i.test(last) || /^(https?:\/\/)?(www\.)?atacamalabs\.cl\/?$/i.test(last)) { lines.pop(); continue; }
     break;
   }
   return { subject: sub, body: lines.join('\n').trim() };
@@ -158,30 +164,62 @@ export function followupTemplate(kind, cand, firstSubject) {
   return { subject: subj, body: 'Hola, te escribí hace unos días sobre cómo podríamos ayudar a ' + co + ' a ahorrar tiempo en tareas repetitivas. ¿Tiene sentido que te muestre un ejemplo concreto en 10 minutos? Si no es buen momento, dímelo y lo dejamos ahí.' };
 }
 
-/** Texto final del correo: cuerpo aprobado + firma + pie legal + línea de baja (el sistema solo agrega esto). */
-export function renderEmail(msg, cfg) {
+export function escapeHtml(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+/** ¿El pie legal configurado es solo la marca (temporal)? Entonces no se repite: la firma ya la dice. */
+export function isBrandOnlyFooter(foot) { const f = stripAcc(String(foot || '')).toLowerCase().replace(/[\s·|\-–—]+/g, ' ').trim(); return !f || f === 'atacama labs atacamalabs.cl' || f === 'atacamalabs.cl' || f === 'atacama labs'; }
+/**
+ * Correo final = cuerpo aprobado + firma + (pie legal si existe) + línea de baja. El sistema solo agrega esto.
+ * Firma: «Christian Wevar | Atacama Labs» / «atacamalabs.cl» / logo oficial (PNG derivado de public/brand/logo-horizontal.svg).
+ * opts.logo: 'cid' (envío: imagen incrustada cid:atacama-logo) | '<data URI>' (vista previa) | null (sin logo).
+ */
+export function renderEmail(msg, cfg, opts) {
   const name = (cfg && cfg.from_name) || 'Christian Wevar';
-  const foot = (cfg && cfg.legal_footer) ? String(cfg.legal_footer).trim() : 'Atacama Labs · atacamalabs.cl';
-  const sig = 'Atacama Labs · atacamalabs.cl';
-  const text = String(msg.body || '').trim() + '\n\n' + name + '\n' + sig + '\n\n--\n' + (foot === sig ? '' : foot + '\n') + 'Si prefieres no recibir más mensajes de Atacama Labs, responde «baja» y no volveré a escribirte.';
-  return { subject: String(msg.subject || '').trim(), text };
+  const foot = (cfg && cfg.legal_footer) ? String(cfg.legal_footer).trim() : '';
+  const legal = isBrandOnlyFooter(foot) ? '' : foot;
+  const unsub = 'Si prefieres no recibir más mensajes de Atacama Labs, responde «baja» y no volveré a escribirte.';
+  const bodyText = String(msg.body || '').trim();
+  const text = bodyText + '\n\n' + name + ' | Atacama Labs\natacamalabs.cl\n\n--\n' + (legal ? legal + '\n' : '') + unsub;
+  const logo = opts && opts.logo !== undefined ? opts.logo : 'cid';
+  const src = logo === 'cid' ? 'cid:atacama-logo' : logo;
+  const paras = bodyText.split(/\n{2,}/).map((p) => '<p style="margin:0 0 14px 0;">' + escapeHtml(p).replace(/\n/g, '<br>') + '</p>').join('');
+  const html = '<!DOCTYPE html><html lang="es"><body style="margin:0;padding:0;background:#ffffff;">'
+    + '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#121A2B;max-width:640px;padding:4px 0;">'
+    + paras
+    + '<div style="margin-top:22px;">'
+    + '<div style="font-weight:700;color:#121A2B;">' + escapeHtml(name) + ' | Atacama Labs</div>'
+    + '<div style="margin-top:2px;"><a href="https://atacamalabs.cl" style="color:#0F5CED;text-decoration:none;">atacamalabs.cl</a></div>'
+    + (src ? '<div style="margin-top:12px;"><img src="' + src + '" width="220" alt="Atacama Labs" style="display:block;border:0;width:220px;max-width:100%;height:auto;"></div>' : '')
+    + '</div>'
+    + '<div style="margin-top:22px;padding-top:10px;border-top:1px solid #E5E7EB;font-size:12px;line-height:1.5;color:#6B7280;">' + (legal ? escapeHtml(legal) + '<br>' : '') + escapeHtml(unsub) + '</div>'
+    + '</div></body></html>';
+  return { subject: String(msg.subject || '').trim(), text, html };
 }
 
 export function b64url(buf) { return Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
 export function encodeHeader(s) { return /^[\x20-\x7e]*$/.test(s) ? s : '=?UTF-8?B?' + Buffer.from(s, 'utf8').toString('base64') + '?='; }
-/** Mensaje RFC 2822 listo para users.messages.send (base64url). Incluye List-Unsubscribe mailto y encadenado de hilo. */
+export function wrap76(b64) { return String(b64).replace(/(.{76})/g, '$1\r\n'); }
+/**
+ * Mensaje RFC 2822 listo para users.messages.send (base64url). Incluye List-Unsubscribe mailto y encadenado de hilo.
+ * Con o.html: multipart/alternative [ text/plain, multipart/related [ text/html, image/png inline (Content-ID <atacama-logo>) ] ].
+ */
 export function buildMime(o) {
   const from = o.from_name ? encodeHeader(o.from_name) + ' <' + o.from + '>' : o.from;
   const domain = emailDomain(o.from) || 'atacamalabs.cl';
   const messageId = o.message_id || '<' + newId() + '@' + domain + '>';
-  const headers = [
+  const common = [
     'From: ' + from, 'To: ' + o.to, 'Subject: ' + encodeHeader(o.subject), 'Date: ' + new Date(o.now || Date.now()).toUTCString(), 'Message-ID: ' + messageId, 'MIME-Version: 1.0',
     'List-Unsubscribe: <mailto:' + o.from + '?subject=baja>',
     ...(o.in_reply_to ? ['In-Reply-To: ' + o.in_reply_to, 'References: ' + (o.references || o.in_reply_to)] : []),
-    'Content-Type: text/plain; charset=UTF-8', 'Content-Transfer-Encoding: base64',
   ];
-  const body = Buffer.from(String(o.text || ''), 'utf8').toString('base64').replace(/(.{76})/g, '$1\r\n');
-  return { raw: b64url(headers.join('\r\n') + '\r\n\r\n' + body), message_id: messageId };
+  const part = (type, data) => 'Content-Type: ' + type + '; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n' + wrap76(Buffer.from(String(data || ''), 'utf8').toString('base64'));
+  if (!o.html) return { raw: b64url(common.concat(['Content-Type: text/plain; charset=UTF-8', 'Content-Transfer-Encoding: base64']).join('\r\n') + '\r\n\r\n' + wrap76(Buffer.from(String(o.text || ''), 'utf8').toString('base64'))), message_id: messageId };
+  const tag = String(messageId).replace(/[^a-z0-9]/gi, '').slice(0, 24) || 'x';
+  const alt = 'alt_' + tag, rel = 'rel_' + tag;
+  const related = ['--' + rel, part('text/html', o.html)];
+  if (o.inline_png_b64) related.push('--' + rel, 'Content-Type: image/png; name="logo-atacama-labs.png"\r\nContent-Transfer-Encoding: base64\r\nContent-ID: <atacama-logo>\r\nContent-Disposition: inline; filename="logo-atacama-labs.png"\r\n\r\n' + wrap76(o.inline_png_b64));
+  related.push('--' + rel + '--');
+  const body = ['--' + alt, part('text/plain', o.text), '--' + alt, 'Content-Type: multipart/related; boundary="' + rel + '"\r\n', related.join('\r\n'), '--' + alt + '--', ''].join('\r\n');
+  return { raw: b64url(common.concat(['Content-Type: multipart/alternative; boundary="' + alt + '"']).join('\r\n') + '\r\n\r\n' + body), message_id: messageId };
 }
 
 export function codeFrom(rnd) { const r = rnd || Math.random; return 'CONF-' + (100000 + Math.floor(r() * 900000)); }
@@ -324,7 +362,7 @@ export function planSendResult(msg, cand, cfg, res, nowMs) {
   const effects = [];
   if (ok && mode !== 'dry_run') {
     if (cand) writes.push({ method: 'PATCH', path: 'prospect_candidates?id=eq.' + cand.id, body: { last_contact_channel: 'email', last_contact_at: now, status: cand.status === 'in_ghl' || cand.status === 'accepted' ? 'contacted' : cand.status, ghl_stage: cand.ghl_stage === 'investigado' || !cand.ghl_stage ? 'contactado' : cand.ghl_stage, updated_at: now } });
-    effects.push({ type: 'gateway_act', act: { type: 'mark_contacted', channel: 'email', note: (mode === 'test_sim' ? '[SIMULADO] ' : '') + 'Correo enviado' + (msg.kind !== 'initial' ? ' (' + msg.kind + ')' : '') + ' a ' + msg.to_email + ' · asunto: «' + msg.subject + '». Sistema: Atacama OS (aprobado por ' + (msg.approved_by || 'Christian') + ').', follow_up_days: 0 } });
+    effects.push({ type: 'gateway_act', act: { type: 'mark_contacted', channel: 'email', by_system: true, note: (mode === 'test_sim' ? '[SIMULADO] ' : '') + 'Correo enviado' + (msg.kind !== 'initial' ? ' (' + msg.kind + ')' : '') + ' a ' + msg.to_email + ' · asunto: «' + msg.subject + '». Sistema: Atacama OS (aprobado por ' + (msg.approved_by || 'Christian') + ').', follow_up_days: 0 } });
   }
   return { update: upd, writes, effects, ok };
 }

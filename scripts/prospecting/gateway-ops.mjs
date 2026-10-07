@@ -180,8 +180,9 @@ export function planAct(act, target, cfg, nowMs) {
   plan.supabase = { status: 'contacted', last_contact_channel: channel, last_contact_at: at, ghl_stage: 'contactado' };
   plan.ghl.stage = cfg.stages.contactado;
   plan.ghl.create = !inGhl && !(act && act.ensure_in_ghl === false);
-  plan.ghl.note = 'CONTACTO REGISTRADO MANUALMENTE · canal: ' + channel + ' · fecha: ' + at.slice(0, 16).replace('T', ' ') + ' UTC. Atacama OS no envió este mensaje.' + (noteBase ? '\n' + noteBase : '');
-  plan.ghl.tags = ['contactado-manual'];
+  const bySystem = Boolean(act && act.by_system);
+  plan.ghl.note = (bySystem ? 'CORREO ENVIADO POR ATACAMA OS · canal: ' + channel + ' · fecha: ' + at.slice(0, 16).replace('T', ' ') + ' UTC.' : 'CONTACTO REGISTRADO MANUALMENTE · canal: ' + channel + ' · fecha: ' + at.slice(0, 16).replace('T', ' ') + ' UTC. Atacama OS no envió este mensaje.') + (noteBase ? '\n' + noteBase : '');
+  plan.ghl.tags = [bySystem ? 'contactado-por-correo' : 'contactado-manual'];
   const days = act && act.follow_up_days != null ? Number(act.follow_up_days) : 3;
   if (days > 0) plan.ghl.task = { title: 'Seguimiento: ' + target.candidate.company_name, body: 'Seguimiento tras contacto por ' + channel + '. ' + noteBase, dueDate: businessDaysFrom(nowMs, days), completed: false, assignedTo: cfg.userId };
   if (!inGhl && !plan.ghl.create) plan.warnings.push('no_esta_en_ghl_solo_se_registra_en_supabase');
