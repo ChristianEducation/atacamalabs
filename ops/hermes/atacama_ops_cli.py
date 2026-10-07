@@ -28,7 +28,7 @@ def _read(path, default=""):
 def _link():
     """Línea final con el enlace al panel (/ops). Solo si ATACAMA_PANEL_URL está en /opt/data/.env; así no se manda un enlace muerto antes de publicar el panel."""
     url = load_env().get("ATACAMA_PANEL_URL", "").strip()
-    return "\nVer Atacama OS → " + url if url.startswith("http") else ""
+    return "\n\nVer Atacama OS → " + url if url.startswith("http") else ""
 
 
 def _write(path, text):

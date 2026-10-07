@@ -263,9 +263,12 @@ ok('nombres cortos y recortes para Telegram', () => {
 ok('Daily corto de Telegram: sin ids, rutas ni ejecuciones; con resumen y sin relleno', () => {
   const b = oc.composeBrief(rich()).text;
   assert.match(b, /^ATACAMA DAILY · jue 8 oct/); assert.match(b, /NECESITA TU ACCIÓN/); assert.match(b, /PROSPECCIÓN: .*3 en Investigado \(2 prioridad alta\)/); assert.match(b, /CONTENIDO: 1 por aprobar · 1 programada/); assert.match(b, /SISTEMA: todo operativo · envío de correos apagado/);
-  assert.ok(b.split('\n').length <= 14, 'líneas ' + b.split('\n').length); assert.ok(b.length < 700, 'largo ' + b.length);
+  assert.ok(b.split('\n').length <= 20, 'líneas ' + b.split('\n').length); assert.ok(b.length < 700, 'largo ' + b.length);
   assert.ok(!/Ejecuciones fallidas|\/opt\/|\.json|job|[0-9a-f]{8}-[0-9a-f]{4}/i.test(b));
   assert.match(oc.composeBrief(base()).text, /Nada urgente hoy/);
+  assert.match(b, /\n\nPROSPECCIÓN: [^\n]*\n\nCONTENIDO: [^\n]*\n\nSISTEMA: /, 'cada sección en su propio párrafo, con saltos de línea reales');
+  assert.ok(!b.includes('\\n'), 'sin \\n literales');
+  assert.ok(oc.alertsText([{ severity: 'info', title: 'a', meta: { notice: 'PROSPECT RADAR\nx' } }, { severity: 'info', title: 'b', meta: { notice: 'CONTENT RADAR\ny' } }]).includes('x\n\nCONTENT RADAR'), 'dos avisos juntos van separados por una línea en blanco');
   const bad = oc.composeBrief(base({ workflows: WF_ACTIVE.map((w) => (w.id === 'rWulaiKeio0CsXrs' ? { ...w, active: false } : w)) })).text;
   assert.match(bad, /SISTEMA: FALLO Followup Planner/);
 });

@@ -638,6 +638,6 @@ export function composeBrief(d) {
   bits.push('CONTENIDO: ' + (cb.length ? cb.join(' · ') : 'sin movimiento'));
   const bad = h.components.filter((x) => x.status !== 'ok');
   bits.push('SISTEMA: ' + (bad.length ? bad.map((x) => (x.status === 'fallo' ? 'FALLO ' : 'atención ') + String(x.name).replace(/^Job Hermes · /, '')).slice(0, 3).join(', ') : 'todo operativo') + (c.outreach.mode === 'off' ? ' · envío de correos apagado' : ''));
-  out.push('', ...bits);
+  bits.forEach((b) => out.push('', b));
   return { text: out.join('\n'), action_count: act.length };
 }
