@@ -85,11 +85,12 @@ t('I. health profundo: usa gmail_check y muestra la cuenta conectada', r.parsed.
 r = await call({ action: 'health', now_ms: NOW, hermes: hermesOk, deep: true }, FIX({ g22: ok200({ credential_access: false }), g23: ok200({ credential_access: true }) }));
 t('I. health profundo: credencial de Gmail rota → FALLO', r.resp.overall === 'fallo' && /Gmail Sender/.test(r.resp.text));
 // ---------- J. alertas y dedupe
+const real = (x) => x.writes.filter((w) => !(w.body && w.body.alert_key === '_state:hermes'));
 r = await call({ action: 'alerts_poll', now_ms: NOW, hermes: hermesOk });
-t('J. alerts_poll: la respuesta nueva genera UNA alerta de evento y se guarda (insert) sin confirmar', r.resp.count === 1 && /Respondió: Clínica Ramis/.test(r.resp.text) && r.writes.length === 1 && r.writes[0].method === 'POST' && r.writes[0].path.startsWith('ops_alerts') && r.writes[0].body.notify_count === 0 && r.writes[0].body.event === true && !r.parsed.need.ghl);
+t('J. alerts_poll: la respuesta nueva genera UNA alerta de evento y se guarda (insert) sin confirmar', r.resp.count === 1 && /Respondió: Clínica Ramis/.test(r.resp.text) && real(r).length === 1 && real(r)[0].method === 'POST' && real(r)[0].path.startsWith('ops_alerts') && real(r)[0].body.notify_count === 0 && real(r)[0].body.event === true && !r.parsed.need.ghl);
 const sentRow = (o) => ({ alert_key: 'reply:in1', severity: 'high', status: 'open', event: true, notify_count: 1, last_notified_at: iso(10 * 60000), ...(o || {}) });
 r = await call({ action: 'alerts_poll', now_ms: NOW, hermes: hermesOk }, FIX({ sb: { ...FIX().sb, 'SB Alerts': ok200([sentRow()]) } }));
-t('J. dedupe: segunda consulta con la alerta ya confirmada → silencio (texto vacío)', r.resp.count === 0 && r.resp.text === '' && r.writes.every((w) => w.method === 'PATCH'));
+t('J. dedupe: segunda consulta con la alerta ya confirmada → silencio (texto vacío)', r.resp.count === 0 && r.resp.text === '' && real(r).every((w) => w.method === 'PATCH'));
 r = await call({ action: 'alerts_poll', now_ms: NOW, hermes: hermesOk }, FIX({ sb: { ...FIX().sb, 'SB Alerts': ok200([sentRow({ notify_count: 0, last_notified_at: null })]) } }));
 t('J. alerta guardada pero nunca confirmada (falló la entrega) → se reintenta', r.resp.count === 1);
 r = await call({ action: 'alerts_ack', keys: ['reply:in1'] }, FIX({ sb: { ...FIX().sb, 'SB Alerts': ok200([sentRow({ notify_count: 0, last_notified_at: null })]) } }));

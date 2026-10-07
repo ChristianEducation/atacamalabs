@@ -358,7 +358,14 @@ export function evaluateAlerts(d, existing) {
   for (const j of hermesJobChecks(d.hermes, now).filter((x) => x.status === 'fallo' && !x.paused)) add('hermes_job:' + j.id, 'high', 'Job de Hermes con fallos: ' + j.name, j.reason, false);
   if (d.hermes && d.hermes.gateway_ok === false) add('hermes_gateway', 'critical', 'Hermes: el gateway de mensajería no responde', 'Telegram puede no estar entregando mensajes.', false);
   if (d.hermes && Number(d.hermes.disk_pct) >= 90) add('disk_full', 'high', 'Servidor de Hermes con el disco al ' + d.hermes.disk_pct + '%', 'Se puede quedar sin espacio.', false);
+  // 6) avisos de corrida de los radares: una vez por corrida, en formato corto (no son fallas)
+  for (const r of (d.runs || []).filter((x) => ['prospect_radar', 'content_radar'].includes(x.kind) && x.id && now - Date.parse(x.created_at) <= 24 * 3600000)) {
+    if (r.status === 'skipped' || (r.summary || {}).mode === 'skip') continue;
+    const n = runNotice(d, r);
+    add('run:' + r.id, n.severity, n.title, '', true, { notice: n.text });
+  }
   // --- dedupe
+  existing = (existing || []).filter((e) => !/^_state:/.test(String(e.alert_key)));
   const ex = {}; (existing || []).forEach((e) => { ex[e.alert_key] = e; });
   const curKeys = new Set(cur.map((c) => c.key));
   const upserts = [], notify = [];
@@ -378,9 +385,15 @@ export function evaluateAlerts(d, existing) {
 export function alertsText(notify) {
   if (!notify || !notify.length) return '';
   const sev = { critical: 'CRÍTICO', high: 'IMPORTANTE', info: 'AVISO' };
-  const lines = ['ATACAMA OS · ' + (notify.length === 1 ? 'alerta' : notify.length + ' alertas')];
-  notify.forEach((a) => lines.push('• ' + sev[a.severity] + ' · ' + a.title + (a.detail ? ' — ' + a.detail : '') + (a.repeat ? ' (sigue sin resolverse)' : '')));
-  return lines.join('\n');
+  const notices = notify.filter((a) => a.meta && a.meta.notice), alerts = notify.filter((a) => !(a.meta && a.meta.notice));
+  const blocks = [];
+  if (alerts.length) {
+    const lines = ['ATACAMA OS · ' + (alerts.length === 1 ? 'alerta' : alerts.length + ' alertas')];
+    alerts.forEach((a) => lines.push('• ' + sev[a.severity] + ' · ' + a.title + (a.detail ? ' — ' + a.detail : '') + (a.repeat ? ' (sigue sin resolverse)' : '')));
+    blocks.push(lines.join('\n'));
+  }
+  notices.forEach((a) => blocks.push(a.meta.notice));
+  return blocks.join('\n\n');
 }
 
 /** Rendimiento del contenido para «¿qué funcionó mejor?»: solo cifras reales de GHL. */
@@ -503,4 +516,128 @@ export function contentGate(d) {
   if (ct.pending_review.length >= 3) return { mode: 'skip', reason: 'hay ' + ct.pending_review.length + ' piezas esperando tu revisión: primero se revisan', pending_review: ct.pending_review.length, candidate_signals: ct.candidate_signals };
   if (ct.candidate_signals >= 5) return { mode: 'skip', reason: 'ya hay ' + ct.candidate_signals + ' señales candidatas sin convertir en pieza', pending_review: ct.pending_review.length, candidate_signals: ct.candidate_signals };
   return { mode: 'run', max_signals: 5, reason: 'ok (' + ct.pending_review.length + ' piezas en revisión, ' + ct.candidate_signals + ' señales candidatas)', pending_review: ct.pending_review.length, candidate_signals: ct.candidate_signals };
+}
+
+/** Nombre corto para Telegram/panel: quita palabras genéricas y la ciudad («Laboratorio Clínico Luis Pasteur Antofagasta» → «Luis Pasteur»). */
+export function shortName(name) {
+  const raw = String(name || '').replace(/\s+/g, ' ').trim();
+  if (raw.length <= 16) return raw;
+  const drop = /^(laboratorio|laboratorios|clínico|clinico|clínica|clinica|centro|centros|servicios|servicio|empresa|sociedad|comercial|inmobiliaria|constructora|grupo|instituto|y|e|de|del|la|las|los|el|spa|ltda|s\.a\.|sa|antofagasta|calama|santiago|chile|iquique|arica|copiapó|copiapo|maquinarias|maquinaria|médico|medico|dental)$/i;
+  const parts = raw.split(' ').filter((w) => !drop.test(w));
+  const out = parts.slice(0, 2).join(' ');
+  return out || raw.slice(0, 16);
+}
+
+/** Recorta a n caracteres sin cortar a media palabra, con «…». */
+export function clip(text, n) {
+  const t = String(text || '').replace(/\s+/g, ' ').trim();
+  if (t.length <= n) return t;
+  const cut = t.slice(0, n - 1);
+  return (cut.replace(/\s+\S*$/, '') || cut) + '…';
+}
+
+/**
+ * Datos estructurados para la vista /ops (solo lectura): atención, prospección, contenido y sistema.
+ * La lógica vive aquí (una sola fuente de verdad) y Next.js solo la dibuja.
+ */
+export function composePanel(d) {
+  const now = d.now, tz = (d.cfg && d.cfg.tz) || 'America/Santiago';
+  const s = buildSections(d), c = s.commercial, ct = s.content, h = s.health;
+  const chLabel = { instagram: 'Instagram Atacama', linkedin_page: 'LinkedIn Atacama Labs', linkedin_profile: 'LinkedIn Christian' };
+  const pcs = (d.pieces || []).filter((p) => !p.is_test);
+  // --- atención
+  const att = [];
+  const add = (key, tone, title, items) => { if (items.length) att.push({ key, tone, title, count: items.length, items: items.slice(0, 6), more: Math.max(0, items.length - 6) }); };
+  const awaiting = c.awaiting_reply.map((r) => r.company + (r.days ? ' · hace ' + r.days + ' d' : ''));
+  const replyNames = awaiting.length ? awaiting : c.new_replies.map((r) => r.company);
+  add('replies', 'act', replyNames.length === 1 ? 'Respuesta por atender' : 'Respuestas por atender', replyNames);
+  add('fu_overdue', 'act', 'Seguimientos vencidos', c.followups.overdue.map((f) => f.company + (f.draft ? ' · borrador listo' : ' · sin borrador')));
+  add('fu_today', 'act', 'Seguimientos para hoy', c.followups.today.map((f) => f.company + (f.draft ? ' · borrador listo' : '')));
+  const imp = c.task_groups.filter((g) => /respuesta|reuni|propuesta|diagn|seguimiento/i.test(g.type));
+  add('tasks', 'act', 'Tareas vencidas', imp.map((g) => g.count + ' × ' + g.type + ' · hasta ' + g.oldest_days + ' d'));
+  add('no_next', 'act', 'Oportunidades sin próximo paso', c.no_next_step.map((o) => o.company + ' · ' + o.stage));
+  add('stale', 'warn', 'Oportunidades estancadas', c.stale.map((x) => x.company + ' · ' + x.stage + ' · ' + x.days + ' d'));
+  add('content_pending', 'act', 'Contenido por aprobar', ct.pending_review.map((x) => x));
+  add('content_failed', 'act', 'Publicación con problema', ct.failed.concat(ct.late));
+  add('system_fail', 'act', 'Sistema con fallas', h.components.filter((x) => x.status === 'fallo').map((x) => x.name + ' · ' + x.reason));
+  // --- prospección
+  const cands = d.candidates || [];
+  const inv = cands.filter((x) => x.status === 'in_ghl' && x.ghl_stage === 'investigado');
+  const lastRun = (d.runs || []).find((r) => r.kind === 'prospect_radar' && r.status === 'ok' && (r.summary || {}).mode !== 'skip') || null;
+  const runAt = lastRun ? Date.parse(lastRun.created_at) : null;
+  const winMin = lastRun ? (Number((lastRun.summary || {}).minutes) || 5) + 10 : 0;
+  const fresh = (x) => Boolean(runAt) && /radar/i.test(String(x.source_name || '')) && Date.parse(x.created_at) >= runAt - winMin * 60000;
+  const latest = inv.slice().sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || (b.priority_score || 0) - (a.priority_score || 0)).slice(0, 12).map((x) => ({
+    company: x.company_name, short: shortName(x.company_name), score: x.priority_score, band: x.band, industry: x.industry || null, city: x.location || null, domain: x.domain || null,
+    angle: x.angle ? clip(x.angle, 220) : null, quote: x.quote ? clip(x.quote, 200) : null, source: x.source_name || null, days: daysSince(Date.parse(x.created_at), now, tz), is_new: fresh(x) }));
+  const contacted = cands.filter((x) => x.status === 'contacted' || (x.ghl_stage && x.ghl_stage !== 'investigado')).length;
+  const prospecting = {
+    backlog: inv.length, backlog_alta: inv.filter((x) => x.band === 'alta').length, new_since_run: cands.filter(fresh).length, new_since_run_alta: cands.filter((x) => fresh(x) && x.band === 'alta').length,
+    contacted, overdue_review_tasks: (c.task_groups.find((g) => /revisar prospecto/i.test(g.type)) || { count: 0 }).count,
+    last_run: lastRun ? { at: lastRun.created_at, label: fmtDateTime(runAt, tz), imported: Number((lastRun.summary || {}).imported) || 0, minutes: Number((lastRun.summary || {}).minutes) || 0, ago: ageText(now - runAt) } : null, latest };
+  // --- contenido
+  const sig = (d.signals_list || []).slice(0, 8).map((x) => ({ title: clip(x.title, 110), type: x.signal_type || null, angle: x.angle ? clip(x.angle, 160) : null, at: x.created_at, ago: ageText(now - Date.parse(x.created_at)) }));
+  const row = (p) => ({ id: p.id, title: clip(p.topic, 90), channel: chLabel[p.channel] || p.channel, status: p.status, hook: p.hook ? clip(p.hook, 160) : null, format: p.format || null, category: p.category || null, score: p.score != null ? p.score : null,
+    at: p.scheduled_at || p.published_at || p.created_at, at_label: (p.scheduled_at || p.published_at) ? fmtDateTime(Date.parse(p.scheduled_at || p.published_at), tz) : null });
+  const inReview = pcs.filter((p) => p.status === 'in_review' || (p.ghl_status === 'in_review' && p.ghl_approval_status !== 'approved')).map(row);
+  const scheduled = pcs.filter((p) => p.status === 'scheduled' && p.scheduled_at).sort((a, b) => Date.parse(a.scheduled_at) - Date.parse(b.scheduled_at)).map(row);
+  const published = pcs.filter((p) => p.status === 'published' && p.published_at).sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at)).slice(0, 5).map((p) => {
+    const ms = (d.metrics || []).filter((m) => m.content_piece_id === p.id && m.status !== 'error').map((m) => ({ window: m.metric_window, likes: m.likes, comments: m.comments, shares: m.shares, partial: m.status === 'partial' }));
+    return { ...row(p), metrics: ms };
+  });
+  const content = { signals_count: Number(d.signals_candidate) || 0, signals: sig, in_review: inReview, scheduled, published, failed: ct.failed.concat(ct.late), metrics_ready: ct.snapshots.length, preview_ready: false };
+  // --- sistema
+  const system = { overall: h.overall, components: h.components.map((x) => ({ name: x.name, status: x.status, reason: x.reason })), outreach_mode: c.outreach.mode, approved_pending: c.outreach.approved_pending, drafts: c.outreach.drafts_initial, errors24h: (d.errors24h || []).slice(0, 6), hermes_known: Boolean(d.hermes && Array.isArray(d.hermes.jobs)) };
+  return { generated_at: new Date(now).toISOString(), date_label: fmtDate(now, tz), tz, attention: att, attention_total: att.length, prospecting, content, system, missing: d.missing || [] };
+}
+
+/** Aviso corto de una corrida de radar (ops_runs) para Telegram: sin IDs, rutas ni telemetría. */
+export function runNotice(d, run) {
+  const tz = (d.cfg && d.cfg.tz) || 'America/Santiago';
+  const sm = run.summary || {};
+  const at = Date.parse(run.created_at), win = ((Number(sm.minutes) || 5) + 10) * 60000;
+  if (run.kind === 'prospect_radar') {
+    if (run.status === 'error') return { title: 'Prospect Radar falló', text: 'PROSPECT RADAR\nLa corrida falló' + (sm.reason ? ' (' + clip(sm.reason, 100) + ')' : '') + '. Quedó registrada; revisa el panel si se repite.', severity: 'high' };
+    const mine = (d.candidates || []).filter((x) => /radar/i.test(String(x.source_name || '')) && Date.parse(x.created_at) >= at - win && Date.parse(x.created_at) <= at + 120000).sort((a, b) => (b.priority_score || 0) - (a.priority_score || 0));
+    const inv = (d.candidates || []).filter((x) => x.status === 'in_ghl' && x.ghl_stage === 'investigado').length;
+    if (!mine.length) return { title: 'Prospect Radar sin nuevos', text: 'PROSPECT RADAR\nSin candidatos nuevos esta vez (ninguno cumplió el criterio).\n' + inv + ' en Investigado esperando tu decisión.', severity: 'info' };
+    const alta = mine.filter((x) => x.band === 'alta').length;
+    const contacted = mine.filter((x) => x.status === 'contacted' || (x.ghl_stage && x.ghl_stage !== 'investigado')).length;
+    const inInv = mine.filter((x) => x.ghl_stage === 'investigado').length;
+    const lines = ['PROSPECT RADAR', mine.length + (mine.length === 1 ? ' nuevo' : ' nuevos') + ' · ' + alta + ' prioridad alta', 'Top: ' + mine.slice(0, 3).map((x) => shortName(x.company_name) + ' ' + x.priority_score).join(' · '), (inInv === mine.length ? 'Todos en Investigado' : inInv + ' en Investigado') + '. ' + contacted + ' contactados.'];
+    return { title: 'Prospect Radar', text: lines.join('\n'), severity: 'info' };
+  }
+  if (run.status === 'error') return { title: 'Content Radar falló', text: 'CONTENT RADAR\nLa corrida falló' + (sm.reason ? ' (' + clip(sm.reason, 100) + ')' : '') + '. Quedó registrada; revisa el panel si se repite.', severity: 'high' };
+  const sigs = (d.signals_list || []).filter((x) => Date.parse(x.created_at) >= at - win && Date.parse(x.created_at) <= at + 120000);
+  const total = Number(d.signals_candidate) || 0;
+  if (!sigs.length) return { title: 'Content Radar sin señales', text: 'CONTENT RADAR\nSin señales nuevas esta vez.' + (total ? ' ' + total + ' candidatas esperando pieza.' : ''), severity: 'info' };
+  const lines = ['CONTENT RADAR', sigs.length + (sigs.length === 1 ? ' señal nueva' : ' señales nuevas') + ' · ' + total + ' candidatas sin pieza', sigs.slice(0, 2).map((x) => '• ' + clip(x.title, 60)).join('\n'), 'Nada publicado ni aprobado.'];
+  return { title: 'Content Radar', text: lines.join('\n'), severity: 'info' };
+}
+
+/** Daily para Telegram: resumen corto (el detalle vive en /ops y en las consultas a Hermes). */
+export function composeBrief(d) {
+  const tz = (d.cfg && d.cfg.tz) || 'America/Santiago';
+  const s = buildSections(d), c = s.commercial, ct = s.content, h = s.health;
+  const p = composePanel(d);
+  const out = ['ATACAMA DAILY · ' + fmtDate(d.now, tz)];
+  const act = p.attention.filter((a) => a.tone === 'act');
+  if (act.length) {
+    out.push('', 'NECESITA TU ACCIÓN');
+    act.forEach((a) => out.push('• ' + a.count + ' ' + a.title.toLowerCase() + (a.key === 'replies' || a.key === 'content_pending' ? ': ' + names(a.items.map((x) => String(x).split(' · ')[0]), 2) : '')));
+  } else out.push('', 'Nada urgente hoy.');
+  const bits = [];
+  const pr = p.prospecting;
+  bits.push('PROSPECCIÓN: ' + (pr.new_since_run && pr.last_run && (d.now - Date.parse(pr.last_run.at)) < 36 * 3600000 ? pr.new_since_run + ' nuevos del Radar · ' : '') + pr.backlog + ' en Investigado' + (pr.backlog_alta ? ' (' + pr.backlog_alta + ' prioridad alta)' : ''));
+  const cb = [];
+  if (p.content.in_review.length) cb.push(p.content.in_review.length + ' por aprobar');
+  if (p.content.scheduled.length) cb.push(p.content.scheduled.length + (p.content.scheduled.length === 1 ? ' programada' : ' programadas'));
+  if (p.content.signals_count) cb.push(p.content.signals_count + ' señales sin pieza');
+  const snaps = ct.snapshots.length;
+  if (snaps) cb.push(snaps + (snaps === 1 ? ' métrica nueva' : ' métricas nuevas'));
+  bits.push('CONTENIDO: ' + (cb.length ? cb.join(' · ') : 'sin movimiento'));
+  const bad = h.components.filter((x) => x.status !== 'ok');
+  bits.push('SISTEMA: ' + (bad.length ? bad.map((x) => (x.status === 'fallo' ? 'FALLO ' : 'atención ') + String(x.name).replace(/^Job Hermes · /, '')).slice(0, 3).join(', ') : 'todo operativo') + (c.outreach.mode === 'off' ? ' · envío de correos apagado' : ''));
+  out.push('', ...bits);
+  return { text: out.join('\n'), action_count: act.length };
 }

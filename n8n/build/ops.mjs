@@ -3,7 +3,7 @@
  * Atacama OS · workflow n8n «25 Atacama Ops» (Bloque 2 — operación diaria automática).
  *
  * POST /webhook/atacama-ops  (X-Atacama-Key)  { action, params?, hermes? }
- *   daily | today | urgent | health | stale | followups | replies | radar_new | content_status | content_performance |
+ *   daily | panel | today | urgent | health | stale | followups | replies | radar_new | content_status | content_performance |
  *   radar_gate | radar_report | content_radar_report | alerts_poll | alerts_ack
  *
  * Es el ÚNICO lugar que calcula el estado del negocio: lee GHL, Supabase, la API de n8n y los datos de Hermes que le entrega su job, y devuelve texto + decisiones.
@@ -43,7 +43,7 @@ const GH_HEADERS = [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', 
 export const LIB = [...new Map(Object.values(core).filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
 const CFG_JSON = JSON.stringify({ tz: OPS_CFG.tz, stages: OPS_CFG.stages, ignore_opps: OPS_CFG.ignore_opps });
 
-export const ACTIONS = ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'radar_gate', 'content_gate', 'radar_report', 'content_radar_report', 'alerts_poll', 'alerts_ack'];
+export const ACTIONS = ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'content_gate', 'radar_report', 'content_radar_report', 'alerts_poll', 'alerts_ack'];
 
 export const parseCode = `try {
   const first = $('Ops Webhook').first().json || {};
@@ -53,11 +53,11 @@ export const parseCode = `try {
   if (!ACTIONS.includes(action)) throw new Error('action inválida: usa ' + ACTIONS.join(' | '));
   const dry = b.dry_run === true;
   // la hora solo se puede simular en consultas de lectura o con dry_run (pruebas); las escrituras siempre usan la hora real
-  const now = Number.isFinite(Number(b.now_ms)) && (dry || ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'radar_gate', 'content_gate'].includes(action)) ? Number(b.now_ms) : Date.now();
+  const now = Number.isFinite(Number(b.now_ms)) && (dry || ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'content_gate'].includes(action)) ? Number(b.now_ms) : Date.now();
   const need = {
     sb: !['alerts_ack'].includes(action) || true,
-    ghl: ['daily', 'today', 'urgent', 'stale', 'replies'].includes(action),
-    n8n: ['daily', 'today', 'urgent', 'health', 'alerts_poll'].includes(action),
+    ghl: ['daily', 'today', 'urgent', 'stale', 'replies', 'panel'].includes(action),
+    n8n: ['daily', 'today', 'urgent', 'health', 'alerts_poll', 'panel'].includes(action),
     deep: (action === 'health' && b.deep === true) || (action === 'alerts_poll' && b.deep_gmail === true) || (action === 'daily' && b.deep === true),
     learn: action === 'content_performance',
   };
@@ -66,10 +66,10 @@ export const parseCode = `try {
   const n8n = '${N8N_BASE}/api/v1/';
   const u = {
     messages: sb + 'outreach_messages?created_at=gte.' + iso(now - 45 * 86400000) + '&select=id,candidate_id,company_name,kind,direction,status,classification,subject,body,sent_at,created_at,metadata&order=created_at.desc&limit=700',
-    cands: sb + 'prospect_candidates?status=in.(in_ghl,accepted,contacted)&select=id,company_name,status,band,priority_score,source_name,created_at,ghl_stage,ghl_opportunity_id,ghl_contact_id,next_action_at&order=created_at.desc&limit=400',
-    pieces: sb + 'content_pieces?select=id,topic,channel,status,ghl_status,ghl_approval_status,scheduled_at,published_at,is_test,learning,learned_at,created_at&order=created_at.desc&limit=80',
+    cands: sb + 'prospect_candidates?status=in.(in_ghl,accepted,contacted)&select=id,company_name,status,band,priority_score,source_name,created_at,ghl_stage,ghl_opportunity_id,ghl_contact_id,next_action_at,industry,location,domain,angle:canonical->>outreach_angle,quote:canonical->evidence_quotes->0->>quote&order=created_at.desc&limit=400',
+    pieces: sb + 'content_pieces?select=id,topic,channel,status,ghl_status,ghl_approval_status,scheduled_at,published_at,is_test,learning,learned_at,created_at,format,category,score,hook:piece->>hook&order=created_at.desc&limit=80',
     metrics: sb + 'content_metrics?captured_at=gte.' + iso(now - 30 * 86400000) + '&select=content_piece_id,metric_window,status,likes,comments,shares,captured_at&order=captured_at.desc&limit=200',
-    signals: sb + 'content_sources?signal_status=eq.candidate&select=id&limit=200',
+    signals: sb + 'content_sources?signal_status=eq.candidate&select=id,title,created_at,signal_type,angle:signal->>angle&order=created_at.desc&limit=200',
     alerts: sb + 'ops_alerts?select=*&order=last_seen_at.desc&limit=200',
     runs: sb + 'ops_runs?select=*&order=created_at.desc&limit=40',
     config: sb + 'outreach_config?id=eq.1&select=mode,paused,send_allowlist,daily_cap',
@@ -113,11 +113,13 @@ const gb = (n) => { const x = node(n); return (x.statusCode || 0) < 300 && x.bod
 const gmail = p.need.deep ? { w22: gb('Gmail Check 22'), w23: gb('Gmail Check 23') } : null;
 const oppBody = node('GHL Opps').body, taskBody = node('GHL Tasks').body;
 const d = { now: p.now, cfg: CFG, opps: p.need.ghl && oppBody && Array.isArray(oppBody.opportunities) ? oppBody.opportunities : [], tasks: p.need.ghl && taskBody && Array.isArray(taskBody.tasks) ? taskBody.tasks : [],
-  messages: arr('SB Messages'), candidates: arr('SB Candidates'), pieces: arr('SB Pieces'), metrics: arr('SB Metrics'), signals_candidate: arr('SB Signals').length, alerts: arr('SB Alerts'), runs: arr('SB Runs'), outreach: arr('SB Config')[0] || null,
+  messages: arr('SB Messages'), candidates: arr('SB Candidates'), pieces: arr('SB Pieces'), metrics: arr('SB Metrics'), signals_candidate: arr('SB Signals').length, signals_list: arr('SB Signals'), alerts: arr('SB Alerts'), runs: arr('SB Runs'), outreach: arr('SB Config')[0] || null,
   workflows, execs, errors24h, hermes: p.hermes, gmail, missing };
 const A = p.action, writes = [], nowIso = new Date(p.now).toISOString();
+if (!d.hermes) { const hs = d.alerts.find((a) => a.alert_key === '_state:hermes'); if (hs && hs.meta && Array.isArray(hs.meta.jobs) && p.now - Date.parse(hs.last_seen_at) < 40 * 60000) d.hermes = hs.meta; }
 let out;
-if (A === 'daily') { const r = composeDaily(d); out = { text: r.text, action_count: r.action_count, review_count: r.review_count }; }
+if (A === 'daily') { const r = composeDaily(d); const br = composeBrief(d); out = { text: r.text, brief: br.text, action_count: r.action_count, review_count: r.review_count }; }
+else if (A === 'panel') { out = { panel: composePanel(d) }; }
 else if (A === 'today') { out = composeToday(d); }
 else if (A === 'urgent') { out = composeUrgent(d); }
 else if (A === 'health') { const h = healthReport(d); out = { text: healthText(h) + (errors24h.length ? '\\nEjecuciones fallidas en 24 h: ' + errors24h.slice(0, 6).map((e) => e.name + ' (' + e.count + ')').join(', ') : '') + (missing.length ? '\\n⚠ ' + missingNotes(d).join(' ') : ''), overall: h.overall, components: h.components, errors24h }; }
@@ -141,6 +143,7 @@ else if (A === 'alerts_poll') {
     if (a.op === 'insert') writes.push({ method: 'POST', path: 'ops_alerts?on_conflict=alert_key', body: { alert_key: a.key, severity: a.severity, title: a.title, detail: a.detail, event: a.event, status: 'open', first_seen_at: nowIso, last_seen_at: nowIso, last_notified_at: null, notify_count: 0, resolved_at: null, meta: a.meta || {} }, prefer: 'resolution=merge-duplicates,return=minimal' });
     else writes.push({ method: 'PATCH', path: 'ops_alerts?alert_key=eq.' + encodeURIComponent(a.key), body: { last_seen_at: nowIso, severity: a.severity, title: a.title, detail: a.detail } });
   });
+  if (p.hermes && Array.isArray(p.hermes.jobs)) writes.push({ method: 'POST', path: 'ops_alerts?on_conflict=alert_key', body: { alert_key: '_state:hermes', severity: 'info', title: 'estado de Hermes', detail: '', event: true, status: 'resolved', first_seen_at: nowIso, last_seen_at: nowIso, notify_count: 1, resolved_at: nowIso, meta: p.hermes }, prefer: 'resolution=merge-duplicates,return=minimal' });
   ev.resolve.forEach((k) => writes.push({ method: 'PATCH', path: 'ops_alerts?alert_key=eq.' + encodeURIComponent(k), body: { status: 'resolved', resolved_at: nowIso } }));
   out = { text: alertsText(ev.notify), notify_keys: ev.notify.map((n) => n.key), count: ev.notify.length, resolved: ev.resolve, open_now: ev.current.length, health: ev.health };
 }

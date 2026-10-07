@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Script from "next/script";
+import { usePathname } from "next/navigation";
 import { analyticsEnabled, gtmId, CONSENT_STORAGE_KEY } from "@/lib/marketing/gtm";
 import { captureAttribution } from "@/lib/marketing/attribution";
 import { ConsentBanner } from "./ConsentBanner";
@@ -14,11 +15,13 @@ import { ConsentBanner } from "./ConsentBanner";
  * dato funcional propio, no depende de GTM ni de la decisión de consentimiento.
  */
 export function Analytics() {
+  // /ops es un panel privado: sin GTM, sin banner de consentimiento y sin atribución.
+  const isPrivate = usePathname()?.startsWith("/ops") ?? false;
   useEffect(() => {
-    captureAttribution();
-  }, []);
+    if (!isPrivate) captureAttribution();
+  }, [isPrivate]);
 
-  if (!analyticsEnabled) return null;
+  if (isPrivate || !analyticsEnabled) return null;
   const id = gtmId();
   if (!id) return null;
 

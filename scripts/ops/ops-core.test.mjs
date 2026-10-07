@@ -233,4 +233,61 @@ ok('alerta guardada pero nunca confirmada (Telegram falló) se reintenta; un eve
   assert.equal(a.notify.length, 1);
   assert.equal(oc.evaluateAlerts(ev, [{ alert_key: 'reply:r9', severity: 'high', status: 'open', event: true, last_notified_at: iso(H), notify_count: 1 }]).notify.length, 0);
 });
+ok('panel: atención, prospección, contenido y sistema en una estructura estable', () => {
+  const d = rich(); d.signals_list = [{ title: 'n8n 2.43 reduce costo con prompt caching en agentes de producción', signal_type: 'news', created_at: iso(H), angle: 'a' }];
+  d.candidates[0] = { ...d.candidates[0], industry: 'Salud', location: 'Antofagasta', domain: 'radar1.cl', angle: 'Automatizar agenda', quote: 'Agenda por WhatsApp' };
+  d.runs = [{ id: 'r1', kind: 'prospect_radar', status: 'ok', summary: { mode: 'import', imported: 2, minutes: 3 }, created_at: iso(2 * H) }];
+  const p = oc.composePanel(d);
+  assert.equal(p.date_label, 'jue 8 oct'); assert.ok(p.attention_total >= 4);
+  assert.ok(p.attention.some((a) => a.key === 'replies' && a.count === 2)); assert.ok(p.attention.some((a) => a.key === 'content_pending'));
+  assert.equal(p.prospecting.backlog, 3); assert.equal(p.prospecting.backlog_alta, 2); assert.equal(p.prospecting.contacted, 0);
+  assert.equal(p.prospecting.last_run.imported, 2); assert.equal(p.prospecting.latest[0].industry, 'Salud');
+  assert.equal(p.content.signals_count, 2); assert.equal(p.content.signals.length, 1); assert.equal(p.content.in_review.length, 1); assert.equal(p.content.scheduled.length, 1); assert.equal(p.content.published[0].metrics.length, 1);
+  assert.equal(p.system.overall, 'ok'); assert.equal(p.system.outreach_mode, 'off');
+  assert.ok(!/[0-9a-f]{8}-[0-9a-f]{4}/.test(JSON.stringify(p.attention)), 'sin ids en atención');
+});
+ok('panel: lo nuevo desde la última corrida se marca', () => {
+  const mk = (n, ms) => ({ company_name: n, status: 'in_ghl', ghl_stage: 'investigado', band: 'alta', priority_score: 90, source_name: 'Prospect Radar v2', created_at: iso(ms) });
+  const d = base({ candidates: [mk('Nuevo1', 110 * 60000), mk('Nuevo2', 109 * 60000), mk('Viejo', 30 * H)], runs: [{ id: 'r1', kind: 'prospect_radar', status: 'ok', summary: { mode: 'import', imported: 2, minutes: 3 }, created_at: iso(100 * 60000) }] });
+  const p = oc.composePanel(d);
+  assert.equal(p.prospecting.new_since_run, 2); assert.equal(p.prospecting.latest.filter((x) => x.is_new).length, 2); assert.equal(p.prospecting.backlog, 3);
+});
+ok('panel sin datos: estructura vacía válida, sin undefined', () => {
+  const p = oc.composePanel(base());
+  assert.equal(p.attention_total, 0); assert.equal(p.prospecting.last_run, null); assert.equal(p.prospecting.latest.length, 0); assert.ok(!/undefined|NaN/.test(JSON.stringify(p)));
+});
+ok('nombres cortos y recortes para Telegram', () => {
+  assert.equal(oc.shortName('Laboratorio Clínico Luis Pasteur Antofagasta'), 'Luis Pasteur'); assert.equal(oc.shortName('EDL Servicios y Maquinarias'), 'EDL'); assert.equal(oc.shortName('Maxservicios'), 'Maxservicios');
+  assert.equal(oc.clip('uno dos tres cuatro cinco', 14), 'uno dos tres…'); assert.equal(oc.clip('corto', 14), 'corto');
+});
+ok('Daily corto de Telegram: sin ids, rutas ni ejecuciones; con resumen y sin relleno', () => {
+  const b = oc.composeBrief(rich()).text;
+  assert.match(b, /^ATACAMA DAILY · jue 8 oct/); assert.match(b, /NECESITA TU ACCIÓN/); assert.match(b, /PROSPECCIÓN: .*3 en Investigado \(2 prioridad alta\)/); assert.match(b, /CONTENIDO: 1 por aprobar · 1 programada/); assert.match(b, /SISTEMA: todo operativo · envío de correos apagado/);
+  assert.ok(b.split('\n').length <= 14, 'líneas ' + b.split('\n').length); assert.ok(b.length < 700, 'largo ' + b.length);
+  assert.ok(!/Ejecuciones fallidas|\/opt\/|\.json|job|[0-9a-f]{8}-[0-9a-f]{4}/i.test(b));
+  assert.match(oc.composeBrief(base()).text, /Nada urgente hoy/);
+  const bad = oc.composeBrief(base({ workflows: WF_ACTIVE.map((w) => (w.id === 'rWulaiKeio0CsXrs' ? { ...w, active: false } : w)) })).text;
+  assert.match(bad, /SISTEMA: FALLO Followup Planner/);
+});
+ok('aviso del Prospect Radar: formato corto con top, prioridad alta y 0 contactados; sin ids ni rutas', () => {
+  const mk = (n, sc, band, ms) => ({ company_name: n, status: 'in_ghl', ghl_stage: 'investigado', band, priority_score: sc, source_name: 'Prospect Radar v2', created_at: iso(ms) });
+  const d = base({ candidates: [mk('Maxservicios', 91, 'alta', 119 * 60000), mk('Laboratorio Clínico Luis Pasteur Antofagasta', 91, 'alta', 118 * 60000), mk('EDL Servicios y Maquinarias', 91, 'alta', 117 * 60000), mk('Sel Otec', 85, 'alta', 116 * 60000), mk('Viejo', 70, 'valida', 40 * H)] });
+  const run = { id: 'run1', kind: 'prospect_radar', status: 'ok', summary: { mode: 'import', imported: 4, minutes: 3 }, created_at: iso(110 * 60000) };
+  const n = oc.runNotice(d, run);
+  assert.equal(n.text, 'PROSPECT RADAR\n4 nuevos · 4 prioridad alta\nTop: Maxservicios 91 · Luis Pasteur 91 · EDL 91\nTodos en Investigado. 0 contactados.');
+  assert.match(oc.runNotice(base(), run).text, /Sin candidatos nuevos/); assert.match(oc.runNotice(base(), { ...run, status: 'error' }).text, /falló/);
+});
+ok('aviso del Content Radar: señales nuevas, sin pieza y «nada publicado»', () => {
+  const d = base({ signals_candidate: 7, signals_list: [{ title: 'n8n 2.43.1 optimiza costos y latencia manteniendo el system prompt estático', created_at: iso(105 * 60000) }, { title: 'Otra señal', created_at: iso(104 * 60000) }, { title: 'Vieja', created_at: iso(5 * D) }] });
+  const n = oc.runNotice(d, { id: 'c1', kind: 'content_radar', status: 'ok', summary: { minutes: 4 }, created_at: iso(100 * 60000) });
+  assert.match(n.text, /^CONTENT RADAR\n2 señales nuevas · 7 candidatas sin pieza\n• n8n 2\.43\.1/); assert.match(n.text, /Nada publicado ni aprobado\.$/);
+});
+ok('avisos de corrida: una sola vez por corrida, las omitidas no avisan y el estado de Hermes no es una alerta', () => {
+  const d = base({ runs: [{ id: 'run9', kind: 'prospect_radar', status: 'ok', summary: { mode: 'import', minutes: 3 }, created_at: iso(30 * 60000) }, { id: 'run8', kind: 'prospect_radar', status: 'skipped', summary: { mode: 'skip' }, created_at: iso(20 * 60000) }] });
+  let a = oc.evaluateAlerts(d, [{ alert_key: '_state:hermes', severity: 'info', status: 'resolved', event: true, notify_count: 1, meta: {} }]);
+  assert.equal(a.notify.length, 1); assert.equal(a.notify[0].key, 'run:run9'); assert.match(oc.alertsText(a.notify), /^PROSPECT RADAR/); assert.ok(!/ATACAMA OS · alerta/.test(oc.alertsText(a.notify)));
+  a = oc.evaluateAlerts(d, [{ alert_key: 'run:run9', severity: 'info', status: 'resolved', event: true, notify_count: 1 }]); assert.equal(a.notify.length, 0); assert.deepEqual(a.resolve, []);
+  const mixed = oc.alertsText([{ severity: 'high', title: 'Respondió: X', detail: 'hola' }, { severity: 'info', title: 't', meta: { notice: 'PROSPECT RADAR\n1 nuevo' } }]);
+  assert.match(mixed, /^ATACAMA OS · alerta\n• IMPORTANTE · Respondió: X — hola\n\nPROSPECT RADAR/);
+});
 console.log(n + ' ok');

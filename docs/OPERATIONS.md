@@ -108,3 +108,22 @@ Carga extra en n8n: ~96 consultas/día de alertas (cada una lee unas 10 tablas/e
 - Actualizar el workflow: `node n8n/build/ops.mjs` regenera `n8n/atacama-labs-25-atacama-ops.json`, que se despliega por la API de n8n (mismo patrón que los demás).
 - Pausar todo: `hermes cron pause atacama-daily|atacama-alerts|8421589d0902|a46bd3138a0b`.
 - Si se pierde el Daily: revisar `hermes cron runs <id>` y `docs/HERMES-OPERATOR.md`.
+
+## 10. Panel `/ops` y mensajes de Telegram simplificados (7-oct-2026)
+
+**Una sola vista viva, privada y de solo lectura** dentro del Next.js existente: `/ops` (no es una fuente de verdad nueva; solo dibuja lo que calcula n8n `25 Atacama Ops`).
+
+- **Flujo de datos:** `GHL / Supabase / n8n / Hermes → n8n 25 (acción panel) → servidor Next.js → /ops`. El navegador nunca habla con GHL, n8n ni Supabase; el servidor de Next.js guarda una caché de 25 s y, si n8n no responde, muestra lo último con aviso «Sin conexión con n8n».
+- **Secciones:** NECESITA TU ATENCIÓN (respuestas, seguimientos/tareas vencidas, oportunidades sin próximo paso o estancadas, contenido por aprobar, fallas) · PROSPECCIÓN (en Investigado, nuevos de la última corrida, prioridad alta, contactados, últimos prospectos con score y detalle desplegable: ángulo, hecho observado, estado) · CONTENIDO (señales nuevas, por aprobar, programadas, publicadas con métricas de GHL; cada pieza ya es desplegable y quedó el espacio para preview de copy, carruseles y assets) · SISTEMA (OK / atención / fallo por componente, modo de envío, ejecuciones fallidas de 24 h).
+- **Refresco:** al cargar, al volver a la pestaña y cada 45 s mientras está visible. Mobile-first, tokens del sitio, sin JavaScript pesado (`<details>` nativo).
+- **Protección:** contraseña (`OPS_PANEL_PASSWORD`, mínimo 8 caracteres) + cookie firmada HMAC (httpOnly, `secure` en producción, SameSite=Lax, 14 días, ruta `/ops`). Sin contraseña configurada el panel queda **cerrado**. Sin sesión no se envía ningún dato. Además: `noindex` (metadata + `X-Robots-Tag`), `Cache-Control: private, no-store`, `Referrer-Policy: no-referrer`, `Disallow: /ops` en robots.txt, sin Google Tag Manager ni banner de cookies en esa ruta.
+- **Variables de entorno (Vercel, solo servidor):** `OPS_PANEL_PASSWORD` (la elige Christian), `N8N_BASE_URL`, `ATACAMA_INGEST_KEY`; opcional `OPS_PANEL_SECRET` para firmar la cookie. Hoy solo existen en `.env.local` (desarrollo): **hay que agregarlas en Vercel y desplegar la rama para que `/ops` exista en producción.**
+- **Código:** `src/app/ops/` (página, login, vista, CSS), `src/lib/ops/` (auth, datos, tipos). Cálculo: `composePanel` en `scripts/ops/ops-core.mjs`.
+
+### Telegram = resumen + enlace
+- **Daily** (08:30): 5–8 líneas — Necesita tu acción / Prospección / Contenido / Sistema — más «Ver Atacama OS → enlace». El detalle largo sigue disponible preguntándole a Hermes (`get_daily`).
+- **Radares:** el agente termina con `[SILENT]` y n8n arma el aviso corto (una sola vez por corrida, vía el job de alertas): `PROSPECT RADAR · N nuevos · N prioridad alta · Top: … · Todos en Investigado. 0 contactados.` / `CONTENT RADAR · N señales nuevas · M candidatas sin pieza · 2 títulos · Nada publicado ni aprobado.`
+- **Alertas:** solo lo que requiere acción, sin IDs ni rutas.
+- **No se envía** (salvo error que requiera acción): IDs de GHL, rutas del servidor, archivos de telemetría, IDs de jobs ni detalles técnicos. El aviso del *file-mutation verifier* quedó apagado en Hermes (`display.file_mutation_verifier: false` en `/opt/data/config.yaml`, respaldo `config.yaml.bak-bloque2-ui`).
+- **El enlace** lo agrega el script de Hermes solo si `ATACAMA_PANEL_URL` está definido en `/opt/data/.env` (por ejemplo `https://atacamalabs.cl/ops`), para no mandar un enlace muerto antes de desplegar el panel.
+- El estado de Hermes que el panel necesita (jobs, disco, gateway) lo guarda el job de alertas cada 15 min en `ops_alerts` (fila `_state:hermes`, nunca se notifica).

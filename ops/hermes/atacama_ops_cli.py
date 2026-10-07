@@ -12,7 +12,7 @@ import sys
 from zoneinfo import ZoneInfo
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from atacama_common import STATE_DIR, hermes_state, post_ops  # noqa: E402
+from atacama_common import STATE_DIR, hermes_state, load_env, post_ops  # noqa: E402
 
 TZ = ZoneInfo("America/Santiago")
 
@@ -23,6 +23,12 @@ def _read(path, default=""):
             return f.read().strip()
     except OSError:
         return default
+
+
+def _link():
+    """Línea final con el enlace al panel (/ops). Solo si ATACAMA_PANEL_URL está en /opt/data/.env; así no se manda un enlace muerto antes de publicar el panel."""
+    url = load_env().get("ATACAMA_PANEL_URL", "").strip()
+    return "\nVer Atacama OS → " + url if url.startswith("http") else ""
 
 
 def _write(path, text):
@@ -43,13 +49,13 @@ def daily(force=False):
             return  # ya se envió hoy (la segunda entrada de cron solo reintenta si la primera falló)
     try:
         r = post_ops({"action": "daily", "hermes": hermes_state(), "deep": True})
-        text = r.get("text") or ""
+        text = r.get("brief") or r.get("text") or ""
         if not text:
             raise RuntimeError("respuesta vacía")
-    except Exception as ex:  # n8n caído, clave inválida, etc.
-        print("ATACAMA DAILY · no pude consultar Atacama OS (%s). Revisa n8n y el servidor; el resumen se reintenta en unos minutos." % type(ex).__name__)
+    except Exception:  # n8n caído, clave inválida, etc.
+        print("ATACAMA DAILY · hoy no pude leer el estado de Atacama OS. Reintento en unos minutos; si sigue igual, revisa n8n.")
         return
-    print(text)
+    print(text + _link())
     if not force:
         _write(last, today)
 
@@ -59,17 +65,17 @@ def alerts():
     deep = datetime.datetime.now(datetime.timezone.utc).minute < 15  # el chequeo profundo de Gmail corre ~1 vez por hora
     try:
         r = post_ops({"action": "alerts_poll", "hermes": hermes_state(), "deep_gmail": deep})
-    except Exception as ex:
+    except Exception:
         n = int(_read(fail_path, "0") or 0) + 1
         _write(fail_path, n)
         if n == 3:  # una sola vez: tres consultas seguidas (≈45 min) sin respuesta
-            print("ATACAMA OS · alerta: n8n no responde hace ~45 min (%s). Las alertas y el Daily pueden no estar funcionando." % type(ex).__name__)
+            print("ATACAMA OS · alerta: n8n no responde hace ~45 min. Las alertas y el Daily pueden no estar funcionando.")
         return
     _write(fail_path, 0)
     text = r.get("text") or ""
     if not text:
         return  # silencio
-    print(text)
+    print(text + _link())
     keys = r.get("notify_keys") or []
     if keys:
         try:

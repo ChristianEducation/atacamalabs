@@ -25,7 +25,7 @@ def load_env():
                 vals[k.strip()] = v.strip().strip('"').strip("'")
     except OSError:
         pass
-    for k in ("ATACAMA_INGEST_KEY", "ATACAMA_INGEST_URL"):
+    for k in ("ATACAMA_INGEST_KEY", "ATACAMA_INGEST_URL", "ATACAMA_PANEL_URL"):
         if os.environ.get(k):
             vals[k] = os.environ[k]
     return vals

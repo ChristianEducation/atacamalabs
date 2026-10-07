@@ -14,5 +14,7 @@ t('distingue HECHO / INFERENCIA / HIPÓTESIS y exige cita literal con URL', /HEC
 t('investigación intermedia: no exige «dolor demostrado», pero exige proceso observable y 2 hechos (regla de señal verdadera)', /no buscamos «dolor demostrado»/.test(p) && /SEÑAL VERDADERA vs RELLENO/.test(p) && /DOS hechos observados/.test(p) && /PROCESO observable/.test(p));
 t('contacto solo público y de la propia empresa; sin adivinar correos; sin contacto público se descarta', /PÚBLICA publicada por la propia empresa/.test(p) && /Nunca adivines correos/.test(p) && /descarta la empresa/.test(p));
 t('sin secretos incrustados en el prompt', !/(pit-[0-9a-f]{8}|eyJ[A-Za-z0-9_-]{20}|sk-[A-Za-z0-9]{20}|Bearer [A-Za-z0-9]{20})/.test(p));
+const c = fs.readFileSync(new URL('./content-radar.prompt.txt', import.meta.url), 'utf8');
+t('ambos radares terminan en [SILENT]: el aviso a Telegram lo arma Atacama OS, no el agente', /EXACTAMENTE «\[SILENT\]»/.test(p) && /EXACTAMENTE «\[SILENT\]»/.test(c) && /content_radar_report/.test(c) && !/Responde SOLO con un resumen/i.test(p + c));
 console.log(`\n${pass} ok ${fail} fallos`);
 process.exit(fail ? 1 : 0);

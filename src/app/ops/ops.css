@@ -1,0 +1,98 @@
+/* /ops — panel privado de Atacama OS. Mobile-first, sobrio; usa los tokens del sitio (tokens.css). Todas las clases llevan prefijo `ops-`. */
+.ops {
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+}
+.ops-wrap { width: min(760px, 100% - 32px); margin: 0 auto; padding: 20px 0 48px; display: grid; gap: 14px; }
+.ops-wrap-narrow { width: min(380px, 100% - 32px); padding-top: 18vh; }
+.ops h1 { font-family: var(--font-serif); font-weight: 500; font-size: 28px; line-height: 1.15; letter-spacing: -0.01em; margin: 2px 0 0; }
+.ops h2 { font-family: var(--font-sans); font-size: 12px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink); margin: 0; }
+.ops h3 { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--subtle); margin: 18px 0 6px; }
+.ops-eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--subtle); margin: 0; }
+
+.ops-top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; padding-bottom: 2px; }
+.ops-top-r { display: flex; align-items: center; gap: 14px; font-size: 13px; color: var(--subtle); }
+.ops-fresh::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--success); margin-right: 6px; vertical-align: 1px; }
+.ops-fresh-stale { color: var(--warning); }
+.ops-fresh-stale::before { background: var(--warning); }
+.ops-link { font-size: 13px; color: var(--blue-text); text-decoration: underline; text-underline-offset: 3px; min-height: 32px; }
+
+.ops-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-12); padding: 16px; box-shadow: var(--shadow-sm); }
+.ops-card-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.ops-note { font-size: 12px; color: var(--subtle); text-align: right; }
+.ops-count { min-width: 24px; height: 24px; padding: 0 8px; border-radius: var(--r-pill); background: var(--danger-bg); color: var(--danger); font-size: 13px; font-weight: 700; display: inline-grid; place-items: center; }
+
+.ops-pill { display: inline-block; padding: 2px 10px; border-radius: var(--r-pill); font-size: 12px; font-weight: 700; }
+.ops-pill-ok { background: var(--success-bg); color: var(--success); }
+.ops-pill-atencion { background: var(--warning-bg); color: var(--warning); }
+.ops-pill-fallo { background: var(--danger-bg); color: var(--danger); }
+
+.ops-empty { color: var(--muted); font-size: 15px; margin: 0; }
+.ops-foot { color: var(--subtle); font-size: 13px; margin: 14px 0 0; }
+.ops-alert-line { background: var(--danger-bg); color: var(--danger); border-radius: var(--r-6); padding: 8px 10px; font-size: 14px; margin: 0 0 8px; }
+
+.ops-att { display: grid; gap: 10px; }
+.ops-att > li { border-left: 3px solid var(--danger); background: var(--paper); border-radius: 0 var(--r-6) var(--r-6) 0; padding: 10px 12px; }
+.ops-att > li.ops-att-warn { border-left-color: var(--warning); }
+.ops-att-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 15px; }
+.ops-att ul { margin-top: 4px; display: grid; gap: 2px; font-size: 14px; color: var(--muted); }
+.ops-more { color: var(--subtle); }
+
+.ops-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 14px; }
+.ops-stat { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r-6); padding: 10px 12px; display: grid; gap: 0; }
+.ops-stat strong { font-family: var(--font-serif); font-weight: 500; font-size: 26px; line-height: 1.1; }
+.ops-stat span { font-size: 12px; color: var(--subtle); line-height: 1.3; }
+.ops-stat-hi { background: var(--blue-soft); border-color: transparent; }
+.ops-stat-hi strong { color: var(--blue-text); }
+
+.ops-list { display: grid; gap: 0; margin: 0; }
+.ops-list > li { border-top: 1px solid var(--line); }
+.ops-list > li:first-child { border-top: 0; }
+.ops-row summary { list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 2px; cursor: pointer; min-height: 48px; }
+.ops-row summary::-webkit-details-marker { display: none; }
+.ops-row summary:focus-visible, .ops-more-box summary:focus-visible, .ops-link:focus-visible, .ops-login button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 4px; }
+.ops-row-main { display: grid; gap: 1px; min-width: 0; flex: 1; }
+.ops-row-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ops-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+.ops-row-title { font-weight: 600; font-size: 15px; overflow-wrap: anywhere; }
+.ops-row-sub { font-size: 13px; color: var(--subtle); flex-basis: 100%; }
+.ops-tag { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; background: var(--blue-soft); color: var(--blue-text); border-radius: var(--r-pill); padding: 1px 8px; }
+.ops-score { flex: none; min-width: 40px; text-align: center; padding: 3px 8px; border-radius: var(--r-pill); font-weight: 700; font-size: 14px; }
+.ops-score-alta { background: var(--success-bg); color: var(--success); }
+.ops-score-valida { background: var(--warning-bg); color: var(--warning); }
+.ops-score-pendiente, .ops-score-neutral { background: var(--surface-alt); color: var(--muted); }
+.ops-detail { display: grid; gap: 2px; padding: 0 2px 12px; font-size: 14px; }
+.ops-detail dt { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--subtle); margin-top: 8px; }
+.ops-detail dd { margin: 0; color: var(--ink); }
+.ops-signals li { padding: 8px 2px; display: grid; }
+.ops-more-box { margin-top: 6px; }
+.ops-more-box summary { cursor: pointer; font-size: 14px; color: var(--blue-text); padding: 10px 2px; min-height: 44px; display: flex; align-items: center; }
+
+.ops-sys-bad { display: grid; gap: 8px; margin-bottom: 12px; font-size: 14px; }
+.ops-sys-bad span { color: var(--muted); }
+.ops-sys { display: grid; grid-template-columns: 1fr; gap: 4px 16px; font-size: 14px; }
+.ops-sys li { display: flex; align-items: center; gap: 8px; }
+.ops-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.ops-dot-ok { background: var(--success); }
+
+.ops-login { display: grid; gap: 10px; margin-top: 18px; }
+.ops-login label { font-size: 14px; font-weight: 600; }
+.ops-login input { height: 48px; padding: 0 12px; border: 1px solid var(--control-border); border-radius: var(--r-6); background: var(--surface); font-size: 16px; }
+.ops-login button { height: 48px; border-radius: var(--r-pill); background: var(--dark); color: var(--dark-text); font-weight: 600; }
+.ops-login button:disabled { opacity: 0.6; cursor: progress; }
+.ops-login-err { color: var(--danger); font-size: 14px; margin: 0; }
+
+.ops-skel > div { height: 14px; border-radius: 6px; background: linear-gradient(90deg, var(--surface-alt), var(--paper), var(--surface-alt)); background-size: 200% 100%; animation: ops-shim 1.4s linear infinite; margin: 10px 0; }
+.ops-skel > div:first-child { width: 40%; }
+@keyframes ops-shim { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .ops-skel > div { animation: none; } }
+
+@media (min-width: 640px) {
+  .ops-stats { grid-template-columns: repeat(4, 1fr); }
+  .ops-sys { grid-template-columns: 1fr 1fr; }
+  .ops-card { padding: 20px 22px; }
+  .ops h1 { font-size: 32px; }
+}

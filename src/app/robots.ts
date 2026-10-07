@@ -8,7 +8,7 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       // Higiene: el panel privado (004) y previews no son autenticación,
       // pero no deben indexarse.
-      disallow: ["/control", "/*?preview=", "/studio"],
+      disallow: ["/control", "/*?preview=", "/studio", "/ops"],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
   };
