@@ -127,3 +127,15 @@ Carga extra en n8n: ~96 consultas/día de alertas (cada una lee unas 10 tablas/e
 - **No se envía** (salvo error que requiera acción): IDs de GHL, rutas del servidor, archivos de telemetría, IDs de jobs ni detalles técnicos. El aviso del *file-mutation verifier* quedó apagado en Hermes (`display.file_mutation_verifier: false` en `/opt/data/config.yaml`, respaldo `config.yaml.bak-bloque2-ui`).
 - **El enlace** lo agrega el script de Hermes solo si `ATACAMA_PANEL_URL` está definido en `/opt/data/.env` (por ejemplo `https://atacamalabs.cl/ops`), para no mandar un enlace muerto antes de desplegar el panel.
 - El estado de Hermes que el panel necesita (jobs, disco, gateway) lo guarda el job de alertas cada 15 min en `ops_alerts` (fila `_state:hermes`, nunca se notifica).
+
+## 11. Content Radar → pieza (7-oct-2026) — flujo probado de punta a punta
+
+`señal (content_sources, candidate) → Hermes selecciona y redacta → pieza canónica → validador (engine-core) → renderer + biblioteca de medios de GHL → n8n 12 Content Intake → content_pieces + GHL Social Planner «In Review» → visible en /ops`. No hay sistema paralelo: es el Content Engine existente (Bloques H–J).
+
+- **Prompt de Hermes:** `ops/hermes/content-piece.prompt.txt`. Entradas en la VPS (`/opt/data/content/`): señales candidatas, la guía oficial (`brand/content/ATACAMA-LABS-GUIA-PUBLICACIONES.md`), piezas de ejemplo con el esquema exacto y la lista de temas ya publicados. Hermes decide **qué señales sirven** (máx. 3, con motivo de cada descarte), **cuenta, formato, ángulo, copy y slides**. No usa el canal «LinkedIn Christian» salvo que exista trabajo propio verificable (nunca inventa experiencias del fundador).
+- **Reglas que se aplican solas:** cita literal verificada, claims externos con fuente, ninguna cifra sin respaldo, la llamita solo en portada/cierre, una idea por slide, score ≥ 70. La pieza lleva la `key` de la señal para que n8n la enlace a la fuente verificada.
+- **Revisión humana editorial:** antes de enviarla se contrasta con la fuente; en esta primera corrida se detectó que la fuente decía «en beta» y el texto no, se lo devolvimos a Hermes y lo corrigió él.
+- **Envío:** `node scripts/content/submit.mjs scripts/content/generated/<pieza>.piece.json` (renderiza con Playwright 1080×1350, sube las slides a GHL y llama a n8n 12). Estado final siempre `in_review`; nunca programa ni publica.
+- **En `/ops` (Contenido → Por aprobar):** texto completo del post, slides del carrusel (miniaturas deslizables, tocar para ampliar), por qué se eligió, fuentes, fecha propuesta y enlace a Social Planner. **Aprobar o rechazar se hace en GHL** (`In Review → Approve`); `/ops` es de solo lectura.
+- **Piezas de la prueba:** `scripts/content/generated/2026-10-07-*` (selección de Hermes, carrusel de Instagram sobre compactación de conversaciones —score 79— y texto de LinkedIn Atacama Labs sobre la Account Usage API de Resend —score 80—).
+- **Aprendizaje:** el radar ya lee `atacama-content-learnings` (métricas 24 h/72 h/7 d); no se construyó un subsistema nuevo.

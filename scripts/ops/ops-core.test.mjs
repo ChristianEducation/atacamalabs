@@ -293,4 +293,14 @@ ok('avisos de corrida: una sola vez por corrida, las omitidas no avisan y el est
   const mixed = oc.alertsText([{ severity: 'high', title: 'Respondió: X', detail: 'hola' }, { severity: 'info', title: 't', meta: { notice: 'PROSPECT RADAR\n1 nuevo' } }]);
   assert.match(mixed, /^ATACAMA OS · alerta\n• IMPORTANTE · Respondió: X — hola\n\nPROSPECT RADAR/);
 });
+ok('panel: las piezas en revisión traen preview completo (copy, slides, medios, fuentes, fecha propuesta)', () => {
+  const d = rich();
+  d.review_pieces = [{ id: 'p1', status: 'in_review', score: 82, rationale: 'Cambio real y útil para pymes.', ghl_post_id: 'g1', scheduled_at: new Date(NOW + 3 * D).toISOString(), piece: { format: 'carrusel', hook: 'Tu agente de WhatsApp se vuelve caro en chats largos', body: 'Línea 1\n\nLínea 2', cta: { type: 'link', text: 'Más en atacamalabs.cl' }, hashtags: ['#a'],
+    slides: [{ layout: 'cover', kicker: 'WhatsApp', title: 'Chats largos, *costos* altos' }, { layout: 'content', title: 'Qué cambió', items: [{ title: 'A', text: 'b' }] }, { layout: 'content', title: 'Antes y después', compare: { left: { label: 'Antes', text: 'x' }, right: { label: 'Ahora', text: 'y' } } }],
+    media: [{ url: 'https://cdn.example.com/1.png' }, { url: 'http://insegura/2.png' }], sources: [{ title: 'Notas de versión', url: 'https://docs.anthropic.com/x' }] } }];
+  const pv = oc.composePanel(d).content.in_review[0].preview;
+  assert.equal(pv.body, 'Línea 1\n\nLínea 2'); assert.equal(pv.slides.length, 3); assert.equal(pv.slides[0].title, 'Chats largos, costos altos'); assert.deepEqual(pv.slides[2].compare, ['Antes: x', 'Ahora: y']);
+  assert.deepEqual(pv.media, ['https://cdn.example.com/1.png']); assert.equal(pv.sources[0].url, 'https://docs.anthropic.com/x'); assert.ok(pv.proposed_label); assert.equal(pv.cta, 'Más en atacamalabs.cl'); assert.equal(pv.ghl_post, true);
+  assert.equal(oc.composePanel(rich()).content.in_review[0].preview, null);
+});
 console.log(n + ' ok');

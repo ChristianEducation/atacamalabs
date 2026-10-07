@@ -577,7 +577,19 @@ export function composePanel(d) {
     last_run: lastRun ? { at: lastRun.created_at, label: fmtDateTime(runAt, tz), imported: Number((lastRun.summary || {}).imported) || 0, minutes: Number((lastRun.summary || {}).minutes) || 0, ago: ageText(now - runAt) } : null, latest };
   // --- contenido
   const sig = (d.signals_list || []).slice(0, 8).map((x) => ({ title: clip(x.title, 110), type: x.signal_type || null, angle: x.angle ? clip(x.angle, 160) : null, at: x.created_at, ago: ageText(now - Date.parse(x.created_at)) }));
-  const row = (p) => ({ id: p.id, title: clip(p.topic, 90), channel: chLabel[p.channel] || p.channel, status: p.status, hook: p.hook ? clip(p.hook, 160) : null, format: p.format || null, category: p.category || null, score: p.score != null ? p.score : null,
+  const rv = {}; (d.review_pieces || []).forEach((x) => { rv[x.id] = x; });
+  const previewOf = (id) => {
+    const x = rv[id]; if (!x || !x.piece) return null;
+    const pc = x.piece, sl = Array.isArray(pc.slides) ? pc.slides : [];
+    return { hook: pc.hook ? String(pc.hook) : null, body: pc.body ? String(pc.body) : null, cta: pc.cta && pc.cta.text ? String(pc.cta.text) : null, hashtags: Array.isArray(pc.hashtags) ? pc.hashtags.slice(0, 5) : [],
+      slides: sl.slice(0, 10).map((s) => ({ layout: s.layout || null, kicker: s.kicker ? clip(s.kicker, 40) : null, title: clip(String(s.title || '').replace(/\*/g, ''), 100), body: s.body ? clip(s.body, 200) : null,
+        items: Array.isArray(s.items) ? s.items.slice(0, 4).map((i) => (typeof i === 'object' && i ? clip(i.title, 40) + (i.text ? ': ' + clip(i.text, 80) : '') : clip(i, 80))) : [],
+        compare: s.compare ? [s.compare.left, s.compare.right].filter(Boolean).map((c) => clip(c.label, 28) + ': ' + clip(c.text, 110)) : [], figure: s.figure ? clip(s.figure.value, 12) + ' ' + clip(s.figure.label, 80) : null })),
+      media: (Array.isArray(pc.media) ? pc.media : []).map((m) => m && m.url).filter((u) => /^https:\/\//.test(String(u || ''))).slice(0, 10),
+      sources: (Array.isArray(pc.sources) ? pc.sources : []).filter((s) => s && /^https?:/.test(String(s.url || ''))).slice(0, 3).map((s) => ({ title: clip(s.title, 110), url: s.url })),
+      rationale: x.rationale ? clip(x.rationale, 320) : null, format: pc.format || null, proposed_at: x.scheduled_at || null, proposed_label: x.scheduled_at ? fmtDateTime(Date.parse(x.scheduled_at), tz) : null, ghl_post: Boolean(x.ghl_post_id) };
+  };
+  const row = (p) => ({ preview: ['in_review', 'scheduled', 'approved', 'drafted'].includes(p.status) ? previewOf(p.id) : null, id: p.id, title: clip(p.topic, 90), channel: chLabel[p.channel] || p.channel, status: p.status, hook: p.hook ? clip(p.hook, 160) : null, format: p.format || null, category: p.category || null, score: p.score != null ? p.score : null,
     at: p.scheduled_at || p.published_at || p.created_at, at_label: (p.scheduled_at || p.published_at) ? fmtDateTime(Date.parse(p.scheduled_at || p.published_at), tz) : null });
   const inReview = pcs.filter((p) => p.status === 'in_review' || (p.ghl_status === 'in_review' && p.ghl_approval_status !== 'approved')).map(row);
   const scheduled = pcs.filter((p) => p.status === 'scheduled' && p.scheduled_at).sort((a, b) => Date.parse(a.scheduled_at) - Date.parse(b.scheduled_at)).map(row);

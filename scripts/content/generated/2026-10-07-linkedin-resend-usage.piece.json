@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "channel": "linkedin_page",
+  "format": "texto",
+  "category": "Noticia",
+  "topic": "Account Usage API en Resend para control de consumo y límites en tiempo real",
+  "angle": "Medir el consumo de correo antes de que una automatización dependa de un límite desconocido",
+  "audience": "Dueños y gerentes de pymes que usan correo transaccional en ventas, ecommerce y operaciones",
+  "sources": [
+    {
+      "kind": "hermes_research",
+      "title": "Account Usage API en Resend para control de consumo y límites en tiempo real",
+      "url": "https://resend.com/changelog",
+      "verified": true,
+      "evidence": [
+        {
+          "url": "https://resend.com/changelog",
+          "quote": "Retrieve your account usage and plan limits directly from the API."
+        }
+      ],
+      "key": "hermes_research:https://resend.com/changelog#b4dd7fc9"
+    }
+  ],
+  "claims": [
+    {
+      "text": "Resend habilitó la Account Usage API.",
+      "external": true,
+      "source_url": "https://resend.com/changelog"
+    },
+    {
+      "text": "La API permite consultar mediante API el consumo de correos y los límites del plan contratado.",
+      "external": true,
+      "source_url": "https://resend.com/changelog"
+    },
+    {
+      "text": "Atacama Labs diseña automatizaciones e integraciones conectadas al trabajo real de una empresa.",
+      "external": false
+    }
+  ],
+  "factors": {
+    "relevance": {
+      "value": 8,
+      "note": "El correo suele ser una pieza silenciosa pero importante de ventas y operaciones."
+    },
+    "audience_fit": {
+      "value": 8,
+      "note": "Gerentes y dueños pueden entender rápidamente el riesgo de no conocer su consumo."
+    },
+    "novelty": {
+      "value": 7,
+      "note": "Es una novedad reciente, aunque la señal fue detectada el día anterior."
+    },
+    "evidence": {
+      "value": 9,
+      "note": "La función está respaldada por una cita literal verificada del changelog de Resend."
+    },
+    "utility": {
+      "value": 8,
+      "note": "Sugiere una práctica concreta: consultar consumo y límites antes de depender de un flujo."
+    },
+    "clarity": {
+      "value": 9,
+      "note": "El mensaje se reduce a visibilidad del consumo y revisión de límites."
+    },
+    "conversation": {
+      "value": 7,
+      "note": "Puede abrir una conversación sobre qué automatizaciones dependen hoy del correo."
+    },
+    "differentiation": {
+      "value": 6,
+      "note": "Lleva una novedad de infraestructura a una decisión operativa entendible."
+    },
+    "non_repetition": {
+      "value": 9,
+      "note": "No coincide con los temas publicados o programados en do-not-repeat."
+    }
+  },
+  "rationale": "Se elige porque convierte una capacidad técnica de Resend en una regla de operación sencilla: saber cuánto se consume y cuál es el límite antes de construir dependencia.",
+  "hook": "Una automatización de correo también necesita saber cuánto le queda.",
+  "body": "Resend habilitó la Account Usage API, que permite consultar directamente el consumo de correos y los límites del plan contratado.\n\nLa novedad parece técnica, pero apunta a un problema muy concreto: muchas automatizaciones funcionan todos los días sin que nadie revise cuánto están consumiendo.\n\nSi un flujo depende del correo para avisar, confirmar o dar seguimiento, conviene poder responder tres preguntas:\n\n• ¿Cuánto estamos usando?\n• ¿Cuál es el límite actual?\n• ¿Quién recibe el aviso si el consumo cambia?\n\nNo se trata de mirar un número por mirar. Se trata de que una automatización importante no dependa de una cuota que nadie está observando.\n\nEn Atacama Labs conectamos herramientas y procesos para que esta información pueda formar parte de la operación, no quedar escondida en un panel.\n\n¿Qué automatización de tu empresa depende hoy del correo?",
+  "slides": [],
+  "cta": {
+    "type": "link",
+    "text": "Más en atacamalabs.cl"
+  },
+  "hashtags": [
+    "#Automatización",
+    "#Operaciones"
+  ],
+  "evidence_urls": [
+    "https://resend.com/changelog"
+  ],
+  "visual_direction": "Solo texto, con párrafos cortos y jerarquía limpia; tono corporativo, directo y sobrio.",
+  "schedule_suggestion": null,
+  "media": []
+}

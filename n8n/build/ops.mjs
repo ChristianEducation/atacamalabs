@@ -60,6 +60,7 @@ export const parseCode = `try {
     n8n: ['daily', 'today', 'urgent', 'health', 'alerts_poll', 'panel'].includes(action),
     deep: (action === 'health' && b.deep === true) || (action === 'alerts_poll' && b.deep_gmail === true) || (action === 'daily' && b.deep === true),
     learn: action === 'content_performance',
+    panel: action === 'panel',
   };
   const sb = '${SUPABASE}/rest/v1/', none = '${NONE}';
   const iso = (ms) => new Date(ms).toISOString();
@@ -70,6 +71,7 @@ export const parseCode = `try {
     pieces: sb + 'content_pieces?select=id,topic,channel,status,ghl_status,ghl_approval_status,scheduled_at,published_at,is_test,learning,learned_at,created_at,format,category,score,hook:piece->>hook&order=created_at.desc&limit=80',
     metrics: sb + 'content_metrics?captured_at=gte.' + iso(now - 30 * 86400000) + '&select=content_piece_id,metric_window,status,likes,comments,shares,captured_at&order=captured_at.desc&limit=200',
     signals: sb + 'content_sources?signal_status=eq.candidate&select=id,title,created_at,signal_type,angle:signal->>angle&order=created_at.desc&limit=200',
+    review: need.panel ? sb + 'content_pieces?is_test=eq.false&status=in.(in_review,drafted,scored,scheduled,approved)&select=id,status,score,rationale,ghl_post_id,scheduled_at,piece&order=created_at.desc&limit=10' : none,
     alerts: sb + 'ops_alerts?select=*&order=last_seen_at.desc&limit=200',
     runs: sb + 'ops_runs?select=*&order=created_at.desc&limit=40',
     config: sb + 'outreach_config?id=eq.1&select=mode,paused,send_allowlist,daily_cap',
@@ -113,7 +115,7 @@ const gb = (n) => { const x = node(n); return (x.statusCode || 0) < 300 && x.bod
 const gmail = p.need.deep ? { w22: gb('Gmail Check 22'), w23: gb('Gmail Check 23') } : null;
 const oppBody = node('GHL Opps').body, taskBody = node('GHL Tasks').body;
 const d = { now: p.now, cfg: CFG, opps: p.need.ghl && oppBody && Array.isArray(oppBody.opportunities) ? oppBody.opportunities : [], tasks: p.need.ghl && taskBody && Array.isArray(taskBody.tasks) ? taskBody.tasks : [],
-  messages: arr('SB Messages'), candidates: arr('SB Candidates'), pieces: arr('SB Pieces'), metrics: arr('SB Metrics'), signals_candidate: arr('SB Signals').length, signals_list: arr('SB Signals'), alerts: arr('SB Alerts'), runs: arr('SB Runs'), outreach: arr('SB Config')[0] || null,
+  messages: arr('SB Messages'), candidates: arr('SB Candidates'), pieces: arr('SB Pieces'), metrics: arr('SB Metrics'), signals_candidate: arr('SB Signals').length, signals_list: arr('SB Signals'), review_pieces: arr('SB Review Pieces'), alerts: arr('SB Alerts'), runs: arr('SB Runs'), outreach: arr('SB Config')[0] || null,
   workflows, execs, errors24h, hermes: p.hermes, gmail, missing };
 const A = p.action, writes = [], nowIso = new Date(p.now).toISOString();
 if (!d.hermes) { const hs = d.alerts.find((a) => a.alert_key === '_state:hermes'); if (hs && hs.meta && Array.isArray(hs.meta.jobs) && p.now - Date.parse(hs.last_seen_at) < 40 * 60000) d.hermes = hs.meta; }
@@ -173,6 +175,7 @@ export function buildOps() {
     get('SB Pieces', u('pieces'), SUPABASE_CRED, 'supabase', [1000, 0]),
     get('SB Metrics', u('metrics'), SUPABASE_CRED, 'supabase', [1200, 0]),
     get('SB Signals', u('signals'), SUPABASE_CRED, 'supabase', [1400, 0]),
+    get('SB Review Pieces', u('review'), SUPABASE_CRED, 'supabase', [1500, 0]),
     get('SB Alerts', u('alerts'), SUPABASE_CRED, 'supabase', [1600, 0]),
     get('SB Runs', u('runs'), SUPABASE_CRED, 'supabase', [1800, 0]),
     get('SB Config', u('config'), SUPABASE_CRED, 'supabase', [2000, 0]),
@@ -195,7 +198,7 @@ export function buildOps() {
   ];
   // Learnings se llama con la clave de ingesta (misma credencial que los demás webhooks internos)
   const c = { 'Ops Webhook': { main: [to('Parse')] }, 'Parse': { main: [to('Valid?')] }, 'Valid?': { main: [to('SB Messages'), to('Respond Error')] },
-    'SB Messages': { main: [to('SB Candidates')] }, 'SB Candidates': { main: [to('SB Pieces')] }, 'SB Pieces': { main: [to('SB Metrics')] }, 'SB Metrics': { main: [to('SB Signals')] }, 'SB Signals': { main: [to('SB Alerts')] },
+    'SB Messages': { main: [to('SB Candidates')] }, 'SB Candidates': { main: [to('SB Pieces')] }, 'SB Pieces': { main: [to('SB Metrics')] }, 'SB Metrics': { main: [to('SB Signals')] }, 'SB Signals': { main: [to('SB Review Pieces')] }, 'SB Review Pieces': { main: [to('SB Alerts')] },
     'SB Alerts': { main: [to('SB Runs')] }, 'SB Runs': { main: [to('SB Config')] }, 'SB Config': { main: [to('GHL Opps')] }, 'GHL Opps': { main: [to('GHL Tasks')] }, 'GHL Tasks': { main: [to('N8N Workflows')] },
     'N8N Workflows': { main: [to('N8N Errors')] }, 'N8N Errors': { main: [to('Expand Execs')] }, 'Expand Execs': { main: [to('N8N Execs')] }, 'N8N Execs': { main: [to('Gmail Check 22')] },
     'Gmail Check 22': { main: [to('Gmail Check 23')] }, 'Gmail Check 23': { main: [to('Learnings')] }, 'Learnings': { main: [to('Compute')] }, 'Compute': { main: [to('Expand Writes')] }, 'Expand Writes': { main: [to('Apply Writes')] }, 'Apply Writes': { main: [to('Respond')] } };

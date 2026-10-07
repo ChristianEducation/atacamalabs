@@ -1,0 +1,163 @@
+{
+  "version": 1,
+  "channel": "instagram",
+  "format": "carrusel",
+  "category": "Noticia",
+  "topic": "Compactación bajo demanda en Claude API para agentes conversacionales de larga duración",
+  "angle": "Cómo mantener conversaciones largas con contexto operativo sin sobrecargar el límite de tokens",
+  "audience": "Dueños y gerentes de pymes que atienden clientes por WhatsApp y otros canales digitales",
+  "sources": [
+    {
+      "kind": "hermes_research",
+      "title": "Compactación bajo demanda en Claude API para agentes conversacionales de larga duración",
+      "url": "https://docs.anthropic.com/en/release-notes/api",
+      "verified": true,
+      "evidence": [
+        {
+          "url": "https://docs.anthropic.com/en/release-notes/api",
+          "quote": "The Messages API can now compact a conversation on demand on the Claude API, in beta with the compact-2026-09-04 beta header."
+        }
+      ],
+      "key": "hermes_research:https://docs.anthropic.com/en/release-notes/api#df952e46"
+    }
+  ],
+  "claims": [
+    {
+      "text": "La Messages API de Claude permite compactar una conversación bajo demanda, hoy en beta.",
+      "external": true,
+      "source_url": "https://docs.anthropic.com/en/release-notes/api"
+    },
+    {
+      "text": "La función, disponible hoy en beta, permite comprimir el historial de una conversación activa en un bloque firmado y estructurado para preservar contexto clave sin sobrecargar el límite de tokens.",
+      "external": true,
+      "source_url": "https://docs.anthropic.com/en/release-notes/api"
+    },
+    {
+      "text": "Atacama Labs conecta agentes, canales y herramientas según el proceso que una empresa necesita ordenar.",
+      "external": false
+    }
+  ],
+  "factors": {
+    "relevance": {
+      "value": 8,
+      "note": "Los chats largos son un caso reconocible para empresas que atienden clientes por mensajería."
+    },
+    "audience_fit": {
+      "value": 8,
+      "note": "Habla de una preocupación concreta: mantener contexto en conversaciones de atención."
+    },
+    "novelty": {
+      "value": 8,
+      "note": "La señal fue detectada recientemente y describe una función nueva en beta."
+    },
+    "evidence": {
+      "value": 9,
+      "note": "La novedad tiene una cita literal verificada en las notas oficiales de Anthropic."
+    },
+    "utility": {
+      "value": 7,
+      "note": "Ayuda a reconocer cuándo una conversación larga requiere una estrategia de contexto."
+    },
+    "clarity": {
+      "value": 9,
+      "note": "La idea se puede explicar con un antes, un cambio y una aplicación práctica."
+    },
+    "conversation": {
+      "value": 7,
+      "note": "Invita a identificar qué conversaciones largas se están volviendo difíciles de operar."
+    },
+    "differentiation": {
+      "value": 6,
+      "note": "La conexión con atención por WhatsApp acerca una novedad técnica al trabajo real."
+    },
+    "non_repetition": {
+      "value": 8,
+      "note": "No repite los temas ya publicados y se elige una sola de las dos señales de compactación."
+    }
+  },
+  "rationale": "Se elige la señal más útil de las dos relacionadas con compactación porque tiene una cita oficial clara y permite explicar un problema reconocible sin agregar cifras ni promesas.",
+  "hook": "Los chats largos no deberían obligar a tu agente a perder el hilo.",
+  "body": "Anthropic incorporó en beta la compactación bajo demanda en la Messages API de Claude.\n\nLa idea es simple: cuando una conversación crece, su historial se puede comprimir en un bloque firmado y estructurado para conservar contexto clave sin sobrecargar el límite de tokens.\n\nPara una empresa que atiende por WhatsApp, esto abre una pregunta útil: ¿qué información debe mantenerse siempre visible para que el agente siga trabajando bien?\n\nAntes de automatizar conversaciones largas, define qué datos del cliente, del pedido o del caso no se pueden perder.\n\n¿En qué conversación de tu operación se nota más este problema?",
+  "slides": [
+    {
+      "layout": "cover",
+      "kicker": "Agentes conversacionales",
+      "title": "Chats largos sin perder el *hilo*",
+      "mascot": {
+        "sheet": "poses",
+        "pose": "pregunta"
+      }
+    },
+    {
+      "layout": "content",
+      "kicker": "El problema",
+      "title": "Cada mensaje agrega más *contexto*",
+      "body": "En una conversación extensa, el agente necesita distinguir lo importante de lo accesorio."
+    },
+    {
+      "layout": "content",
+      "kicker": "La novedad",
+      "title": "Claude permite compactar el historial *bajo demanda*, hoy en beta",
+      "body": "La Messages API puede resumir una conversación activa en un bloque firmado y estructurado, hoy en beta."
+    },
+    {
+      "layout": "content",
+      "kicker": "Qué cuidar",
+      "title": "No todo dato tiene el mismo *peso*",
+      "items": [
+        {
+          "title": "Cliente",
+          "text": "Identificación y contexto necesario"
+        },
+        {
+          "title": "Caso",
+          "text": "Pedido, problema o solicitud vigente"
+        },
+        {
+          "title": "Próximo paso",
+          "text": "Qué debe ocurrir después"
+        }
+      ]
+    },
+    {
+      "layout": "content",
+      "kicker": "Aplicación",
+      "title": "Diseña la memoria para el *trabajo*",
+      "compare": {
+        "left": {
+          "label": "Sin criterio",
+          "text": "Se acumula todo el historial y cuesta encontrar lo importante."
+        },
+        "right": {
+          "label": "Con criterio",
+          "text": "Se conserva la información que permite continuar el caso."
+        }
+      }
+    },
+    {
+      "layout": "cta",
+      "kicker": "Siguiente paso",
+      "title": "Parte por un flujo de *atención*",
+      "body": "Identifica qué datos no puede olvidar tu agente.",
+      "cta_label": "atacamalabs.cl",
+      "mascot": {
+        "sheet": "emociones",
+        "pose": "orgullo"
+      }
+    }
+  ],
+  "cta": {
+    "type": "link",
+    "text": "Más en atacamalabs.cl"
+  },
+  "hashtags": [
+    "#AgentesDeIA",
+    "#Automatización"
+  ],
+  "evidence_urls": [
+    "https://docs.anthropic.com/en/release-notes/api"
+  ],
+  "visual_direction": "Fondo claro con azul Atacama y azul oscuro; tarjetas suaves para ordenar el flujo; una idea por slide; logo oficial; llamita solo en portada y cierre.",
+  "schedule_suggestion": null,
+  "media": []
+}

@@ -62,21 +62,63 @@ function metricText(m: NonNullable<PieceRow["metrics"]>[number]): string {
   return `${m.window}: ${parts.length ? parts.join(" · ") : "sin cifras de GHL"}${m.partial ? " (parcial)" : ""}`;
 }
 
+const GHL_PLANNER_URL = "https://app.gohighlevel.com/v2/location/pxHuOsiz2i3lM6BtC9IM/marketing/social-planner";
+
+function slideLines(s: NonNullable<PieceRow["preview"]>["slides"][number]): string {
+  return [s.body, ...s.items, ...s.compare, s.figure].filter(Boolean).join(" · ");
+}
+
+function Preview({ pv, kind }: { pv: NonNullable<PieceRow["preview"]>; kind: "review" | "scheduled" }) {
+  const copy = [pv.hook, pv.body, pv.cta, pv.hashtags.join(" ")].filter(Boolean).join("\n\n");
+  return (
+    <div className="ops-preview">
+      {pv.media.length ? (
+        <ul className="ops-slides" aria-label="Slides del carrusel">
+          {pv.media.map((u, i) => (
+            <li key={u}>
+              <a href={u} target="_blank" rel="noreferrer noopener" aria-label={`Abrir slide ${i + 1} en grande`}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={u} alt={`Slide ${i + 1}: ${pv.slides[i]?.title ?? ""}`} loading="lazy" width={160} height={200} />
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : pv.slides.length ? (
+        <ol className="ops-slide-text">
+          {pv.slides.map((s, i) => (<li key={i}><strong>{s.title}</strong>{slideLines(s) ? <span> — {slideLines(s)}</span> : null}</li>))}
+        </ol>
+      ) : null}
+      {copy ? (<><h4>Texto del post</h4><p className="ops-copy">{copy}</p></>) : null}
+      {pv.rationale ? (<><h4>Por qué se eligió</h4><p className="ops-why">{pv.rationale}</p></>) : null}
+      {pv.sources.length ? (<><h4>Fuentes</h4><ul className="ops-src">{pv.sources.map((s) => (<li key={s.url}><a href={s.url} target="_blank" rel="noreferrer noopener">{s.title}</a></li>))}</ul></>) : null}
+      <p className="ops-foot">
+        {kind === "review"
+          ? `Para aprobar o rechazar: abre el post «In Review» en Social Planner${pv.proposed_label ? ` (fecha propuesta ${pv.proposed_label})` : ""}. Nada se publica sin tu aprobación. `
+          : `Programada${pv.proposed_label ? ` para ${pv.proposed_label}` : ""}. `}
+        <a href={GHL_PLANNER_URL} target="_blank" rel="noreferrer noopener">Abrir Social Planner</a>
+      </p>
+    </div>
+  );
+}
+
 function PieceItem({ p, kind }: { p: PieceRow; kind: "review" | "scheduled" | "published" }) {
   const when = p.at_label ? (kind === "published" ? `publicada ${p.at_label}` : `sale ${p.at_label}`) : null;
+  const pv = kind === "published" ? null : p.preview ?? null;
+  const fmt = pv?.format ?? p.format;
   return (
     <li>
-      <details className="ops-row">
+      <details className="ops-row" open={kind === "review"}>
         <summary>
           <span className="ops-row-main">
             <span className="ops-row-title">{p.title}</span>
-            <span className="ops-row-sub">{[p.channel, when].filter(Boolean).join(" · ")}</span>
+            <span className="ops-row-sub">{[p.channel, fmt, when].filter(Boolean).join(" · ")}</span>
           </span>
           {p.score != null ? <span className="ops-score ops-score-neutral" title="Score del Content Engine">{p.score}</span> : null}
         </summary>
+        {pv ? <Preview pv={pv} kind={kind === "review" ? "review" : "scheduled"} /> : null}
         <dl className="ops-detail">
-          {p.hook ? (<><dt>Gancho</dt><dd>{p.hook}</dd></>) : null}
-          {p.format || p.category ? (<><dt>Pieza</dt><dd>{[p.category, p.format].filter(Boolean).join(" · ")}</dd></>) : null}
+          {!pv && p.hook ? (<><dt>Gancho</dt><dd>{p.hook}</dd></>) : null}
+          {!pv && (p.format || p.category) ? (<><dt>Pieza</dt><dd>{[p.category, p.format].filter(Boolean).join(" · ")}</dd></>) : null}
           {kind === "published" ? (<><dt>Métricas</dt><dd>{p.metrics && p.metrics.length ? p.metrics.map(metricText).join(" — ") : "Aún sin snapshots (24 h, 72 h y 7 d)."}</dd></>) : null}
         </dl>
       </details>
