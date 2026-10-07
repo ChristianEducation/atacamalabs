@@ -142,5 +142,19 @@ if (process.env.GATEWAY_REAL_HTML && fs.existsSync(process.env.GATEWAY_REAL_HTML
   t('I) HTML real: 140 fichas parseadas por el workflow', big[0].json.candidates.length === 140 && big[0].json.keys.length > 140, String(big[0].json.candidates.length));
 }
 
+
+// ---------- lote mixto: PostgREST exige filas con las MISMAS claves (bug real hallado en vivo: un lote con contactos creados y otros rechazados por GHL no persistía nada)
+{
+  const dupGhl = (op) => (op.kind === 'contact_create' && op.ref === 1 ? { statusCode: 400, body: { message: 'duplicate', meta: { contactId: 'EXISTENTE' } } } : defaultGhl(op));
+  const mixed = await pipeline({ action: 'import', request_id: 'imp-mixto-1', prospects: [good({ company_name: 'Mixta Uno TEST', website: 'https://mixta1-test.invalid', contact: { name: 'A', email: 'a@mixta1-test.invalid' } }), good({ company_name: 'Mixta Dos TEST', website: 'https://mixta2-test.invalid', contact: { name: 'B', email: 'b@mixta2-test.invalid' } })] }, { ghl: dupGhl });
+  const sigs = new Set(mixed.fin.rows.map((x) => Object.keys(x).sort().join(',')));
+  const store = { Finalize: mixed.fin };
+  const groups = (await runCode('Split Rows', store)).map((x) => x.json.rows);
+  t('lote mixto: las filas del lote tienen conjuntos de claves distintos (el caso que rompía el upsert)', mixed.fin.rows.length === 2 && sigs.size === 2, [...sigs].join(' | '));
+  t('lote mixto: Split Rows las separa en lotes uniformes y no pierde ninguna fila', groups.length === 2 && groups.every((g) => new Set(g.map((x) => Object.keys(x).sort().join(','))).size === 1) && groups.flat().length === 2);
+  t('lote vacío: Split Rows devuelve un lote vacío (no corta el flujo)', (await runCode('Split Rows', { Finalize: { rows: [] } })).length === 1);
+  t('Persist se alimenta de Split Rows y Respond revisa TODOS los lotes', wf.connections['Finalize'].main[0][0].node === 'Split Rows' && wf.connections['Split Rows'].main[0][0].node === 'Persist' && code('Respond').includes('$("Persist").all()'));
+}
+
 console.log(`\n${pass} ok ${fail} fallos`);
 process.exit(fail ? 1 : 0);

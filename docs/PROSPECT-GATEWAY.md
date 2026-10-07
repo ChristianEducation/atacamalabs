@@ -206,3 +206,7 @@ El CLI usa `N8N_BASE_URL` y `ATACAMA_INGEST_KEY` (de `.env.local` o del entorno)
 ## Opciones agregadas por el operador de Hermes (7-oct-2026)
 - `options.include_candidates: true` (solo `analyze`): la respuesta incluye `candidates[]` (los candidatos canónicos, en el mismo orden que `results[]`) para que Hermes pueda importar después «la 27» sin volver a parsear el archivo. Ver `docs/HERMES-OPERATOR.md`.
 - `act.due_at` (`follow_up`): fecha exacta del seguimiento (`AAAA-MM-DD` → 15:00 UTC, o ISO completo); si no viene se usan `act.days` días hábiles como antes.
+
+## Correcciones del 8-oct-2026 (Bloque 1)
+- **Persistencia de lotes mixtos:** las filas de `prospect_candidates` se guardan agrupadas por conjunto de claves (PostgREST rechaza lotes con claves distintas); antes un lote con contactos creados y otros rechazados por GHL no persistía nada y respondía igual «creado». El error ahora se informa como `persist_error`.
+- **Borradores:** `import` guarda los borradores (asunto, correo, WhatsApp) al crear el prospecto, para poder editarlos y aprobarlos con el motor de correo (`docs/OUTREACH.md`).

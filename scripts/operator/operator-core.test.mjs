@@ -196,6 +196,11 @@ ok('shape: analyze guarda caché de candidatos', () => {
   assert.equal(s.response.data.top_to_import.length, 1); assert.ok(!('candidates' in s.response.data));
   assert.match(s.response.message, /no escribí nada/);
 });
+ok('shape: persist_error del Gateway se informa como error (no como éxito)', () => {
+  const req = rq('import_prospects', { from_analysis: 'last' });
+  const s2 = shapeResponse(req, buildCalls(req, [], A, CFG), { ok: true, persist_error: 'Supabase HTTP 400', summary: { received: 1 }, results: [] }, null, [], A, CFG);
+  assert.equal(s2.response.ok, false); assert.equal(s2.response.error, 'persist'); assert.equal(s2.audit_row.status, 'error');
+});
 ok('shape: gateway caído → error auditado', () => {
   const req = rq('add_note', { target: '1', note: 'x' });
   const s = shapeResponse(req, buildCalls(req, [], A, CFG), null, null, [], A, CFG);

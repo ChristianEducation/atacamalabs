@@ -1,6 +1,6 @@
 // node scripts/prospecting/gateway-flow.test.mjs
 import { toCandidate } from './gateway-core.mjs';
-import { mergeCandidates, buildEntries, evaluateRequest, planStage1, planStage2, finalizeRun, analyzeResponse } from './gateway-flow.mjs';
+import { mergeCandidates, buildEntries, evaluateRequest, planStage1, planStage2, finalizeRun, analyzeResponse, groupRowsByKeys } from './gateway-flow.mjs';
 let pass = 0, fail = 0;
 const t = (n, c, x = '') => { c ? pass++ : fail++; console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : x); };
 const NOW = Date.parse('2026-10-07T15:00:00Z');
@@ -94,6 +94,16 @@ r = run({ action: 'analyze', request_id: null, options: { include_candidates: tr
 t('ANALYZE con include_candidates devuelve los candidatos canónicos (para importarlos después sin volver a parsear)', analyzeResponse({ action: 'analyze', options: { include_candidates: true } }, r.ev).candidates[0].company_name === 'Clínica Rica TEST' && analyzeResponse({ action: 'analyze' }, r.ev).candidates === undefined);
 r = run({ action: 'act', request_id: 'a20', act: { type: 'follow_up', due_at: '2026-10-09', title: 'Llamar el viernes' }, candidates: [good()] }, existing);
 t('ACT follow_up con fecha exacta (viernes) usa esa fecha a las 12:00 de Chile', r.p2.ops.some((o) => o.kind === 'task_create' && o.body.dueDate === '2026-10-09T15:00:00.000Z' && o.body.title === 'Llamar el viernes'));
+
+t('groupRowsByKeys: separa filas con conjuntos de claves distintos (PostgREST exige uniformidad) y conserva el orden', (() => { const g = groupRowsByKeys([{ a: 1, b: 2 }, { a: 3 }, { b: 4, a: 5 }]); return g.length === 2 && g[0].length === 2 && g[1].length === 1 && g[0][1].a === 5 && groupRowsByKeys([]).length === 0; })());
+
+{
+  const ev = evaluateRequest({ action: 'import', request_id: 'imp-dr-1', options: { by: 'Christian', force_import: false, validate: 'none', min_ghl_score: 60 }, source: { type: 'test', name: 'T' }, candidates: [good()], notes: [], now: NOW }, emptyState, cfg, NOW);
+  const s1 = planStage1(ev.items, cfg); const s1res = s1.map((op) => ({ statusCode: 201, body: { contact: { id: 'C-' + op.ref } } }));
+  const p2 = planStage2(ev.items, s1, s1res, cfg, NOW, {}); const s2res = p2.ops.map((op) => ({ statusCode: 201, body: op.kind === 'opp_create' ? { opportunity: { id: 'O1' } } : {} }));
+  const fin = finalizeRun({ action: 'import', request_id: 'imp-dr-1', source: {}, options: { by: 'Christian' } }, ev.items, p2.ops, s2res, p2.contactIds, p2.errors, cfg, ctx);
+  t('import: persiste los borradores al crear el prospecto (para editarlos y aprobarlos después)', Boolean(fin.rows[0].drafts && fin.rows[0].drafts.email_subject && fin.rows[0].drafts.email_body));
+}
 
 console.log(`\n${pass} ok ${fail} fallos`);
 process.exit(fail ? 1 : 0);

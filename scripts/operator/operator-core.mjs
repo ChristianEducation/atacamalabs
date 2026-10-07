@@ -29,7 +29,14 @@ export function operatorTools() {
     get_tasks: { level: L1, kind: 'ghl', summary: 'Tareas pendientes en GHL.' },
     force_import_prospect: { level: L2, kind: 'gateway', summary: 'FORCE_IMPORT: mete un prospecto aunque su score sea bajo (orden explícita de Christian).' },
     discard_prospect: { level: L2, kind: 'gateway', summary: 'Descarta un prospecto (orden explícita de Christian).' },
-    send_email: { level: L3, kind: 'blocked', summary: 'Enviar email — requiere confirmación; NO habilitado todavía.' },
+    save_draft: { level: L1, kind: 'engine', summary: 'Crea o edita el borrador de correo de un prospecto (no lo envía). Parte del borrador del Gateway.' },
+    get_draft: { level: L1, kind: 'engine', summary: 'Muestra los correos pendientes, el historial y las respuestas de un prospecto.' },
+    approve_outreach: { level: L3, kind: 'engine', summary: 'Aprueba el envío de un borrador: primero devuelve el correo exacto y un código; con el código y la confirmación de Christian queda aprobado y sale en la próxima ventana.' },
+    cancel_outreach: { level: L1, kind: 'engine', summary: 'Cancela un correo pendiente (borrador o aprobado, antes de salir).' },
+    list_outreach: { level: L1, kind: 'engine', summary: 'Lista correos (borradores, aprobados, enviados, fallidos).' },
+    get_replies: { level: L1, kind: 'engine', summary: 'Respuestas recibidas por correo (todas o de un prospecto) con su clasificación.' },
+    do_not_contact: { level: L2, kind: 'gateway', summary: 'Marca al prospecto como NO contactar (descarta y suprime sus correos). Orden explícita de Christian.' },
+    send_email: { level: L3, kind: 'blocked', summary: 'Envío directo — deshabilitado: usa save_draft + approve_outreach.' },
     send_whatsapp: { level: L3, kind: 'blocked', summary: 'Enviar WhatsApp — requiere confirmación; NO habilitado.' },
     publish_content: { level: L3, kind: 'blocked', summary: 'Publicar contenido — requiere confirmación; NO habilitado desde Hermes.' },
     delete_record: { level: L3, kind: 'blocked', summary: 'Eliminar registros — requiere confirmación; NO habilitado.' },
@@ -71,12 +78,12 @@ export function parseRequest(body, nowMs) {
   const params = b.params && typeof b.params === 'object' && !Array.isArray(b.params) ? b.params : {};
   const req = { ok: true, tool, level: def.level, kind: def.kind, request_id: rid, actor: 'Christian vía Hermes', params, order_text: String(b.order_text || '').trim(), confirmation_code: String(b.confirmation_code || '').trim(), now: nowMs };
   if (def.level === 2) {
-    const needs = { force_import_prospect: /(mete|met[eé]la|metelo|importa|import[aá]la|fuerza|force|igual|aunque|de todos modos|agr[eé]ga)/i, discard_prospect: /(descart|elimin|no me interesa|saca|quita|borra|ya no)/i }[tool];
+    const needs = { force_import_prospect: /(mete|met[eé]la|metelo|importa|import[aá]la|fuerza|force|igual|aunque|de todos modos|agr[eé]ga)/i, discard_prospect: /(descart|elimin|no me interesa|saca|quita|borra|ya no)/i, do_not_contact: /(no (le |les )?(escrib|contact|molest)|nunca m[aá]s|no contactar|do not contact|baja|bloque|descart)/i }[tool];
     const reason = String(params.reason || '').trim();
     if (req.order_text.length < 8 || (needs && !needs.test(req.order_text))) return { ...req, ok: true, refusal: { status: 'needs_explicit_order', message: 'Esta acción es de nivel 2: necesito una orden explícita de Christian. Pídesela (por ejemplo: «mete la empresa 27 aunque tenga score bajo») y vuelve a llamar con order_text = sus palabras exactas.' } };
     if (reason.length < 5) return { ...req, ok: true, refusal: { status: 'needs_reason', message: 'Falta el motivo (reason, mínimo 5 caracteres): queda registrado en Supabase, en GHL y en la auditoría.' } };
   }
-  if (def.level === 3) {
+  if (def.level === 3 && def.kind === 'blocked') {
     const code = 'CONF-' + (Math.abs(hash32(rid + tool)) % 900000 + 100000);
     if (!req.confirmation_code) return { ...req, ok: true, refusal: { status: 'confirmation_required', confirmation_code: code, message: 'Acción de nivel 3 (' + tool + '): NO se ejecuta sin confirmación explícita de Christian. Muéstrale exactamente qué se haría (destinatario y texto) y pídele que confirme. Aun con confirmación, en esta versión el envío NO está habilitado (se activa en el bloque Gmail).' } };
     return { ...req, ok: true, refusal: { status: 'not_enabled', message: tool + ' está deshabilitado en esta versión: no se envió ni publicó nada. Se habilita en el bloque Gmail con confirmación por mensaje.', confirmation_received: true } };
@@ -96,7 +103,7 @@ export function resolveQueries(req, sbUrl) {
   const base = sbUrl + '/rest/v1/prospect_candidates?' + sel;
   const enc = encodeURIComponent;
   const q = { rows_url: null, analysis_url: null };
-  const needsTarget = ['get_prospect', 'prepare_outreach', 'log_manual_contact', 'add_note', 'move_opportunity', 'create_followup', 'force_import_prospect', 'discard_prospect'].includes(req.tool);
+  const needsTarget = ['save_draft', 'get_draft', 'approve_outreach', 'cancel_outreach', 'do_not_contact', 'get_replies', 'get_prospect', 'prepare_outreach', 'log_manual_contact', 'add_note', 'move_opportunity', 'create_followup', 'force_import_prospect', 'discard_prospect'].includes(req.tool);
   if (needsTarget) {
     const t = parseTarget(p.target != null ? p.target : p.number);
     if (t && t.kind !== 'number') {
@@ -182,7 +189,7 @@ export function sourceOf(req) { return { type: 'hermes-operator', name: String((
 export function buildCalls(req, rows, analysis, cfg) {
   const p = req.params || {};
   const gid = 'op-' + req.request_id.slice(0, 70);
-  const out = { kind: req.kind, gateway_body: null, ghl_call: null, entity: {}, error: null, local: null };
+  const out = { kind: req.kind, gateway_body: null, engine_body: null, ghl_call: null, entity: {}, error: null, local: null };
   const needTarget = () => { const r = pickTarget(p, rows, analysis); if (r.error) { out.error = { status: r.error === 'ambiguo' ? 'ambiguous' : 'not_found', code: r.error, message: r.message, options: r.options || null }; return null; } out.entity = { type: 'prospect', name: r.candidate.company_name, number: r.number || null, source: r.source, candidate_key: r.row ? r.row.candidate_key : null, ghl_contact_id: r.row ? r.row.ghl_contact_id : null, ghl_opportunity_id: r.row ? r.row.ghl_opportunity_id : null }; return r; };
   const t = req.tool;
   if (t === 'analyze_prospects') {
@@ -236,6 +243,27 @@ export function buildCalls(req, rows, analysis, cfg) {
     }
     Object.keys(act).forEach((k) => act[k] === undefined && delete act[k]);
     out.gateway_body = { action: 'act', source: sourceOf(req), act, targets: [r.candidate], options: { by: req.actor } };
+  } else if (['save_draft', 'get_draft', 'approve_outreach', 'cancel_outreach', 'do_not_contact'].includes(t) || (t === 'get_replies' && (p.target != null || p.number != null)) || t === 'list_outreach' || t === 'get_replies') {
+    const hasTarget = !['list_outreach'].includes(t) && !(t === 'get_replies' && p.target == null && p.number == null);
+    let r = null;
+    if (hasTarget) {
+      r = needTarget(); if (!r) return out;
+      if (!r.row || !r.row.id) { out.error = { status: 'not_found', code: 'no_guardado', message: '«' + r.candidate.company_name + '» todavía no está guardado en Atacama OS (solo está en el análisis): impórtalo primero con import_prospects.' }; return out; }
+    }
+    const eb = { candidate_id: r ? r.row.id : undefined, by: req.actor };
+    if (t === 'save_draft') Object.assign(eb, { action: 'draft', kind: p.kind || 'initial', subject: p.subject, body: p.body, to_email: p.to_email, override_to: p.override_to === true });
+    else if (t === 'get_draft') eb.action = 'get';
+    else if (t === 'approve_outreach') Object.assign(eb, { action: 'approve', kind: p.kind, confirmation_code: req.confirmation_code || p.confirmation_code, order_text: req.order_text });
+    else if (t === 'cancel_outreach') Object.assign(eb, { action: 'cancel', kind: p.kind });
+    else if (t === 'list_outreach') Object.assign(eb, { action: 'list', filter: p.filter, limit: p.limit });
+    else if (t === 'get_replies') Object.assign(eb, { action: 'replies', limit: p.limit });
+    else if (t === 'do_not_contact') {
+      Object.assign(eb, { action: 'suppress', reason: String(p.reason).slice(0, 300), order_text: req.order_text });
+      out.gateway_body = { action: 'act', source: sourceOf(req), act: { type: 'discard', reason: 'NO CONTACTAR: ' + String(p.reason).slice(0, 280) }, targets: [r.candidate], options: { by: req.actor } };
+    }
+    Object.keys(eb).forEach((k) => (eb[k] === undefined || eb[k] === null) && delete eb[k]);
+    out.engine_body = eb;
+    out.entity = r ? { type: 'prospect', name: r.candidate.company_name, candidate_id: r.row.id, ghl_contact_id: r.row.ghl_contact_id, ghl_opportunity_id: r.row.ghl_opportunity_id } : { type: 'outreach' };
   } else if (t === 'get_open_opportunities') {
     const lim = Math.min(Math.max(parseInt(p.limit, 10) || 30, 1), 100);
     const st = p.stage ? normStage(p.stage) : null;
@@ -261,7 +289,7 @@ export function rowBrief(r) { return ({ company: r.company_name, status: r.statu
 export function stageOf(id, cfg) { const k = Object.keys(cfg.stages).find((x) => cfg.stages[x] === id); return k ? stageNames()[k] : null; }
 
 /** Da forma a la respuesta (mensaje corto para el chat + datos), la fila de auditoría y, si corresponde, el caché del análisis. */
-export function shapeResponse(req, calls, gw, ghl, rows, analysis, cfg) {
+export function shapeResponse(req, calls, gw, ghl, rows, analysis, cfg, eng) {
   const now = new Date(req.now).toISOString();
   const base = { ok: true, tool: req.tool, level: req.level, request_id: req.request_id, actor: req.actor, replayed: false, at: now };
   const audit = (status, summary, resp, entity) => ({ request_id: auditId(req, status), actor: req.actor, tool: req.tool, level: req.level, entity: entity || calls.entity || {}, params: sanitize(req.params), status, result_summary: short(summary, 400), response: resp, created_at: now });
@@ -272,6 +300,24 @@ export function shapeResponse(req, calls, gw, ghl, rows, analysis, cfg) {
     const msg = g && g.error ? g.error : 'El Gateway no respondió.';
     const resp = { ...base, ok: false, status: 'error', error: 'gateway', message: 'No se pudo ejecutar: ' + msg };
     return { response: resp, audit_row: audit('error', msg, resp), cache_row: null };
+  }
+  if (calls.gateway_body && g && g.persist_error) {
+    const resp = { ...base, ok: false, status: 'error', error: 'persist', message: 'El Gateway actuó pero NO pudo guardar en Supabase (' + g.persist_error + '). Avísale a Christian; no repitas la importación hasta revisar.' };
+    return { response: resp, audit_row: audit('error', resp.message, resp), cache_row: null };
+  }
+  if (calls.engine_body) {
+    const e = eng && typeof eng === 'object' ? eng : null;
+    if (!e) { const resp = { ...base, ok: false, status: 'error', error: 'engine', message: 'El motor de correo no respondió.' }; return { response: resp, audit_row: audit('error', resp.message, resp), cache_row: null }; }
+    const eok = e.ok === true;
+    const st = eok ? 'executed' : String(e.status || 'error');
+    const { message: em, ok: _ok, safety, request, mode, confirmation_code, expires_at, ...rest } = e;
+    let msg = em || '';
+    if (req.tool === 'do_not_contact') {
+      const gr = (g && g.results && g.results[0]) || {};
+      msg = eok ? 'Listo: ' + (gr.company || 'el prospecto') + ' quedó como NO CONTACTAR (descartado, correos suprimidos y mensajes pendientes cancelados).' : (em || 'No se pudo suprimir.');
+    }
+    const resp = { ...base, ok: eok, status: st, outcome: e.status || null, message: msg, ...(confirmation_code ? { confirmation_code, expires_at, executed: false } : {}), mode: mode || null, safety: safety || { messages_sent: 0 }, data: rest };
+    return { response: resp, audit_row: audit(st, msg, resp, calls.entity), cache_row: null };
   }
   const t = req.tool;
   if (t === 'analyze_prospects') {

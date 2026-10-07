@@ -79,17 +79,20 @@ const analysis = (fa.statusCode || 0) < 300 && Array.isArray(fa.body) && fa.body
 const calls = buildCalls(req, rows, analysis, CFG);
 const none = 'https://localhost.invalid/';
 const gw = calls.gateway_body ? { skip: false, url: '${N8N_BASE}/webhook/atacama-prospect-gateway', body: { ...calls.gateway_body, request_id: 'op-' + req.request_id.slice(0, 70) } } : { skip: true, url: none, body: {} };
+const eng = calls.engine_body ? { skip: false, url: '${N8N_BASE}/webhook/atacama-outreach-engine', body: calls.engine_body } : { skip: true, url: none, body: {} };
 const ghl = calls.ghl_call ? { skip: false, url: calls.ghl_call.url, method: calls.ghl_call.method, body: calls.ghl_call.body || {} } : { skip: true, url: none, method: 'GET', body: {} };
-return [{ json: { req, calls, rows, analysis, gw, ghl, cfg: CFG } }];`;
+return [{ json: { req, calls, rows, analysis, gw, ghl, eng, cfg: CFG } }];`;
 
 export const shapeCode = `${LIB}
 
 const { req, calls, rows, analysis, cfg } = $('Build').first().json;
 const g = $('Call Gateway').first().json || {};
 const h = $('GHL Read').first().json || {};
+const e = $('Call Engine').first().json || {};
+const engBody = calls.engine_body ? ((e.statusCode || 0) < 300 && e.body && typeof e.body === 'object' ? e.body : { ok: false, status: 'error', message: 'Motor de correo HTTP ' + (e.statusCode || 'sin respuesta') }) : null;
 const gwBody = calls.gateway_body ? ((g.statusCode || 0) < 300 && g.body && typeof g.body === 'object' ? g.body : { ok: false, error: 'Gateway HTTP ' + (g.statusCode || 'sin respuesta') }) : null;
 const ghlResp = calls.ghl_call ? { statusCode: h.statusCode || 0, body: h.body || {} } : null;
-const out = shapeResponse(req, calls, gwBody, ghlResp, rows, analysis, cfg);
+const out = shapeResponse(req, calls, gwBody, ghlResp, rows, analysis, cfg, engBody);
 return [{ json: out }];`;
 
 export const respondCode = `const s = $('Shape').first().json;
@@ -119,6 +122,8 @@ export function buildHermesOperator() {
     code('Build', buildCode, [1920, 260]),
     { id: uuid(), name: 'Call Gateway', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [2160, 260], credentials: INGEST_CRED, continueOnFail: true, alwaysOutputData: true,
       parameters: { method: 'POST', url: '={{ $("Build").first().json.gw.url }}', authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth', sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($("Build").first().json.gw.body) }}', options: full(150000) } },
+    { id: uuid(), name: 'Call Engine', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [2280, 260], credentials: INGEST_CRED, continueOnFail: true, alwaysOutputData: true,
+      parameters: { method: 'POST', url: '={{ $("Build").first().json.eng.url }}', authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth', sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($("Build").first().json.eng.body) }}', options: full(60000) } },
     { id: uuid(), name: 'GHL Read', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [2400, 260], credentials: GHL_CRED, continueOnFail: true, alwaysOutputData: true,
       parameters: { method: '={{ $("Build").first().json.ghl.method }}', url: '={{ $("Build").first().json.ghl.url }}', authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth', sendHeaders: true,
         headerParameters: { parameters: [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', value: 'application/json' }] }, sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($("Build").first().json.ghl.body) }}', options: full() } },
@@ -132,7 +137,7 @@ export function buildHermesOperator() {
     'Cached?': { main: [to('Respond Cached'), to('Refused?')] }, 'Refused?': { main: [to('Refusal'), to('Queries')] },
     'Refusal': { main: [to('Audit Refusal')] }, 'Audit Refusal': { main: [to('Respond Refusal')] },
     'Queries': { main: [to('Fetch Rows')] }, 'Fetch Rows': { main: [to('Fetch Analysis')] }, 'Fetch Analysis': { main: [to('Build')] }, 'Build': { main: [to('Call Gateway')] },
-    'Call Gateway': { main: [to('GHL Read')] }, 'GHL Read': { main: [to('Shape')] }, 'Shape': { main: [to('Save Audit')] }, 'Save Audit': { main: [to('Save Cache')] }, 'Save Cache': { main: [to('Respond')] },
+    'Call Gateway': { main: [to('Call Engine')] }, 'Call Engine': { main: [to('GHL Read')] }, 'GHL Read': { main: [to('Shape')] }, 'Shape': { main: [to('Save Audit')] }, 'Save Audit': { main: [to('Save Cache')] }, 'Save Cache': { main: [to('Respond')] },
   };
   return { name: 'Atacama Labs - 20 Hermes Operator', nodes, connections: c, settings: { executionOrder: 'v1' } };
 }

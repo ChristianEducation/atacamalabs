@@ -39,6 +39,9 @@ Christian (Telegram, el mismo bot de siempre)
 | `create_followup` | 1 | Tarea de seguimiento (fecha exacta `AAAA-MM-DD` o días hábiles) | Gateway `act` |
 | `get_open_opportunities` | 1 | Oportunidades abiertas, por etapa | GHL (lectura) |
 | `get_tasks` | 1 | Tareas pendientes (oculta las `(Example)`) | GHL (lectura) |
+| `save_draft` · `get_draft` · `cancel_outreach` · `list_outreach` · `get_replies` | 1 | Borradores de correo, historial y respuestas (el motor **nunca** envía) | n8n 21 (ver [`OUTREACH.md`](OUTREACH.md)) |
+| `approve_outreach` | **3** | Aprueba un correo con código del servidor + palabras de Christian; el envío lo hace n8n 22 en su ventana | n8n 21 |
+| `do_not_contact` | **2** | Descarta y suprime todos los correos del prospecto | Gateway + n8n 21 |
 | `force_import_prospect` | **2** | **FORCE_IMPORT**: mete aunque el score sea bajo; el motivo queda en Supabase, GHL y auditoría | Gateway `import` + `force_import` |
 | `discard_prospect` | **2** | Descarta un prospecto | Gateway `act` |
 | `send_email` · `send_whatsapp` · `publish_content` · `delete_record` | **3** | Piden confirmación y **hoy no ejecutan** | — (bloqueadas) |

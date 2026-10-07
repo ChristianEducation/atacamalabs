@@ -23,6 +23,7 @@ async function run(body, st = {}) {
   const b = (await runCode('Build', store))[0].json; store.Build = b;
   store['Call Gateway'] = b.gw.skip ? { statusCode: 0 } : { statusCode: 200, body: typeof st.gateway === 'function' ? st.gateway(b.gw.body) : st.gateway };
   store['GHL Read'] = b.ghl.skip ? { statusCode: 0 } : { statusCode: 200, body: st.ghl || {} };
+  store['Call Engine'] = b.eng.skip ? { statusCode: 0 } : { statusCode: 200, body: typeof st.engine === 'function' ? st.engine(b.eng.body) : st.engine };
   const s = (await runCode('Shape', store))[0].json; store.Shape = s;
   store['Save Audit'] = { statusCode: 201 };
   const resp = (await runCode('Respond', store))[0].json;
@@ -34,7 +35,7 @@ const body = (tool, params, extra) => ({ tool, request_id: 'r-' + tool + '-' + M
 const names = new Set(wf.nodes.map((n) => n.name));
 t('20: conexiones válidas, webhook con clave de cabecera y ruta propia', Object.entries(wf.connections).every(([k, v]) => names.has(k) && v.main.every((o) => o.every((c) => names.has(c.node)))) && wf.nodes[0].parameters.authentication === 'headerAuth' && wf.nodes[0].parameters.path === 'atacama-hermes-operator');
 t('20: sin secretos embebidos y sin nodos de envío (Gmail/WhatsApp/Telegram/correo)', !/(Bearer |eyJ[A-Za-z0-9_-]{20}|pit-[0-9a-f]{8}|sk-[A-Za-z0-9]{20})/.test(JSON.stringify(wf)) && !wf.nodes.some((n) => /gmail|emailSend|whatsapp|telegram|slack/i.test(n.type)));
-t('20: las únicas llamadas externas son el Gateway (19), una lectura de GHL y Supabase', wf.nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest').every((n) => /^(Idem Check|Audit Refusal|Fetch Rows|Fetch Analysis|Call Gateway|GHL Read|Save Audit|Save Cache)$/.test(n.name)));
+t('20: las únicas llamadas externas son el Gateway (19), el motor de correo (21), una lectura de GHL y Supabase', wf.nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest').every((n) => /^(Idem Check|Audit Refusal|Fetch Rows|Fetch Analysis|Call Gateway|Call Engine|GHL Read|Save Audit|Save Cache)$/.test(n.name)));
 t('20: los nodos HTTP toleran fallos (el operador siempre responde y audita)', wf.nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest').every((n) => n.continueOnFail === true));
 t('20: el Gateway se llama con la clave de ingesta, no con el token de GHL', wf.nodes.find((n) => n.name === 'Call Gateway').credentials.httpHeaderAuth.name === 'Atacama Labs - Ingest Key');
 
@@ -77,6 +78,30 @@ r = await run(body('add_note', { target: 'Zeta', note: 'x' }));
 t('error de target: no_encontrado se audita y no llama al Gateway', r.response.status === 'not_found' && r.b.gw.skip && /~not_foun~/.test(r.audit.request_id));
 r = await run(body('analyze_prospects', { text: 'x' }), { analysis: null, gateway: null });
 t('Gateway caído → error auditado, sin ocupar el request_id (se puede reintentar)', r.response.ok === false && r.audit.status === 'error' && /~error~/.test(r.audit.request_id));
+
+
+// ---------- correo (motor 21)
+const ROW = { id: '11111111-1111-4111-8111-111111111111', candidate_key: 'd:alfa-test.invalid', company_name: 'Alfa Dental TEST', status: 'in_ghl', ghl_contact_id: 'C1', ghl_opportunity_id: 'O1', canonical: { company_name: 'Alfa Dental TEST', contact: { email: 'dra@alfa-test.invalid' } } };
+r = await run(body('save_draft', { target: 'Alfa Dental TEST' }), { rows: [ROW], engine: { ok: true, status: 'created', message: 'Guardé el borrador de Alfa Dental TEST (initial, NO enviado).', draft: { subject: 'x' }, safety: { messages_sent: 0 } } });
+t('correo: save_draft llama al motor 21 con candidate_id, sin Gateway ni GHL, y responde sin enviar', r.b.eng.body.action === 'draft' && r.b.eng.body.candidate_id === ROW.id && /alfa|atacama-outreach-engine/.test(r.b.eng.url) && r.b.gw.skip && r.b.ghl.skip && r.response.ok && r.response.safety.messages_sent === 0 && r.audit.status === 'executed');
+r = await run(body('save_draft', { target: '1' }));
+t('correo: un prospecto que solo está en el análisis (no guardado) → pide importarlo primero y no llama al motor', r.response.status === 'not_found' && r.response.error === 'no_guardado' && r.b.eng.skip);
+r = await run(body('approve_outreach', { target: 'Alfa Dental TEST' }), { rows: [ROW], engine: { ok: false, status: 'confirmation_required', confirmation_code: 'CONF-123456', expires_at: '2026-10-07T16:00:00Z', message: 'Falta la confirmación', preview: { subject: 's', body: 'b' }, safety: { messages_sent: 0 } } });
+t('correo: approve_outreach SIN código → el motor lo exige; la respuesta trae el código y NO ejecuta (audit status confirmation_required)', r.response.status === 'confirmation_required' && r.response.confirmation_code === 'CONF-123456' && r.response.executed === false && r.audit.status === 'confirmation_required' && !r.b.eng.body.order_text);
+r = await run(body('approve_outreach', { target: 'Alfa Dental TEST' }, { confirmation_code: 'CONF-123456', order_text: 'Sí, envíalo' }), { rows: [ROW], engine: { ok: true, status: 'approved', message: 'Aprobado.', safety: { messages_sent: 0 } } });
+t('correo: approve_outreach CON código y orden → pasan al motor (el motor valida código/expiración/hash)', r.b.eng.body.confirmation_code === 'CONF-123456' && r.b.eng.body.order_text === 'Sí, envíalo' && r.response.outcome === 'approved' && r.response.status === 'executed');
+r = await run(body('get_replies', {}), { engine: { ok: true, status: 'executed', count: 1, items: [{ company: 'A', classification: 'reply', body: 'me interesa' }], message: '1 respuesta(s)' } });
+t('correo: get_replies sin target lista todas (sin resolver prospecto)', r.b.eng.body.action === 'replies' && r.b.eng.body.candidate_id === undefined && r.response.data.items.length === 1);
+r = await run(body('list_outreach', { filter: 'drafts' }), { engine: { ok: true, status: 'executed', count: 0, items: [], message: 'No hay mensajes.' } });
+t('correo: list_outreach filtra por estado', r.b.eng.body.action === 'list' && r.b.eng.body.filter === 'drafts');
+r = await run(body('do_not_contact', { target: 'Alfa Dental TEST', reason: 'pidió no recibir más' }));
+t('correo: do_not_contact exige orden explícita (nivel 2)', r.branch === 'refusal' && r.response.status === 'needs_explicit_order');
+r = await run(body('do_not_contact', { target: 'Alfa Dental TEST', reason: 'pidió no recibir más' }, { order_text: 'No le escribas nunca más a Alfa Dental' }), { rows: [ROW], gateway: { ok: true, results: [{ company: 'Alfa Dental TEST', executed: true }] }, engine: { ok: true, status: 'suppressed', message: 'x', suppressed_emails: ['dra@alfa-test.invalid'] } });
+t('correo: do_not_contact con orden → descarta por el Gateway Y suprime en el motor', r.b.gw.body.act.type === 'discard' && r.b.eng.body.action === 'suppress' && /NO CONTACTAR/.test(r.response.message));
+r = await run(body('send_email', { target: 'x' }));
+t('correo: send_email directo sigue bloqueado (usa save_draft + approve_outreach)', r.response.status === 'confirmation_required' && r.response.executed === false);
+r = await run(body('approve_outreach', { target: 'Alfa Dental TEST' }), { rows: [ROW], engine: null });
+t('correo: si el motor no responde → error auditado, nada se aprueba', r.response.ok === false && r.audit.status === 'error');
 
 // ---------- idempotencia
 r = await run(body('get_tasks', {}), { cached: { ok: true, tool: 'get_tasks', request_id: 'x', message: 'ya hecho' } });

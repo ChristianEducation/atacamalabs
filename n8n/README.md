@@ -236,3 +236,6 @@ El ritmo real observado en 02b Signals (llamadas OpenClaw reales contra contenid
 
 ## Hermes Operator (Bloque M, 7-oct-2026)
 - **20 Hermes Operator** (`n8n/atacama-labs-20-hermes-operator.json`, id `Pm5XfYBocmWR3YgY`): única puerta por la que Hermes opera Atacama OS (`POST /webhook/atacama-hermes-operator`, `X-Atacama-Key`; `{ tool, request_id, params, order_text?, confirmation_code? }`). Aplica niveles de permiso 1/2/3, idempotencia y auditoría (`operator_audit_log`), y delega en el Prospect Gateway (19) o lee GHL de forma acotada. Generador: `node n8n/build/hermes-operator.mjs`; prueba nodo a nodo: `node n8n/build/hermes-operator.test.mjs`. Guía: `docs/HERMES-OPERATOR.md`.
+
+## Motor de correo (Bloque 1, 8-oct-2026)
+- **21 Outreach Engine** (`7yRgPPDkiVyjmb3t`, webhook `atacama-outreach-engine`), **22 Outreach Sender** (`aRvzG87Qg4uqI5bD`, cada 10 min + webhook `atacama-outreach-send-due`), **23 Gmail Sync** (`Bx4tC1Qn5H6097BL`, cada 10 min + webhook `atacama-gmail-sync`). Generador: `node n8n/build/outreach.mjs` (con `GMAIL_CRED_ID`/`GMAIL_CRED_NAME` conecta la credencial de Gmail). Prueba: `node n8n/build/outreach.test.mjs`. Modo en `outreach_config.mode`; guía: `docs/OUTREACH.md`.

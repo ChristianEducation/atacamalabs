@@ -818,3 +818,36 @@ Hermes no recibe el token de GHL (solo la clave de ingesta de n8n, ya existente)
 1. **Gmail y envío con aprobación** (siguiente bloque): habilitar `send_email` tras `confirmation_required` (idealmente botón de Telegram).
 2. Importar las 43 empresas cuando Christian lo ordene («mete las buenas», tandas de ≤ 25).
 3. Prospect Radar sigue **pausado** (`8421589d0902`; contenido `a46bd3138a0b` también).
+
+## BLOQUE 1 — Activación comercial · Parte 1: Gmail + aprobación + respuestas (8-oct-2026) · ✅ CONSTRUIDA Y PROBADA, ENVÍO REAL APAGADO
+
+Guía de uso, barreras, modos y checklist de activación: **[`OUTREACH.md`](OUTREACH.md)** (léela primero). Roadmap vigente: [`ATACAMA-OS-PROXIMOS-3-BLOQUES.md`](ATACAMA-OS-PROXIMOS-3-BLOQUES.md).
+
+### B1.1. Auditoría previa (estado real)
+- Existía: Prospect Gateway (19), Hermes Operator (20), automatizaciones GHL, `act: follow_up/mark_contacted`, borradores del Gateway; la aprobación era solo una convención (etiqueta `aprobado-para-contactar`) que nada leía.
+- No existía: ninguna credencial de Gmail en n8n, workflows de envío/sincronización (el `06 Gmail Sync` del repo era un esqueleto no desplegado), tabla de mensajes ligada a `prospect_candidates` (la tabla `outreach` es del modelo EnBandeja, con FK a `prospects`, 0 filas), supresión, hilos, respuestas.
+- Diferencia con docs: `GMAIL-OUTREACH-PLAN.md` es anterior al Gateway (usa `outreach`, el 09 y un «11 Outreach Send»; el 11 ya es Won to Client). Se usa `prospect_candidates` + GHL + Gateway y los workflows 21/22/23.
+
+### B1.2. Qué se construyó
+| Pieza | Detalle |
+|---|---|
+| **Supabase** (`20261008_outreach_engine.sql`, aplicada) | `outreach_config` (modo `off|dry_run|test_sim|live`, tope diario, ventana, `paused`, `from_email`, pie legal), `outreach_messages` (salientes/entrantes, hash de contenido, código de confirmación, `effect_key` único, un mensaje vivo por candidato+tipo), `outreach_suppression`. RLS activado, sin acceso anon/authenticated. |
+| **n8n 21 Outreach Engine** (`7yRgPPDkiVyjmb3t`) | Webhook `atacama-outreach-engine`: draft · approve · cancel · get · list · replies · suppress. No puede enviar. |
+| **n8n 22 Outreach Sender** (`aRvzG87Qg4uqI5bD`) | Cada 10 min (y webhook manual): un correo por corrida, ventana, tope, supresión, hash, candado `approved→sending`, Gmail solo en `live` y con credencial; efectos en GHL vía Gateway `mark_contacted`. |
+| **n8n 23 Gmail Sync** (`Bx4tC1Qn5H6097BL`) | Cada 10 min: lee hilos enviados, clasifica (reply/decline/unsubscribe/bounce/auto_reply), idempotente por `recv:<id>`, mueve a *Respondió* / suprime / descarta. |
+| **Hermes** | 7 herramientas nuevas (`save_draft`, `get_draft`, `approve_outreach` [nivel 3 con código del servidor], `cancel_outreach`, `list_outreach`, `get_replies`, `do_not_contact` [nivel 2]); skill con el flujo; el operador (20) llama al motor. MCP en el VPS actualizado y agente reiniciado. |
+| **Gateway (19)** | Dos correcciones de bugs reales (ver B1.4). |
+
+### B1.3. Seguridad
+`mode` y `paused` solo los cambia Christian (Hermes no tiene ningún camino para tocarlos). Sin credencial de Gmail no existe envío real; hoy `mode = off` y no hay credencial. Candidatos `TEST` nunca salen en `live`. Hermes jamás envía.
+
+### B1.4. Bugs reales hallados con las pruebas en vivo (y corregidos)
+1. **Gateway: lote mixto no persistía en Supabase.** Un lote con filas con y sin `ghl_contact_id` (p. ej. un contacto creado y otro rechazado por duplicado en GHL) hacía fallar el upsert completo de PostgREST («todas las claves deben coincidir») y el Gateway igual respondía «creado». Ahora agrupa filas por conjunto de claves (`groupRowsByKeys`) y reporta `persist_error` (el operador lo muestra como error).
+2. **Gateway: el import no guardaba los borradores** (solo `prepare`); ahora los persiste al crear el prospecto.
+3. **Supabase:** `on_conflict=email` no funciona con índice parcial/por expresión → índice único simple.
+
+### B1.5. Pruebas
+Núcleo outreach 28, workflows 21/22/23 nodo a nodo 56, operador 34 (+nuevas), gateway-flow 31, workflow 19 41 (con regresión del lote mixto); suites previas intactas (gateway-core 73, admit-core 47, prospect-flow 52, engine-core 37, signal-core 20, metrics-core 38, content-engine 27, content-signals 9, content-sync 27, content-metrics 30, won-to-client 45). **En vivo (datos TEST, modo `test_sim`, sin Gmail): 48/48.** Con Hermes real (3 turnos): borrador → correo exacto + código → «sí, confirmo» → aprobado; ante «mándalo sin confirmación» se negó. 0 mensajes reales (conversaciones de GHL solo con actividad). Limpieza por id exacto (contactos, oportunidades, tareas, candidatos, mensajes, bitácoras); GHL de vuelta a 43 contactos y 2 oportunidades; tablas de prueba en 0.
+
+### B1.6. Pendiente para el envío REAL (acciones de Christian)
+Buzón remitente · credencial OAuth de Gmail en n8n (pasos en `OUTREACH.md` §5) · datos legales del pie · OK explícito para un único envío de prueba a su propio correo. Después: Parte 2 (follow-up) y el resto del Bloque 1.

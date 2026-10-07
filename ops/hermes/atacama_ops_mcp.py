@@ -217,8 +217,50 @@ def discard_prospect(target: str, reason: str, christian_order: str, request_id:
 
 
 @mcp.tool()
+def save_draft(target: str, subject: str = "", body: str = "", to_email: str = "", kind: str = "initial", override_to: bool = False, request_id: str = "") -> str:
+    """Crea o edita el borrador de CORREO de un prospecto GUARDADO en Atacama OS (NO lo envía). Sin subject/body parte del borrador del Gateway. kind: initial | followup_1 | followup_2 | reply (reply requiere body). Editar un correo ya aprobado anula la aprobación. El destinatario debe ser un correo publicado por la empresa."""
+    return _call("save_draft", {"target": target, "subject": subject, "body": body, "to_email": to_email, "kind": kind, "override_to": override_to or None}, request_id=request_id)
+
+
+@mcp.tool()
+def get_draft(target: str, request_id: str = "") -> str:
+    """Correos pendientes (borrador/aprobado), historial y respuestas de un prospecto, con el cuerpo completo de lo pendiente."""
+    return _call("get_draft", {"target": target}, request_id=request_id)
+
+
+@mcp.tool()
+def approve_outreach(target: str, kind: str = "", confirmation_code: str = "", christian_order: str = "", request_id: str = "") -> str:
+    """NIVEL 3 — Aprueba el ENVÍO de un borrador. PASO 1: llama sin código → devuelve el correo EXACTO (destinatario, asunto, cuerpo) y un confirmation_code: muéstraselo a Christian completo y espera su confirmación. PASO 2 (solo si Christian confirma en su mensaje): vuelve a llamar con confirmation_code y christian_order = sus palabras exactas. Queda aprobado y el sistema lo envía solo en la próxima ventana (lun-vie 09:00-17:30) si el envío está activado; tú NUNCA envías. Si editas el correo después, hay que repetir los dos pasos."""
+    return _call("approve_outreach", {"target": target, "kind": kind}, order_text=christian_order, confirmation_code=confirmation_code, request_id=request_id)
+
+
+@mcp.tool()
+def cancel_outreach(target: str, kind: str = "", request_id: str = "") -> str:
+    """Cancela un correo pendiente (borrador o aprobado) antes de que salga."""
+    return _call("cancel_outreach", {"target": target, "kind": kind}, request_id=request_id)
+
+
+@mcp.tool()
+def list_outreach(filter: str = "", limit: int = 20, request_id: str = "") -> str:
+    """Lista correos de salida. filter: drafts | approved | sent | failed (vacío = todos)."""
+    return _call("list_outreach", {"filter": filter, "limit": limit}, request_id=request_id)
+
+
+@mcp.tool()
+def get_replies(target: str = "", limit: int = 10, request_id: str = "") -> str:
+    """Respuestas recibidas por correo (todas, o de un prospecto) con clasificación: reply | decline | unsubscribe | bounce | auto_reply, y el texto. Resúmelas para Christian y, si corresponde, propón una respuesta con save_draft(kind='reply'); nunca respondas sin su aprobación."""
+    return _call("get_replies", {"target": target, "limit": limit}, request_id=request_id)
+
+
+@mcp.tool()
+def do_not_contact(target: str, reason: str, christian_order: str, request_id: str = "") -> str:
+    """NIVEL 2 — NO CONTACTAR: descarta al prospecto, suprime todos sus correos y cancela lo pendiente. SOLO con orden explícita de Christian (christian_order = sus palabras exactas); reason = motivo."""
+    return _call("do_not_contact", {"target": target, "reason": reason}, order_text=christian_order, request_id=request_id)
+
+
+@mcp.tool()
 def send_email(target: str, subject: str = "", body: str = "", confirmation_code: str = "", request_id: str = "") -> str:
-    """NIVEL 3 — Enviar email. NO se ejecuta sin confirmación explícita de Christian y hoy el envío está DESHABILITADO. Devuelve confirmation_required: muéstrale a Christian exactamente qué se enviaría y a quién, y espera su confirmación. No simules ni intentes otra vía."""
+    """Envío directo: DESHABILITADO siempre. Para enviar un correo usa save_draft y luego approve_outreach (confirmación de Christian con código); el sistema lo envía en la ventana permitida. No simules ni intentes otra vía."""
     return _call("send_email", {"target": target, "subject": subject, "body": body}, confirmation_code=confirmation_code, request_id=request_id)
 
 

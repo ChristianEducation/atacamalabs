@@ -151,6 +151,13 @@ fin.response.notes = req.notes;
 fin.response.ghl_index_complete = ev.ghl_index_complete;
 return [{ json: { rows: fin.rows, log: fin.log, response: fin.response } }];`;
 
+export const splitRowsCode = `${LIB}
+
+const rows = $('Finalize').first().json.rows || [];
+const groups = groupRowsByKeys(rows);
+if (!groups.length) return [{ json: { rows: [] } }];
+return groups.map((g) => ({ json: { rows: g } }));`;
+
 export const analyzeCode = `${LIB}
 
 const { req, ev } = $('Evaluate').first().json;
@@ -186,9 +193,10 @@ export function buildProspectGateway(mode = 'real') {
     code('Plan S2', plan2Code, [2640, 260]),
     ghlExec('Exec S2', [2880, 260]),
     code('Finalize', finalizeCode(pack), [3120, 260]),
+    code('Split Rows', splitRowsCode, [3240, 260]),
     sb('Persist', 'POST', `${SUPABASE}/rest/v1/prospect_candidates?on_conflict=icp_pack_id,candidate_key`, '={{ JSON.stringify($json.rows) }}', [3360, 260], 'resolution=merge-duplicates,return=minimal'),
     sb('Log', 'POST', `${SUPABASE}/rest/v1/prospect_gateway_log?on_conflict=icp_pack_id,request_id`, '={{ JSON.stringify($("Finalize").first().json.log.request_id ? [$("Finalize").first().json.log] : []) }}', [3600, 260], 'resolution=ignore-duplicates,return=minimal'),
-    code('Respond', 'const r = $("Finalize").first().json.response;\nconst p = $("Persist").first().json || {};\nif ((p.statusCode || 0) >= 300) r.persist_error = "Supabase prospect_candidates falló (HTTP " + p.statusCode + "): " + JSON.stringify(p.body || {}).slice(0, 200);\nreturn [{ json: r }];', [3840, 260]),
+    code('Respond', 'const r = $("Finalize").first().json.response;\nconst bad = $("Persist").all().map((i) => i.json || {}).filter((p) => (p.statusCode || 0) >= 300);\nif (bad.length) r.persist_error = "Supabase prospect_candidates falló (HTTP " + bad[0].statusCode + "): " + JSON.stringify(bad[0].body || {}).slice(0, 200);\nreturn [{ json: r }];', [3840, 260]),
   ];
   const c = {
     'Gateway Webhook': { main: [to('Parse')] }, 'Parse': { main: [to('Valid?')] }, 'Valid?': { main: [to('Idem Check'), to('Respond Error')] }, 'Idem Check': { main: [to('Cached?')] },
@@ -196,7 +204,7 @@ export function buildProspectGateway(mode = 'real') {
     'Lookup': { main: [to('GHL Contacts')] }, 'GHL Contacts': { main: [to('GHL Opps')] }, 'GHL Opps': { main: [to('Evaluate')] }, 'Evaluate': { main: [to('Is Analyze?')] },
     'Is Analyze?': { main: [to('Respond Analyze'), to('Plan S1')] },
     'Plan S1': { main: [to('Exec S1')] }, 'Exec S1': { main: [to('Plan S2')] }, 'Plan S2': { main: [to('Exec S2')] }, 'Exec S2': { main: [to('Finalize')] },
-    'Finalize': { main: [to('Persist')] }, 'Persist': { main: [to('Log')] }, 'Log': { main: [to('Respond')] },
+    'Finalize': { main: [to('Split Rows')] }, 'Split Rows': { main: [to('Persist')] }, 'Persist': { main: [to('Log')] }, 'Log': { main: [to('Respond')] },
   };
   return { name: `Atacama Labs - 19 Prospect Gateway${test ? ' (TEST)' : ''}`, nodes, connections: c, settings: { executionOrder: 'v1' } };
 }
