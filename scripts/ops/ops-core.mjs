@@ -365,7 +365,7 @@ export function evaluateAlerts(d, existing) {
     add('run:' + r.id, n.severity, n.title, '', true, { notice: n.text });
   }
   // --- dedupe
-  existing = (existing || []).filter((e) => !/^_state:/.test(String(e.alert_key)));
+  existing = (existing || []).filter((e) => !/^_(state|lock):/.test(String(e.alert_key)));
   const ex = {}; (existing || []).forEach((e) => { ex[e.alert_key] = e; });
   const curKeys = new Set(cur.map((c) => c.key));
   const upserts = [], notify = [];

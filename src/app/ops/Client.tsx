@@ -1,17 +1,75 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { login, type LoginState } from "./actions";
 
 export function LoginForm() {
-  const [state, action, pending] = useActionState<LoginState, FormData>(login, null);
+  const [value, setValue] = useState("");
+  const [focused, setFocused] = useState(true);
+  const [shake, setShake] = useState(0);
+  const formRef = useRef<HTMLFormElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const lastSent = useRef("");
+
+  // PIN incorrecto o bloqueo: se limpia, se vuelve a enfocar y las casillas «tiemblan» un instante.
+  const attempt = async (prev: LoginState, form: FormData): Promise<LoginState> => {
+    const r = await login(prev, form);
+    if (r?.error) {
+      lastSent.current = "";
+      setValue("");
+      setShake((n) => n + 1);
+      inputRef.current?.focus();
+    }
+    return r;
+  };
+  const [state, action, pending] = useActionState<LoginState, FormData>(attempt, null);
+
+  // Al completar los 6 dígitos se intenta entrar solo (un mismo PIN no se envía dos veces).
+  useEffect(() => {
+    if (value.length === 6 && !pending && lastSent.current !== value) {
+      lastSent.current = value;
+      formRef.current?.requestSubmit();
+    }
+  }, [value, pending]);
+
   return (
-    <form action={action} className="ops-login">
-      <label htmlFor="ops-pw">Contraseña</label>
-      <input id="ops-pw" name="password" type="password" autoComplete="current-password" required autoFocus />
-      {state?.error ? <p role="alert" className="ops-login-err">{state.error}</p> : null}
-      <button type="submit" disabled={pending}>{pending ? "Verificando…" : "Entrar"}</button>
+    <form ref={formRef} action={action} className="ops-pin-form" onClick={() => inputRef.current?.focus()}>
+      <label htmlFor="ops-pin" className="ops-sr">PIN de 6 dígitos</label>
+      <div className={state?.error ? "ops-pin ops-pin-err" : "ops-pin"} key={shake} aria-hidden="true">
+        {Array.from({ length: 6 }, (_, i) => (
+          <span key={i} className={i === value.length && focused && !pending ? "ops-pin-cell ops-pin-cell-on" : "ops-pin-cell"}>
+            {i < value.length ? <i /> : null}
+          </span>
+        ))}
+      </div>
+      <input
+        ref={inputRef}
+        id="ops-pin"
+        name="pin"
+        type="password"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        autoComplete="off"
+        autoCapitalize="off"
+        autoCorrect="off"
+        spellCheck={false}
+        enterKeyHint="go"
+        maxLength={6}
+        autoFocus
+        required
+        value={value}
+        onChange={(e) => setValue(e.target.value.replace(/\D/g, "").slice(0, 6))}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        className="ops-pin-input"
+        data-1p-ignore="true"
+        data-lpignore="true"
+        data-form-type="other"
+      />
+      <p className="ops-pin-msg" role="status" aria-live="polite">
+        {pending ? "Verificando…" : state?.error ?? "\u00a0"}
+      </p>
     </form>
   );
 }

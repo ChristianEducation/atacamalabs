@@ -303,4 +303,8 @@ ok('panel: las piezas en revisión traen preview completo (copy, slides, medios,
   assert.deepEqual(pv.media, ['https://cdn.example.com/1.png']); assert.equal(pv.sources[0].url, 'https://docs.anthropic.com/x'); assert.ok(pv.proposed_label); assert.equal(pv.cta, 'Más en atacamalabs.cl'); assert.equal(pv.ghl_post, true);
   assert.equal(oc.composePanel(rich()).content.in_review[0].preview, null);
 });
+ok('el estado de bloqueo del login (_lock:*) no es una alerta ni se resuelve solo', () => {
+  const a = oc.evaluateAlerts(base(), [{ alert_key: '_lock:global', severity: 'info', status: 'open', event: false, notify_count: 0, meta: { fails: [1], until: 0 } }, { alert_key: '_lock:ip:abc', severity: 'info', status: 'resolved', event: true, notify_count: 1, meta: {} }]);
+  assert.equal(a.notify.length, 0); assert.deepEqual(a.resolve, []);
+});
 console.log(n + ' ok');
