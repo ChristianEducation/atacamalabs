@@ -636,7 +636,7 @@ export function composeBrief(d) {
   const act = p.attention.filter((a) => a.tone === 'act');
   if (act.length) {
     out.push('', 'NECESITA TU ACCIÓN');
-    act.forEach((a) => out.push('• ' + a.count + ' ' + a.title.toLowerCase() + (a.key === 'replies' || a.key === 'content_pending' ? ': ' + names(a.items.map((x) => String(x).split(' · ')[0]), 2) : '')));
+    act.forEach((a) => out.push('• ' + a.count + ' ' + (a.key === 'content_pending' ? (a.count === 1 ? 'pieza de contenido por aprobar' : 'piezas de contenido por aprobar') : a.title.toLowerCase()) + (a.key === 'replies' ? ': ' + names(a.items.map((x) => String(x).split(' · ')[0]), 2) : '')));
   } else out.push('', 'Nada urgente hoy.');
   const bits = [];
   const pr = p.prospecting;
