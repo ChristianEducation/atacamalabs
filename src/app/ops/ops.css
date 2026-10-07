@@ -131,3 +131,7 @@ html:has(.ops), body:has(.ops) { overflow-x: clip; }
 @keyframes ops-shake { 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
 @media (prefers-reduced-motion: reduce) { .ops-pin-err .ops-pin-cell { animation: none; } }
 @media (max-width: 360px) { .ops-pin { gap: 7px; } .ops-pin-cell { width: 40px; height: 52px; } }
+
+/* LinkedIn: seis contadores */
+.ops-stats-6 { grid-template-columns: repeat(2, 1fr); }
+@media (min-width: 640px) { .ops-stats-6 { grid-template-columns: repeat(3, 1fr); } }

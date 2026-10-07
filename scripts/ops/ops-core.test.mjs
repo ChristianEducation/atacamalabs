@@ -307,4 +307,18 @@ ok('el estado de bloqueo del login (_lock:*) no es una alerta ni se resuelve sol
   const a = oc.evaluateAlerts(base(), [{ alert_key: '_lock:global', severity: 'info', status: 'open', event: false, notify_count: 0, meta: { fails: [1], until: 0 } }, { alert_key: '_lock:ip:abc', severity: 'info', status: 'resolved', event: true, notify_count: 1, meta: {} }]);
   assert.equal(a.notify.length, 0); assert.deepEqual(a.resolve, []);
 });
+ok('LinkedIn en el panel: conteos por estado, listos, filas y nota de la limitación de Waalaxy; pendientes y errores piden acción', () => {
+  const mk = (id, name, li, extra) => ({ company_name: name, id, status: 'in_ghl', ghl_stage: 'investigado', band: 'alta', priority_score: 85, source_name: 'x', created_at: iso(5 * D), channel_state: li ? { linkedin: li } : {}, ...(extra || {}) });
+  const d = base({ candidates: [mk('1', 'Alfa', { state: 'aprobacion_pendiente', person: 'Ana', role: 'Gerente' }), mk('2', 'Beta', { state: 'respondio', last_event_at: iso(H), reply: { text: 'Hola, me interesa' } }), mk('3', 'Gamma', { state: 'error', next_action: 'Revisar el error de Waalaxy' }), mk('4', 'Delta', { state: 'en_campana' }), mk('5', 'Eps', null)], outreach: { mode: 'off', linkedin_mode: 'test' } });
+  const p = oc.composePanel(d);
+  assert.equal(p.linkedin.mode, 'test'); assert.equal(p.linkedin.counts.pendiente, 1); assert.equal(p.linkedin.counts.respondio, 1); assert.equal(p.linkedin.counts.error, 1); assert.equal(p.linkedin.counts.en_campana, 1);
+  assert.ok(p.linkedin.rows.some((r) => r.company === 'Beta' && r.reply === 'Hola, me interesa')); assert.match(p.linkedin.note, /no informa/);
+  assert.ok(p.attention.some((a) => a.key === 'li_pending' && a.items[0] === 'Alfa')); assert.ok(p.attention.some((a) => a.key === 'li_error'));
+  const al = oc.evaluateAlerts(d, []); assert.ok(al.notify.some((x) => x.key === 'li_error:3' && x.severity === 'high'));
+  assert.equal(oc.evaluateAlerts(base(), []).notify.some((x) => /^li_error/.test(x.key)), false);
+});
+ok('LinkedIn Engine es un workflow vigilado (no crítico): su falla se ve, pero no dispara alerta crítica', () => {
+  assert.ok(oc.monitoredWorkflows().some((w) => w.id === 've4uKTMQkGWzzmBV' && w.critical === false));
+  const h = oc.healthReport(base()); assert.ok(h.components.some((c) => c.name === 'LinkedIn Engine'));
+});
 console.log(n + ' ok');

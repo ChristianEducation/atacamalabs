@@ -57,7 +57,16 @@ export type PieceRow = {
 
 export type Signal = { title: string; type: string | null; angle: string | null; at: string; ago: string };
 
+export type LinkedinRow = { company: string; short: string; state: string | null; state_label: string | null; person: string | null; role: string | null; next_action: string | null; last_event_at: string | null; reply: string | null; score: number | null };
+
 export type Panel = {
+  linkedin: {
+    mode: string;
+    counts: Record<"pendiente" | "en_lista" | "en_campana" | "conexion" | "mensaje" | "followup" | "respondio" | "rechazo" | "error", number>;
+    ready: number;
+    rows: LinkedinRow[];
+    note: string;
+  };
   generated_at: string;
   date_label: string;
   tz: string;

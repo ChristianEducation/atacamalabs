@@ -460,6 +460,8 @@ export function followupStopReason(cand, to, msgs, suppression, closedOppIds) {
   if (cand.status === 'discarded') return 'descartado';
   if (cand.ghl_opportunity_id && closedOppIds && closedOppIds[cand.ghl_opportunity_id]) return 'oportunidad_' + closedOppIds[cand.ghl_opportunity_id];
   if (checkSuppression(to, suppression)) return 'suprimido';
+  const lin = cand.channel_state && cand.channel_state.linkedin && cand.channel_state.linkedin.state; // respuesta/rechazo/detención por LinkedIn también frenan el correo
+  if (['respondio', 'rechazo', 'detenido'].includes(lin)) return 'linkedin_' + lin;
   const inbound = (msgs || []).filter((m) => m.direction === 'inbound' && ['reply', 'decline', 'unsubscribe', 'bounce'].includes(m.classification));
   if (inbound.length) { const c = inbound[0].classification; return c === 'reply' ? 'respondio' : c === 'decline' ? 'rechazo' : c === 'unsubscribe' ? 'baja' : 'rebote'; }
   return null;

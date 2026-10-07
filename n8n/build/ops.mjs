@@ -12,6 +12,7 @@
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import * as core from '../../scripts/ops/ops-core.mjs';
+import * as liCore from '../../scripts/linkedin/linkedin-core.mjs';
 
 const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 export const N8N_BASE = 'https://n8n.srv1650725.hstgr.cloud';
@@ -40,7 +41,7 @@ const sbApply = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRe
     headerParameters: { parameters: [{ name: 'Prefer', value: '={{ $json.prefer || "return=minimal" }}' }] }, sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full() } });
 const GH_HEADERS = [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', value: 'application/json' }];
 
-export const LIB = [...new Map(Object.values(core).filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
+export const LIB = [...new Map([...Object.values(core), ...['linkedinOverview', 'linkedinView', 'liLabel'].map((k) => liCore[k])].filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
 const CFG_JSON = JSON.stringify({ tz: OPS_CFG.tz, stages: OPS_CFG.stages, ignore_opps: OPS_CFG.ignore_opps });
 
 export const ACTIONS = ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'content_gate', 'radar_report', 'content_radar_report', 'alerts_poll', 'alerts_ack'];
@@ -67,14 +68,14 @@ export const parseCode = `try {
   const n8n = '${N8N_BASE}/api/v1/';
   const u = {
     messages: sb + 'outreach_messages?created_at=gte.' + iso(now - 45 * 86400000) + '&select=id,candidate_id,company_name,kind,direction,status,classification,subject,body,sent_at,created_at,metadata&order=created_at.desc&limit=700',
-    cands: sb + 'prospect_candidates?status=in.(in_ghl,accepted,contacted)&select=id,company_name,status,band,priority_score,source_name,created_at,ghl_stage,ghl_opportunity_id,ghl_contact_id,next_action_at,industry,location,domain,angle:canonical->>outreach_angle,quote:canonical->evidence_quotes->0->>quote&order=created_at.desc&limit=400',
+    cands: sb + 'prospect_candidates?status=in.(in_ghl,accepted,contacted)&select=id,company_name,status,band,priority_score,source_name,created_at,ghl_stage,ghl_opportunity_id,ghl_contact_id,next_action_at,channel_state,industry,location,domain,angle:canonical->>outreach_angle,quote:canonical->evidence_quotes->0->>quote&order=created_at.desc&limit=400',
     pieces: sb + 'content_pieces?select=id,topic,channel,status,ghl_status,ghl_approval_status,scheduled_at,published_at,is_test,learning,learned_at,created_at,format,category,score,hook:piece->>hook&order=created_at.desc&limit=80',
     metrics: sb + 'content_metrics?captured_at=gte.' + iso(now - 30 * 86400000) + '&select=content_piece_id,metric_window,status,likes,comments,shares,captured_at&order=captured_at.desc&limit=200',
     signals: sb + 'content_sources?signal_status=eq.candidate&select=id,title,created_at,signal_type,angle:signal->>angle&order=created_at.desc&limit=200',
     review: need.panel ? sb + 'content_pieces?is_test=eq.false&status=in.(in_review,drafted,scored,scheduled,approved)&select=id,status,score,rationale,ghl_post_id,scheduled_at,piece&order=created_at.desc&limit=10' : none,
     alerts: sb + 'ops_alerts?select=*&order=last_seen_at.desc&limit=200',
     runs: sb + 'ops_runs?select=*&order=created_at.desc&limit=40',
-    config: sb + 'outreach_config?id=eq.1&select=mode,paused,send_allowlist,daily_cap',
+    config: sb + 'outreach_config?id=eq.1&select=mode,paused,send_allowlist,daily_cap,linkedin_mode',
     opps: need.ghl ? '${GHL}/opportunities/search?location_id=${OPS_CFG.locationId}&pipeline_id=${OPS_CFG.pipelineId}&status=open&limit=100' : none,
     tasks: need.ghl ? '${GHL}/locations/${OPS_CFG.locationId}/tasks/search' : none,
     wfs: need.n8n ? n8n + 'workflows?limit=100' : none,

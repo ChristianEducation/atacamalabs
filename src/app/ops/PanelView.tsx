@@ -132,6 +132,7 @@ function Empty({ children }: { children: React.ReactNode }) {
 
 function Body({ panel, fetchedAt, stale }: { panel: Panel; fetchedAt: number; stale: boolean }) {
   const pr = panel.prospecting;
+  const li = panel.linkedin;
   const ct = panel.content;
   const sys = panel.system;
   const bad = sys.components.filter((c) => c.status !== "ok");
@@ -184,6 +185,42 @@ function Body({ panel, fetchedAt, stale }: { panel: Panel; fetchedAt: number; st
           </details>
         ) : null}
         <p className="ops-foot">Todo queda en Investigado para tu decisión: el sistema no contacta a nadie por su cuenta.{pr.overdue_review_tasks ? ` Hay ${pr.overdue_review_tasks} tareas «Revisar prospecto» vencidas.` : ""}</p>
+      </Section>
+
+      <Section id="ops-li" title="LinkedIn" aside={<span className="ops-note">Waalaxy ejecuta · modo {li.mode === "off" ? "apagado" : li.mode}</span>}>
+        <div className="ops-stats ops-stats-6">
+          <Stat n={li.counts.pendiente} label="pendiente de aprobación" tone={li.counts.pendiente ? "hi" : undefined} />
+          <Stat n={li.counts.en_campana + li.counts.conexion} label="conexión" />
+          <Stat n={li.counts.mensaje} label="mensaje" />
+          <Stat n={li.counts.followup} label="follow-up" />
+          <Stat n={li.counts.respondio} label="respondió" tone={li.counts.respondio ? "hi" : undefined} />
+          <Stat n={li.counts.error} label="error" />
+        </div>
+        {li.rows.length ? (
+          <ul className="ops-list">
+            {li.rows.map((r) => (
+              <li key={r.company}>
+                <details className="ops-row">
+                  <summary>
+                    <span className="ops-row-main">
+                      <span className="ops-row-head"><span className="ops-row-title">{r.short}</span></span>
+                      <span className="ops-row-sub ops-ellipsis">{[r.person, r.role].filter(Boolean).join(" · ") || r.company}</span>
+                    </span>
+                    <span className={r.state === "error" ? "ops-pill ops-pill-fallo" : r.state === "respondio" ? "ops-pill ops-pill-ok" : "ops-pill ops-pill-atencion"}>{r.state_label ?? "—"}</span>
+                  </summary>
+                  <dl className="ops-detail">
+                    {r.next_action ? (<><dt>Próxima acción</dt><dd>{r.next_action}</dd></>) : null}
+                    {r.reply ? (<><dt>Respuesta</dt><dd>«{r.reply}»</dd></>) : null}
+                    <dt>Empresa</dt><dd>{r.company}{r.score != null ? ` · score ${r.score}` : ""}</dd>
+                  </dl>
+                </details>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <Empty>Nadie en LinkedIn todavía. {li.ready ? `${li.ready} listo${li.ready === 1 ? "" : "s"} para recomendar.` : "Para usar el canal hace falta una persona con nombre, cargo y perfil verificable."}</Empty>
+        )}
+        <p className="ops-foot">{li.note}</p>
       </Section>
 
       <Section id="ops-con" title="Contenido" aside={<span className="ops-note">Nada se publica sin tu aprobación</span>}>

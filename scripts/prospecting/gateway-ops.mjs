@@ -185,6 +185,11 @@ export function planAct(act, target, cfg, nowMs) {
   plan.ghl.tags = [bySystem ? 'contactado-por-correo' : 'contactado-manual'];
   const days = act && act.follow_up_days != null ? Number(act.follow_up_days) : 3;
   if (days > 0) plan.ghl.task = { title: 'Seguimiento: ' + target.candidate.company_name, body: 'Seguimiento tras contacto por ' + channel + '. ' + noteBase, dueDate: businessDaysFrom(nowMs, days), completed: false, assignedTo: cfg.userId };
+  if (channel === 'linkedin') { // alta en LinkedIn (Waalaxy) hecha por el motor de LinkedIn: nota y tarea propias
+    if (noteBase) plan.ghl.note = noteBase;
+    plan.ghl.tags = ['contactado-linkedin'];
+    if (days > 0) plan.ghl.task = { title: 'Revisar respuesta en LinkedIn: ' + target.candidate.company_name, body: 'Revisa en Waalaxy/LinkedIn si aceptó o respondió; si hay novedad, avisa a Hermes (log_linkedin_event).', dueDate: businessDaysFrom(nowMs, days), completed: false, assignedTo: cfg.userId };
+  }
   if (!inGhl && !plan.ghl.create) plan.warnings.push('no_esta_en_ghl_solo_se_registra_en_supabase');
   return plan;
 }

@@ -391,4 +391,8 @@ ok('newText: quita la atribución de Gmail partida en dos líneas', () => {
 ok('el núcleo no contiene secretos', () => {
   assert.ok(!/pit-[0-9a-f-]{20,}|eyJ[A-Za-z0-9_-]{20,}|ya29\./.test(Object.values(oc).map((f) => f.toString()).join('\n')));
 });
+ok('seguimiento: una respuesta, rechazo o detención por LinkedIn también detiene el correo', () => {
+  assert.equal(oc.followupStopReason({ status: 'contacted', channel_state: { linkedin: { state: 'respondio' } } }, 'a@b.cl', [], [], {}), 'linkedin_respondio');
+  assert.equal(oc.followupStopReason({ status: 'contacted', channel_state: { linkedin: { state: 'en_campana' } } }, 'a@b.cl', [], [], {}), null);
+});
 console.log(n + ' ok');

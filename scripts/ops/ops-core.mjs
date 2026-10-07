@@ -4,6 +4,8 @@
  * de GHL / Supabase / n8n / Hermes y devuelve texto + decisiones. No inventa estados: si un dato no llegó, lo dice.
  */
 
+import { linkedinOverview, liLabel } from '../linkedin/linkedin-core.mjs';
+
 export function tzParts(ms, tz) {
   const p = new Intl.DateTimeFormat('en-US', { timeZone: tz || 'America/Santiago', hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', weekday: 'short' }).formatToParts(new Date(ms));
   const g = (t) => (p.find((x) => x.type === t) || {}).value;
@@ -52,6 +54,7 @@ export function monitoredWorkflows() {
     { id: 'HDUZ0nrGFiO01hYN', label: 'Content Metrics', every: 180, critical: false },
     { id: 'f29HJ40N7Vz8M3Rm', label: 'Content Learnings', every: null, critical: false },
     { id: 'aGe77cEyCmobdAg7', label: 'Prospect Search (Radar)', every: null, critical: false },
+    { id: 've4uKTMQkGWzzmBV', label: 'LinkedIn Engine', every: null, critical: false },
   ];
 }
 
@@ -190,6 +193,7 @@ export function healthReport(d) {
   pick(['ZlYTYp9AVdCYPdwS'], 'Prospect Gateway');
   pick(['Pm5XfYBocmWR3YgY'], 'Hermes Operator');
   pick(['7yRgPPDkiVyjmb3t'], 'Outreach Engine');
+  pick(['ve4uKTMQkGWzzmBV'], 'LinkedIn Engine');
   const gm = d.gmail || null;
   const gmailNote = (w) => (gm && gm[w] ? (gm[w].credential_access ? ' · Gmail conectado (' + (gm[w].account || 'cuenta') + ')' : ' · Gmail NO responde (credencial)') : '');
   pick(['aRvzG87Qg4uqI5bD'], 'Gmail Sender', gmailNote('w22'));
@@ -356,6 +360,7 @@ export function evaluateAlerts(d, existing) {
   (d.pieces || []).filter((p) => !p.is_test && (p.status === 'failed' || p.ghl_status === 'failed' || (['scheduled', 'approved'].includes(p.status) && p.scheduled_at && now - Date.parse(p.scheduled_at) > 60 * 60000 && !p.published_at))).forEach((p) => add('publish_failed:' + p.id, 'high', 'Publicación sin salir: «' + String(p.topic || '').slice(0, 60) + '»', 'Estaba programada para ' + (p.scheduled_at ? fmtDateTime(Date.parse(p.scheduled_at), tz) : 's/f') + ' y no figura publicada.', false));
   // 5) jobs de Hermes con fallos repetidos
   for (const j of hermesJobChecks(d.hermes, now).filter((x) => x.status === 'fallo' && !x.paused)) add('hermes_job:' + j.id, 'high', 'Job de Hermes con fallos: ' + j.name, j.reason, false);
+  for (const x of (d.candidates || []).filter((c) => ((c.channel_state || {}).linkedin || {}).state === 'error')) add('li_error:' + x.id, 'high', 'LinkedIn: no se pudo insertar en Waalaxy — ' + x.company_name, String(x.channel_state.linkedin.next_action || 'Revisar el error').slice(0, 160), false);
   if (d.hermes && d.hermes.gateway_ok === false) add('hermes_gateway', 'critical', 'Hermes: el gateway de mensajería no responde', 'Telegram puede no estar entregando mensajes.', false);
   if (d.hermes && Number(d.hermes.disk_pct) >= 90) add('disk_full', 'high', 'Servidor de Hermes con el disco al ' + d.hermes.disk_pct + '%', 'Se puede quedar sin espacio.', false);
   // 6) avisos de corrida de los radares: una vez por corrida, en formato corto (no son fallas)
@@ -600,7 +605,13 @@ export function composePanel(d) {
   const content = { signals_count: Number(d.signals_candidate) || 0, signals: sig, in_review: inReview, scheduled, published, failed: ct.failed.concat(ct.late), metrics_ready: ct.snapshots.length, preview_ready: false };
   // --- sistema
   const system = { overall: h.overall, components: h.components.map((x) => ({ name: x.name, status: x.status, reason: x.reason })), outreach_mode: c.outreach.mode, approved_pending: c.outreach.approved_pending, drafts: c.outreach.drafts_initial, errors24h: (d.errors24h || []).slice(0, 6), hermes_known: Boolean(d.hermes && Array.isArray(d.hermes.jobs)) };
-  return { generated_at: new Date(now).toISOString(), date_label: fmtDate(now, tz), tz, attention: att, attention_total: att.length, prospecting, content, system, missing: d.missing || [] };
+  const lo = linkedinOverview(d.candidates || [], now);
+  const linkedin = { mode: (d.outreach && d.outreach.linkedin_mode) || 'off', counts: lo.counts, ready: lo.ready_for_linkedin, rows: lo.rows.map((r) => ({ company: r.company, short: shortName(r.company), state: r.state, state_label: r.state_label || (r.recommended === 'linkedin' ? 'Listo para LinkedIn' : null), person: r.person, role: r.role, next_action: r.next_action, last_event_at: r.last_event_at, reply: r.reply ? clip(r.reply.text, 160) : null, score: r.score })).slice(0, 8),
+    note: 'Waalaxy no informa por API si la invitación se envió, si la aceptaron o si respondieron: esos estados los registras tú con Hermes.' };
+  const li = lo.counts;
+  add('li_pending', 'act', 'Altas a LinkedIn por confirmar', (d.candidates || []).filter((x) => ((x.channel_state || {}).linkedin || {}).state === 'aprobacion_pendiente').map((x) => x.company_name));
+  add('li_error', 'act', 'Errores en LinkedIn (Waalaxy)', (d.candidates || []).filter((x) => ((x.channel_state || {}).linkedin || {}).state === 'error').map((x) => x.company_name));
+  return { linkedin, generated_at: new Date(now).toISOString(), date_label: fmtDate(now, tz), tz, attention: att, attention_total: att.length, prospecting, content, system, missing: d.missing || [] };
 }
 
 /** Aviso corto de una corrida de radar (ops_runs) para Telegram: sin IDs, rutas ni telemetría. */

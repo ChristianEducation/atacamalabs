@@ -1,0 +1,744 @@
+{
+  "name": "Atacama Labs - 26 LinkedIn Engine",
+  "nodes": [
+    {
+      "id": "32b31b98-f717-4262-b0d1-7bb5ba230fa8",
+      "name": "LI Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "5782b58d-fde4-42b3-bc0f-be8c421e9f5d",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "lUGhlXVaQBEiEh5S",
+          "name": "Atacama Labs - Ingest Key"
+        }
+      },
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "atacama-linkedin",
+        "authentication": "headerAuth",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "88db58fe-bf53-4d33-810d-bc82d19beafe",
+      "name": "Parse",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "jsCode": "try {\n  const first = $('LI Webhook').first().json || {};\n  const b = first.body || first;\n  const action = String(b.action || '').toLowerCase();\n  const ACTIONS = [\"list\",\"status\",\"recommend\",\"approve\",\"event\",\"config\",\"set_config\",\"lists\",\"test\"];\n  if (!ACTIONS.includes(action)) throw new Error('action inválida: usa ' + ACTIONS.join(' | '));\n  const needTarget = ['status', 'recommend', 'approve', 'event'].includes(action);\n  if (needTarget && !String(b.target || '').trim()) throw new Error('target obligatorio (nombre, dominio, id o URL de LinkedIn del prospecto)');\n  const sb = 'https://uwquwjmiofixzugttals.supabase.co/rest/v1/';\n  const u = {\n    config: sb + 'outreach_config?id=eq.1&select=*',\n    cands: sb + 'prospect_candidates?status=in.(in_ghl,accepted,contacted,discarded)&select=id,company_name,domain,website,status,band,priority_score,ghl_contact_id,ghl_opportunity_id,ghl_stage,last_contact_channel,last_contact_at,next_action_at,channel_state,canonical,created_at&order=priority_score.desc&limit=500',\n    msgs: ['list', 'approve', 'recommend'].includes(action) ? sb + 'outreach_messages?direction=eq.outbound&status=in.(approved,sending,sent)&select=candidate_id,status&limit=500' : 'https://localhost.invalid/',\n    sup: ['list', 'approve', 'recommend'].includes(action) ? sb + 'outreach_suppression?select=email&limit=2000' : 'https://localhost.invalid/',\n    wa_lists: action === 'lists' ? 'prospectLists/getProspectLists' : '',\n    wa_campaigns: action === 'lists' ? 'campaigns/getAll' : '',\n    wa_test: action === 'test' ? 'integrations/test' : '',\n  };\n  return [{ json: { action, target: String(b.target || '').trim(), by: String(b.by || 'Christian vía Hermes').slice(0, 80), confirmation_code: String(b.confirmation_code || '').trim(), order_text: String(b.order_text || '').slice(0, 400), event: String(b.event || ''), note: String(b.note || b.text || ''), cfg_patch: b.config && typeof b.config === 'object' ? b.config : {}, u } }];\n} catch (e) { return [{ json: { fatal: String((e && e.message) || e) } }]; }"
+      }
+    },
+    {
+      "id": "193548c0-6da3-435c-847b-df195d750100",
+      "name": "Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        400,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ (!$json.fatal) ? \"yes\" : \"no\" }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "14b79a1b-acf8-417d-b801-a0e9e401b022",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        620,
+        -180
+      ],
+      "parameters": {
+        "jsCode": "return [{ json: { ok: false, error: $json.fatal, safety: { messages_sent: 0 } } }];"
+      }
+    },
+    {
+      "id": "d60e31ea-a7a3-4f9a-af18-b57c3c7ef28b",
+      "name": "SB Config",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true,
+      "alwaysOutputData": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $(\"Parse\").first().json.u.config }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "348f5bc0-03ea-4447-987f-667d736ff2c4",
+      "name": "SB Candidates",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true,
+      "alwaysOutputData": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $(\"Parse\").first().json.u.cands }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "9f1b3f04-35b0-4052-ab39-d1f41f865759",
+      "name": "SB Messages",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true,
+      "alwaysOutputData": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $(\"Parse\").first().json.u.msgs }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "57d55843-4f34-4ec9-a8e1-8392a901e378",
+      "name": "SB Suppression",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true,
+      "alwaysOutputData": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $(\"Parse\").first().json.u.sup }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "76ad9d38-9a9c-4116-ae4e-0b3e37618b91",
+      "name": "Waalaxy Lists",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1400,
+        0
+      ],
+      "credentials": {
+        "waalaxyApi": {
+          "id": "S6oCbITh4Z93ZRjx",
+          "name": "Waalaxy — Atacama OS"
+        }
+      },
+      "continueOnFail": true,
+      "alwaysOutputData": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $(\"Parse\").first().json.u.wa_lists ? \"https://developers.waalaxy.com/\" + $(\"Parse\").first().json.u.wa_lists : \"https://localhost.invalid/\" }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "waalaxyApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-req-integration-origin",
+              "value": "n8n"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 25000
+        }
+      }
+    },
+    {
+      "id": "1136728c-3fd4-4f54-9757-dc992dc4a737",
+      "name": "Waalaxy Campaigns",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1600,
+        0
+      ],
+      "credentials": {
+        "waalaxyApi": {
+          "id": "S6oCbITh4Z93ZRjx",
+          "name": "Waalaxy — Atacama OS"
+        }
+      },
+      "continueOnFail": true,
+      "alwaysOutputData": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $(\"Parse\").first().json.u.wa_campaigns ? \"https://developers.waalaxy.com/\" + $(\"Parse\").first().json.u.wa_campaigns : \"https://localhost.invalid/\" }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "waalaxyApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-req-integration-origin",
+              "value": "n8n"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 25000
+        }
+      }
+    },
+    {
+      "id": "548daa7a-c245-40c3-8034-d997c466bb99",
+      "name": "Waalaxy Test",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1800,
+        0
+      ],
+      "credentials": {
+        "waalaxyApi": {
+          "id": "S6oCbITh4Z93ZRjx",
+          "name": "Waalaxy — Atacama OS"
+        }
+      },
+      "continueOnFail": true,
+      "alwaysOutputData": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $(\"Parse\").first().json.u.wa_test ? \"https://developers.waalaxy.com/\" + $(\"Parse\").first().json.u.wa_test : \"https://localhost.invalid/\" }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "waalaxyApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-req-integration-origin",
+              "value": "n8n"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 25000
+        }
+      }
+    },
+    {
+      "id": "979ba471-aaf2-4d1a-b937-1a8ac620f18c",
+      "name": "Compute",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        0
+      ],
+      "parameters": {
+        "jsCode": "function applyWaalaxyResult(cand, wx, res, nowMs) {\n  const now = new Date(nowMs).toISOString();\n  const st = cand.channel_state || {};\n  const prev = st.linkedin || {};\n  const httpOk = res && Number(res.statusCode || 200) < 300;\n  const item = httpOk && res.body && Array.isArray(res.body.result) ? res.body.result[0] : null;\n  const importCode = item ? item.importCode : null, campCode = item ? item.addToCampaignCode || null : null;\n  const pid = item && item.prospect && item.prospect._id ? String(item.prospect._id) : null;\n  const events = (prev.events || []).slice(-19);\n  let state, ok = false, next, note, msg;\n  if (!httpOk || !item) {\n    const code = res && res.body && (res.body.code || res.body.title || res.body.message);\n    const hint = ({ 'M000401-001': 'La cuenta de Waalaxy no tiene permisos para esta operación (¿plan?).', 'R000404-002': 'La lista de Waalaxy no existe.', 'R000401-003': 'La URL de LinkedIn no es válida para Waalaxy.', 'R000401-004': 'Se alcanzó el límite de prospectos de la lista o del CRM de Waalaxy.' })[code] || (res && res.statusCode === 429 ? 'Waalaxy limitó las llamadas (429): reintenta más tarde.' : 'Waalaxy no aceptó el alta.');\n    state = 'error'; next = 'Revisar el error de Waalaxy y reintentar'; note = 'LINKEDIN · error al insertar en Waalaxy: ' + hint + ' (' + String(code || (res && res.statusCode) || 'sin respuesta').slice(0, 60) + ').'; msg = hint;\n    events.push({ at: now, event: 'error_waalaxy', note: String(code || (res && res.statusCode) || '').slice(0, 80) });\n  } else if (importCode === 'success' || importCode === 'duplicated_prospect' || importCode === 'prospect_successfully_moved_to_another_list') {\n    ok = true;\n    const inCamp = Boolean(wx.campaign_id) && (campCode === 'success' || campCode === 'already_in_campaign');\n    state = inCamp ? 'en_campana' : 'en_lista';\n    next = inCamp ? 'Waalaxy enviará la invitación; registrar «conexión aceptada» o «respondió» cuando ocurra' : 'En lista de Waalaxy sin campaña: no se contactó a nadie';\n    note = 'LINKEDIN · ' + (inCamp ? 'alta en campaña de Waalaxy (la invitación de conexión la envía Waalaxy).' : 'agregado a la lista de Waalaxy SIN campaña (no se envió invitación ni mensaje).') + ' Persona: ' + wx.person + ' (' + wx.role + '). Resultado: ' + importCode + (campCode ? ' / campaña: ' + campCode : '') + '. Aprobado por ' + wx.by + '.';\n    msg = (importCode === 'duplicated_prospect' ? 'Ya existía en Waalaxy (duplicado, no se creó otro). ' : 'Insertado en Waalaxy. ') + (inCamp ? 'Quedó en campaña.' : 'Quedó solo en la lista (sin campaña).');\n    events.push({ at: now, event: inCamp ? 'alta_campana' : 'alta_lista', note: importCode + (campCode ? '/' + campCode : '') });\n  } else {\n    state = 'error'; next = 'Revisar el código de Waalaxy: ' + importCode; note = 'LINKEDIN · Waalaxy respondió «' + importCode + '»' + (item && item.message ? ': ' + String(item.message).slice(0, 120) : '') + '. No quedó en campaña.'; msg = 'Waalaxy respondió ' + importCode + '.';\n    events.push({ at: now, event: 'import_' + importCode, note: String(item && item.message || '').slice(0, 80) });\n  }\n  const li = { ...prev, url: wx.url, person: wx.person, role: wx.role, state, list_id: wx.list_id, campaign_id: wx.campaign_id || null, waalaxy_prospect_id: pid || prev.waalaxy_prospect_id || null, import_code: importCode, campaign_code: campCode, mode_at_import: wx.mode,\n    imported_at: ok ? now : prev.imported_at || null, last_event: events[events.length - 1].event, last_event_at: now, next_action: next, approved_by: wx.by, approved_at: now, confirm: null, events };\n  const channel_state = { ...st, approved_channel: ok ? 'linkedin' : st.approved_channel || null, approved_at: ok ? now : st.approved_at || null, linkedin: li };\n  const body = { channel_state, updated_at: now };\n  const effects = [];\n  if (state === 'en_campana' && wx.mode === 'live') { body.last_contact_channel = 'linkedin'; body.last_contact_at = now; effects.push({ type: 'gateway_act', act: { type: 'mark_contacted', channel: 'linkedin', note, follow_up_days: 5, at: now } }); }\n  else if (state === 'en_campana') effects.push({ type: 'gateway_act', act: { type: 'mark_contacted', channel: 'linkedin', note: '[PRUEBA] ' + note, follow_up_days: 5, at: now } });\n  else effects.push({ type: 'gateway_act', act: { type: 'add_note', note } });\n  return { writes: [{ method: 'PATCH', path: 'prospect_candidates?id=eq.' + cand.id, body }], effects, state, ok, message: msg, import_code: importCode, campaign_code: campCode, waalaxy_prospect_id: pid };\n}\n\nfunction findCandidate(cands, target) {\n  const t = String(target == null ? '' : target).trim();\n  if (!t) return { error: 'falta_target' };\n  const norm = (s) => liStrip(String(s || '')).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();\n  const list = Array.isArray(cands) ? cands : [];\n  let m = list.filter((c) => c.id === t);\n  if (!m.length) { const li = normLinkedInUrl(t); if (li) m = list.filter((c) => normLinkedInUrl(((c.canonical || {}).contact || {}).linkedin) === li); }\n  if (!m.length && /\\./.test(t) && !/\\s/.test(t)) { const d = t.toLowerCase().replace(/^https?:\\/\\//, '').replace(/^www\\./, '').replace(/\\/.*$/, ''); m = list.filter((c) => String(c.domain || '').toLowerCase() === d); }\n  if (!m.length) { const n = norm(t); m = list.filter((c) => norm(c.company_name) === n); if (!m.length && n.length >= 3) m = list.filter((c) => norm(c.company_name).includes(n)); }\n  if (m.length === 1) return { cand: m[0] };\n  if (!m.length) return { error: 'sin_coincidencia' };\n  return { error: 'ambiguo', options: m.slice(0, 6).map((c) => c.company_name) };\n}\n\nfunction isNamedPerson(name) {\n  const n = String(name == null ? '' : name).replace(/\\s+/g, ' ').trim();\n  if (n.length < 5) return false;\n  if (/no encontrad|desconocid|\\bequipo\\b|contacto|atenci[oó]n|soporte|ventas|comercial|administraci|servicio|capacitaci|info\\b|\\binc\\b|ltda|\\bspa\\b/i.test(liStrip(n))) return false;\n  const words = n.split(' ').filter((w) => /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ.'-]{2,}$/.test(w));\n  return words.length >= 2;\n}\n\nfunction isReliableRole(role) {\n  const r = String(role == null ? '' : role).trim();\n  return r.length >= 3 && !/no encontrad|inferencia|probable|posible|\\?/i.test(r);\n}\n\nfunction liConfirmHash(parts) { let h = 0x811c9dc5; const s = parts.join('\\u0001'); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16).padStart(8, '0'); }\n\nfunction liLabel(state) { return ({ recomendado: 'Recomendado', aprobacion_pendiente: 'Pendiente de aprobación', en_lista: 'En lista (sin contactar)', en_campana: 'En campaña (conexión)', conexion: 'Conexión aceptada', mensaje: 'Mensaje enviado', followup: 'Follow-up enviado', respondio: 'Respondió', rechazo: 'Rechazó', detenido: 'Detenido', error: 'Error' })[state] || String(state || '—'); }\n\nfunction liState(cand) { const s = (cand && cand.channel_state) || {}; return s.linkedin || null; }\n\nfunction liStrip(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, ''); }\n\nfunction linkedinOverview(cands, nowMs) {\n  const list = Array.isArray(cands) ? cands : [];\n  const counts = { pendiente: 0, en_lista: 0, en_campana: 0, conexion: 0, mensaje: 0, followup: 0, respondio: 0, rechazo: 0, error: 0 };\n  const rows = [];\n  let ready = 0;\n  list.forEach((c) => {\n    const v = linkedinView(c);\n    const s = v.state;\n    if (s === 'aprobacion_pendiente') counts.pendiente++;\n    else if (counts[s] != null) counts[s]++;\n    if (!s && v.recommended === 'linkedin') ready++;\n    if (s || v.recommended === 'linkedin') rows.push(v);\n  });\n  rows.sort((a, b) => (Date.parse(b.last_event_at || 0) || 0) - (Date.parse(a.last_event_at || 0) || 0) || (b.score || 0) - (a.score || 0));\n  return { counts, ready_for_linkedin: ready, rows: rows.slice(0, 12), total: rows.length };\n}\n\nfunction linkedinView(cand) {\n  const st = (cand && cand.channel_state) || {};\n  const rec = st.recommended || null;\n  const li = st.linkedin || null;\n  return { id: cand.id, company: cand.company_name, score: cand.priority_score, band: cand.band, recommended: rec ? rec.channel : null, reason: rec ? rec.reason : null, confidence: rec ? rec.confidence : null,\n    approved_channel: st.approved_channel || null, state: li ? li.state : null, state_label: li ? liLabel(li.state) : null, person: li ? li.person : (rec ? rec.person : null), role: li ? li.role : (rec ? rec.role : null),\n    url: li ? li.url : (rec ? rec.linkedin_url : null), list_id: li ? li.list_id : null, campaign_id: li ? li.campaign_id : null, last_event: li ? li.last_event : null, last_event_at: li ? li.last_event_at : null, next_action: li ? li.next_action : null,\n    reply: li && li.reply ? li.reply : null, import_code: li ? li.import_code : null, campaign_code: li ? li.campaign_code : null };\n}\n\nfunction normLinkedInUrl(u) {\n  const raw = String(u == null ? '' : u).trim();\n  if (!raw) return null;\n  const m = raw.match(/^(?:https?:\\/\\/)?(?:[a-z]{2,3}\\.|www\\.)?linkedin\\.com\\/in\\/([A-Za-z0-9%_\\-.]{3,100})\\/?(?:[?#].*)?$/i);\n  if (!m) return null;\n  const slug = m[1].replace(/\\/+$/, '');\n  if (/^(company|school|sales|pub|feed|jobs)$/i.test(slug)) return null;\n  return 'https://www.linkedin.com/in/' + slug.toLowerCase();\n}\n\nfunction planLinkedinApprove(req, ctx) {\n  const nowMs = ctx.now, now = new Date(nowMs).toISOString();\n  const cand = ctx.candidate, cfg = ctx.config || {};\n  const fail = (error, message, status) => ({ response: { ok: false, status: status || 'error', error, message, executed: false, safety: { linkedin_invites_sent: 0 } }, writes: [], effects: [] });\n  if (!cand) return fail('sin_candidato', 'No encontré ese prospecto.');\n  if (cand.status === 'discarded') return fail('descartado', 'El prospecto está descartado.');\n  const mode = cfg.linkedin_mode || 'off';\n  const st = cand.channel_state || {};\n  const prev = st.linkedin || null;\n  if (prev && ['en_lista', 'en_campana', 'conexion', 'mensaje', 'followup', 'respondio'].includes(prev.state)) return fail('ya_en_linkedin', 'Ese prospecto ya está en LinkedIn (' + liLabel(prev.state) + '). No se vuelve a insertar.', 'already_done');\n  if (ctx.emailActive) return fail('canal_email_activo', 'Ya hay un correo aprobado, en envío o enviado a este prospecto: no se contacta por LinkedIn al mismo tiempo (decisión explícita futura).', 'channel_conflict');\n  const rec = recommendChannel(cand, { suppressedEmails: ctx.suppressedEmails });\n  const c = (cand.canonical && cand.canonical.contact) || {};\n  const url = normLinkedInUrl(c.linkedin || c.linkedin_url);\n  if (!rec.linkedin_ready) return fail('linkedin_no_listo', 'Todavía no hay datos suficientes para LinkedIn: falta ' + (rec.missing.join(', ') || 'un perfil verificable') + '.', 'not_ready');\n  const testMode = mode === 'test';\n  const listId = testMode ? cfg.linkedin_test_list_id : cfg.linkedin_list_id;\n  const campaignId = testMode ? null : (cfg.linkedin_campaign_id || null);\n  if (testMode && !(cfg.linkedin_test_allowlist || []).includes(url)) return fail('fuera_de_allowlist', 'Modo test: solo se pueden insertar los perfiles de la lista blanca de prueba; este no está.', 'not_allowlisted');\n  const person = String(c.name).trim(), role = String(c.role || c.job_title).trim();\n  const body = { prospects: [{ url, customProfile: { ...(splitName(person).first ? { firstName: splitName(person).first } : {}), ...(splitName(person).last ? { lastName: splitName(person).last } : {}), occupation: role.slice(0, 120), company: { name: String(cand.company_name).slice(0, 120), ...(cand.website ? { website: cand.website } : {}) } }, customVariables: [{ label: 'Atacama_ref', value: String(cand.id) }] }],\n    ...(listId ? { prospectListId: listId } : {}), ...(campaignId ? { campaignId } : {}), canCreateDuplicates: false, moveDuplicatesToOtherList: false, origin: { name: 'n8n' } };\n  const hash = liConfirmHash([url, person, role, listId || '', campaignId || '', mode]);\n  const summary = { company: cand.company_name, person, role, linkedin_url: url, list_id: listId || null, campaign_id: campaignId, mode, will_contact: Boolean(campaignId), what_happens: campaignId ? 'Se agrega a la lista y se inscribe en la campaña de Waalaxy: Waalaxy enviará la invitación de conexión según su configuración.' : 'Solo se agrega a la lista de Waalaxy (sin campaña): NO se envía ninguna invitación ni mensaje.' };\n  const code = String(req.confirmation_code || '').trim();\n  if (!code) {\n    if (mode === 'off') return { response: { ok: false, status: 'mode_off', error: 'linkedin_apagado', executed: false, safety: { linkedin_invites_sent: 0 }, summary, message: 'LinkedIn está APAGADO (linkedin_mode=off): puedo mostrarte qué se haría, pero no se inserta nada hasta que Christian lo encienda.' }, writes: [], effects: [] };\n    if (!listId) return fail('sin_lista', 'No hay lista de Waalaxy configurada para el modo ' + mode + '.', 'not_configured');\n    const rnd = ctx.rnd || Math.random;\n    const confirmCode = 'LI-' + (100000 + Math.floor(rnd() * 900000));\n    const exp = new Date(nowMs + 30 * 60000).toISOString();\n    const patch = { ...st, linkedin: { ...(prev || {}), url, person, role, state: 'aprobacion_pendiente', confirm: { code: confirmCode, hash, expires_at: exp }, last_event: 'aprobacion_solicitada', last_event_at: now, next_action: 'Christian confirma el alta en Waalaxy' } };\n    return { response: { ok: false, status: 'confirmation_required', confirmation_code: confirmCode, expires_at: exp, executed: false, safety: { linkedin_invites_sent: 0 }, summary, message: 'Falta la confirmación de Christian. Muéstrale EXACTAMENTE este alta (persona, cargo, perfil, lista y campaña) y pídele que confirme. Si confirma, vuelve a llamar con confirmation_code y sus palabras en christian_order.' },\n      writes: [{ method: 'PATCH', path: 'prospect_candidates?id=eq.' + cand.id, body: { channel_state: patch, updated_at: now } }], effects: [] };\n  }\n  const conf = prev && prev.confirm;\n  if (!conf || conf.code !== code) return fail('codigo_invalido', 'El código no corresponde a este alta. Pide uno nuevo (llama sin código).', 'invalid_code');\n  if (Date.parse(conf.expires_at) < nowMs) return fail('codigo_vencido', 'El código venció (30 min). Pide uno nuevo y confirma de nuevo.', 'expired_code');\n  if (conf.hash !== hash) return fail('contenido_cambio', 'Los datos cambiaron después de emitir el código: Christian debe confirmar la versión actual.', 'content_changed');\n  const order = String(req.order_text || '').trim();\n  if (order.length < 4) return fail('falta_orden', 'Falta christian_order: las palabras exactas con las que Christian confirmó el alta.', 'needs_explicit_order');\n  if (mode === 'off') return fail('linkedin_apagado', 'LinkedIn está APAGADO: no se inserta nada.', 'mode_off');\n  if (mode === 'live' && Number(ctx.importedToday || 0) >= Number(cfg.linkedin_daily_cap || 0)) return fail('tope_diario', 'Se alcanzó el tope diario de altas a LinkedIn (' + cfg.linkedin_daily_cap + '). Mañana.', 'daily_cap');\n  return { response: { ok: true, status: 'approved_pending_import', executed: false, safety: { linkedin_invites_sent: 0 }, summary, message: 'Aprobado: se inserta en Waalaxy ahora.' }, writes: [], effects: [],\n    waalaxy: { body, order_text: order.slice(0, 400), by: req.by || 'Christian vía Hermes', url, person, role, list_id: listId, campaign_id: campaignId, mode } };\n}\n\nfunction planLinkedinEvent(req, ctx) {\n  const nowMs = ctx.now, now = new Date(nowMs).toISOString();\n  const cand = ctx.candidate;\n  const fail = (error, message) => ({ response: { ok: false, status: 'error', error, message }, writes: [], effects: [] });\n  if (!cand) return fail('sin_candidato', 'No encontré ese prospecto.');\n  const st = cand.channel_state || {};\n  const prev = st.linkedin;\n  if (!prev || !['en_lista', 'en_campana', 'conexion', 'mensaje', 'followup', 'respondio', 'rechazo', 'detenido', 'error'].includes(prev.state)) return fail('no_esta_en_linkedin', 'Ese prospecto no fue dado de alta en LinkedIn por Atacama OS.');\n  const ev = String(req.event || '').toLowerCase();\n  const map = { conexion_aceptada: ['conexion', 'Conexión aceptada'], mensaje_enviado: ['mensaje', 'Mensaje enviado por la secuencia'], followup_enviado: ['followup', 'Follow-up enviado por la secuencia'], respondio: ['respondio', 'Respondió'], rechazo: ['rechazo', 'Rechazó / no le interesa'], detener: ['detenido', 'Secuencia detenida'], nota: [prev.state, 'Nota'] };\n  if (!map[ev]) return fail('evento_invalido', 'Evento inválido. Usa: ' + Object.keys(map).join(', ') + '.');\n  const text = String(req.note || req.text || '').trim().slice(0, 600);\n  if (ev === 'respondio' && text.length < 2) return fail('falta_texto', 'Para registrar una respuesta indica qué dijo la persona (note).');\n  const order = ['en_lista', 'en_campana', 'conexion', 'mensaje', 'followup', 'respondio'];\n  const newState = map[ev][0];\n  if (['conexion', 'mensaje', 'followup'].includes(newState) && order.indexOf(prev.state) > order.indexOf(newState) && prev.state !== 'error') return fail('retroceso', 'El prospecto ya está en «' + liLabel(prev.state) + '»: no se retrocede de estado.');\n  const events = (prev.events || []).slice(-19); events.push({ at: now, event: ev, note: text.slice(0, 120) });\n  const li = { ...prev, state: newState, last_event: ev, last_event_at: now, events,\n    next_action: newState === 'respondio' ? 'Revisar la respuesta y decidir el siguiente paso (Diagnóstico)' : newState === 'rechazo' || newState === 'detenido' ? 'Ninguna: no volver a contactar por LinkedIn' : newState === 'conexion' ? 'Esperar el mensaje de la secuencia' : newState === 'mensaje' ? 'Esperar respuesta / follow-up de la secuencia' : newState === 'followup' ? 'Esperar respuesta; la secuencia termina sola' : prev.next_action,\n    ...(newState === 'respondio' ? { reply: { text, at: now } } : {}), ...(ev === 'nota' ? { state: prev.state } : {}) };\n  const body = { channel_state: { ...st, linkedin: li }, updated_at: now };\n  const effects = [];\n  const co = cand.company_name;\n  if (newState === 'respondio') { body.status = 'contacted'; body.ghl_stage = 'respondio'; body.last_contact_channel = 'linkedin'; body.last_contact_at = now; body.next_action_at = null; effects.push({ type: 'gateway_act', act: { type: 'move_stage', stage: 'respondio', note: 'RESPUESTA por LinkedIn de ' + co + ' (' + (prev.person || '') + '): «' + text.slice(0, 500) + '». Se detienen los seguimientos de correo y de LinkedIn.' } }); }\n  else if (newState === 'rechazo') { body.next_action_at = null; effects.push({ type: 'gateway_act', act: { type: 'move_stage', stage: 'respondio', note: 'RESPUESTA NEGATIVA por LinkedIn de ' + co + ': «' + text.slice(0, 300) + '». Seguimientos detenidos; decide si pasar a Perdida.' } }); }\n  else if (newState === 'detenido') { body.next_action_at = null; effects.push({ type: 'gateway_act', act: { type: 'add_note', note: 'LINKEDIN · secuencia detenida. ' + text } }); }\n  else effects.push({ type: 'gateway_act', act: { type: 'add_note', note: 'LINKEDIN · ' + map[ev][1] + (text ? ': ' + text : '') + '.' } });\n  const stop = ['respondio', 'rechazo', 'detenido'].includes(newState);\n  return { response: { ok: true, status: 'event_logged', company: co, state: li.state, state_label: liLabel(li.state), stop_followups: stop, message: 'Registrado en ' + co + ': ' + map[ev][1] + '.' + (stop ? ' Se detienen los seguimientos.' : '') }, writes: [{ method: 'PATCH', path: 'prospect_candidates?id=eq.' + cand.id, body }], effects, stop_email_followups: stop };\n}\n\nfunction planRecommend(req, ctx) {\n  const now = new Date(ctx.now).toISOString();\n  const cand = ctx.candidate;\n  if (!cand) return { response: { ok: false, status: 'error', error: 'sin_candidato', message: 'No encontré ese prospecto.' }, writes: [], effects: [] };\n  const rec = recommendChannel(cand, { suppressedEmails: ctx.suppressedEmails });\n  const st = cand.channel_state || {};\n  const nextRec = { channel: rec.channel, confidence: rec.confidence, reason: rec.reason, missing: rec.missing, email_ready: rec.email_ready, linkedin_ready: rec.linkedin_ready, linkedin_url: rec.linkedin_url, person: rec.person, role: rec.role, at: now };\n  const patch = { ...st, recommended: nextRec };\n  return { response: { ok: true, status: 'recommended', company: cand.company_name, recommendation: nextRec, current_state: st.linkedin ? st.linkedin.state : null, message: 'Canal recomendado para ' + cand.company_name + ': ' + (rec.channel === 'none' ? 'ninguno todavía (investigar más)' : rec.channel) + '. ' + rec.reason },\n    writes: [{ method: 'PATCH', path: 'prospect_candidates?id=eq.' + cand.id, body: { channel_state: patch, updated_at: now } }], effects: [] };\n}\n\nfunction recommendChannel(cand, ctx) {\n  const c = (cand && cand.canonical && cand.canonical.contact) || (cand && cand.contact) || {};\n  const sup = (ctx && ctx.suppressedEmails) || [];\n  const email = String(c.email || '').trim().toLowerCase();\n  const emailOk = /^[^\\s@<>()\",;:]+@[^\\s@<>()\",;:]+\\.[a-z]{2,}$/i.test(email) && c.public !== false && !sup.includes(email);\n  const generic = /^(info|contacto|contact|ventas|comercial|hola|hello|admin|administracion|reservas|atencion|soporte|cotizaciones|cotizacion|sales|mail|oficina|clientes|secretaria|recepcion)@/i.test(liStrip(email));\n  const li = normLinkedInUrl(c.linkedin || c.linkedin_url);\n  const named = isNamedPerson(c.name);\n  const role = isReliableRole(c.role || c.job_title);\n  const evid = Boolean(String(c.linkedin_source_url || '').trim());\n  const liReady = Boolean(li) && named && role && evid;\n  const missing = [];\n  if (!li) missing.push('URL de LinkedIn de una persona');\n  if (!named) missing.push('nombre y apellido de la persona');\n  if (!role) missing.push('cargo confiable');\n  if (li && !evid) missing.push('evidencia pública de dónde salió el perfil');\n  const out = (channel, confidence, reason, extra) => ({ channel, confidence, reason, missing: extra || [], email_ready: emailOk, linkedin_ready: liReady, linkedin_url: li, person: named ? String(c.name).trim() : null, role: role ? String(c.role || c.job_title).trim() : null });\n  if (cand && (cand.status === 'discarded')) return out('none', 'alta', 'El prospecto está descartado.');\n  const last = cand && cand.last_contact_channel;\n  if (last && ['email', 'linkedin'].includes(last)) return out(last, 'alta', 'Ya se contactó por ' + last + ': no se abre un segundo canal sin una decisión explícita.');\n  if (liReady && (!emailOk || generic)) return out('linkedin', emailOk ? 'media' : 'alta', 'Hay una persona identificada (' + String(c.name).trim() + ', ' + String(c.role || c.job_title).trim() + ') con perfil de LinkedIn verificable' + (emailOk ? ' y el único correo público es genérico (' + email + '): una persona con nombre tiene más probabilidad de respuesta.' : ' y no hay correo público utilizable.'));\n  if (emailOk) return out('email', generic ? 'media' : 'alta', generic ? 'Correo público de la empresa (' + email + ', genérico): es el único canal confiable hoy' + (missing.length ? '; para LinkedIn falta ' + missing.join(', ') + '.' : '.') : 'Correo publicado por la empresa y utilizable (' + email + ').');\n  if (liReady) return out('linkedin', 'media', 'Sin correo utilizable; hay persona con perfil de LinkedIn verificable.');\n  return out('none', 'baja', 'Sin canal confiable: investigar más (' + (missing.join(', ') || 'falta un contacto público') + ').', missing);\n}\n\nfunction splitName(name) {\n  const p = String(name || '').replace(/\\s+/g, ' ').trim().split(' ');\n  return { first: p[0] || '', last: p.slice(1).join(' ') };\n}\n\nconst p = $('Parse').first().json;\nconst node = (n) => { try { return $(n).first().json || {}; } catch (e) { return {}; } };\nconst arr = (n) => { const x = node(n); return (x.statusCode || 0) < 300 && Array.isArray(x.body) ? x.body : []; };\nconst nowMs = Date.now(), nowIso = new Date(nowMs).toISOString();\nconst cfg = arr('SB Config')[0] || {};\nconst cands = arr('SB Candidates');\nconst msgs = arr('SB Messages');\nconst sup = arr('SB Suppression').map((r) => String(r.email || '').toLowerCase());\nconst A = p.action;\nconst day = (ms) => new Date(ms).toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });\nconst today = day(nowMs);\nconst importedToday = cands.filter((c) => { const l = (c.channel_state || {}).linkedin; return l && l.mode_at_import === 'live' && l.imported_at && day(Date.parse(l.imported_at)) === today; }).length;\nconst safeCfg = { linkedin_mode: cfg.linkedin_mode || 'off', linkedin_list_id: cfg.linkedin_list_id || null, linkedin_campaign_id: cfg.linkedin_campaign_id || null, linkedin_test_list_id: cfg.linkedin_test_list_id || null, linkedin_daily_cap: cfg.linkedin_daily_cap, linkedin_test_allowlist: cfg.linkedin_test_allowlist || [], email_mode: cfg.mode };\nconst out = { writes: [], effects: [], waalaxy: null, audit: null };\nlet resp;\nlet cand = null;\nif (['status', 'recommend', 'approve', 'event'].includes(A)) {\n  const f = findCandidate(cands, p.target);\n  if (f.error) resp = { ok: false, status: 'error', error: f.error, message: f.error === 'ambiguo' ? 'Hay varios prospectos con ese nombre: ' + (f.options || []).join(' · ') + '. Indica el dominio o el id.' : 'No encontré ese prospecto.', options: f.options || [] };\n  else cand = f.cand;\n}\nif (!resp) {\n  if (A === 'config') resp = { ok: true, status: 'config', config: safeCfg, message: 'Configuración de LinkedIn.' };\n  else if (A === 'list') {\n    const ov = linkedinOverview(cands, nowMs);\n    const open = cands.filter((c) => c.status === 'in_ghl' && c.ghl_stage === 'investigado' && !((c.channel_state || {}).linkedin));\n    const emailActive = new Set(msgs.map((m) => m.candidate_id));\n    const recs = open.map((c) => ({ c, r: recommendChannel(c, { suppressedEmails: sup }) }));\n    const pick = (ch) => recs.filter((x) => x.r.channel === ch);\n    const row = (x) => ({ id: x.c.id, company: x.c.company_name, score: x.c.priority_score, band: x.c.band, channel: x.r.channel, confidence: x.r.confidence, reason: x.r.reason, person: x.r.person, role: x.r.role, url: x.r.linkedin_url, missing: x.r.missing });\n    const ready = pick('linkedin').map(row);\n    const lines = [];\n    lines.push('Canal recomendado (' + open.length + ' en Investigado sin canal elegido): LinkedIn ' + ready.length + ' · correo ' + pick('email').length + ' · investigar más ' + pick('none').length + '.');\n    ready.slice(0, 6).forEach((x) => lines.push('• LinkedIn · ' + x.company + ' (' + x.score + ') — ' + (x.person || '') + ', ' + (x.role || '') + '. ' + x.reason));\n    const em = pick('email').slice(0, 4).map(row); em.forEach((x) => lines.push('• Correo · ' + x.company + ' (' + x.score + ') — ' + x.reason));\n    const nn = pick('none').slice(0, 4).map(row); nn.forEach((x) => lines.push('• Investigar más · ' + x.company + ' — ' + x.reason));\n    const pending = ov.rows.filter((r) => r.state);\n    if (pending.length) { lines.push('En LinkedIn: ' + pending.map((r) => r.company + ' (' + r.state_label + ')').join(' · ')); }\n    lines.push('Modo LinkedIn: ' + safeCfg.linkedin_mode + (safeCfg.linkedin_mode === 'off' ? ' (apagado: nada se inserta en Waalaxy)' : ''));\n    resp = { ok: true, status: 'list', text: lines.join('\\n'), counts: ov.counts, ready_for_linkedin: ready, email_ready: pick('email').length, needs_research: pick('none').length, in_linkedin: pending, mode: safeCfg.linkedin_mode, email_active: emailActive.size };\n  }\n  else if (A === 'status') {\n    const rec = recommendChannel(cand, { suppressedEmails: sup });\n    const v = linkedinView(cand);\n    resp = { ok: true, status: 'status', company: cand.company_name, ghl_stage: cand.ghl_stage, recommendation: { channel: rec.channel, confidence: rec.confidence, reason: rec.reason, missing: rec.missing }, state: v.state, state_label: v.state_label, person: v.person || rec.person, role: v.role || rec.role, url: v.url || rec.linkedin_url,\n      last_event: v.last_event, last_event_at: v.last_event_at, next_action: v.next_action, reply: v.reply, import_code: v.import_code, campaign_code: v.campaign_code, approved_channel: v.approved_channel,\n      text: cand.company_name + ': ' + (v.state ? 'LinkedIn · ' + v.state_label + (v.next_action ? ' — próxima acción: ' + v.next_action : '') : 'sin canal elegido; recomendado: ' + (rec.channel === 'none' ? 'investigar más' : rec.channel)) + '. ' + rec.reason };\n  }\n  else if (A === 'recommend') { const r = planRecommend({}, { now: nowMs, candidate: cand, suppressedEmails: sup }); resp = r.response; out.writes = r.writes; out.audit = { tool: 'linkedin_recommend', level: 1 }; }\n  else if (A === 'approve') {\n    const emailActive = msgs.some((m) => m.candidate_id === cand.id);\n    const r = planLinkedinApprove({ confirmation_code: p.confirmation_code, order_text: p.order_text, by: p.by }, { now: nowMs, candidate: cand, config: cfg, suppressedEmails: sup, emailActive, importedToday });\n    resp = r.response; out.writes = r.writes; out.effects = r.effects;\n    if (r.waalaxy) out.waalaxy = { skip: false, wx: r.waalaxy, body: r.waalaxy.body };\n    out.audit = { tool: 'linkedin_approve', level: 3 };\n  }\n  else if (A === 'event') { const r = planLinkedinEvent({ event: p.event, note: p.note }, { now: nowMs, candidate: cand }); resp = r.response; out.writes = r.writes; out.effects = r.effects; out.audit = { tool: 'linkedin_event', level: 1 }; }\n  else if (A === 'set_config') {\n    const c = p.cfg_patch || {}, patch = {};\n    if (['off', 'test', 'live'].includes(c.linkedin_mode)) patch.linkedin_mode = c.linkedin_mode;\n    ['linkedin_list_id', 'linkedin_campaign_id', 'linkedin_test_list_id'].forEach((k) => { if (k in c) patch[k] = c[k] ? String(c[k]).slice(0, 60) : null; });\n    if (Number.isFinite(Number(c.linkedin_daily_cap)) && Number(c.linkedin_daily_cap) >= 0 && Number(c.linkedin_daily_cap) <= 25) patch.linkedin_daily_cap = Math.floor(Number(c.linkedin_daily_cap));\n    if (Array.isArray(c.linkedin_test_allowlist)) patch.linkedin_test_allowlist = c.linkedin_test_allowlist.map((u) => normLinkedInUrl(u)).filter(Boolean);\n    if (patch.linkedin_mode === 'live' && !(patch.linkedin_list_id || cfg.linkedin_list_id)) resp = { ok: false, status: 'error', error: 'live_sin_lista', message: 'No se puede pasar a live sin una lista de producción de Waalaxy.' };\n    else if (!Object.keys(patch).length) resp = { ok: false, status: 'error', error: 'sin_cambios', message: 'No hay campos válidos para cambiar.' };\n    else { out.writes = [{ method: 'PATCH', path: 'outreach_config?id=eq.1', body: { ...patch, updated_at: nowIso } }]; resp = { ok: true, status: 'config_updated', changed: Object.keys(patch), message: 'Configuración de LinkedIn actualizada.' }; out.audit = { tool: 'linkedin_set_config', level: 3 }; }\n  }\n  else if (A === 'lists') {\n    const rl = node('Waalaxy Lists'), rc = node('Waalaxy Campaigns');\n    const lists = (rl.statusCode || 0) < 300 && Array.isArray(rl.body) ? rl.body.map((x) => ({ id: x._id, name: x.name, prospects: x.totalProspects != null ? x.totalProspects : x.total })) : null;\n    const camps = (rc.statusCode || 0) < 300 && rc.body && Array.isArray(rc.body.campaigns) ? rc.body.campaigns.map((x) => ({ id: x._id, name: x.name, status: x.status })) : null;\n    resp = { ok: lists !== null, status: 'lists', lists, campaigns: camps, error_http: lists === null ? (rl.statusCode || 'sin respuesta') : undefined, message: lists === null ? 'No pude leer Waalaxy (credencial o red).' : 'Listas y campañas (pausadas o en curso) de Waalaxy.' };\n  }\n  else if (A === 'test') { const rt = node('Waalaxy Test'); resp = { ok: (rt.statusCode || 0) < 300, status: 'test', http: rt.statusCode || null, message: (rt.statusCode || 0) < 300 ? 'Credencial de Waalaxy válida.' : 'La credencial de Waalaxy no responde (revisar en n8n).' }; }\n}\nreturn [{ json: { out, resp, cand: cand ? { id: cand.id, company_name: cand.company_name, channel_state: cand.channel_state || {}, canonical: cand.canonical, ghl_opportunity_id: cand.ghl_opportunity_id, ghl_contact_id: cand.ghl_contact_id, last_contact_channel: cand.last_contact_channel } : null, action: A, by: p.by, nowIso } }];"
+      }
+    },
+    {
+      "id": "8f5713c8-2e84-405b-b9f4-32702046f2c7",
+      "name": "Waalaxy Import",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        0
+      ],
+      "credentials": {
+        "waalaxyApi": {
+          "id": "S6oCbITh4Z93ZRjx",
+          "name": "Waalaxy — Atacama OS"
+        }
+      },
+      "continueOnFail": true,
+      "alwaysOutputData": true,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $(\"Compute\").first().json.out.waalaxy && !$(\"Compute\").first().json.out.waalaxy.skip ? \"https://developers.waalaxy.com/prospects/addProspectFromIntegration\" : \"https://localhost.invalid/\" }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "waalaxyApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-req-integration-origin",
+              "value": "n8n"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($(\"Compute\").first().json.out.waalaxy ? $(\"Compute\").first().json.out.waalaxy.body : {}) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "ef65cff0-4c18-4256-be53-dd8f91710cc2",
+      "name": "Finish",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        0
+      ],
+      "parameters": {
+        "jsCode": "function applyWaalaxyResult(cand, wx, res, nowMs) {\n  const now = new Date(nowMs).toISOString();\n  const st = cand.channel_state || {};\n  const prev = st.linkedin || {};\n  const httpOk = res && Number(res.statusCode || 200) < 300;\n  const item = httpOk && res.body && Array.isArray(res.body.result) ? res.body.result[0] : null;\n  const importCode = item ? item.importCode : null, campCode = item ? item.addToCampaignCode || null : null;\n  const pid = item && item.prospect && item.prospect._id ? String(item.prospect._id) : null;\n  const events = (prev.events || []).slice(-19);\n  let state, ok = false, next, note, msg;\n  if (!httpOk || !item) {\n    const code = res && res.body && (res.body.code || res.body.title || res.body.message);\n    const hint = ({ 'M000401-001': 'La cuenta de Waalaxy no tiene permisos para esta operación (¿plan?).', 'R000404-002': 'La lista de Waalaxy no existe.', 'R000401-003': 'La URL de LinkedIn no es válida para Waalaxy.', 'R000401-004': 'Se alcanzó el límite de prospectos de la lista o del CRM de Waalaxy.' })[code] || (res && res.statusCode === 429 ? 'Waalaxy limitó las llamadas (429): reintenta más tarde.' : 'Waalaxy no aceptó el alta.');\n    state = 'error'; next = 'Revisar el error de Waalaxy y reintentar'; note = 'LINKEDIN · error al insertar en Waalaxy: ' + hint + ' (' + String(code || (res && res.statusCode) || 'sin respuesta').slice(0, 60) + ').'; msg = hint;\n    events.push({ at: now, event: 'error_waalaxy', note: String(code || (res && res.statusCode) || '').slice(0, 80) });\n  } else if (importCode === 'success' || importCode === 'duplicated_prospect' || importCode === 'prospect_successfully_moved_to_another_list') {\n    ok = true;\n    const inCamp = Boolean(wx.campaign_id) && (campCode === 'success' || campCode === 'already_in_campaign');\n    state = inCamp ? 'en_campana' : 'en_lista';\n    next = inCamp ? 'Waalaxy enviará la invitación; registrar «conexión aceptada» o «respondió» cuando ocurra' : 'En lista de Waalaxy sin campaña: no se contactó a nadie';\n    note = 'LINKEDIN · ' + (inCamp ? 'alta en campaña de Waalaxy (la invitación de conexión la envía Waalaxy).' : 'agregado a la lista de Waalaxy SIN campaña (no se envió invitación ni mensaje).') + ' Persona: ' + wx.person + ' (' + wx.role + '). Resultado: ' + importCode + (campCode ? ' / campaña: ' + campCode : '') + '. Aprobado por ' + wx.by + '.';\n    msg = (importCode === 'duplicated_prospect' ? 'Ya existía en Waalaxy (duplicado, no se creó otro). ' : 'Insertado en Waalaxy. ') + (inCamp ? 'Quedó en campaña.' : 'Quedó solo en la lista (sin campaña).');\n    events.push({ at: now, event: inCamp ? 'alta_campana' : 'alta_lista', note: importCode + (campCode ? '/' + campCode : '') });\n  } else {\n    state = 'error'; next = 'Revisar el código de Waalaxy: ' + importCode; note = 'LINKEDIN · Waalaxy respondió «' + importCode + '»' + (item && item.message ? ': ' + String(item.message).slice(0, 120) : '') + '. No quedó en campaña.'; msg = 'Waalaxy respondió ' + importCode + '.';\n    events.push({ at: now, event: 'import_' + importCode, note: String(item && item.message || '').slice(0, 80) });\n  }\n  const li = { ...prev, url: wx.url, person: wx.person, role: wx.role, state, list_id: wx.list_id, campaign_id: wx.campaign_id || null, waalaxy_prospect_id: pid || prev.waalaxy_prospect_id || null, import_code: importCode, campaign_code: campCode, mode_at_import: wx.mode,\n    imported_at: ok ? now : prev.imported_at || null, last_event: events[events.length - 1].event, last_event_at: now, next_action: next, approved_by: wx.by, approved_at: now, confirm: null, events };\n  const channel_state = { ...st, approved_channel: ok ? 'linkedin' : st.approved_channel || null, approved_at: ok ? now : st.approved_at || null, linkedin: li };\n  const body = { channel_state, updated_at: now };\n  const effects = [];\n  if (state === 'en_campana' && wx.mode === 'live') { body.last_contact_channel = 'linkedin'; body.last_contact_at = now; effects.push({ type: 'gateway_act', act: { type: 'mark_contacted', channel: 'linkedin', note, follow_up_days: 5, at: now } }); }\n  else if (state === 'en_campana') effects.push({ type: 'gateway_act', act: { type: 'mark_contacted', channel: 'linkedin', note: '[PRUEBA] ' + note, follow_up_days: 5, at: now } });\n  else effects.push({ type: 'gateway_act', act: { type: 'add_note', note } });\n  return { writes: [{ method: 'PATCH', path: 'prospect_candidates?id=eq.' + cand.id, body }], effects, state, ok, message: msg, import_code: importCode, campaign_code: campCode, waalaxy_prospect_id: pid };\n}\n\nfunction findCandidate(cands, target) {\n  const t = String(target == null ? '' : target).trim();\n  if (!t) return { error: 'falta_target' };\n  const norm = (s) => liStrip(String(s || '')).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();\n  const list = Array.isArray(cands) ? cands : [];\n  let m = list.filter((c) => c.id === t);\n  if (!m.length) { const li = normLinkedInUrl(t); if (li) m = list.filter((c) => normLinkedInUrl(((c.canonical || {}).contact || {}).linkedin) === li); }\n  if (!m.length && /\\./.test(t) && !/\\s/.test(t)) { const d = t.toLowerCase().replace(/^https?:\\/\\//, '').replace(/^www\\./, '').replace(/\\/.*$/, ''); m = list.filter((c) => String(c.domain || '').toLowerCase() === d); }\n  if (!m.length) { const n = norm(t); m = list.filter((c) => norm(c.company_name) === n); if (!m.length && n.length >= 3) m = list.filter((c) => norm(c.company_name).includes(n)); }\n  if (m.length === 1) return { cand: m[0] };\n  if (!m.length) return { error: 'sin_coincidencia' };\n  return { error: 'ambiguo', options: m.slice(0, 6).map((c) => c.company_name) };\n}\n\nfunction isNamedPerson(name) {\n  const n = String(name == null ? '' : name).replace(/\\s+/g, ' ').trim();\n  if (n.length < 5) return false;\n  if (/no encontrad|desconocid|\\bequipo\\b|contacto|atenci[oó]n|soporte|ventas|comercial|administraci|servicio|capacitaci|info\\b|\\binc\\b|ltda|\\bspa\\b/i.test(liStrip(n))) return false;\n  const words = n.split(' ').filter((w) => /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ.'-]{2,}$/.test(w));\n  return words.length >= 2;\n}\n\nfunction isReliableRole(role) {\n  const r = String(role == null ? '' : role).trim();\n  return r.length >= 3 && !/no encontrad|inferencia|probable|posible|\\?/i.test(r);\n}\n\nfunction liConfirmHash(parts) { let h = 0x811c9dc5; const s = parts.join('\\u0001'); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16).padStart(8, '0'); }\n\nfunction liLabel(state) { return ({ recomendado: 'Recomendado', aprobacion_pendiente: 'Pendiente de aprobación', en_lista: 'En lista (sin contactar)', en_campana: 'En campaña (conexión)', conexion: 'Conexión aceptada', mensaje: 'Mensaje enviado', followup: 'Follow-up enviado', respondio: 'Respondió', rechazo: 'Rechazó', detenido: 'Detenido', error: 'Error' })[state] || String(state || '—'); }\n\nfunction liState(cand) { const s = (cand && cand.channel_state) || {}; return s.linkedin || null; }\n\nfunction liStrip(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, ''); }\n\nfunction linkedinOverview(cands, nowMs) {\n  const list = Array.isArray(cands) ? cands : [];\n  const counts = { pendiente: 0, en_lista: 0, en_campana: 0, conexion: 0, mensaje: 0, followup: 0, respondio: 0, rechazo: 0, error: 0 };\n  const rows = [];\n  let ready = 0;\n  list.forEach((c) => {\n    const v = linkedinView(c);\n    const s = v.state;\n    if (s === 'aprobacion_pendiente') counts.pendiente++;\n    else if (counts[s] != null) counts[s]++;\n    if (!s && v.recommended === 'linkedin') ready++;\n    if (s || v.recommended === 'linkedin') rows.push(v);\n  });\n  rows.sort((a, b) => (Date.parse(b.last_event_at || 0) || 0) - (Date.parse(a.last_event_at || 0) || 0) || (b.score || 0) - (a.score || 0));\n  return { counts, ready_for_linkedin: ready, rows: rows.slice(0, 12), total: rows.length };\n}\n\nfunction linkedinView(cand) {\n  const st = (cand && cand.channel_state) || {};\n  const rec = st.recommended || null;\n  const li = st.linkedin || null;\n  return { id: cand.id, company: cand.company_name, score: cand.priority_score, band: cand.band, recommended: rec ? rec.channel : null, reason: rec ? rec.reason : null, confidence: rec ? rec.confidence : null,\n    approved_channel: st.approved_channel || null, state: li ? li.state : null, state_label: li ? liLabel(li.state) : null, person: li ? li.person : (rec ? rec.person : null), role: li ? li.role : (rec ? rec.role : null),\n    url: li ? li.url : (rec ? rec.linkedin_url : null), list_id: li ? li.list_id : null, campaign_id: li ? li.campaign_id : null, last_event: li ? li.last_event : null, last_event_at: li ? li.last_event_at : null, next_action: li ? li.next_action : null,\n    reply: li && li.reply ? li.reply : null, import_code: li ? li.import_code : null, campaign_code: li ? li.campaign_code : null };\n}\n\nfunction normLinkedInUrl(u) {\n  const raw = String(u == null ? '' : u).trim();\n  if (!raw) return null;\n  const m = raw.match(/^(?:https?:\\/\\/)?(?:[a-z]{2,3}\\.|www\\.)?linkedin\\.com\\/in\\/([A-Za-z0-9%_\\-.]{3,100})\\/?(?:[?#].*)?$/i);\n  if (!m) return null;\n  const slug = m[1].replace(/\\/+$/, '');\n  if (/^(company|school|sales|pub|feed|jobs)$/i.test(slug)) return null;\n  return 'https://www.linkedin.com/in/' + slug.toLowerCase();\n}\n\nfunction planLinkedinApprove(req, ctx) {\n  const nowMs = ctx.now, now = new Date(nowMs).toISOString();\n  const cand = ctx.candidate, cfg = ctx.config || {};\n  const fail = (error, message, status) => ({ response: { ok: false, status: status || 'error', error, message, executed: false, safety: { linkedin_invites_sent: 0 } }, writes: [], effects: [] });\n  if (!cand) return fail('sin_candidato', 'No encontré ese prospecto.');\n  if (cand.status === 'discarded') return fail('descartado', 'El prospecto está descartado.');\n  const mode = cfg.linkedin_mode || 'off';\n  const st = cand.channel_state || {};\n  const prev = st.linkedin || null;\n  if (prev && ['en_lista', 'en_campana', 'conexion', 'mensaje', 'followup', 'respondio'].includes(prev.state)) return fail('ya_en_linkedin', 'Ese prospecto ya está en LinkedIn (' + liLabel(prev.state) + '). No se vuelve a insertar.', 'already_done');\n  if (ctx.emailActive) return fail('canal_email_activo', 'Ya hay un correo aprobado, en envío o enviado a este prospecto: no se contacta por LinkedIn al mismo tiempo (decisión explícita futura).', 'channel_conflict');\n  const rec = recommendChannel(cand, { suppressedEmails: ctx.suppressedEmails });\n  const c = (cand.canonical && cand.canonical.contact) || {};\n  const url = normLinkedInUrl(c.linkedin || c.linkedin_url);\n  if (!rec.linkedin_ready) return fail('linkedin_no_listo', 'Todavía no hay datos suficientes para LinkedIn: falta ' + (rec.missing.join(', ') || 'un perfil verificable') + '.', 'not_ready');\n  const testMode = mode === 'test';\n  const listId = testMode ? cfg.linkedin_test_list_id : cfg.linkedin_list_id;\n  const campaignId = testMode ? null : (cfg.linkedin_campaign_id || null);\n  if (testMode && !(cfg.linkedin_test_allowlist || []).includes(url)) return fail('fuera_de_allowlist', 'Modo test: solo se pueden insertar los perfiles de la lista blanca de prueba; este no está.', 'not_allowlisted');\n  const person = String(c.name).trim(), role = String(c.role || c.job_title).trim();\n  const body = { prospects: [{ url, customProfile: { ...(splitName(person).first ? { firstName: splitName(person).first } : {}), ...(splitName(person).last ? { lastName: splitName(person).last } : {}), occupation: role.slice(0, 120), company: { name: String(cand.company_name).slice(0, 120), ...(cand.website ? { website: cand.website } : {}) } }, customVariables: [{ label: 'Atacama_ref', value: String(cand.id) }] }],\n    ...(listId ? { prospectListId: listId } : {}), ...(campaignId ? { campaignId } : {}), canCreateDuplicates: false, moveDuplicatesToOtherList: false, origin: { name: 'n8n' } };\n  const hash = liConfirmHash([url, person, role, listId || '', campaignId || '', mode]);\n  const summary = { company: cand.company_name, person, role, linkedin_url: url, list_id: listId || null, campaign_id: campaignId, mode, will_contact: Boolean(campaignId), what_happens: campaignId ? 'Se agrega a la lista y se inscribe en la campaña de Waalaxy: Waalaxy enviará la invitación de conexión según su configuración.' : 'Solo se agrega a la lista de Waalaxy (sin campaña): NO se envía ninguna invitación ni mensaje.' };\n  const code = String(req.confirmation_code || '').trim();\n  if (!code) {\n    if (mode === 'off') return { response: { ok: false, status: 'mode_off', error: 'linkedin_apagado', executed: false, safety: { linkedin_invites_sent: 0 }, summary, message: 'LinkedIn está APAGADO (linkedin_mode=off): puedo mostrarte qué se haría, pero no se inserta nada hasta que Christian lo encienda.' }, writes: [], effects: [] };\n    if (!listId) return fail('sin_lista', 'No hay lista de Waalaxy configurada para el modo ' + mode + '.', 'not_configured');\n    const rnd = ctx.rnd || Math.random;\n    const confirmCode = 'LI-' + (100000 + Math.floor(rnd() * 900000));\n    const exp = new Date(nowMs + 30 * 60000).toISOString();\n    const patch = { ...st, linkedin: { ...(prev || {}), url, person, role, state: 'aprobacion_pendiente', confirm: { code: confirmCode, hash, expires_at: exp }, last_event: 'aprobacion_solicitada', last_event_at: now, next_action: 'Christian confirma el alta en Waalaxy' } };\n    return { response: { ok: false, status: 'confirmation_required', confirmation_code: confirmCode, expires_at: exp, executed: false, safety: { linkedin_invites_sent: 0 }, summary, message: 'Falta la confirmación de Christian. Muéstrale EXACTAMENTE este alta (persona, cargo, perfil, lista y campaña) y pídele que confirme. Si confirma, vuelve a llamar con confirmation_code y sus palabras en christian_order.' },\n      writes: [{ method: 'PATCH', path: 'prospect_candidates?id=eq.' + cand.id, body: { channel_state: patch, updated_at: now } }], effects: [] };\n  }\n  const conf = prev && prev.confirm;\n  if (!conf || conf.code !== code) return fail('codigo_invalido', 'El código no corresponde a este alta. Pide uno nuevo (llama sin código).', 'invalid_code');\n  if (Date.parse(conf.expires_at) < nowMs) return fail('codigo_vencido', 'El código venció (30 min). Pide uno nuevo y confirma de nuevo.', 'expired_code');\n  if (conf.hash !== hash) return fail('contenido_cambio', 'Los datos cambiaron después de emitir el código: Christian debe confirmar la versión actual.', 'content_changed');\n  const order = String(req.order_text || '').trim();\n  if (order.length < 4) return fail('falta_orden', 'Falta christian_order: las palabras exactas con las que Christian confirmó el alta.', 'needs_explicit_order');\n  if (mode === 'off') return fail('linkedin_apagado', 'LinkedIn está APAGADO: no se inserta nada.', 'mode_off');\n  if (mode === 'live' && Number(ctx.importedToday || 0) >= Number(cfg.linkedin_daily_cap || 0)) return fail('tope_diario', 'Se alcanzó el tope diario de altas a LinkedIn (' + cfg.linkedin_daily_cap + '). Mañana.', 'daily_cap');\n  return { response: { ok: true, status: 'approved_pending_import', executed: false, safety: { linkedin_invites_sent: 0 }, summary, message: 'Aprobado: se inserta en Waalaxy ahora.' }, writes: [], effects: [],\n    waalaxy: { body, order_text: order.slice(0, 400), by: req.by || 'Christian vía Hermes', url, person, role, list_id: listId, campaign_id: campaignId, mode } };\n}\n\nfunction planLinkedinEvent(req, ctx) {\n  const nowMs = ctx.now, now = new Date(nowMs).toISOString();\n  const cand = ctx.candidate;\n  const fail = (error, message) => ({ response: { ok: false, status: 'error', error, message }, writes: [], effects: [] });\n  if (!cand) return fail('sin_candidato', 'No encontré ese prospecto.');\n  const st = cand.channel_state || {};\n  const prev = st.linkedin;\n  if (!prev || !['en_lista', 'en_campana', 'conexion', 'mensaje', 'followup', 'respondio', 'rechazo', 'detenido', 'error'].includes(prev.state)) return fail('no_esta_en_linkedin', 'Ese prospecto no fue dado de alta en LinkedIn por Atacama OS.');\n  const ev = String(req.event || '').toLowerCase();\n  const map = { conexion_aceptada: ['conexion', 'Conexión aceptada'], mensaje_enviado: ['mensaje', 'Mensaje enviado por la secuencia'], followup_enviado: ['followup', 'Follow-up enviado por la secuencia'], respondio: ['respondio', 'Respondió'], rechazo: ['rechazo', 'Rechazó / no le interesa'], detener: ['detenido', 'Secuencia detenida'], nota: [prev.state, 'Nota'] };\n  if (!map[ev]) return fail('evento_invalido', 'Evento inválido. Usa: ' + Object.keys(map).join(', ') + '.');\n  const text = String(req.note || req.text || '').trim().slice(0, 600);\n  if (ev === 'respondio' && text.length < 2) return fail('falta_texto', 'Para registrar una respuesta indica qué dijo la persona (note).');\n  const order = ['en_lista', 'en_campana', 'conexion', 'mensaje', 'followup', 'respondio'];\n  const newState = map[ev][0];\n  if (['conexion', 'mensaje', 'followup'].includes(newState) && order.indexOf(prev.state) > order.indexOf(newState) && prev.state !== 'error') return fail('retroceso', 'El prospecto ya está en «' + liLabel(prev.state) + '»: no se retrocede de estado.');\n  const events = (prev.events || []).slice(-19); events.push({ at: now, event: ev, note: text.slice(0, 120) });\n  const li = { ...prev, state: newState, last_event: ev, last_event_at: now, events,\n    next_action: newState === 'respondio' ? 'Revisar la respuesta y decidir el siguiente paso (Diagnóstico)' : newState === 'rechazo' || newState === 'detenido' ? 'Ninguna: no volver a contactar por LinkedIn' : newState === 'conexion' ? 'Esperar el mensaje de la secuencia' : newState === 'mensaje' ? 'Esperar respuesta / follow-up de la secuencia' : newState === 'followup' ? 'Esperar respuesta; la secuencia termina sola' : prev.next_action,\n    ...(newState === 'respondio' ? { reply: { text, at: now } } : {}), ...(ev === 'nota' ? { state: prev.state } : {}) };\n  const body = { channel_state: { ...st, linkedin: li }, updated_at: now };\n  const effects = [];\n  const co = cand.company_name;\n  if (newState === 'respondio') { body.status = 'contacted'; body.ghl_stage = 'respondio'; body.last_contact_channel = 'linkedin'; body.last_contact_at = now; body.next_action_at = null; effects.push({ type: 'gateway_act', act: { type: 'move_stage', stage: 'respondio', note: 'RESPUESTA por LinkedIn de ' + co + ' (' + (prev.person || '') + '): «' + text.slice(0, 500) + '». Se detienen los seguimientos de correo y de LinkedIn.' } }); }\n  else if (newState === 'rechazo') { body.next_action_at = null; effects.push({ type: 'gateway_act', act: { type: 'move_stage', stage: 'respondio', note: 'RESPUESTA NEGATIVA por LinkedIn de ' + co + ': «' + text.slice(0, 300) + '». Seguimientos detenidos; decide si pasar a Perdida.' } }); }\n  else if (newState === 'detenido') { body.next_action_at = null; effects.push({ type: 'gateway_act', act: { type: 'add_note', note: 'LINKEDIN · secuencia detenida. ' + text } }); }\n  else effects.push({ type: 'gateway_act', act: { type: 'add_note', note: 'LINKEDIN · ' + map[ev][1] + (text ? ': ' + text : '') + '.' } });\n  const stop = ['respondio', 'rechazo', 'detenido'].includes(newState);\n  return { response: { ok: true, status: 'event_logged', company: co, state: li.state, state_label: liLabel(li.state), stop_followups: stop, message: 'Registrado en ' + co + ': ' + map[ev][1] + '.' + (stop ? ' Se detienen los seguimientos.' : '') }, writes: [{ method: 'PATCH', path: 'prospect_candidates?id=eq.' + cand.id, body }], effects, stop_email_followups: stop };\n}\n\nfunction planRecommend(req, ctx) {\n  const now = new Date(ctx.now).toISOString();\n  const cand = ctx.candidate;\n  if (!cand) return { response: { ok: false, status: 'error', error: 'sin_candidato', message: 'No encontré ese prospecto.' }, writes: [], effects: [] };\n  const rec = recommendChannel(cand, { suppressedEmails: ctx.suppressedEmails });\n  const st = cand.channel_state || {};\n  const nextRec = { channel: rec.channel, confidence: rec.confidence, reason: rec.reason, missing: rec.missing, email_ready: rec.email_ready, linkedin_ready: rec.linkedin_ready, linkedin_url: rec.linkedin_url, person: rec.person, role: rec.role, at: now };\n  const patch = { ...st, recommended: nextRec };\n  return { response: { ok: true, status: 'recommended', company: cand.company_name, recommendation: nextRec, current_state: st.linkedin ? st.linkedin.state : null, message: 'Canal recomendado para ' + cand.company_name + ': ' + (rec.channel === 'none' ? 'ninguno todavía (investigar más)' : rec.channel) + '. ' + rec.reason },\n    writes: [{ method: 'PATCH', path: 'prospect_candidates?id=eq.' + cand.id, body: { channel_state: patch, updated_at: now } }], effects: [] };\n}\n\nfunction recommendChannel(cand, ctx) {\n  const c = (cand && cand.canonical && cand.canonical.contact) || (cand && cand.contact) || {};\n  const sup = (ctx && ctx.suppressedEmails) || [];\n  const email = String(c.email || '').trim().toLowerCase();\n  const emailOk = /^[^\\s@<>()\",;:]+@[^\\s@<>()\",;:]+\\.[a-z]{2,}$/i.test(email) && c.public !== false && !sup.includes(email);\n  const generic = /^(info|contacto|contact|ventas|comercial|hola|hello|admin|administracion|reservas|atencion|soporte|cotizaciones|cotizacion|sales|mail|oficina|clientes|secretaria|recepcion)@/i.test(liStrip(email));\n  const li = normLinkedInUrl(c.linkedin || c.linkedin_url);\n  const named = isNamedPerson(c.name);\n  const role = isReliableRole(c.role || c.job_title);\n  const evid = Boolean(String(c.linkedin_source_url || '').trim());\n  const liReady = Boolean(li) && named && role && evid;\n  const missing = [];\n  if (!li) missing.push('URL de LinkedIn de una persona');\n  if (!named) missing.push('nombre y apellido de la persona');\n  if (!role) missing.push('cargo confiable');\n  if (li && !evid) missing.push('evidencia pública de dónde salió el perfil');\n  const out = (channel, confidence, reason, extra) => ({ channel, confidence, reason, missing: extra || [], email_ready: emailOk, linkedin_ready: liReady, linkedin_url: li, person: named ? String(c.name).trim() : null, role: role ? String(c.role || c.job_title).trim() : null });\n  if (cand && (cand.status === 'discarded')) return out('none', 'alta', 'El prospecto está descartado.');\n  const last = cand && cand.last_contact_channel;\n  if (last && ['email', 'linkedin'].includes(last)) return out(last, 'alta', 'Ya se contactó por ' + last + ': no se abre un segundo canal sin una decisión explícita.');\n  if (liReady && (!emailOk || generic)) return out('linkedin', emailOk ? 'media' : 'alta', 'Hay una persona identificada (' + String(c.name).trim() + ', ' + String(c.role || c.job_title).trim() + ') con perfil de LinkedIn verificable' + (emailOk ? ' y el único correo público es genérico (' + email + '): una persona con nombre tiene más probabilidad de respuesta.' : ' y no hay correo público utilizable.'));\n  if (emailOk) return out('email', generic ? 'media' : 'alta', generic ? 'Correo público de la empresa (' + email + ', genérico): es el único canal confiable hoy' + (missing.length ? '; para LinkedIn falta ' + missing.join(', ') + '.' : '.') : 'Correo publicado por la empresa y utilizable (' + email + ').');\n  if (liReady) return out('linkedin', 'media', 'Sin correo utilizable; hay persona con perfil de LinkedIn verificable.');\n  return out('none', 'baja', 'Sin canal confiable: investigar más (' + (missing.join(', ') || 'falta un contacto público') + ').', missing);\n}\n\nfunction splitName(name) {\n  const p = String(name || '').replace(/\\s+/g, ' ').trim().split(' ');\n  return { first: p[0] || '', last: p.slice(1).join(' ') };\n}\n\nconst c = $('Compute').first().json;\nconst out = c.out;\nlet resp = { ...c.resp };\nlet writes = out.writes.slice(), effects = out.effects.slice();\nif (out.waalaxy && !out.waalaxy.skip) {\n  const res = $('Waalaxy Import').first().json || {};\n  const r = applyWaalaxyResult({ ...c.cand, channel_state: c.cand.channel_state }, out.waalaxy.wx, { statusCode: res.statusCode, body: res.body }, Date.now());\n  writes = r.writes; effects = r.effects;\n  resp = { ...resp, ok: r.ok, status: r.ok ? 'imported' : 'import_error', executed: true, state: r.state, state_label: liLabel(r.state), message: r.message, import_code: r.import_code, campaign_code: r.campaign_code, waalaxy_prospect_id: r.waalaxy_prospect_id };\n}\nconst audit = out.audit ? [{ method: 'POST', path: 'operator_audit_log', body: { request_id: 'li-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7), actor: c.by, tool: out.audit.tool, level: out.audit.level, entity: c.cand ? { candidate_id: c.cand.id, company: c.cand.company_name } : {}, params: { action: c.action }, status: resp.ok ? 'ok' : 'error', result_summary: String(resp.message || resp.status || '').slice(0, 300) }, prefer: 'return=minimal' }] : [];\nconst gw = effects.filter((e) => e.type === 'gateway_act' && c.cand).map((e, i) => ({ skip: false, body: { action: 'act', request_id: 'li-' + String(c.cand.id).slice(0, 8) + '-' + e.act.type + '-' + Date.now().toString(36) + '-' + i, source: { type: 'linkedin-engine', name: 'Atacama OS · LinkedIn', reference: c.cand.id }, act: e.act, targets: [c.cand.canonical], options: { by: 'Atacama OS' } } }));\nreturn [{ json: { resp, writes: writes.concat(audit), gw: gw.length ? gw : [{ skip: true, body: {} }] } }];"
+      }
+    },
+    {
+      "id": "65ce0f0b-6206-4b73-8a1a-b1b4f69df8f6",
+      "name": "Expand Writes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2600,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const w = $('Finish').first().json.writes || [];\nif (!w.length) return [{ json: { skip: true } }];\nreturn w.map((x) => ({ json: { skip: false, ...x } }));"
+      }
+    },
+    {
+      "id": "631502e7-c0b6-43d4-82df-e44daa2d71ae",
+      "name": "Apply Writes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2800,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true,
+      "alwaysOutputData": true,
+      "parameters": {
+        "method": "={{ $json.method || \"POST\" }}",
+        "url": "={{ $json.skip ? \"https://localhost.invalid/\" : \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/\" + $json.path }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "={{ $json.prefer || \"return=minimal\" }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body || {}) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "3e898de3-9077-4512-b9bc-2a3696f425e0",
+      "name": "Expand Gateway",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3000,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return ($('Finish').first().json.gw || [{ skip: true, body: {} }]).map((x) => ({ json: x }));"
+      }
+    },
+    {
+      "id": "38323d9b-ae79-4ff9-a81e-d3ab971d7725",
+      "name": "Gateway Act",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3200,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "lUGhlXVaQBEiEh5S",
+          "name": "Atacama Labs - Ingest Key"
+        }
+      },
+      "continueOnFail": true,
+      "alwaysOutputData": true,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.skip ? \"https://localhost.invalid/\" : \"https://n8n.srv1650725.hstgr.cloud/webhook/atacama-prospect-gateway\" }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body || {}) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 60000
+        }
+      }
+    },
+    {
+      "id": "2e6b45df-79b6-469c-afe0-9161528dc546",
+      "name": "Respond",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3400,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const f = $('Finish').first().json;\nconst bad = $('Apply Writes').all().map((i) => i.json).filter((j) => (j.statusCode || 0) >= 300);\nconst gwBad = $('Gateway Act').all().map((i) => i.json).filter((j) => (j.statusCode || 0) >= 300);\nconst r = { ...f.resp };\nif (bad.length) { r.persist_error = 'Supabase HTTP ' + bad[0].statusCode + ': ' + JSON.stringify(bad[0].body || {}).slice(0, 160); }\nif (gwBad.length) { r.ghl_error = 'Gateway HTTP ' + gwBad[0].statusCode + ': ' + JSON.stringify(gwBad[0].body || {}).slice(0, 160); }\nr.safety = { messages_sent: 0, note: 'Waalaxy ejecuta la secuencia; Atacama OS solo inserta prospectos aprobados y registra el estado' };\nreturn [{ json: r }];"
+      }
+    }
+  ],
+  "connections": {
+    "LI Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse": {
+      "main": [
+        [
+          {
+            "node": "Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid?": {
+      "main": [
+        [
+          {
+            "node": "SB Config",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SB Config": {
+      "main": [
+        [
+          {
+            "node": "SB Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SB Candidates": {
+      "main": [
+        [
+          {
+            "node": "SB Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SB Messages": {
+      "main": [
+        [
+          {
+            "node": "SB Suppression",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SB Suppression": {
+      "main": [
+        [
+          {
+            "node": "Waalaxy Lists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Waalaxy Lists": {
+      "main": [
+        [
+          {
+            "node": "Waalaxy Campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Waalaxy Campaigns": {
+      "main": [
+        [
+          {
+            "node": "Waalaxy Test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Waalaxy Test": {
+      "main": [
+        [
+          {
+            "node": "Compute",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute": {
+      "main": [
+        [
+          {
+            "node": "Waalaxy Import",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Waalaxy Import": {
+      "main": [
+        [
+          {
+            "node": "Finish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finish": {
+      "main": [
+        [
+          {
+            "node": "Expand Writes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand Writes": {
+      "main": [
+        [
+          {
+            "node": "Apply Writes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Writes": {
+      "main": [
+        [
+          {
+            "node": "Expand Gateway",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand Gateway": {
+      "main": [
+        [
+          {
+            "node": "Gateway Act",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gateway Act": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

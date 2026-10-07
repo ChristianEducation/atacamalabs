@@ -1,6 +1,6 @@
 ---
 name: atacama-ops
-description: "Operar y consultar Atacama OS (GHL, prospectos, correo, seguimiento, contenido, salud) desde el chat de Christian. Úsala para: qué tengo que hacer hoy, quién respondió, seguimientos pendientes, oportunidades quietas, prospectos nuevos del radar, publicaciones pendientes y su rendimiento, ¿falló algo?, ¿está todo funcionando?, dame solo lo urgente, el Daily, y para analizar/importar prospectos."
+description: "Operar y consultar Atacama OS (GHL, prospectos, correo y LinkedIn/Waalaxy, seguimiento, contenido, salud) desde el chat de Christian. Úsala para: qué tengo que hacer hoy, quién respondió, seguimientos pendientes, oportunidades quietas, prospectos nuevos del radar, publicaciones pendientes y su rendimiento, ¿falló algo?, ¿está todo funcionando?, dame solo lo urgente, el Daily, y para analizar/importar prospectos."
 ---
 
 # Atacama Ops — Christian opera Atacama OS por aquí
@@ -72,6 +72,22 @@ Cada mañana (08:30 Chile) llega solo el «ATACAMA DAILY» y, durante el día, �
 | «¿Está todo funcionando? / ¿falló algo hoy?» | `get_health` (con `deep=true` si pide revisar Gmail a fondo) |
 
 Reglas de estas consultas: (1) responde con lo que dice `text`, resumido y con nombres; si la herramienta informa `missing` o «no pude leer X», dilo — **no lo conviertas en «no hay nada»**; (2) **no inventes impresiones ni alcance** de las publicaciones: GHL solo entrega me gusta, comentarios y compartidos, y con pocas piezas es tentativo; no compares Instagram con LinkedIn; (3) estas herramientas **no publican, no aprueban, no envían ni mueven nada**: si Christian quiere actuar sobre algo (aprobar una publicación, un correo, un seguimiento), usa el flujo que corresponde (correo → `approve_outreach`; las publicaciones se aprueban en GHL Social Planner con **Approve**); (4) el Prospect Radar y el Content Radar corren solos con su propia compuerta de costo; tú no los activas ni los reanudas.
+
+## LinkedIn (Waalaxy como ejecutor)
+
+El canal LinkedIn usa Waalaxy SOLO para ejecutar la secuencia; la verdad comercial sigue en GHL. **Limitación real:** la API de Waalaxy solo permite dar de alta prospectos (lista y campaña) y leer listas/campañas; **no avisa** si la invitación se envió, si la aceptaron, si se mandó el mensaje ni si respondieron. Por eso esos eventos los registra Christian a través de ti.
+
+| Christian dice | Herramienta |
+|---|---|
+| «¿Quién está listo para LinkedIn?» / «¿a quién contacto y por qué canal?» | `linkedin_ready` |
+| «¿Cómo va X en LinkedIn?» / «estado de X» | `linkedin_status` |
+| «¿Por dónde conviene contactar a X?» | `recommend_channel` |
+| «Agrégalo a LinkedIn» / «aprueba el alta de X» | `approve_linkedin` (nivel 3, dos pasos con código) |
+| «X aceptó la conexión» / «le llegó el mensaje» / «X respondió: …» / «dijo que no» / «detén la secuencia» | `log_linkedin_event` (conexion_aceptada · mensaje_enviado · followup_enviado · respondio · rechazo · detener) |
+| «¿Qué respuestas de LinkedIn tengo pendientes?» | `linkedin_ready` (sección «En LinkedIn») y `get_today` |
+| «¿Qué listas/campañas hay en Waalaxy?» | `waalaxy_lists` · `linkedin_config` |
+
+Reglas: (1) Recomienda canal con `linkedin_ready`/`recommend_channel` y explica el motivo con sus palabras; LinkedIn solo si hay persona con nombre y apellido, cargo confiable y perfil verificable. (2) **Nunca** contactes por correo y por LinkedIn al mismo tiempo: la herramienta lo bloquea. (3) `approve_linkedin` funciona como `approve_outreach`: paso 1 sin código (muestra persona, cargo, perfil, lista, campaña y si habría contacto) → Christian confirma con sus palabras → paso 2 con `confirmation_code` y `christian_order`. Si el modo de LinkedIn es `off` dilo: no se inserta nada. (4) Una lista sin campaña **no contacta a nadie**. (5) Si Christian cuenta que alguien respondió, usa `log_linkedin_event` con el texto: mueve la oportunidad a Respondió y frena los seguimientos. No digas que Atacama OS «vio» la respuesta: la informó Christian. (6) No cambies el modo ni las listas desde Hermes.
 
 ## Reglas
 

@@ -49,7 +49,7 @@ const gatewayHttp = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.ht
 
 export const LIB = [...new Map(Object.values(oc).filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
 
-const CAND_SELECT = 'id,company_name,status,canonical,drafts,ghl_contact_id,ghl_opportunity_id,ghl_stage,domain,website,last_contact_at';
+const CAND_SELECT = 'id,company_name,status,canonical,drafts,ghl_contact_id,ghl_opportunity_id,ghl_stage,domain,website,last_contact_at,last_contact_channel,channel_state';
 const MSG_SELECT = '*';
 
 /** Expande writes[] en ítems para el ejecutor de Supabase (con un ítem «skip» si no hay nada, para no cortar el flujo). */

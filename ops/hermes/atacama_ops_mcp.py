@@ -352,3 +352,57 @@ def delete_record(what: str, confirmation_code: str = "", request_id: str = "") 
 
 if __name__ == "__main__":
     mcp.run()
+
+
+# ---------------------------------------------------------------- LinkedIn (Waalaxy como ejecutor) · Bloque 3
+def _li(body):
+    """Llama al workflow n8n 26 «LinkedIn Engine». Waalaxy solo recibe altas aprobadas; Atacama OS NO puede saber por API si una invitación se envió, se aceptó o hubo respuesta."""
+    try:
+        from atacama_common import post_linkedin
+        r = post_linkedin(body, timeout=100)
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "red", "message": "No pude consultar el canal LinkedIn de Atacama OS: %s" % type(ex).__name__}, ensure_ascii=False)
+    keep = {k: r.get(k) for k in ("ok", "status", "text", "message", "error", "company", "state", "state_label", "recommendation", "summary", "confirmation_code", "expires_at", "ready_for_linkedin", "email_ready", "needs_research", "in_linkedin", "counts", "mode", "config", "lists", "campaigns", "import_code", "campaign_code", "stop_followups", "next_action", "reply", "person", "role", "url", "options", "persist_error", "ghl_error") if k in r}
+    return json.dumps(keep, ensure_ascii=False)
+
+
+@mcp.tool()
+def linkedin_ready() -> str:
+    """«¿Quién está listo para LinkedIn?» / «¿a quién recomiendas contactar y por qué canal?»: separa los prospectos de Investigado en LinkedIn (persona con nombre, cargo y perfil verificable), correo e «investigar más» (con lo que falta), y lista los que ya están en LinkedIn. Solo lectura."""
+    return _li({"action": "list"})
+
+
+@mcp.tool()
+def linkedin_status(target: str) -> str:
+    """Estado de un prospecto en LinkedIn (persona, cargo, perfil, estado, próxima acción, respuesta) y el canal que se recomienda hoy. target = nombre, dominio, id o URL de LinkedIn. Solo lectura."""
+    return _li({"action": "status", "target": target})
+
+
+@mcp.tool()
+def recommend_channel(target: str) -> str:
+    """Calcula y guarda la recomendación de canal (email | linkedin | ninguno/investigar más) con el motivo y lo que falta. No contacta a nadie."""
+    return _li({"action": "recommend", "target": target})
+
+
+@mcp.tool()
+def approve_linkedin(target: str, confirmation_code: str = "", christian_order: str = "") -> str:
+    """NIVEL 3 — Aprueba el ALTA de un prospecto en Waalaxy (lista y, solo en modo live con campaña, la secuencia de LinkedIn). PASO 1: llama sin código → devuelve el alta EXACTA (persona, cargo, perfil, lista, campaña y si habría contacto) y un confirmation_code: muéstraselo completo a Christian y espera su confirmación. PASO 2: SOLO si Christian confirma en su mensaje, vuelve a llamar con confirmation_code y christian_order = sus palabras exactas. Nunca inventes la orden ni reutilices un código viejo. Si el modo de LinkedIn está apagado dilo: no se inserta nada. No se contacta por LinkedIn a quien ya tiene un correo aprobado/enviado."""
+    return _li({"action": "approve", "target": target, "confirmation_code": confirmation_code, "order_text": christian_order, "by": "Christian vía Hermes"})
+
+
+@mcp.tool()
+def log_linkedin_event(target: str, event: str, note: str = "") -> str:
+    """Registra lo que Christian VE en Waalaxy/LinkedIn (la API de Waalaxy no avisa): event = conexion_aceptada | mensaje_enviado | followup_enviado | respondio | rechazo | detener | nota. «respondio» exige note con lo que dijo la persona: mueve la oportunidad a Respondió y detiene los seguimientos. No envía nada."""
+    return _li({"action": "event", "target": target, "event": event, "note": note})
+
+
+@mcp.tool()
+def linkedin_config() -> str:
+    """Modo del canal LinkedIn (off | test | live), lista/campaña configuradas y tope diario. Solo lectura; cambiar el modo es decisión de Christian y no se hace desde Hermes."""
+    return _li({"action": "config"})
+
+
+@mcp.tool()
+def waalaxy_lists() -> str:
+    """Listas y campañas (pausadas o en curso) que existen hoy en Waalaxy, para elegir destino. Solo lectura."""
+    return _li({"action": "lists"})

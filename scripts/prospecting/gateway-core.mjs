@@ -343,11 +343,17 @@ export function adaptExternalRecord(p) {
 }
 
 
+/** Perfil PERSONAL de LinkedIn en forma canónica (https://www.linkedin.com/in/<slug>) o null: descarta páginas de empresa, Sales Navigator y enlaces cortos. */
+export function normLinkedInProfile(u) {
+  const m = String(u == null ? '' : u).trim().match(/^(?:https?:\/\/)?(?:[a-z]{2,3}\.|www\.)?linkedin\.com\/in\/([A-Za-z0-9%_\-.]{3,100})\/?(?:[?#].*)?$/i);
+  return m && !/^(company|school|sales|pub|feed|jobs)$/i.test(m[1]) ? 'https://www.linkedin.com/in/' + m[1].toLowerCase() : null;
+}
 
 /**
  * Convierte un registro crudo (de cualquier parser, de otra IA o de Christian) en ProspectCandidate. Acepta información incompleta.
  * ctx = { source_type, source_name, source_reference, now }
  */
+
 export function toCandidate(raw, ctx) {
   const r = raw || {};
   const c0 = ctx || {};
@@ -370,7 +376,7 @@ export function toCandidate(raw, ctx) {
     website, industry: r.industry ? String(r.industry).trim() : null, location: r.location ? String(r.location).trim() : null,
     source_type: c0.source_type || r.source_type || 'unknown', source_name: c0.source_name || r.source_name || r.source || null, source_reference: c0.source_reference || r.source_reference || null,
     observed_signals: signals, facts, inferences, commercial_hypotheses: hyps, evidence_urls: evUrls,
-    contact: { name: cname ? String(cname).trim() : null, role: crole ? String(crole).trim() : (buyer || null), email: emails[0] || null, phone: phones[0] || null, whatsapp: wa || (r.whatsapp_declared ? null : null), linkedin: contactIn.linkedin || r.linkedin || null },
+    contact: { name: cname ? String(cname).trim() : null, role: crole ? String(crole).trim() : (buyer || null), email: emails[0] || null, phone: phones[0] || null, whatsapp: wa || (r.whatsapp_declared ? null : null), linkedin: normLinkedInProfile(contactIn.linkedin || contactIn.linkedin_url || r.linkedin || r.linkedin_url), linkedin_source_url: contactIn.linkedin_source_url ? String(contactIn.linkedin_source_url).trim().slice(0, 300) : null },
     extra_contacts: { emails: emails.slice(1), phones: phones.slice(1) },
     whatsapp_declared: Boolean(r.whatsapp_declared || wa),
     proposed_solution: String(r.proposed_solution || '').trim() || null, outreach_angle: String(r.outreach_angle || r.angle || '').trim() || null,
