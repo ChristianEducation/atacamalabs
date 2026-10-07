@@ -229,3 +229,7 @@ El ritmo real observado en 02b Signals (llamadas OpenClaw reales contra contenid
 - **18 Prospect Admit** (`n8n/atacama-labs-18-prospect-admit.json`): admisión a GHL (contacto + oportunidad en *Investigado* + nota de revisión) y borrador en Supabase; solo score ≥ 80 con todos los gates. No envía nada. Lo llama 08 después de 03; también puede invocarse por webhook (`/webhook/atacama-prospect-admit`, `X-Atacama-Key`, `{ "account_ids": [...] }`) para reintentar.
 - Ambos se generan con `node n8n/build/prospect-flow.mjs` (JSON de producción, con ids reales). 08 se genera con `n8n/build/atacama-os-workflows.mjs` (JSON versionado en modo test con marcadores; ahora encadena 18). 09 queda desactivado (aprobaba antes de CRM); 04/05 antiguos sin uso.
 - Pruebas: `node scripts/prospecting/admit-core.test.mjs` y `node n8n/build/prospect-flow.test.mjs`.
+
+## Prospect Gateway (Bloque L, 7-oct-2026)
+- **19 Prospect Gateway** (`n8n/atacama-labs-19-prospect-gateway.json`, id `ZlYTYp9AVdCYPdwS`): puerta universal de prospectos (`POST /webhook/atacama-prospect-gateway`, `X-Atacama-Key`; acciones `analyze | import | prepare | act`; `request_id` idempotente). Generador: `node n8n/build/prospect-gateway.mjs` (el JSON versionado es el de producción; `MODE=test` genera la copia de pruebas con otro pack y ruta). Guía y contrato: `docs/PROSPECT-GATEWAY.md`.
+- Tests: `node scripts/prospecting/gateway-core.test.mjs` · `node scripts/prospecting/gateway-flow.test.mjs` · `GATEWAY_REAL_HTML=<ruta> node n8n/build/prospect-gateway.test.mjs`.
