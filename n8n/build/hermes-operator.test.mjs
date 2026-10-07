@@ -98,6 +98,8 @@ r = await run(body('do_not_contact', { target: 'Alfa Dental TEST', reason: 'pidi
 t('correo: do_not_contact exige orden explícita (nivel 2)', r.branch === 'refusal' && r.response.status === 'needs_explicit_order');
 r = await run(body('do_not_contact', { target: 'Alfa Dental TEST', reason: 'pidió no recibir más' }, { order_text: 'No le escribas nunca más a Alfa Dental' }), { rows: [ROW], gateway: { ok: true, results: [{ company: 'Alfa Dental TEST', executed: true }] }, engine: { ok: true, status: 'suppressed', message: 'x', suppressed_emails: ['dra@alfa-test.invalid'] } });
 t('correo: do_not_contact con orden → descarta por el Gateway Y suprime en el motor', r.b.gw.body.act.type === 'discard' && r.b.eng.body.action === 'suppress' && /NO CONTACTAR/.test(r.response.message));
+r = await run(body('get_followups', {}), { engine: { ok: true, status: 'executed', count: 1, items: [{ company: 'A', state: 'active', replied: false }], message: '1 prospecto(s) en seguimiento' } });
+t('correo: get_followups consulta el motor (action followups, filtro due por defecto) sin resolver prospecto', r.b.eng.body.action === 'followups' && r.b.eng.body.candidate_id === undefined && r.response.ok && r.response.data.count === 1);
 r = await run(body('send_email', { target: 'x' }));
 t('correo: send_email directo sigue bloqueado (usa save_draft + approve_outreach)', r.response.status === 'confirmation_required' && r.response.executed === false);
 r = await run(body('approve_outreach', { target: 'Alfa Dental TEST' }), { rows: [ROW], engine: null });

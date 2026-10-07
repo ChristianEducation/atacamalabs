@@ -223,6 +223,126 @@ ok('planSuppress: suprime todos los correos, descarta y cancela lo pendiente', (
   assert.ok(r.writes.some((w) => w.path.startsWith('outreach_suppression') && w.body.reason === 'do_not_contact')); assert.ok(r.writes.some((w) => w.body.status === 'cancelled')); assert.ok(r.writes.some((w) => w.path.startsWith('prospect_candidates') && w.body.status === 'discarded'));
   assert.equal(oc.planSuppress({}, { now: WED, candidate: null }).response.status, 'not_found');
 });
+// ---------- follow-up comercial
+const T0 = Date.parse('2026-10-07T15:00:00Z');                 // primer envío: miércoles 12:00 Chile
+const GH = { base: 'https://ghl.test', locationId: 'LOC', userId: 'USR' };
+const initialMsg = (o) => ({ id: 'i-1', candidate_id: 'c-1', company_name: 'Clínica Rica', kind: 'initial', direction: 'outbound', status: 'sent', to_email: 'dra@clinicarica.cl', subject: 'Una idea para Clínica Rica', body: BODY, sent_at: new Date(T0).toISOString(), gmail_thread_id: 'T1', rfc_message_id: '<r1@x>', metadata: {}, created_at: new Date(T0).toISOString(), ...(o || {}) });
+const fctx = (nowMs, o) => {
+  const init = (o && o.initial) || initialMsg();
+  const others = (o && o.others) || [];
+  let n = 0;
+  return { now: nowMs, config: { ...CFG, from_email: 'x@atacamalabs.cl' }, initials: [init], byCandidate: { 'c-1': [init, ...others] }, candidates: { 'c-1': (o && o.cand) || cand() }, suppression: (o && o.suppression) || [], closed: (o && o.closed) || {}, contactTasks: (o && o.contactTasks) || {}, ghl: GH, newId: () => 'new-' + (++n) };
+};
+ok('followupSlots: +3 y +7 días hábiles desde el primer envío (10:00 Chile)', () => {
+  const s = oc.followupSlots(T0, CFG);
+  assert.equal(new Date(s[0].due).toISOString(), '2026-10-12T13:00:00.000Z'); assert.equal(new Date(s[1].due).toISOString(), '2026-10-16T13:00:00.000Z');
+  assert.equal(s[0].kind, 'followup_1'); assert.equal(s[1].kind, 'followup_2');
+  const fri = oc.followupSlots(Date.parse('2026-10-09T20:00:00Z'), CFG);   // viernes tarde: +3 háb = miércoles
+  assert.equal(new Date(fri[0].due).toISOString().slice(0, 10), '2026-10-14');
+});
+ok('antes de la fecha: crea las 2 tareas (+3 y +7), registra next_action y NO crea borradores', () => {
+  const p = oc.planFollowups(fctx(T0 + 3600000));
+  assert.equal(p.ghl_ops.length, 2); assert.deepEqual(p.ghl_ops.map((o) => o.slot), ['f1', 'f2']);
+  assert.equal(p.ghl_ops[0].url, 'https://ghl.test/contacts/G1/tasks'); assert.equal(p.ghl_ops[0].body.title, 'Seguimiento 1 · Clínica Rica'); assert.equal(p.ghl_ops[0].body.dueDate, '2026-10-12T13:00:00.000Z'); assert.equal(p.ghl_ops[1].body.dueDate, '2026-10-16T13:00:00.000Z'); assert.equal(p.ghl_ops[0].body.assignedTo, 'USR');
+  assert.ok(!p.writes.some((w) => w.path === 'outreach_messages' && w.method === 'POST'));
+  assert.ok(p.writes.some((w) => w.path.startsWith('prospect_candidates') && w.body.next_action_at === '2026-10-12T13:00:00.000Z'));
+  assert.equal(p.meta_updates['i-1'].followup_state, 'active');
+});
+ok('sin duplicados: reutiliza las tareas que ya existen en el contacto y no recrea las ya registradas', () => {
+  const p = oc.planFollowups(fctx(T0 + 3600000, { contactTasks: { G1: [{ id: 't-a', title: 'Seguimiento 1 · Clínica Rica' }] } }));
+  assert.equal(p.ghl_ops.length, 1); assert.equal(p.ghl_ops[0].slot, 'f2'); assert.equal(p.meta_updates['i-1'].followup_tasks.f1.id, 't-a');
+  const done = oc.planFollowups(fctx(T0 + 3600000, { initial: initialMsg({ metadata: { followup_state: 'active', followup_tasks: { f1: { id: 'a' }, f2: { id: 'b' } } } }) }));
+  assert.equal(done.ghl_ops.length, 0);
+  assert.deepEqual(oc.followupsNeedingTaskCheck(fctx(T0)), [{ contact_id: 'G1', msg_id: 'i-1' }]);
+  assert.deepEqual(oc.followupsNeedingTaskCheck(fctx(T0, { initial: initialMsg({ metadata: { followup_tasks: {} } }) })), []);
+});
+ok('llegado el +3: crea UN borrador followup_1 (draft, nunca aprobado) y no lo repite', () => {
+  const now = Date.parse('2026-10-12T14:00:00Z');
+  const base = { initial: initialMsg({ metadata: { followup_state: 'active', followup_tasks: { f1: { id: 'a' }, f2: { id: 'b' } } } }) };
+  const p = oc.planFollowups(fctx(now, base));
+  const ins = p.writes.filter((w) => w.path === 'outreach_messages' && w.method === 'POST');
+  assert.equal(ins.length, 1); assert.equal(ins[0].body.kind, 'followup_1'); assert.equal(ins[0].body.status, 'draft'); assert.equal(ins[0].body.approved_at, null); assert.match(ins[0].body.subject, /^Re: /); assert.equal(ins[0].body.gmail_thread_id, 'T1');
+  const existing = { id: 'f-1', kind: 'followup_1', direction: 'outbound', status: 'draft', candidate_id: 'c-1' };
+  const again = oc.planFollowups(fctx(now, { ...base, others: [existing] }));
+  assert.equal(again.writes.filter((w) => w.path === 'outreach_messages' && w.method === 'POST').length, 0);
+  const cancelledOne = oc.planFollowups(fctx(now, { ...base, others: [{ ...existing, status: 'cancelled' }] }));
+  assert.equal(cancelledOne.writes.filter((w) => w.path === 'outreach_messages' && w.method === 'POST').length, 0);
+});
+ok('llegado el +7: prepara el followup_2; si el 1 sigue sin aprobar lo caduca; si está aprobado espera; después parar', () => {
+  const now = Date.parse('2026-10-16T14:00:00Z');
+  const meta = { followup_state: 'active', followup_tasks: { f1: { id: 'a' }, f2: { id: 'b' } } };
+  const f1sent = { id: 'f-1', kind: 'followup_1', direction: 'outbound', status: 'sent', candidate_id: 'c-1', to_email: 'dra@clinicarica.cl', subject: 'Re: x' };
+  let p = oc.planFollowups(fctx(now, { initial: initialMsg({ metadata: meta }), others: [f1sent] }));
+  assert.equal(p.writes.filter((w) => w.method === 'POST' && w.body.kind === 'followup_2').length, 1);
+  p = oc.planFollowups(fctx(now, { initial: initialMsg({ metadata: meta }), others: [{ ...f1sent, status: 'draft' }] }));
+  assert.ok(p.writes.some((w) => w.method === 'PATCH' && w.body.status === 'cancelled' && /caducó/.test(w.body.error))); assert.equal(p.writes.filter((w) => w.method === 'POST' && w.body.kind === 'followup_2').length, 1);
+  p = oc.planFollowups(fctx(now, { initial: initialMsg({ metadata: meta }), others: [{ ...f1sent, status: 'approved' }] }));
+  assert.equal(p.writes.filter((w) => w.method === 'POST').length, 0);
+  p = oc.planFollowups(fctx(now, { initial: initialMsg({ metadata: meta }), others: [f1sent, { ...f1sent, id: 'f-2', kind: 'followup_2', status: 'sent' }] }));
+  assert.equal(p.meta_updates['i-1'].followup_state, 'done'); assert.equal(p.writes.filter((w) => w.method === 'POST').length, 0);
+  const after = oc.planFollowups(fctx(now + 86400000 * 5, { initial: initialMsg({ metadata: { ...meta, followup_state: 'done' } }) }));
+  assert.equal(after.writes.length + after.ghl_ops.length, 0);
+});
+ok('se detiene si responde / rechaza / se da de baja / rebota / se descarta / Won-Lost / suprimido: cancela borradores y aprobados, borra tareas, no deja nada vivo', () => {
+  const now = Date.parse('2026-10-13T14:00:00Z');
+  const meta = { followup_state: 'active', followup_tasks: { f1: { id: 'tk1' }, f2: { id: 'tk2' } } };
+  const live = [{ id: 'f-1', kind: 'followup_1', direction: 'outbound', status: 'approved', candidate_id: 'c-1' }, { id: 'f-2', kind: 'followup_2', direction: 'outbound', status: 'draft', candidate_id: 'c-1' }];
+  const inb = (cls) => ({ id: 'in-1', direction: 'inbound', classification: cls, candidate_id: 'c-1' });
+  const cases = [['respondio', { others: [...live, inb('reply')] }], ['rechazo', { others: [...live, inb('decline')] }], ['baja', { others: [...live, inb('unsubscribe')] }], ['rebote', { others: [...live, inb('bounce')] }], ['descartado', { others: live, cand: cand({ status: 'discarded' }) }], ['oportunidad_won', { others: live, closed: { O1: 'won' } }], ['oportunidad_lost', { others: live, closed: { O1: 'lost' } }], ['suprimido', { others: live, suppression: [{ email: 'dra@clinicarica.cl', reason: 'do_not_contact' }] }]];
+  for (const [why, o] of cases) {
+    const p = oc.planFollowups(fctx(now, { initial: initialMsg({ metadata: meta }), ...o }));
+    assert.equal(p.meta_updates['i-1'].followup_state, 'stopped:' + why, why);
+    assert.equal(p.writes.filter((w) => w.method === 'PATCH' && w.body.status === 'cancelled').length, 2, why);
+    assert.deepEqual(p.ghl_ops.map((x) => x.kind + ':' + x.url.split('/').pop()), ['task_delete:tk1', 'task_delete:tk2'], why);
+    assert.equal(p.writes.filter((w) => w.method === 'POST').length, 0, why);
+    assert.ok(p.writes.some((w) => w.path.startsWith('prospect_candidates') && w.body.next_action_at === null), why);
+  }
+  const auto = oc.planFollowups(fctx(now, { initial: initialMsg({ metadata: meta }), others: [{ id: 'in-2', direction: 'inbound', classification: 'auto_reply', candidate_id: 'c-1' }] }));
+  assert.ok(!auto.meta_updates['i-1'] || !String(auto.meta_updates['i-1'].followup_state).startsWith('stopped'));
+  const again = oc.planFollowups(fctx(now, { initial: initialMsg({ metadata: { ...meta, followup_state: 'stopped:respondio' } }), others: [inb('reply')] }));
+  assert.equal(again.writes.length + again.ghl_ops.length, 0);
+});
+ok('finalizeFollowups: guarda los ids de las tareas creadas, marca borradas, y un fallo de GHL no registra una tarea inexistente', () => {
+  const plan = oc.planFollowups(fctx(T0 + 3600000));
+  const fin = oc.finalizeFollowups(plan, [{ statusCode: 201, body: { task: { id: 'ta' } } }, { statusCode: 201, body: { id: 'tb' } }], { now: T0 });
+  const mw = fin.writes.find((w) => w.path === 'outreach_messages?id=eq.i-1');
+  assert.equal(mw.body.metadata.followup_tasks.f1.id, 'ta'); assert.equal(mw.body.metadata.followup_tasks.f2.id, 'tb'); assert.equal(mw.body.metadata.followup_state, 'active'); assert.equal(fin.errors.length, 0);
+  const bad = oc.finalizeFollowups(plan, [{ statusCode: 201, body: { task: { id: 'ta' } } }, { statusCode: 500, body: {} }], { now: T0 });
+  const mb = bad.writes.find((w) => w.path === 'outreach_messages?id=eq.i-1');
+  assert.ok(mb.body.metadata.followup_tasks.f1 && !mb.body.metadata.followup_tasks.f2); assert.equal(bad.errors.length, 1);
+  const stop = oc.planFollowups(fctx(T0 + 86400000, { initial: initialMsg({ metadata: { followup_state: 'active', followup_tasks: { f1: { id: 'tk1' }, f2: { id: 'tk2' } } } }), others: [{ id: 'in', direction: 'inbound', classification: 'reply', candidate_id: 'c-1' }] }));
+  const fs2 = oc.finalizeFollowups(stop, [{ statusCode: 200, body: {} }, { statusCode: 200, body: {} }], { now: T0 });
+  const ms = fs2.writes.find((w) => w.path === 'outreach_messages?id=eq.i-1');
+  assert.ok(ms.body.metadata.followup_tasks.f1.deleted && ms.body.metadata.followup_tasks.f2.deleted); assert.equal(ms.body.metadata.followup_state, 'stopped:respondio');
+});
+ok('pickDue: un seguimiento no sale si hubo otro correo al mismo prospecto hace menos de 48 h (los demás tipos no se ven afectados)', () => {
+  const cb = { 'c-1': cand() };
+  const a = appr({ kind: 'followup_1' });
+  assert.equal(oc.pickDue([a], CFG, WED, 0, [], cb, {}, { 'c-1': WED - 3600000 }).action, 'none');
+  assert.equal(oc.pickDue([a], CFG, WED, 0, [], cb, {}, { 'c-1': WED - 3 * 86400000 }).action, 'send');
+  assert.equal(oc.pickDue([appr({ kind: 'reply' })], CFG, WED, 0, [], cb, {}, { 'c-1': WED - 3600000 }).action, 'send');
+});
+ok('followupOverview: estado por prospecto para Hermes', () => {
+  const init = initialMsg({ metadata: { followup_state: 'active' } });
+  const v = oc.followupOverview([init], { 'c-1': [init, { id: 'f-1', kind: 'followup_1', direction: 'outbound', status: 'draft' }] }, { 'c-1': cand() }, CFG, Date.parse('2026-10-13T14:00:00Z'));
+  assert.equal(v[0].company, 'Clínica Rica'); assert.equal(v[0].followup_1.due_now, true); assert.equal(v[0].followup_1.message.status, 'draft'); assert.equal(v[0].followup_2.due_now, false); assert.equal(v[0].replied, false);
+});
+
+ok('cleanDraftText: quita firma/despedida duplicada y separa «Asunto:» incrustado', () => {
+  const a = oc.cleanDraftText(null, 'Asunto: Una idea para X\nHola, equipo de X,\n\nTexto del correo con una pregunta final. ¿Te muestro?\n\nChristian Wevar · Atacama Labs · atacamalabs.cl');
+  assert.equal(a.subject, 'Una idea para X'); assert.ok(a.body.startsWith('Hola, equipo de X')); assert.ok(a.body.endsWith('¿Te muestro?'));
+  assert.equal(oc.cleanDraftText('S', 'Cuerpo. ¿Hablamos?\n\nSaludos,\nChristian').body, 'Cuerpo. ¿Hablamos?');
+  assert.equal(oc.cleanDraftText('S', 'Cuerpo con Christian Wevar en medio. Fin.').body, 'Cuerpo con Christian Wevar en medio. Fin.');
+  const d = oc.planDraft({ kind: 'initial' }, { now: WED, candidate: cand({ drafts: { email_subject: 'Una idea para Clínica Rica', email_body: BODY + '\n\nChristian Wevar · Atacama Labs · atacamalabs.cl' } }), history: [], suppression: [], new_id: 'm-9', config: CFG });
+  assert.ok(!/Christian Wevar/.test(d.writes[0].body.body)); assert.equal(oc.renderEmail(d.writes[0].body, CFG).text.split('Christian Wevar').length, 2);
+});
+ok('dedupeReviewTasks: borra solo las tareas idénticas repetidas (mismo título y día), conserva la más antigua y respeta las completadas', () => {
+  const tasks = { G1: [{ id: 't2', title: 'Revisar prospecto: X', dueDate: '2026-10-08T15:00:00Z', dateAdded: '2026-10-07T13:00:02Z' }, { id: 't1', title: 'Revisar prospecto: X', dueDate: '2026-10-08T15:00:00Z', dateAdded: '2026-10-07T13:00:01Z' }, { id: 't3', title: 'Otra tarea', dueDate: '2026-10-08T15:00:00Z' }, { id: 't4', title: 'Revisar prospecto: X', dueDate: '2026-10-09T15:00:00Z' }, { id: 't5', title: 'Revisar prospecto: X', dueDate: '2026-10-08T15:00:00Z', completed: true }], G2: [{ id: 'u1', title: 'A', dueDate: '2026-10-08' }] };
+  const ops = oc.dedupeReviewTasks(tasks, ['G1', 'G2', 'G9'], GH);
+  assert.equal(ops.length, 1); assert.ok(ops[0].url.endsWith('/tasks/t2')); assert.equal(ops[0].method, 'DELETE'); assert.equal(ops[0].msg_id, null);
+  const fin = oc.finalizeFollowups({ ghl_ops: ops, writes: [], meta_updates: {} }, [{ statusCode: 200, body: {} }], { now: T0 });
+  assert.equal(fin.errors.length, 0); assert.equal(fin.writes.length, 0);
+});
 ok('el núcleo no contiene secretos', () => {
   assert.ok(!/pit-[0-9a-f-]{20,}|eyJ[A-Za-z0-9_-]{20,}|ya29\./.test(Object.values(oc).map((f) => f.toString()).join('\n')));
 });

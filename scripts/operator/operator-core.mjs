@@ -33,6 +33,7 @@ export function operatorTools() {
     get_draft: { level: L1, kind: 'engine', summary: 'Muestra los correos pendientes, el historial y las respuestas de un prospecto.' },
     approve_outreach: { level: L3, kind: 'engine', summary: 'Aprueba el envío de un borrador: primero devuelve el correo exacto y un código; con el código y la confirmación de Christian queda aprobado y sale en la próxima ventana.' },
     cancel_outreach: { level: L1, kind: 'engine', summary: 'Cancela un correo pendiente (borrador o aprobado, antes de salir).' },
+    get_followups: { level: L1, kind: 'engine', summary: 'Estado del seguimiento (+3 / +7 días hábiles) de los prospectos con primer correo enviado; filter=due muestra lo pendiente.' },
     list_outreach: { level: L1, kind: 'engine', summary: 'Lista correos (borradores, aprobados, enviados, fallidos).' },
     get_replies: { level: L1, kind: 'engine', summary: 'Respuestas recibidas por correo (todas o de un prospecto) con su clasificación.' },
     do_not_contact: { level: L2, kind: 'gateway', summary: 'Marca al prospecto como NO contactar (descarta y suprime sus correos). Orden explícita de Christian.' },
@@ -243,8 +244,8 @@ export function buildCalls(req, rows, analysis, cfg) {
     }
     Object.keys(act).forEach((k) => act[k] === undefined && delete act[k]);
     out.gateway_body = { action: 'act', source: sourceOf(req), act, targets: [r.candidate], options: { by: req.actor } };
-  } else if (['save_draft', 'get_draft', 'approve_outreach', 'cancel_outreach', 'do_not_contact'].includes(t) || (t === 'get_replies' && (p.target != null || p.number != null)) || t === 'list_outreach' || t === 'get_replies') {
-    const hasTarget = !['list_outreach'].includes(t) && !(t === 'get_replies' && p.target == null && p.number == null);
+  } else if (['save_draft', 'get_draft', 'approve_outreach', 'cancel_outreach', 'do_not_contact'].includes(t) || (t === 'get_replies' && (p.target != null || p.number != null)) || t === 'list_outreach' || t === 'get_replies' || t === 'get_followups') {
+    const hasTarget = !['list_outreach', 'get_followups'].includes(t) && !(t === 'get_replies' && p.target == null && p.number == null);
     let r = null;
     if (hasTarget) {
       r = needTarget(); if (!r) return out;
@@ -257,6 +258,7 @@ export function buildCalls(req, rows, analysis, cfg) {
     else if (t === 'cancel_outreach') Object.assign(eb, { action: 'cancel', kind: p.kind });
     else if (t === 'list_outreach') Object.assign(eb, { action: 'list', filter: p.filter, limit: p.limit });
     else if (t === 'get_replies') Object.assign(eb, { action: 'replies', limit: p.limit });
+    else if (t === 'get_followups') Object.assign(eb, { action: 'followups', filter: p.filter });
     else if (t === 'do_not_contact') {
       Object.assign(eb, { action: 'suppress', reason: String(p.reason).slice(0, 300), order_text: req.order_text });
       out.gateway_body = { action: 'act', source: sourceOf(req), act: { type: 'discard', reason: 'NO CONTACTAR: ' + String(p.reason).slice(0, 280) }, targets: [r.candidate], options: { by: req.actor } };

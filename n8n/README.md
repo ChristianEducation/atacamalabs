@@ -239,3 +239,4 @@ El ritmo real observado en 02b Signals (llamadas OpenClaw reales contra contenid
 
 ## Motor de correo (Bloque 1, 8-oct-2026)
 - **21 Outreach Engine** (`7yRgPPDkiVyjmb3t`, webhook `atacama-outreach-engine`), **22 Outreach Sender** (`aRvzG87Qg4uqI5bD`, cada 10 min + webhook `atacama-outreach-send-due`), **23 Gmail Sync** (`Bx4tC1Qn5H6097BL`, cada 10 min + webhook `atacama-gmail-sync`). Generador: `node n8n/build/outreach.mjs` (con `GMAIL_CRED_ID`/`GMAIL_CRED_NAME` conecta la credencial de Gmail). Prueba: `node n8n/build/outreach.test.mjs`. Modo en `outreach_config.mode`; guía: `docs/OUTREACH.md`.
+- **24 Followup Planner** (`rWulaiKeio0CsXrs`, cada 30 min + webhook `atacama-followup-planner`): tareas +3/+7 días hábiles en GHL, borradores de seguimiento, cancelación automática y limpieza de tareas duplicadas. Generador: `node n8n/build/outreach.mjs`. Ver `docs/OUTREACH.md` §7.

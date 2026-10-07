@@ -3,6 +3,7 @@
  * Atacama OS · workflows n8n del motor de correo (Bloque 1 — activación comercial):
  *   21 Outreach Engine  — borradores, edición, aprobación con confirmación, cancelación y consultas (solo Supabase; NUNCA envía).
  *   22 Outreach Sender  — cada 10 min toma UN correo aprobado (ventana, tope diario, supresión, hash) y lo envía por Gmail; efectos en GHL vía Prospect Gateway.
+ *   24 Followup Planner — cada 30 min: tareas +3/+7 días hábiles en GHL, borradores de seguimiento, y cancelación si hay respuesta/rebote/baja/descarte/Won/Lost.
  *   23 Gmail Sync       — cada 10 min lee los hilos enviados, clasifica respuestas/rebotes/bajas, detiene seguimientos y mueve la oportunidad.
  * Modo (tabla outreach_config.mode): off | dry_run | test_sim | live. Gmail solo se llama en `live` y solo si existe la credencial.
  *
@@ -18,6 +19,9 @@ export const N8N_BASE = 'https://n8n.srv1650725.hstgr.cloud';
 const SUPABASE_CRED = { supabaseApi: { id: 'XOmXUuyLVSazDIh5', name: 'Atacama Labs - Supabase' } };
 const INGEST_CRED = { httpHeaderAuth: { id: 'lUGhlXVaQBEiEh5S', name: 'Atacama Labs - Ingest Key' } };
 const GMAIL_CRED = process.env.GMAIL_CRED_ID ? { gmailOAuth2: { id: process.env.GMAIL_CRED_ID, name: process.env.GMAIL_CRED_NAME || 'Atacama Labs - Gmail (envío)' } } : null;
+const GHL_CRED = { httpHeaderAuth: { id: '4Vc6nfxyKjZ14Bep', name: 'GHL — Atacama OS' } };
+export const GHL_BASE = 'https://services.leadconnectorhq.com';
+export const FOLLOW_CFG = { base: GHL_BASE, locationId: 'pxHuOsiz2i3lM6BtC9IM', pipelineId: 'trSWhAcNDyUMmPlYIEib', userId: 'OjkAjHMdUjnblO7W1kBZ' };
 const uuid = () => randomUUID();
 const full = (timeout = 30000) => ({ response: { response: { fullResponse: true, neverError: true, responseFormat: 'json' } }, timeout });
 const code = (name, jsCode, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.code', typeVersion: 2, position: pos, parameters: { jsCode } });
@@ -32,9 +36,14 @@ const ifNode = (name, expr, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.i
   parameters: { conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'loose' }, combinator: 'and', conditions: [{ leftValue: `={{ (${expr}) ? "yes" : "no" }}`, rightValue: 'yes', operator: { type: 'string', operation: 'equals' } }] }, options: {} } });
 const to = (n) => [{ node: n, type: 'main', index: 0 }];
 const webhook = (name, path, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.webhook', typeVersion: 2, position: pos, webhookId: uuid(), credentials: INGEST_CRED, parameters: { httpMethod: 'POST', path, authentication: 'headerAuth', responseMode: 'lastNode', options: {} } });
+const schedule30 = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.scheduleTrigger', typeVersion: 1.2, position: pos, parameters: { rule: { interval: [{ field: 'minutes', minutesInterval: 30 }] } } });
 const schedule = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.scheduleTrigger', typeVersion: 1.2, position: pos, parameters: { rule: { interval: [{ field: 'minutes', minutesInterval: 10 }] } } });
 const gmailHttp = (name, urlExpr, method, bodyExpr, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: pos, ...(GMAIL_CRED ? { credentials: GMAIL_CRED } : {}), continueOnFail: true, alwaysOutputData: true,
   parameters: { method, url: urlExpr, authentication: 'predefinedCredentialType', nodeCredentialType: 'gmailOAuth2', ...(bodyExpr ? { sendBody: true, specifyBody: 'json', jsonBody: bodyExpr } : {}), options: full(45000) } });
+const ghlGetX = (name, urlExpr, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: pos, credentials: GHL_CRED, continueOnFail: true, alwaysOutputData: true,
+  parameters: { method: 'GET', url: urlExpr, authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth', sendHeaders: true, headerParameters: { parameters: [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', value: 'application/json' }] }, options: full() } });
+const ghlExecX = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: pos, credentials: GHL_CRED, continueOnFail: true, alwaysOutputData: true,
+  parameters: { method: '={{ $json.method || "POST" }}', url: '={{ $json.skip ? "' + NONE + '" : $json.url }}', authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth', sendHeaders: true, headerParameters: { parameters: [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', value: 'application/json' }] }, sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full() } });
 const gatewayHttp = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: pos, credentials: INGEST_CRED, continueOnFail: true, alwaysOutputData: true,
   parameters: { method: 'POST', url: '={{ $json.skip ? "' + NONE + '" : "' + N8N_BASE + '/webhook/atacama-prospect-gateway" }}', authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth', sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full(120000) } });
 
@@ -57,7 +66,7 @@ try {
   const first = $('Engine Webhook').first().json || {};
   const b = first.body || first;
   const action = String(b.action || '').toLowerCase();
-  if (!['draft', 'approve', 'cancel', 'get', 'list', 'replies', 'suppress'].includes(action)) throw new Error('action inválida: usa draft | approve | cancel | get | list | replies | suppress');
+  if (!['draft', 'approve', 'cancel', 'get', 'list', 'replies', 'suppress', 'followups'].includes(action)) throw new Error('action inválida: usa draft | approve | cancel | get | list | replies | suppress | followups');
   const cid = String(b.candidate_id || '').trim();
   const needsCand = ['draft', 'approve', 'cancel', 'get', 'suppress'].includes(action);
   if (needsCand && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cid)) throw new Error('candidate_id (uuid del prospecto guardado) es obligatorio en ' + action);
@@ -68,6 +77,7 @@ try {
   const filter = String(b.filter || '').toLowerCase();
   let hist = null;
   if (needsCand) hist = sb + 'outreach_messages?candidate_id=eq.' + cid + '&select=${MSG_SELECT}&order=created_at.desc&limit=40';
+  else if (action === 'followups') hist = sb + 'outreach_messages?created_at=gte.' + new Date(Date.now() - 45 * 86400000).toISOString() + '&select=${MSG_SELECT}&order=created_at.desc&limit=600';
   else if (action === 'replies') hist = sb + 'outreach_messages?direction=eq.inbound&' + (/^[0-9a-f-]{36}$/i.test(cid) ? 'candidate_id=eq.' + cid + '&' : '') + 'select=${MSG_SELECT}&order=created_at.desc&limit=' + limit;
   else { const st = { drafts: 'status=eq.draft', approved: 'status=eq.approved', sent: 'status=eq.sent', failed: 'status=eq.failed' }[filter]; hist = sb + 'outreach_messages?direction=eq.outbound&' + (st ? st + '&' : '') + 'select=${MSG_SELECT}&order=created_at.desc&limit=' + limit; }
   return [{ json: { action, candidate_id: cid || null, kind, subject: b.subject != null ? String(b.subject) : null, body: b.body != null ? String(b.body) : null, to_email: b.to_email ? String(b.to_email) : null, override_to: b.override_to === true,
@@ -93,6 +103,13 @@ else if (req.action === 'get') {
   if (!candidate) out = { response: { ok: false, status: 'not_found', error: 'candidato_no_encontrado', message: 'El prospecto no está guardado en Atacama OS.' }, writes: [] };
   else { const live = history.filter((m) => m.direction === 'outbound' && ['draft', 'approved', 'sending'].includes(m.status)); const sup = canonicalEmails(candidate).map((e) => checkSuppression(e, suppression)).filter(Boolean);
     out = { response: { ok: true, status: 'executed', company: candidate.company_name, mode: config.mode, pending: live.map((m) => ({ ...messageView(m), body: m.body })), history: history.map(messageView), suppressed: sup.length ? sup : null, message: live.length ? 'Hay ' + live.length + ' correo(s) pendiente(s) de ' + candidate.company_name + '.' : 'No hay correos pendientes de ' + candidate.company_name + ' (' + history.filter((m) => m.direction === 'outbound' && m.status === 'sent').length + ' enviados, ' + history.filter((m) => m.direction === 'inbound').length + ' respuestas).' }, writes: [] }; }
+} else if (req.action === 'followups') {
+  const initials = history.filter((m) => m.kind === 'initial' && m.direction === 'outbound' && m.status === 'sent');
+  const byC = {}; history.forEach((m) => { (byC[m.candidate_id] = byC[m.candidate_id] || []).push(m); });
+  const cmap = {}; history.forEach((m) => { if (m.candidate_id && !cmap[m.candidate_id]) cmap[m.candidate_id] = { company_name: m.company_name }; });
+  let items = followupOverview(initials, byC, cmap, config, req.now);
+  if (req.filter === 'due') items = items.filter((x) => !x.replied && x.state !== 'done' && !String(x.state).startsWith('stopped') && ((x.followup_1.due_now && !x.followup_1.message) || (x.followup_2.due_now && !x.followup_2.message) || ['draft', 'approved'].some((st) => (x.followup_1.message && x.followup_1.message.status === st) || (x.followup_2.message && x.followup_2.message.status === st))));
+  out = { response: { ok: true, status: 'executed', mode: config.mode, count: items.length, items, message: items.length ? items.length + ' prospecto(s) en seguimiento' + (req.filter === 'due' ? ' con algo pendiente' : '') + ': ' + items.slice(0, 6).map((x) => x.company + ' [' + x.state + (x.replied ? ', respondió' : '') + ']').join('; ') + '.' : 'No hay seguimientos' + (req.filter === 'due' ? ' pendientes' : '') + '.' }, writes: [] };
 } else if (req.action === 'replies') {
   const list = history.map((m) => ({ ...messageView(m), body: m.body }));
   out = { response: { ok: true, status: 'executed', mode: config.mode, count: list.length, items: list, message: list.length ? list.length + ' respuesta(s): ' + list.slice(0, 5).map((x) => x.company + ' [' + x.classification + ']').join('; ') + '.' : 'No hay respuestas.' }, writes: [] };
@@ -153,7 +170,8 @@ const inList = ids.length ? '(' + ids.join(',') + ')' : '(00000000-0000-0000-000
 return [{ json: { now, config, approved,
   cand_url: sb + 'prospect_candidates?id=in.' + inList + '&select=${CAND_SELECT}',
   inbound_url: sb + 'outreach_messages?direction=eq.inbound&candidate_id=in.' + inList + '&select=candidate_id',
-  sent_url: sb + 'outreach_messages?status=eq.sent&direction=eq.outbound&sent_at=gte.' + new Date(startOfZonedDay(now, config.tz)).toISOString() + '&select=id' } }];`;
+  sent_url: sb + 'outreach_messages?status=eq.sent&direction=eq.outbound&sent_at=gte.' + new Date(startOfZonedDay(now, config.tz)).toISOString() + '&select=id',
+  recent_url: sb + 'outreach_messages?status=eq.sent&direction=eq.outbound&sent_at=gte.' + new Date(now - 10 * 86400000).toISOString() + '&select=candidate_id,sent_at&limit=500' } }];`;
 
 export const senderDecideCode = `${LIB}
 
@@ -162,7 +180,8 @@ const arr = (n) => { const x = $(n).first().json || {}; return (x.statusCode || 
 const cands = {}; arr('Load Candidates').forEach((c) => { cands[c.id] = c; });
 const inbound = {}; arr('Load Inbound').forEach((r) => { inbound[r.candidate_id] = true; });
 const sentToday = arr('Load Sent Today').length;
-const d = pickDue(p.approved, p.config, p.now, sentToday, arr('Load Suppression'), cands, inbound);
+const lastSent = {}; arr('Load Sent Recent').forEach((r) => { const t = Date.parse(r.sent_at); if (Number.isFinite(t) && (!lastSent[r.candidate_id] || t > lastSent[r.candidate_id])) lastSent[r.candidate_id] = t; });
+const d = pickDue(p.approved, p.config, p.now, sentToday, arr('Load Suppression'), cands, inbound, lastSent);
 const base = { now: p.now, config: p.config, decision: d, sent_today: sentToday, go_live: false };
 if (d.action === 'send') {
   const m = d.message;
@@ -221,6 +240,7 @@ export function buildSender() {
     sbGet('Load Suppression', `${SUPABASE}/rest/v1/outreach_suppression?select=email,domain,reason&limit=1000`, [1440, 0]),
     sbGet('Load Inbound', '={{ $("Prep").first().json.inbound_url }}', [1680, 0]),
     sbGet('Load Sent Today', '={{ $("Prep").first().json.sent_url }}', [1920, 0]),
+    sbGet('Load Sent Recent', '={{ $("Prep").first().json.recent_url }}', [2040, 0]),
     code('Decide', senderDecideCode, [2160, 0]),
     ifNode('Send?', '$json.decision.action === "send"', [2400, 0]),
     ifNode('Cancel?', '$json.decision.action === "cancel"', [2640, 180]),
@@ -244,7 +264,7 @@ export function buildSender() {
   nodes.find((n) => n.name === 'Gateway Effect').parameters.jsonBody = '={{ JSON.stringify($json.gw ? $json.gw.body : {}) }}';
   const c = {
     'Every 10 min': { main: [to('Init')] }, 'Send Webhook': { main: [to('Init')] }, 'Init': { main: [to('Load Config')] }, 'Load Config': { main: [to('Load Approved')] }, 'Load Approved': { main: [to('Prep')] }, 'Prep': { main: [to('Load Candidates')] },
-    'Load Candidates': { main: [to('Load Suppression')] }, 'Load Suppression': { main: [to('Load Inbound')] }, 'Load Inbound': { main: [to('Load Sent Today')] }, 'Load Sent Today': { main: [to('Decide')] }, 'Decide': { main: [to('Send?')] },
+    'Load Candidates': { main: [to('Load Suppression')] }, 'Load Suppression': { main: [to('Load Inbound')] }, 'Load Inbound': { main: [to('Load Sent Today')] }, 'Load Sent Today': { main: [to('Load Sent Recent')] }, 'Load Sent Recent': { main: [to('Decide')] }, 'Decide': { main: [to('Send?')] },
     'Send?': { main: [to('Claim Plan'), to('Cancel?')] }, 'Cancel?': { main: [to('Cancel Plan'), to('Respond None')] }, 'Cancel Plan': { main: [to('Apply Cancel')] }, 'Apply Cancel': { main: [to('Respond Cancel')] },
     'Claim Plan': { main: [to('Claim')] }, 'Claim': { main: [to('Gmail Send')] }, 'Gmail Send': { main: [to('Result')] }, 'Result': { main: [to('Gateway Effect')] }, 'Gateway Effect': { main: [to('Expand Result')] }, 'Expand Result': { main: [to('Apply Result')] }, 'Apply Result': { main: [to('Respond')] },
   };
@@ -339,10 +359,109 @@ export function buildSync() {
   return { name: 'Atacama Labs - 23 Gmail Sync', nodes, connections: c, settings: { executionOrder: 'v1' } };
 }
 
+// =====================================================================================================================
+// 24 · Followup Planner
+// =====================================================================================================================
+export const plannerInitCode = `let body = {};
+try { body = $('Planner Webhook').first().json.body || {}; } catch (e) { body = {}; }
+return [{ json: { now: Date.now(), now_override: Number.isFinite(Number(body && body.now_ms)) ? Number(body.now_ms) : null } }];`;
+
+export const plannerPrepCode = `${LIB}
+
+const init = $('Init').first().json;
+const arr = (n) => { const x = $(n).first().json || {}; return (x.statusCode || 0) < 300 && Array.isArray(x.body) ? x.body : []; };
+const config = arr('Load Config')[0] || { mode: 'off' };
+const now = config.mode !== 'live' && init.now_override ? init.now_override : init.now;
+const initials = arr('Load Initials');
+const ids = [...new Set(initials.map((m) => m.candidate_id).filter(Boolean))];
+const inList = ids.length ? '(' + ids.join(',') + ')' : '(00000000-0000-0000-0000-000000000000)';
+const sb = '${SUPABASE}/rest/v1/';
+return [{ json: { now, config, initials, off: config.mode === 'off' || !initials.length,
+  recent_url: sb + 'prospect_candidates?status=in.(in_ghl,contacted,accepted)&created_at=gte.' + new Date(now - 3 * 86400000).toISOString() + '&select=id,ghl_contact_id&limit=60',
+  cand_url: sb + 'prospect_candidates?id=in.' + inList + '&select=${CAND_SELECT}',
+  msgs_url: sb + 'outreach_messages?candidate_id=in.' + inList + '&select=*&order=created_at.desc&limit=1000' } }];`;
+
+export const plannerChecksCode = `${LIB}
+
+const p = $('Prep').first().json;
+const arr = (n) => { const x = $(n).first().json || {}; return (x.statusCode || 0) < 300 && Array.isArray(x.body) ? x.body : []; };
+const candidates = {}; arr('Load Candidates').forEach((c) => { candidates[c.id] = c; });
+const byCandidate = {}; arr('Load Messages').forEach((m) => { (byCandidate[m.candidate_id] = byCandidate[m.candidate_id] || []).push(m); });
+const closed = {};
+['GHL Won', 'GHL Lost'].forEach((n, i) => { const x = $(n).first().json || {}; const opps = (x.statusCode || 0) < 300 && x.body && Array.isArray(x.body.opportunities) ? x.body.opportunities : []; opps.forEach((o) => { closed[o.id] = i === 0 ? 'won' : 'lost'; }); });
+const need = p.off ? [] : followupsNeedingTaskCheck({ initials: p.initials, candidates, byCandidate, suppression: arr('Load Suppression'), closed });
+arr('Load Recent').forEach((c) => { if (c.ghl_contact_id) need.push({ contact_id: c.ghl_contact_id }); });
+if (!need.length) return [{ json: { skip: true, contact_id: null } }];
+return [...new Map(need.map((x) => [x.contact_id, x])).values()].map((x) => ({ json: { skip: false, contact_id: x.contact_id, url: '${GHL_BASE}/contacts/' + x.contact_id + '/tasks' } }));`;
+
+export const plannerDecideCode = `${LIB}
+
+const p = $('Prep').first().json;
+const arr = (n) => { const x = $(n).first().json || {}; return (x.statusCode || 0) < 300 && Array.isArray(x.body) ? x.body : []; };
+const candidates = {}; arr('Load Candidates').forEach((c) => { candidates[c.id] = c; });
+const byCandidate = {}; arr('Load Messages').forEach((m) => { (byCandidate[m.candidate_id] = byCandidate[m.candidate_id] || []).push(m); });
+const closed = {};
+['GHL Won', 'GHL Lost'].forEach((n, i) => { const x = $(n).first().json || {}; const opps = (x.statusCode || 0) < 300 && x.body && Array.isArray(x.body.opportunities) ? x.body.opportunities : []; opps.forEach((o) => { closed[o.id] = i === 0 ? 'won' : 'lost'; }); });
+const checks = $('Expand Checks').all().map((i) => i.json);
+const res = $('GHL Get Tasks').all().map((i) => i.json);
+const contactTasks = {};
+checks.forEach((c, i) => { if (c.skip || !c.contact_id) return; const r = res[i] || {}; if ((r.statusCode || 0) < 300 && r.body && Array.isArray(r.body.tasks)) contactTasks[c.contact_id] = r.body.tasks; else contactTasks[c.contact_id] = null; });
+// si no se pudieron leer las tareas de un contacto NO se crean (evita duplicados)
+const safe = p.initials.filter((m) => { const c = candidates[m.candidate_id]; return !(c && c.ghl_contact_id && contactTasks[c.ghl_contact_id] === null); });
+const recentIds = arr('Load Recent').map((c) => c.ghl_contact_id).filter(Boolean);
+const dedupe = dedupeReviewTasks(contactTasks, recentIds, ${JSON.stringify(FOLLOW_CFG)});
+const plan = p.off ? { ghl_ops: [], writes: [], actions: [], meta_updates: {} } : planFollowups({ now: p.now, config: p.config, initials: safe, byCandidate, candidates, suppression: arr('Load Suppression'), closed, contactTasks, ghl: ${JSON.stringify(FOLLOW_CFG)}, newId: () => newId() });
+plan.ghl_ops = plan.ghl_ops.concat(dedupe);
+if (dedupe.length) plan.actions.push({ action: 'tareas_duplicadas_borradas', count: dedupe.length, titles: [...new Set(dedupe.map((d) => d.title))].slice(0, 10) });
+return [{ json: { off: p.off, plan, now: p.now, mode: p.config.mode, unreadable: Object.keys(contactTasks).filter((k) => contactTasks[k] === null).length } }];`;
+
+export const plannerFinalCode = `${LIB}
+
+const d = $('Decide').first().json;
+const results = $('GHL Exec').all().map((i) => i.json);
+const fin = finalizeFollowups(d.plan, results.slice(0, d.plan.ghl_ops.length), { now: d.now });
+return [{ json: { writes: fin.writes, errors: fin.errors, actions: d.plan.actions } }];`;
+
+export const plannerRespondCode = `const f = $('Finalize').first().json;
+const d = $('Decide').first().json;
+const bad = $('Apply Writes').all().map((i) => i.json).filter((j) => (j.statusCode || 0) >= 300);
+return [{ json: { ok: bad.length === 0 && f.errors.length === 0, mode: d.mode, off: d.off, actions: f.actions, ghl_errors: f.errors, tasks_unreadable: d.unreadable || 0, ...(bad.length ? { persist_error: 'Supabase HTTP ' + bad[0].statusCode } : {}), safety: { messages_sent: 0 } } }];`;
+
+export function buildPlanner() {
+  const nodes = [
+    schedule30('Every 30 min', [0, -120]),
+    webhook('Planner Webhook', 'atacama-followup-planner', [0, 120]),
+    code('Init', plannerInitCode, [240, 0]),
+    sbGet('Load Config', `${SUPABASE}/rest/v1/outreach_config?id=eq.1&select=*`, [480, 0]),
+    sbGet('Load Initials', `={{ "${SUPABASE}/rest/v1/outreach_messages?kind=eq.initial&direction=eq.outbound&status=eq.sent&sent_at=gte." + new Date($("Init").first().json.now - 30 * 86400000).toISOString() + "&select=*&order=sent_at.asc&limit=200" }}`, [720, 0]),
+    code('Prep', plannerPrepCode, [960, 0]),
+    sbGet('Load Candidates', '={{ $("Prep").first().json.cand_url }}', [1200, 0]),
+    sbGet('Load Messages', '={{ $("Prep").first().json.msgs_url }}', [1440, 0]),
+    sbGet('Load Recent', '={{ $("Prep").first().json.recent_url }}', [1560, 0]),
+    sbGet('Load Suppression', `${SUPABASE}/rest/v1/outreach_suppression?select=email,domain,reason&limit=1000`, [1680, 0]),
+    ghlGetX('GHL Won', `${GHL_BASE}/opportunities/search?location_id=${FOLLOW_CFG.locationId}&pipeline_id=${FOLLOW_CFG.pipelineId}&status=won&limit=100`, [1920, 0]),
+    ghlGetX('GHL Lost', `${GHL_BASE}/opportunities/search?location_id=${FOLLOW_CFG.locationId}&pipeline_id=${FOLLOW_CFG.pipelineId}&status=lost&limit=100`, [2160, 0]),
+    code('Expand Checks', plannerChecksCode, [2400, 0]),
+    ghlGetX('GHL Get Tasks', `={{ $json.skip ? "${NONE}" : $json.url }}`, [2640, 0]),
+    code('Decide', plannerDecideCode, [2880, 0]),
+    code('Expand Ops', expandCode('$("Decide").first().json.plan.ghl_ops.map((o) => ({ ...o }))'), [3120, 0]),
+    ghlExecX('GHL Exec', [3360, 0]),
+    code('Finalize', plannerFinalCode, [3600, 0]),
+    code('Expand Writes', expandCode('$("Finalize").first().json.writes'), [3840, 0]),
+    sbApply('Apply Writes', [4080, 0]),
+    code('Respond', plannerRespondCode, [4320, 0]),
+  ];
+  const c = { 'Every 30 min': { main: [to('Init')] }, 'Planner Webhook': { main: [to('Init')] }, 'Init': { main: [to('Load Config')] }, 'Load Config': { main: [to('Load Initials')] }, 'Load Initials': { main: [to('Prep')] }, 'Prep': { main: [to('Load Candidates')] },
+    'Load Candidates': { main: [to('Load Messages')] }, 'Load Messages': { main: [to('Load Recent')] }, 'Load Recent': { main: [to('Load Suppression')] }, 'Load Suppression': { main: [to('GHL Won')] }, 'GHL Won': { main: [to('GHL Lost')] }, 'GHL Lost': { main: [to('Expand Checks')] }, 'Expand Checks': { main: [to('GHL Get Tasks')] },
+    'GHL Get Tasks': { main: [to('Decide')] }, 'Decide': { main: [to('Expand Ops')] }, 'Expand Ops': { main: [to('GHL Exec')] }, 'GHL Exec': { main: [to('Finalize')] }, 'Finalize': { main: [to('Expand Writes')] }, 'Expand Writes': { main: [to('Apply Writes')] }, 'Apply Writes': { main: [to('Respond')] } };
+  return { name: 'Atacama Labs - 24 Followup Planner', nodes, connections: c, settings: { executionOrder: 'v1' } };
+}
+
 if (process.argv[1] && process.argv[1].endsWith('outreach.mjs')) {
   const w = (f, o) => { fs.writeFileSync(new URL('../' + f, import.meta.url), JSON.stringify(o, null, 2) + '\n'); console.log('escrito', f); };
   w('atacama-labs-21-outreach-engine.json', buildEngine());
   w('atacama-labs-22-outreach-sender.json', buildSender());
   w('atacama-labs-23-gmail-sync.json', buildSync());
+  w('atacama-labs-24-followup-planner.json', buildPlanner());
   console.log('funciones incrustadas:', LIB.split('\nfunction ').length, '· credencial Gmail:', GMAIL_CRED ? 'sí' : 'NO (solo dry_run/test_sim hasta crearla)');
 }

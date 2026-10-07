@@ -178,5 +178,61 @@ t('23 live: ignora mensajes inyectados (solo Gmail real)', r.pr.new_messages ===
 r = await sync({ threads: { 'th-1': gthread([gmsg('g5', 'otra@persona.cl', 'Re: x', 'hola')]) }, open: [] });
 t('23: hilo que no es nuestro (sin envío previo) se ignora', r.pr.new_messages === 0);
 
+
+// ---------- 24 Followup Planner
+{
+  const { buildPlanner } = await import('./outreach.mjs');
+  WF.planner = buildPlanner();
+  const names = new Set(WF.planner.nodes.map((n) => n.name));
+  t('24: conexiones válidas, sin secretos, sin nodos de envío, nodos HTTP tolerantes a fallos', Object.entries(WF.planner.connections).every(([a, v]) => names.has(a) && v.main.every((o) => o.every((c) => names.has(c.node)))) && !/(Bearer |eyJ[A-Za-z0-9_-]{20}|pit-[0-9a-f]{8})/.test(JSON.stringify(WF.planner)) && !WF.planner.nodes.some((n) => /gmail|emailSend|whatsapp|telegram|smtp/i.test(n.type)) && WF.planner.nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest').every((n) => n.continueOnFail === true));
+  t('24: el planificador jamás llama a Gmail ni al Gateway (solo Supabase y lecturas/tareas de GHL)', WF.planner.nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest').every((n) => /supabase|GHL/i.test(JSON.stringify(n.credentials))));
+  const TZ = Date.parse('2026-10-07T15:00:00Z');
+  const init = (o) => ({ id: 'i-1', candidate_id: CAND.id, company_name: CAND.company_name, kind: 'initial', direction: 'outbound', status: 'sent', to_email: 'dra@clinicarica-test.invalid', subject: 'Una idea', body: BODY, sent_at: new Date(TZ).toISOString(), gmail_thread_id: 'T1', rfc_message_id: '<r@x>', metadata: {}, created_at: new Date(TZ).toISOString(), ...(o || {}) });
+  const candRow = { ...CAND, ghl_contact_id: 'G1', ghl_opportunity_id: 'O1', status: 'contacted' };
+  async function planner(st = {}) {
+    const store = { Init: { now: st.now || TZ + 3600000, now_override: st.override || null } };
+    store['Load Config'] = ok200([st.config || CFG({ mode: 'test_sim' })]); store['Load Initials'] = ok200(st.initials === undefined ? [init()] : st.initials);
+    const prep = (await run('planner', 'Prep', store))[0].json; store.Prep = prep;
+    store['Load Candidates'] = ok200(st.candidates || [candRow]); store['Load Recent'] = ok200(st.recent || []); store['Load Messages'] = ok200(st.messages || (st.initials === undefined ? [init()] : st.initials)); store['Load Suppression'] = ok200(st.suppression || []);
+    store['GHL Won'] = ok200({ opportunities: (st.closed || []).filter((c) => c.s === 'won').map((c) => ({ id: c.id })) }); store['GHL Lost'] = ok200({ opportunities: (st.closed || []).filter((c) => c.s === 'lost').map((c) => ({ id: c.id })) });
+    const checks = (await run('planner', 'Expand Checks', store)).map((x) => x.json); store['Expand Checks'] = checks[0];
+    const taskRes = checks.map((c) => (c.skip ? { statusCode: 0 } : ok200({ tasks: (st.tasksByContact && st.tasksByContact[c.contact_id]) || st.contactTasks || [] })));
+    store['GHL Get Tasks'] = taskRes[0];
+    const dec = (await run('planner', 'Decide', store, { 'Expand Checks': checks, 'GHL Get Tasks': taskRes }))[0].json; store.Decide = dec;
+    const ops = (await run('planner', 'Expand Ops', store)).map((x) => x.json);
+    const exec = ops.map((o) => (o.skip ? { statusCode: 0 } : o.kind === 'task_create' ? { statusCode: 201, body: { task: { id: 'tk-' + o.slot } } } : { statusCode: 200, body: {} }));
+    store['GHL Exec'] = exec[0];
+    const fin = (await run('planner', 'Finalize', store, { 'GHL Exec': exec }))[0].json; store.Finalize = fin;
+    const ex = (await run('planner', 'Expand Writes', store)).map((x) => x.json);
+    store['Apply Writes'] = ok200({});
+    const resp = (await run('planner', 'Respond', store, { 'Apply Writes': ex.map(() => ({ statusCode: 200, body: {} })) }))[0].json;
+    return { prep, checks, dec, ops, fin, ex, resp };
+  }
+  let q = await planner({ config: CFG({ mode: 'off' }) });
+  t('24 modo off: no hace nada', q.dec.off === true && q.ops.every((o) => o.skip) && q.resp.safety.messages_sent === 0);
+  q = await planner({ config: CFG({ mode: 'off' }), initials: [], recent: [{ id: 'r1', ghl_contact_id: 'GR1' }], tasksByContact: { GR1: [{ id: 'd1', title: 'Revisar prospecto: Z', dueDate: '2026-10-08T15:00:00Z', dateAdded: '2026-10-07T13:00:01Z' }, { id: 'd2', title: 'Revisar prospecto: Z', dueDate: '2026-10-08T15:00:00Z', dateAdded: '2026-10-07T13:00:02Z' }] } });
+  t('24: limpia tareas duplicadas de prospectos recientes aunque el modo sea off (borra la más nueva por id)', q.ops.length === 1 && q.ops[0].method === 'DELETE' && q.ops[0].url.endsWith('/tasks/d2') && q.resp.actions.some((a) => a.action === 'tareas_duplicadas_borradas' && a.count === 1) && q.resp.safety.messages_sent === 0, JSON.stringify(q.resp));
+  q = await planner();
+  t('24 tras el primer envío: crea las 2 tareas (+3/+7 días hábiles) en el contacto y guarda sus ids en el mensaje', q.ops.filter((o) => o.kind === 'task_create').length === 2 && q.ops[0].url.endsWith('/contacts/G1/tasks') && q.ops[0].body.dueDate === '2026-10-12T13:00:00.000Z' && q.ops[1].body.dueDate === '2026-10-16T13:00:00.000Z' && q.fin.writes.some((w) => w.path === 'outreach_messages?id=eq.i-1' && w.body.metadata.followup_tasks.f1.id === 'tk-f1' && w.body.metadata.followup_tasks.f2.id === 'tk-f2' && w.body.metadata.followup_state === 'active') && q.resp.ok && q.resp.safety.messages_sent === 0, JSON.stringify(q.resp));
+  q = await planner({ contactTasks: [{ id: 'x1', title: 'Seguimiento 1 · Clínica TEST Rica' }, { id: 'x2', title: 'Seguimiento 2 · Clínica TEST Rica' }] });
+  t('24 sin duplicados: si las tareas ya existen en GHL las reutiliza y no crea ninguna', q.ops.every((o) => o.skip) && q.fin.writes.some((w) => w.body.metadata && w.body.metadata.followup_tasks.f1.id === 'x1' && w.body.metadata.followup_tasks.f2.reused === true));
+  q = await planner({ initials: [init({ metadata: { followup_state: 'active', followup_tasks: { f1: { id: 'a' }, f2: { id: 'b' } } } })], now: Date.parse('2026-10-12T14:00:00Z') });
+  t('24 llegado el +3: deja un borrador followup_1 (draft) y NO lo envía ni aprueba', q.fin.writes.some((w) => w.method === 'POST' && w.body.kind === 'followup_1' && w.body.status === 'draft' && w.body.approved_at === null) && q.resp.actions.some((a) => a.action === 'borrador_followup_1') && q.resp.safety.messages_sent === 0);
+  const meta = { followup_state: 'active', followup_tasks: { f1: { id: 'tk1' }, f2: { id: 'tk2' } } };
+  q = await planner({ initials: [init({ metadata: meta })], messages: [init({ metadata: meta }), { id: 'in-1', candidate_id: CAND.id, direction: 'inbound', classification: 'reply', status: 'received', created_at: new Date(TZ + 86400000).toISOString() }, { id: 'f-1', candidate_id: CAND.id, kind: 'followup_1', direction: 'outbound', status: 'approved' }], now: Date.parse('2026-10-12T14:00:00Z') });
+  t('24 respondió: cancela el seguimiento aprobado, BORRA las tareas en GHL (DELETE por id) y deja estado stopped:respondio', q.ops.filter((o) => o.kind === 'task_delete').map((o) => o.url.split('/').pop()).join() === 'tk1,tk2' && q.ops.every((o) => o.method === 'DELETE') && q.fin.writes.some((w) => w.body.status === 'cancelled') && q.fin.writes.some((w) => w.body.metadata && w.body.metadata.followup_state === 'stopped:respondio' && w.body.metadata.followup_tasks.f1.deleted === true));
+  q = await planner({ initials: [init({ metadata: meta })], closed: [{ id: 'O1', s: 'won' }], now: Date.parse('2026-10-12T14:00:00Z') });
+  t('24 oportunidad Won (o Lost) en GHL: detiene la secuencia', q.fin.writes.some((w) => w.body.metadata && w.body.metadata.followup_state === 'stopped:oportunidad_won'));
+  q = await planner({ initials: [init({ metadata: meta })], suppression: [{ email: 'dra@clinicarica-test.invalid', reason: 'unsubscribe' }], now: Date.parse('2026-10-12T14:00:00Z') });
+  t('24 baja/suprimido: detiene la secuencia', q.fin.writes.some((w) => w.body.metadata && w.body.metadata.followup_state === 'stopped:suprimido'));
+  q = await planner({ contactTasks: null, now: TZ + 3600000 });
+  t('24: respuesta consistente aunque GHL no devuelva tareas (no rompe)', q.resp.ok !== undefined);
+  q = await planner({ override: Date.parse('2026-10-12T14:00:00Z'), config: CFG({ mode: 'live' }), initials: [init({ company_name: 'Clínica Rica', metadata: meta })] });
+  t('24 modo live: no se puede forzar la hora (now_override ignorado)', q.prep.now !== Date.parse('2026-10-12T14:00:00Z'));
+}
+// ---------- 21 get_followups
+r = await engine({ action: 'followups', filter: 'due' }, { history: [msgRow({ id: 'i-1', kind: 'initial', status: 'sent', sent_at: new Date(Date.now() - 20 * 86400000).toISOString(), metadata: { followup_state: 'active' } })] });
+t('21 followups: lista los prospectos con seguimiento pendiente (due_now) sin tocar nada', r.resp.count === 1 && r.resp.items[0].followup_1.due_now === true && r.ex[0].skip === true);
+
 console.log(`\n${pass} ok, ${fail} fallos`);
 process.exit(fail ? 1 : 0);

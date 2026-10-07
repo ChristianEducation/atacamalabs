@@ -851,3 +851,29 @@ Núcleo outreach 28, workflows 21/22/23 nodo a nodo 56, operador 34 (+nuevas), g
 
 ### B1.6. Pendiente para el envío REAL (acciones de Christian)
 Buzón remitente · credencial OAuth de Gmail en n8n (pasos en `OUTREACH.md` §5) · datos legales del pie · OK explícito para un único envío de prueba a su propio correo. Después: Parte 2 (follow-up) y el resto del Bloque 1.
+
+## BLOQUE 1 — Activación comercial · Partes 2–4: follow-up, Prospección v2 y primer lote (8-oct-2026) · ✅ LISTO PARA PUESTA EN MARCHA (envío real apagado)
+
+Guías: [`OUTREACH.md`](OUTREACH.md) §7 (seguimiento) · [`PROSPECTING-V2.md`](PROSPECTING-V2.md) · [`PRIMER-LOTE.md`](PRIMER-LOTE.md).
+
+### B1.7. Parte 2 — Follow-up comercial
+- **n8n 24 Followup Planner** (`rWulaiKeio0CsXrs`, cada 30 min + webhook `atacama-followup-planner`): por cada primer correo enviado crea las tareas de GHL «Seguimiento 1/2 · Empresa» (+3 y +7 días hábiles desde el primer envío), deja el borrador `followup_1`/`followup_2` cuando llega la fecha (nunca aprobado ni enviado solo; el sender espera ≥ 48 h entre correos al mismo prospecto), y **se detiene y limpia solo** (cancela borradores, borra tareas por id) si el prospecto responde, rechaza, se da de baja, rebota, se descarta, queda suprimido o su oportunidad pasa a Won/Lost. Máximo 2 seguimientos; luego `followup_state = done`.
+- **Higiene:** borra tareas duplicadas idénticas que la automatización nativa de GHL crea a veces (4 de los 14 contactos del primer lote tenían dos «Revisar prospecto»; ya limpiadas).
+- Hermes: `get_followups` (nuevo) + `save_draft kind=followup_1|2` + `approve_outreach`.
+- Pruebas: núcleo 39, workflow 24 nodo a nodo, **en vivo 32/32** (TEST, fechas simuladas, modo `test_sim`).
+
+### B1.8. Parte 3 — Prospección v2 de Hermes (Radar listo, PAUSADO)
+- Prompt `ops/hermes/prospect-radar-v2.prompt.txt` (investigación intermedia, hecho/inferencia/hipótesis, regla «señal verdadera vs relleno», presupuesto duro, entrega solo por el Prospect Gateway, `MODO=analyze|import`, máx. 5 imports por corrida). Cargado en el job `8421589d0902` (**pausado**; horario L-V 11:00). Scoring del Gateway sin cambios.
+- Calibrado con las 140 fichas reales (9 alta · 34 válida · 90 pendiente · 7 archivo; 43 pasan) y validado en vivo en `MODO=analyze`: US$ 0,19 y 4 min por corrida (v1: US$ 0,75 y 13 min). Detalle y hallazgo de calidad en [`PROSPECTING-V2.md`](PROSPECTING-V2.md).
+
+### B1.9. Parte 4 — Primer lote real
+- 14 de los 43 elegidos por score, canal público, proceso observable y facilidad de conversación (lista y criterios en [`PRIMER-LOTE.md`](PRIMER-LOTE.md)). Importados por el Gateway a *Investigado* (request_id `lote1-2026-10-08`): 14 contactos + 14 oportunidades + nota de revisión + ángulo en el campo de GHL + tarea «Revisar prospecto»; 13 borradores de correo en el motor (estado `draft`; Clínica Smile es solo WhatsApp). **Cero mensajes enviados, cero contactos.** No se importaron los otros 29.
+
+### B1.10. Bugs reales corregidos en esta etapa
+1. Firma duplicada y «Asunto:» incrustado en los borradores del Gateway (el motor agregaba otra firma): `cleanDraftText`.
+2. Tareas «Revisar prospecto» duplicadas por la automatización de GHL: limpieza en el planificador.
+3. (Del tramo anterior) lote mixto que no persistía, borradores no guardados al importar, `on_conflict` con índice parcial.
+4. Incidente propio: al importar un script de pruebas se re-ejecutó y creó 3 prospectos TEST; borrados por id exacto (el registro del lote real quedó intacto).
+
+### B1.11. Pendiente (acciones de Christian, ver informe final)
+Buzón remitente · credencial OAuth de Gmail en n8n · datos legales del pie · OK explícito para un único envío de prueba a su propio correo · decidir cuándo reanudar el Radar (Bloque 2).

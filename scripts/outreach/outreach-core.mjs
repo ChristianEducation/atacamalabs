@@ -112,6 +112,23 @@ export function findPlaceholders(text) {
   return hits;
 }
 
+/** Quita del cuerpo la despedida/firma (el sistema agrega la suya al enviar) y separa un «Asunto:» incrustado. */
+export function cleanDraftText(subject, body) {
+  let b = String(body == null ? '' : body).replace(/\r/g, '').trim();
+  let sub = subject == null ? null : String(subject).trim();
+  const m = b.match(/^asunto:\s*([^\n]+)\n+/i);
+  if (m) { if (sub == null || sub === '') sub = m[1].trim(); b = b.slice(m[0].length).trim(); }
+  const lines = b.split('\n');
+  let guard = 0;
+  while (lines.length && guard++ < 5) {
+    const last = lines[lines.length - 1].trim();
+    if (!last) { lines.pop(); continue; }
+    if (/^(saludos|atentamente|cordialmente|un abrazo|un saludo|cari[ñn]os|gracias)[,.!]?$/i.test(last) || /^christian( wevar)?\s*([·|,\-–—].*)?$/i.test(last) || /^atacama labs\s*([·|,\-–—].*)?$/i.test(last)) { lines.pop(); continue; }
+    break;
+  }
+  return { subject: sub, body: lines.join('\n').trim() };
+}
+
 /** Valida un borrador antes de guardarlo o aprobarlo. */
 export function validateDraft(d, ctx) {
   const errors = [];
@@ -202,6 +219,7 @@ export function planDraft(req, ctx) {
     else if (kind === 'reply') { if (subject == null) subject = 'Re: ' + String((inboundMsg && inboundMsg.subject) || (initialSent && initialSent.subject) || 'Atacama Labs').replace(/^re:s*/i, ''); }
     else { const t = followupTemplate(kind, cand, initialSent && initialSent.subject); subject = subject != null ? subject : t.subject; body = body != null ? body : t.body; }
   }
+  if (subject != null || body != null) { const cl = cleanDraftText(subject, body); subject = cl.subject; body = cl.body; }
   if (subject == null || body == null) return fail('sin_contenido', kind === 'reply' ? 'Redacta la respuesta (body) para guardarla como borrador.' : 'No hay borrador base: indica subject y body.');
   const inbound = inboundMsg;
   const v = validateDraft({ to_email: to, subject, body }, { suppression: ctx.suppression, allowed_emails: published, override_to: req.override_to === true });
@@ -269,7 +287,7 @@ export function messageView(m) {
 }
 
 /** Elige UN mensaje para enviar ahora (o explica por qué no). Mantiene el espaciado: una corrida = máximo un correo. */
-export function pickDue(msgs, cfg, nowMs, sentToday, suppression, candidatesById, inboundByCandidate) {
+export function pickDue(msgs, cfg, nowMs, sentToday, suppression, candidatesById, inboundByCandidate, lastSentByCandidate) {
   if (!cfg || cfg.mode === 'off') return { action: 'none', reason: 'modo off: el envío está apagado' };
   if (cfg.paused) return { action: 'none', reason: 'pausa de emergencia activa' };
   if (!inSendWindow(nowMs, cfg)) return { action: 'none', reason: 'fuera de la ventana de envío (lun-vie ' + cfg.window_start + '-' + cfg.window_end + ')' };
@@ -285,6 +303,7 @@ export function pickDue(msgs, cfg, nowMs, sentToday, suppression, candidatesById
     if (c && c.status === 'discarded') return { action: 'cancel', message: m, reason: 'el prospecto fue descartado' };
     if (contentHash(m.to_email, m.subject, m.body) !== m.content_hash) return { action: 'cancel', message: m, reason: 'el contenido cambió después de la aprobación' };
     if (m.kind !== 'initial' && m.kind !== 'reply') {
+      if (lastSentByCandidate && lastSentByCandidate[m.candidate_id] && nowMs - lastSentByCandidate[m.candidate_id] < 48 * 3600000) { skipped.push({ id: m.id, why: 'espaciado: menos de 48 h desde el último correo a este prospecto' }); continue; }
       if (inboundByCandidate && inboundByCandidate[m.candidate_id]) return { action: 'cancel', message: m, reason: 'el prospecto ya respondió' };
     }
     return { action: 'send', message: m, candidate: c || null, mode: cfg.mode };
@@ -381,4 +400,167 @@ export function planSuppress(req, ctx) {
   live.forEach((m) => writes.push({ method: 'PATCH', path: 'outreach_messages?id=eq.' + m.id + '&status=in.(draft,approved)', body: { status: 'cancelled', confirm_code: null, error: 'No contactar: ' + reason, updated_at: now } }));
   writes.push({ method: 'PATCH', path: 'prospect_candidates?id=eq.' + cand.id, body: { status: 'discarded', next_action_at: null, updated_at: now } });
   return { response: { ok: true, status: 'suppressed', message: cand.company_name + ': ' + emails.length + ' correo(s) suprimidos, ' + live.length + ' mensaje(s) pendiente(s) cancelado(s). No se le vuelve a escribir.', suppressed_emails: emails, cancelled: live.length }, writes };
+}
+
+// =====================================================================================================================
+// Follow-up comercial (Bloque 1, parte 2)
+// Reglas: 1er seguimiento a +3 días hábiles y 2º a +7 días hábiles desde el PRIMER envío; después parar. Cada seguimiento es un borrador
+// que Christian aprueba (nunca se autoenvía) + una tarea en GHL. Se cancela todo si hay respuesta, rebote, baja, descarte o Won/Lost.
+// =====================================================================================================================
+
+export function followupSlots(sentMs, cfg) {
+  const d = (cfg && Array.isArray(cfg.followup_days) && cfg.followup_days.length >= 2 ? cfg.followup_days : [3, 7]).map(Number);
+  const tz = (cfg && cfg.tz) || 'America/Santiago';
+  return [{ kind: 'followup_1', n: 1, days: d[0], due: Date.parse(addBusinessDaysIso(sentMs, d[0], tz)) }, { kind: 'followup_2', n: 2, days: d[1], due: Date.parse(addBusinessDaysIso(sentMs, d[1], tz)) }];
+}
+
+/** Por qué se detiene la secuencia de un candidato (o null si sigue). */
+export function followupStopReason(cand, to, msgs, suppression, closedOppIds) {
+  if (!cand) return 'sin_prospecto';
+  if (cand.status === 'discarded') return 'descartado';
+  if (cand.ghl_opportunity_id && closedOppIds && closedOppIds[cand.ghl_opportunity_id]) return 'oportunidad_' + closedOppIds[cand.ghl_opportunity_id];
+  if (checkSuppression(to, suppression)) return 'suprimido';
+  const inbound = (msgs || []).filter((m) => m.direction === 'inbound' && ['reply', 'decline', 'unsubscribe', 'bounce'].includes(m.classification));
+  if (inbound.length) { const c = inbound[0].classification; return c === 'reply' ? 'respondio' : c === 'decline' ? 'rechazo' : c === 'unsubscribe' ? 'baja' : 'rebote'; }
+  return null;
+}
+
+export function followupTitle(n, co) { return 'Seguimiento ' + n + ' · ' + String(co || '').slice(0, 80); }
+
+/** Candidatos cuyas tareas de GHL hay que revisar antes de crearlas (evita duplicados reales). */
+export function followupsNeedingTaskCheck(ctx) {
+  const out = [];
+  for (const m of ctx.initials || []) {
+    const meta = m.metadata || {};
+    if (meta.followup_state || meta.followup_tasks) continue;
+    const cand = (ctx.candidates || {})[m.candidate_id];
+    if (!cand || !cand.ghl_contact_id) continue;
+    if (followupStopReason(cand, m.to_email, (ctx.byCandidate || {})[m.candidate_id], ctx.suppression, ctx.closed)) continue;
+    out.push({ contact_id: cand.ghl_contact_id, msg_id: m.id });
+  }
+  return out;
+}
+
+/**
+ * Plan del seguimiento. ctx = { now, config, initials[], byCandidate{candId:[msgs]}, candidates{id:row}, suppression[], closed{oppId:'won'|'lost'},
+ *   contactTasks{contactId:[tasks]}, ghl:{base,locationId,userId}, newId() }.
+ * Devuelve { ghl_ops[], writes[], actions[], meta_updates{} }. Los ids de las tareas nuevas se registran en finalizeFollowups.
+ */
+export function planFollowups(ctx) {
+  const now = ctx.now, iso = new Date(now).toISOString();
+  const cfg = ctx.config || {};
+  const ghl = ctx.ghl || {};
+  const ghl_ops = [], writes = [], actions = [], meta_updates = {};
+  const setMeta = (m, patch) => { meta_updates[m.id] = { ...(meta_updates[m.id] || (m.metadata || {})), ...patch }; };
+  for (const m of ctx.initials || []) {
+    const cand = (ctx.candidates || {})[m.candidate_id];
+    const msgs = (ctx.byCandidate || {})[m.candidate_id] || [];
+    const meta = m.metadata || {};
+    const state = meta.followup_state || null;
+    if (state && /^(stopped|done)/.test(state)) continue;
+    const co = (cand && cand.company_name) || m.company_name || 'prospecto';
+    const sentMs = Date.parse(m.sent_at || m.created_at);
+    if (!Number.isFinite(sentMs)) continue;
+    const reason = followupStopReason(cand, m.to_email, msgs, ctx.suppression, ctx.closed);
+    if (reason) {
+      msgs.filter((x) => x.direction === 'outbound' && ['followup_1', 'followup_2'].includes(x.kind) && ['draft', 'approved'].includes(x.status)).forEach((x) => writes.push({ method: 'PATCH', path: 'outreach_messages?id=eq.' + x.id + '&status=in.(draft,approved)', body: { status: 'cancelled', confirm_code: null, error: 'Seguimiento detenido: ' + reason, updated_at: iso } }));
+      const tasks = meta.followup_tasks || {};
+      ['f1', 'f2'].forEach((k) => { if (tasks[k] && tasks[k].id && !tasks[k].deleted) ghl_ops.push({ kind: 'task_delete', msg_id: m.id, slot: k, method: 'DELETE', url: ghl.base + '/locations/' + ghl.locationId + '/tasks/' + tasks[k].id, body: null }); });
+      setMeta(m, { followup_state: 'stopped:' + reason, followup_stopped_at: iso });
+      if (cand) writes.push({ method: 'PATCH', path: 'prospect_candidates?id=eq.' + cand.id, body: { next_action_at: null, updated_at: iso } });
+      actions.push({ company: co, action: 'detenido', reason });
+      continue;
+    }
+    const slots = followupSlots(sentMs, cfg);
+    if (!meta.followup_tasks && cand && cand.ghl_contact_id) {
+      const existing = ((ctx.contactTasks || {})[cand.ghl_contact_id]) || [];
+      const tasks = {};
+      slots.forEach((s) => {
+        const title = followupTitle(s.n, co);
+        const found = existing.find((t) => String(t.title || '') === title);
+        if (found) { tasks['f' + s.n] = { id: found.id || found._id, due: new Date(s.due).toISOString(), reused: true }; return; }
+        ghl_ops.push({ kind: 'task_create', msg_id: m.id, slot: 'f' + s.n, method: 'POST', url: ghl.base + '/contacts/' + cand.ghl_contact_id + '/tasks',
+          body: { title, body: 'Han pasado ' + s.days + ' días hábiles desde el primer correo a ' + co + ' sin respuesta. Hermes deja un borrador de seguimiento listo (pídele: «muéstrame el seguimiento de ' + co + '»). La tarea se cancela sola si responde, rebota, se da de baja o se descarta.', dueDate: new Date(s.due).toISOString(), completed: false, assignedTo: ghl.userId } });
+      });
+      setMeta(m, { followup_tasks: tasks, ...(meta.followup_state ? {} : { followup_state: 'active', followup_started_at: iso }) });
+    } else if (!meta.followup_state) setMeta(m, { followup_state: 'active', followup_started_at: iso });
+    const byKind = (k) => msgs.filter((x) => x.direction === 'outbound' && x.kind === k);
+    const f1 = byKind('followup_1'), f2 = byKind('followup_2');
+    const live = (arr) => arr.find((x) => ['draft', 'approved', 'sending'].includes(x.status));
+    const draftFor = (kind, history) => {
+      const r = planDraft({ kind, by: 'Atacama OS · seguimiento' }, { now, candidate: cand, history, suppression: ctx.suppression, new_id: ctx.newId(), config: cfg });
+      if (r.response.ok && r.writes.length) { r.writes.forEach((w) => writes.push(w)); actions.push({ company: co, action: 'borrador_' + kind, due: new Date(slots.find((s) => s.kind === kind).due).toISOString() }); return true; }
+      actions.push({ company: co, action: 'borrador_no_creado_' + kind, why: r.response.message || r.response.error });
+      return false;
+    };
+    const s1 = slots[0], s2 = slots[1];
+    if (now >= s2.due) {
+      if (f2.length === 0) {
+        const f1live = live(f1);
+        if (!(f1live && f1live.status !== 'draft')) {
+          if (f1live) writes.push({ method: 'PATCH', path: 'outreach_messages?id=eq.' + f1live.id + '&status=eq.draft', body: { status: 'cancelled', error: 'Seguimiento 1 caducó sin aprobarse: se prepara el 2', updated_at: iso } });
+          draftFor('followup_2', f1live ? msgs.filter((x) => x.id !== f1live.id) : msgs);
+        }
+      }
+      const f2done = f2.length > 0 && !live(f2);
+      if (f2done) { setMeta(m, { followup_state: 'done', followup_done_at: iso }); if (cand) writes.push({ method: 'PATCH', path: 'prospect_candidates?id=eq.' + cand.id, body: { next_action_at: null, updated_at: iso } }); actions.push({ company: co, action: 'secuencia_terminada' }); }
+    } else if (now >= s1.due) {
+      if (f1.length === 0) draftFor('followup_1', msgs);
+      if (cand) writes.push({ method: 'PATCH', path: 'prospect_candidates?id=eq.' + cand.id, body: { next_action_at: new Date(s2.due).toISOString(), updated_at: iso } });
+    } else if (cand) writes.push({ method: 'PATCH', path: 'prospect_candidates?id=eq.' + cand.id, body: { next_action_at: new Date(s1.due).toISOString(), updated_at: iso } });
+  }
+  return { ghl_ops, writes, actions, meta_updates };
+}
+
+/** Cierra el plan con las respuestas de GHL: guarda ids de tareas y estados. Devuelve las escrituras de Supabase. */
+export function finalizeFollowups(plan, results, ctx) {
+  const iso = new Date(ctx.now).toISOString();
+  const meta = {};
+  Object.keys(plan.meta_updates).forEach((k) => { meta[k] = { ...plan.meta_updates[k] }; });
+  const errors = [];
+  plan.ghl_ops.forEach((op, i) => {
+    const res = (results || [])[i] || {};
+    const ok = (res.statusCode || 0) > 0 && (res.statusCode || 0) < 300;
+    if (!op.msg_id) { if (!ok) errors.push({ kind: op.kind, slot: op.slot, status: res.statusCode || 0 }); return; }
+    const cur = meta[op.msg_id] || (meta[op.msg_id] = {});
+    if (!ok) { errors.push({ kind: op.kind, slot: op.slot, status: res.statusCode || 0 }); if (op.kind === 'task_create' && cur.followup_tasks) { const ft = { ...cur.followup_tasks }; delete ft[op.slot]; cur.followup_tasks = ft; } return; }
+    if (op.kind === 'task_create') { const t = (res.body && (res.body.task || res.body)) || {}; cur.followup_tasks = { ...(cur.followup_tasks || {}), [op.slot]: { id: t.id || t._id, due: op.body.dueDate } }; }
+    if (op.kind === 'task_delete') { const ft = { ...(cur.followup_tasks || {}) }; if (ft[op.slot]) ft[op.slot] = { ...ft[op.slot], deleted: true }; cur.followup_tasks = ft; }
+  });
+  const writes = plan.writes.slice();
+  Object.keys(meta).forEach((id) => writes.push({ method: 'PATCH', path: 'outreach_messages?id=eq.' + id, body: { metadata: meta[id], updated_at: iso } }));
+  return { writes, errors };
+}
+
+/** Higiene de tareas: la automatización nativa de GHL a veces crea dos tareas idénticas. Conserva la más antigua y borra las demás (mismo título y mismo día de vencimiento, no completadas). */
+export function dedupeReviewTasks(tasksByContact, contactIds, ghl) {
+  const ops = [];
+  for (const cid of contactIds || []) {
+    const tasks = ((tasksByContact || {})[cid] || []).filter((t) => t && !t.completed);
+    const groups = {};
+    tasks.forEach((t) => { const k = String(t.title || '') + '|' + String(t.dueDate || '').slice(0, 10); (groups[k] = groups[k] || []).push(t); });
+    Object.keys(groups).forEach((k) => {
+      const g = groups[k];
+      if (g.length < 2) return;
+      g.sort((a, b) => String(a.dateAdded || a.createdAt || '').localeCompare(String(b.dateAdded || b.createdAt || '')) || String(a.id || a._id).localeCompare(String(b.id || b._id)));
+      g.slice(1).forEach((t) => ops.push({ kind: 'task_dedupe', msg_id: null, slot: 'dup', method: 'DELETE', url: ghl.base + '/locations/' + ghl.locationId + '/tasks/' + (t.id || t._id), body: null, title: t.title }));
+    });
+  }
+  return ops;
+}
+
+/** Vista para Hermes: estado del seguimiento de cada primer correo enviado. */
+export function followupOverview(initials, byCandidate, candidates, cfg, nowMs) {
+  return (initials || []).map((m) => {
+    const cand = (candidates || {})[m.candidate_id] || {};
+    const msgs = (byCandidate || {})[m.candidate_id] || [];
+    const sentMs = Date.parse(m.sent_at || m.created_at);
+    const slots = Number.isFinite(sentMs) ? followupSlots(sentMs, cfg) : [];
+    const meta = m.metadata || {};
+    const pick = (k) => { const x = msgs.find((y) => y.direction === 'outbound' && y.kind === k && y.status !== 'cancelled') || msgs.find((y) => y.direction === 'outbound' && y.kind === k); return x ? { status: x.status, id: x.id } : null; };
+    const replied = msgs.some((x) => x.direction === 'inbound' && ['reply', 'decline', 'unsubscribe', 'bounce'].includes(x.classification));
+    return { company: cand.company_name || m.company_name, to: m.to_email, first_sent_at: m.sent_at, state: meta.followup_state || 'pendiente', replied,
+      followup_1: { due: slots[0] ? new Date(slots[0].due).toISOString() : null, due_now: slots[0] ? nowMs >= slots[0].due : false, message: pick('followup_1') },
+      followup_2: { due: slots[1] ? new Date(slots[1].due).toISOString() : null, due_now: slots[1] ? nowMs >= slots[1].due : false, message: pick('followup_2') } };
+  });
 }

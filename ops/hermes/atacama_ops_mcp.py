@@ -241,6 +241,12 @@ def cancel_outreach(target: str, kind: str = "", request_id: str = "") -> str:
 
 
 @mcp.tool()
+def get_followups(filter: str = "due", request_id: str = "") -> str:
+    """Seguimiento comercial de los prospectos con primer correo enviado: fechas del +3 y +7 días hábiles, estado (active / done / stopped:motivo), si respondió y el estado de cada borrador de seguimiento. filter=due (por defecto) muestra solo lo que tiene algo pendiente; filter=all muestra todos. Los seguimientos nunca se envían solos: son borradores que Christian aprueba con approve_outreach(kind=followup_1|followup_2)."""
+    return _call("get_followups", {"filter": filter}, request_id=request_id)
+
+
+@mcp.tool()
 def list_outreach(filter: str = "", limit: int = 20, request_id: str = "") -> str:
     """Lista correos de salida. filter: drafts | approved | sent | failed (vacío = todos)."""
     return _call("list_outreach", {"filter": filter, "limit": limit}, request_id=request_id)

@@ -8,7 +8,7 @@
 Christian (Telegram, el mismo bot de siempre)
         │
         ▼
-   Hermes (VPS)  ── skill `atacama-ops` + servidor MCP `atacama-os` (19 herramientas)
+   Hermes (VPS)  ── skill `atacama-ops` + servidor MCP `atacama-os` (27 herramientas)
         │            · solo guarda la clave de ingesta de n8n (/opt/data/.env, nunca se imprime)
         ▼
  POST /webhook/atacama-hermes-operator   (n8n «20 Hermes Operator» · X-Atacama-Key)
@@ -40,6 +40,7 @@ Christian (Telegram, el mismo bot de siempre)
 | `get_open_opportunities` | 1 | Oportunidades abiertas, por etapa | GHL (lectura) |
 | `get_tasks` | 1 | Tareas pendientes (oculta las `(Example)`) | GHL (lectura) |
 | `save_draft` · `get_draft` · `cancel_outreach` · `list_outreach` · `get_replies` | 1 | Borradores de correo, historial y respuestas (el motor **nunca** envía) | n8n 21 (ver [`OUTREACH.md`](OUTREACH.md)) |
+| `get_followups` | 1 | Estado del seguimiento +3/+7 días hábiles y lo que está pendiente | n8n 21 |
 | `approve_outreach` | **3** | Aprueba un correo con código del servidor + palabras de Christian; el envío lo hace n8n 22 en su ventana | n8n 21 |
 | `do_not_contact` | **2** | Descarta y suprime todos los correos del prospecto | Gateway + n8n 21 |
 | `force_import_prospect` | **2** | **FORCE_IMPORT**: mete aunque el score sea bajo; el motivo queda en Supabase, GHL y auditoría | Gateway `import` + `force_import` |
