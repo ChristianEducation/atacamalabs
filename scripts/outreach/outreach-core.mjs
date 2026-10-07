@@ -162,7 +162,8 @@ export function followupTemplate(kind, cand, firstSubject) {
 export function renderEmail(msg, cfg) {
   const name = (cfg && cfg.from_name) || 'Christian Wevar';
   const foot = (cfg && cfg.legal_footer) ? String(cfg.legal_footer).trim() : 'Atacama Labs · atacamalabs.cl';
-  const text = String(msg.body || '').trim() + '\n\n' + name + '\nAtacama Labs · atacamalabs.cl\n\n--\n' + foot + '\nSi prefieres no recibir más mensajes de Atacama Labs, responde «baja» y no volveré a escribirte.';
+  const sig = 'Atacama Labs · atacamalabs.cl';
+  const text = String(msg.body || '').trim() + '\n\n' + name + '\n' + sig + '\n\n--\n' + (foot === sig ? '' : foot + '\n') + 'Si prefieres no recibir más mensajes de Atacama Labs, responde «baja» y no volveré a escribirte.';
   return { subject: String(msg.subject || '').trim(), text };
 }
 
@@ -298,6 +299,7 @@ export function pickDue(msgs, cfg, nowMs, sentToday, suppression, candidatesById
     const c = candidatesById && candidatesById[m.candidate_id];
     if (cfg.mode === 'test_sim' && !/TEST/.test(String((c && c.company_name) || m.company_name || ''))) { skipped.push({ id: m.id, why: 'test_sim solo procesa candidatos TEST' }); continue; }
     if (cfg.mode === 'live' && /TEST/.test(String(m.company_name || '')) ) { skipped.push({ id: m.id, why: 'candidato TEST nunca se envía en modo live' }); continue; }
+    if (cfg.mode === 'live' && Array.isArray(cfg.send_allowlist) && cfg.send_allowlist.length && !cfg.send_allowlist.map(normEmail).includes(normEmail(m.to_email))) { skipped.push({ id: m.id, why: 'lista blanca de envío: ' + normEmail(m.to_email) + ' no está autorizado' }); continue; }
     const sup = checkSuppression(m.to_email, suppression);
     if (sup) return { action: 'cancel', message: m, reason: 'suprimido (' + sup.reason + ')' };
     if (c && c.status === 'discarded') return { action: 'cancel', message: m, reason: 'el prospecto fue descartado' };

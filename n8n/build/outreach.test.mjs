@@ -27,7 +27,7 @@ for (const [k, wf] of Object.entries(WF)) {
 t('21: webhook con clave de cabecera y ruta propia', WF.engine.nodes[0].parameters.authentication === 'headerAuth' && WF.engine.nodes[0].parameters.path === 'atacama-outreach-engine');
 t('21: el motor NUNCA llama a Gmail ni al Gateway (solo Supabase)', WF.engine.nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest').every((n) => /supabase/i.test(JSON.stringify(n.credentials)) ));
 t('22: Gmail solo se llama en modo live (la URL cae en localhost.invalid en otro caso) y solo con un mensaje reclamado', /go_live/.test(WF.sender.nodes.find((n) => n.name === 'Gmail Send').parameters.url) && /localhost\.invalid/.test(WF.sender.nodes.find((n) => n.name === 'Gmail Send').parameters.url) && /length === 1/.test(WF.sender.nodes.find((n) => n.name === 'Gmail Send').parameters.url));
-t('22/23: sin credencial de Gmail no hay credenciales de Gmail en los nodos', !JSON.stringify(WF.sender).includes('gmailOAuth2":{') && !JSON.stringify(WF.sync).includes('gmailOAuth2":{'));
+t('22/23: sin GMAIL_CRED_ID no hay credenciales de Gmail en los nodos (con el id real quedan conectadas: ver la prueba de gmail_check)', process.env.GMAIL_CRED_ID ? true : (!JSON.stringify(WF.sender).includes('gmailOAuth2":{') && !JSON.stringify(WF.sync).includes('gmailOAuth2":{')));
 t('22: el envío usa un candado (claim approved→sending con Prefer return=representation)', JSON.stringify(WF.sender.nodes.find((n) => n.name === 'Claim').parameters).includes('return=representation') && /status=eq\.approved/.test(code('sender', 'Claim Plan')));
 
 // ---------- 21 Engine
@@ -233,6 +233,32 @@ t('23: hilo que no es nuestro (sin envío previo) se ignora', r.pr.new_messages 
 // ---------- 21 get_followups
 r = await engine({ action: 'followups', filter: 'due' }, { history: [msgRow({ id: 'i-1', kind: 'initial', status: 'sent', sent_at: new Date(Date.now() - 20 * 86400000).toISOString(), metadata: { followup_state: 'active' } })] });
 t('21 followups: lista los prospectos con seguimiento pendiente (due_now) sin tocar nada', r.resp.count === 1 && r.resp.items[0].followup_1.due_now === true && r.ex[0].skip === true);
+
+
+// ---------- gmail_check (verificación de credencial y scopes sin enviar nada)
+{
+  const N22 = WF.sender.nodes, N23 = WF.sync.nodes;
+  t('22/23: la credencial real de Gmail quedó conectada a los nodos HTTP de Gmail (sender: envío + 2 sondas; sync: lectura)', N22.filter((n) => /Gmail (Send|Diag)/.test(n.name)).length === 3 && N23.filter((n) => n.name === 'Gmail Fetch').length === 1 && (process.env.GMAIL_CRED_ID ? N22.filter((n) => /Gmail (Send|Diag)/.test(n.name)).every((n) => n.credentials && n.credentials.gmailOAuth2 && n.credentials.gmailOAuth2.id === process.env.GMAIL_CRED_ID) && N23.find((n) => n.name === 'Gmail Fetch').credentials.gmailOAuth2.id === process.env.GMAIL_CRED_ID : true));
+  t('22: la sonda de envío no puede enviar (cuerpo sin destinatario: Subject: diag) y solo se usa con gmail_check', (() => { const n = N22.find((x) => x.name === 'Gmail Diag Send'); const body = JSON.parse(n.parameters.jsonBody.replace(/^=\{\{\s*/, '').replace(/\s*\}\}$/, '').replace('JSON.stringify(', '').replace(/\)$/, '').replace(/(\w+):/g, '"$1":')); const raw = Buffer.from(body.raw, 'base64').toString(); return !/^(To|Cc|Bcc):/mi.test(raw) && /Subject: diag/.test(raw) && WF.sender.connections['Diag?'].main[0][0].node === 'Gmail Diag Profile' && WF.sender.connections['Diag?'].main[1][0].node === 'Load Config'; })());
+  const diag22 = async (p, s) => (await run('sender', 'Respond Diag', { 'Gmail Diag Profile': p, 'Gmail Diag Send': s }))[0].json;
+  let d = await diag22({ statusCode: 200, body: { emailAddress: 'christian.wevar@atacamalabs.cl' } }, { statusCode: 400, body: { error: { message: 'Recipient address required' } } });
+  t('22 diag: con acceso y permiso de envío → ok (la sonda recibe 400 «Recipient address required»)', d.ok === true && d.credential_access && d.send_scope_ok && d.account === 'christian.wevar@atacamalabs.cl' && d.safety.messages_sent === 0);
+  d = await diag22({ statusCode: 200, body: { emailAddress: 'x@y.cl' } }, { statusCode: 403, body: { error: { message: 'Request had insufficient authentication scopes' } } });
+  t('22 diag: sin scope de envío (403) → ok:false', d.ok === false && d.send_scope_ok === false && d.credential_access === true);
+  d = await diag22({ statusCode: 401, body: {} }, { statusCode: 401, body: {} });
+  t('22 diag: credencial inválida/vencida (401) → ok:false', d.ok === false && d.credential_access === false);
+  const st = { Init: { now: 1, diag: true } };
+  st['Load Config'] = ok200([CFG({ mode: 'off' })]); st['Load Open'] = ok200([]);
+  const prep = (await run('sync', 'Prep', st))[0].json; st.Prep = prep;
+  const th = (await run('sync', 'Expand Threads', st)).map((x) => x.json);
+  t('23 diag: aunque el modo sea off pide solo lectura (perfil, etiquetas, lista de hilos); ningún POST', th.length === 3 && th.every((x) => /^https:\/\/gmail\.googleapis\.com\/gmail\/v1\/users\/me\/(profile|labels|threads\?maxResults=1)/.test(x.url)) && N23.find((n) => n.name === 'Gmail Fetch').parameters.method === 'GET');
+  st['Gmail Fetch'] = { statusCode: 200, body: { emailAddress: 'christian.wevar@atacamalabs.cl', messagesTotal: 12 } };
+  st['Load Known'] = ok200([]); st['Load Candidates'] = ok200([]);
+  const pr = (await run('sync', 'Process', st, { 'Gmail Fetch': [{ statusCode: 200, body: { emailAddress: 'christian.wevar@atacamalabs.cl', messagesTotal: 12 } }, { statusCode: 200, body: { labels: [] } }, { statusCode: 200, body: { threads: [] } }] }))[0].json;
+  st.Process = pr; st['Apply Writes'] = ok200({}); st['Gateway Effect'] = ok200({});
+  const rs = (await run('sync', 'Respond', st, { 'Gateway Effect': [{ statusCode: 0 }], 'Apply Writes': [{ statusCode: 0 }] }))[0].json;
+  t('23 diag: responde ok con la cuenta conectada y acceso de lectura, sin escribir ni enviar', rs.ok === true && rs.account === 'christian.wevar@atacamalabs.cl' && rs.read_labels_ok && rs.read_threads_ok && rs.safety.messages_sent === 0 && pr.writes.length === 0);
+}
 
 console.log(`\n${pass} ok, ${fail} fallos`);
 process.exit(fail ? 1 : 0);

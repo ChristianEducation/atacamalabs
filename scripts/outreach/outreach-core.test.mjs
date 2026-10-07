@@ -343,6 +343,16 @@ ok('dedupeReviewTasks: borra solo las tareas idénticas repetidas (mismo título
   const fin = oc.finalizeFollowups({ ghl_ops: ops, writes: [], meta_updates: {} }, [{ statusCode: 200, body: {} }], { now: T0 });
   assert.equal(fin.errors.length, 0); assert.equal(fin.writes.length, 0);
 });
+ok('lista blanca de envío: en live solo sale a los correos autorizados (el resto espera, no se cancela)', () => {
+  const cb = { 'c-1': cand() };
+  const allow = { ...CFG, send_allowlist: ['c.wevarh@gmail.com'] };
+  const r1 = oc.pickDue([appr()], allow, WED, 0, [], cb);
+  assert.equal(r1.action, 'none'); assert.match(JSON.stringify(r1.skipped), /lista blanca/);
+  assert.equal(oc.pickDue([appr({ to_email: 'C.Wevarh@gmail.com', content_hash: oc.contentHash('C.Wevarh@gmail.com', appr().subject, appr().body) })], allow, WED, 0, [], cb).action, 'send');
+  assert.equal(oc.pickDue([appr()], { ...allow, send_allowlist: [] }, WED, 0, [], cb).action, 'send');
+  assert.equal(oc.pickDue([appr()], { ...allow, mode: 'test_sim' }, WED, 0, [], { 'c-1': cand({ company_name: 'Clínica TEST' }) }).action, 'send');
+});
+ok('renderEmail: si el pie legal es igual a la firma no se repite', () => { const r = oc.renderEmail({ subject: 'S', body: BODY }, CFG); assert.equal(r.text.split('Atacama Labs · atacamalabs.cl').length, 2); assert.ok(r.text.includes('responde «baja»')); });
 ok('el núcleo no contiene secretos', () => {
   assert.ok(!/pit-[0-9a-f-]{20,}|eyJ[A-Za-z0-9_-]{20,}|ya29\./.test(Object.values(oc).map((f) => f.toString()).join('\n')));
 });

@@ -153,7 +153,13 @@ export function buildEngine() {
 // =====================================================================================================================
 export const senderInitCode = `let body = {};
 try { body = $('Send Webhook').first().json.body || {}; } catch (e) { body = {}; }
-return [{ json: { now: Date.now(), manual: Boolean(body && body.manual), now_override: Number.isFinite(Number(body && body.now_ms)) ? Number(body.now_ms) : null } }];`;
+return [{ json: { now: Date.now(), manual: Boolean(body && body.manual), diag: Boolean(body && body.gmail_check), now_override: Number.isFinite(Number(body && body.now_ms)) ? Number(body.now_ms) : null } }];`;
+
+export const senderDiagCode = `const p = $('Gmail Diag Profile').first().json || {};
+const s = $('Gmail Diag Send').first().json || {};
+const msg = JSON.stringify((s.body && s.body.error && s.body.error.message) || s.body || s.error || '').slice(0, 160);
+const sendOk = (s.statusCode || 0) === 400 && /recipient/i.test(msg);
+return [{ json: { ok: (p.statusCode || 0) === 200 && sendOk, workflow: '22 Outreach Sender', credential_access: (p.statusCode || 0) === 200, account: (p.body && p.body.emailAddress) || null, profile_status: p.statusCode || 0, send_scope_ok: sendOk, send_probe_status: s.statusCode || 0, send_probe_message: msg, note: 'La sonda de envío no lleva destinatario: Gmail siempre la rechaza (400 Recipient address required). No se envía nada.', safety: { messages_sent: 0 } } }];`;
 
 export const senderPrepCode = `${LIB}
 
@@ -233,6 +239,10 @@ export function buildSender() {
     schedule('Every 10 min', [0, -120]),
     webhook('Send Webhook', 'atacama-outreach-send-due', [0, 120]),
     code('Init', senderInitCode, [240, 0]),
+    ifNode('Diag?', '$json.diag === true', [360, -240]),
+    gmailHttp('Gmail Diag Profile', 'https://gmail.googleapis.com/gmail/v1/users/me/profile', 'GET', null, [600, -300]),
+    gmailHttp('Gmail Diag Send', 'https://gmail.googleapis.com/gmail/v1/users/me/messages/send', 'POST', '={{ JSON.stringify({ raw: "U3ViamVjdDogZGlhZw0KDQp4" }) }}', [840, -300]),
+    code('Respond Diag', senderDiagCode, [1080, -300]),
     sbGet('Load Config', `${SUPABASE}/rest/v1/outreach_config?id=eq.1&select=*`, [480, 0]),
     sbGet('Load Approved', `${SUPABASE}/rest/v1/outreach_messages?status=eq.approved&direction=eq.outbound&select=*&order=scheduled_for.asc&limit=20`, [720, 0]),
     code('Prep', senderPrepCode, [960, 0]),
@@ -263,7 +273,7 @@ export function buildSender() {
   nodes.find((n) => n.name === 'Gateway Effect').parameters.url = `={{ $json.gw && !$json.gw.skip ? "${N8N_BASE}/webhook/atacama-prospect-gateway" : "${NONE}" }}`;
   nodes.find((n) => n.name === 'Gateway Effect').parameters.jsonBody = '={{ JSON.stringify($json.gw ? $json.gw.body : {}) }}';
   const c = {
-    'Every 10 min': { main: [to('Init')] }, 'Send Webhook': { main: [to('Init')] }, 'Init': { main: [to('Load Config')] }, 'Load Config': { main: [to('Load Approved')] }, 'Load Approved': { main: [to('Prep')] }, 'Prep': { main: [to('Load Candidates')] },
+    'Every 10 min': { main: [to('Init')] }, 'Send Webhook': { main: [to('Init')] }, 'Init': { main: [to('Diag?')] }, 'Diag?': { main: [to('Gmail Diag Profile'), to('Load Config')] }, 'Gmail Diag Profile': { main: [to('Gmail Diag Send')] }, 'Gmail Diag Send': { main: [to('Respond Diag')] }, 'Load Config': { main: [to('Load Approved')] }, 'Load Approved': { main: [to('Prep')] }, 'Prep': { main: [to('Load Candidates')] },
     'Load Candidates': { main: [to('Load Suppression')] }, 'Load Suppression': { main: [to('Load Inbound')] }, 'Load Inbound': { main: [to('Load Sent Today')] }, 'Load Sent Today': { main: [to('Load Sent Recent')] }, 'Load Sent Recent': { main: [to('Decide')] }, 'Decide': { main: [to('Send?')] },
     'Send?': { main: [to('Claim Plan'), to('Cancel?')] }, 'Cancel?': { main: [to('Cancel Plan'), to('Respond None')] }, 'Cancel Plan': { main: [to('Apply Cancel')] }, 'Apply Cancel': { main: [to('Respond Cancel')] },
     'Claim Plan': { main: [to('Claim')] }, 'Claim': { main: [to('Gmail Send')] }, 'Gmail Send': { main: [to('Result')] }, 'Result': { main: [to('Gateway Effect')] }, 'Gateway Effect': { main: [to('Expand Result')] }, 'Expand Result': { main: [to('Apply Result')] }, 'Apply Result': { main: [to('Respond')] },
@@ -276,7 +286,7 @@ export function buildSender() {
 // =====================================================================================================================
 export const syncInitCode = `let body = {};
 try { body = $('Sync Webhook').first().json.body || {}; } catch (e) { body = {}; }
-return [{ json: { now: Date.now(), inject: Array.isArray(body && body.inject) ? body.inject : null } }];`;
+return [{ json: { now: Date.now(), diag: Boolean(body && body.gmail_check), inject: Array.isArray(body && body.inject) ? body.inject : null } }];`;
 
 export const syncPrepCode = `${LIB}
 
@@ -287,11 +297,12 @@ const open = arr('Load Open');
 const sb = '${SUPABASE}/rest/v1/';
 const ids = [...new Set(open.map((m) => m.candidate_id).filter(Boolean))];
 const inList = ids.length ? '(' + ids.join(',') + ')' : '(00000000-0000-0000-0000-000000000000)';
-return [{ json: { now: init.now, config, open, inject: config.mode !== 'live' ? init.inject : null,
+return [{ json: { now: init.now, diag: init.diag === true, config, open, inject: config.mode !== 'live' ? init.inject : null,
   known_url: sb + 'outreach_messages?effect_key=like.recv:*&select=effect_key&order=created_at.desc&limit=1000',
   cand_url: sb + 'prospect_candidates?id=in.' + inList + '&select=${CAND_SELECT}' } }];`;
 
 export const syncExpandThreadsCode = `const p = $('Prep').first().json;
+if (p.diag) return [{ json: { skip: false, url: 'https://gmail.googleapis.com/gmail/v1/users/me/profile', diag: 'profile' } }, { json: { skip: false, url: 'https://gmail.googleapis.com/gmail/v1/users/me/labels', diag: 'labels' } }, { json: { skip: false, url: 'https://gmail.googleapis.com/gmail/v1/users/me/threads?maxResults=1&q=in:sent', diag: 'threads' } }];
 const live = p.config.mode === 'live';
 const threads = [...new Set(p.open.map((m) => m.gmail_thread_id).filter(Boolean))].slice(0, 25);
 if (!live || !threads.length) return [{ json: { skip: true, thread_id: null } }];
@@ -301,6 +312,7 @@ export const syncProcessCode = `${LIB}
 
 const p = $('Prep').first().json;
 const arr = (n) => { const x = $(n).first().json || {}; return (x.statusCode || 0) < 300 && Array.isArray(x.body) ? x.body : []; };
+if (p.diag) { const f = $('Gmail Fetch').all().map((i) => i.json || {}); const pr = f[0] || {}, lb = f[1] || {}, th = f[2] || {}; return [{ json: { diag: { workflow: '23 Gmail Sync', credential_access: (pr.statusCode || 0) === 200, account: (pr.body && pr.body.emailAddress) || null, messages_total: (pr.body && pr.body.messagesTotal) || 0, read_labels_ok: (lb.statusCode || 0) === 200, read_threads_ok: (th.statusCode || 0) === 200, statuses: [pr.statusCode || 0, lb.statusCode || 0, th.statusCode || 0] }, writes: [], effects: [], summary: [], new_messages: 0, threads_checked: 0, mode: p.config.mode, stopped: {} } }]; }
 const known = new Set(arr('Load Known').map((r) => r.effect_key));
 const cands = {}; arr('Load Candidates').forEach((c) => { cands[c.id] = c; });
 const byThread = {}; p.open.forEach((m) => { if (!byThread[m.gmail_thread_id]) byThread[m.gmail_thread_id] = m; });
@@ -332,6 +344,7 @@ export const syncRespondCode = `const r = $('Process').first().json;
 const eff = $('Gateway Effect').all().map((i) => i.json);
 const failedFx = eff.filter((j) => j && (j.statusCode || 0) >= 300).length;
 const bad = $('Apply Writes').all().map((i) => i.json).filter((j) => (j.statusCode || 0) >= 300);
+if (r.diag) return [{ json: { ok: r.diag.credential_access && r.diag.read_labels_ok && r.diag.read_threads_ok, ...r.diag, mode: r.mode, safety: { messages_sent: 0 } } }];
 return [{ json: { ok: bad.length === 0, mode: r.mode, new_messages: r.new_messages, threads_checked: r.threads_checked, results: r.summary, followups_stopped_for: Object.keys(r.stopped || {}).length, ghl_effects: r.effects.length, ghl_effect_errors: failedFx, ...(bad.length ? { persist_error: 'Supabase HTTP ' + bad[0].statusCode } : {}), safety: { messages_sent: 0 } } }];`;
 
 export function buildSync() {
@@ -345,7 +358,7 @@ export function buildSync() {
     sbGet('Load Known', '={{ $("Prep").first().json.known_url }}', [1200, 0]),
     sbGet('Load Candidates', '={{ $("Prep").first().json.cand_url }}', [1440, 0]),
     code('Expand Threads', syncExpandThreadsCode, [1680, 0]),
-    gmailHttp('Gmail Fetch', `={{ $json.skip ? "${NONE}" : "https://gmail.googleapis.com/gmail/v1/users/me/threads/" + $json.thread_id + "?format=full" }}`, 'GET', null, [1920, 0]),
+    gmailHttp('Gmail Fetch', `={{ $json.skip ? "${NONE}" : ($json.url || "https://gmail.googleapis.com/gmail/v1/users/me/threads/" + $json.thread_id + "?format=full") }}`, 'GET', null, [1920, 0]),
     code('Process', syncProcessCode, [2160, 0]),
     code('Expand Writes', expandCode('$("Process").first().json.writes'), [2400, 0]),
     sbApply('Apply Writes', [2640, 0]),

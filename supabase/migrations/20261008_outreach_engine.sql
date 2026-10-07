@@ -80,3 +80,6 @@ alter table public.outreach_suppression enable row level security;
 revoke all on public.outreach_config from anon, authenticated;
 revoke all on public.outreach_messages from anon, authenticated;
 revoke all on public.outreach_suppression from anon, authenticated;
+
+-- lista blanca de destinatarios (8-oct): si no está vacía, en modo live SOLO se envía a esos correos (prueba de envío a Christian)
+alter table public.outreach_config add column if not exists send_allowlist text[] not null default '{}';

@@ -75,3 +75,26 @@ Clasificación determinista: **rebote** (mailer-daemon / «no entregado» → su
 Hermes: `get_followups` (qué seguimientos hay y cuáles tienen algo pendiente), `get_draft`/`save_draft kind=followup_1|2`, `approve_outreach`, `cancel_outreach`. Solo opera con `mode ≠ off` (sin envíos no hay secuencia que planificar).
 
 **Pruebas del seguimiento:** núcleo (39) + workflow 24 nodo a nodo (13) + **en vivo 32/32** con datos TEST y fechas simuladas (modo `test_sim`): tareas +3/+7 con las fechas correctas (13 y 19-oct para un envío el 8-oct), sin duplicar al repetir, respuesta de Beta → tareas borradas en GHL y secuencia detenida, Gamma pasada a *Lost* → detenida, borrador `followup_1` solo al llegar el +3 (nunca aprobado ni enviado solo), seguimiento 1 y 2 aprobados con código y «enviados» (simulado), `done` y bloqueo de un tercer seguimiento.
+
+## 8. Gmail conectado y autoprueba de envío (8-oct-2026)
+
+**Estado:** la credencial `Atacama Labs - Gmail (envío)` (`rA6hBRbpf0nbDWmh`, tipo `gmailOAuth2`, cuenta `christian.wevar@atacamalabs.cl`) está conectada a los nodos de Gmail de **22 Outreach Sender** (envío + 2 sondas) y **23 Gmail Sync** (lectura). `outreach_config.mode = off`: nada sale. Pie legal temporal: «Atacama Labs · atacamalabs.cl» (no bloquea la integración; se cambia en `legal_footer`).
+
+**Verificación de conexión y scopes (sin enviar nada):** `POST` al webhook de cada workflow con `{"gmail_check": true}` (funciona en cualquier modo):
+- **22:** lee el perfil de Gmail y hace una sonda de envío **sin destinatario**; Gmail la rechaza siempre con `400 Recipient address required` (si faltara el permiso de envío respondería `403`). Resultado 8-oct: `credential_access: true`, cuenta `christian.wevar@atacamalabs.cl`, `send_scope_ok: true`, `messages_sent: 0`.
+- **23:** lee perfil, etiquetas y lista de hilos (solo GET). Resultado: `credential_access: true`, `read_labels_ok`, `read_threads_ok`, 57 mensajes en el buzón.
+
+**Candado extra de la autoprueba:** `outreach_config.send_allowlist`. Si no está vacía, en modo `live` solo se envía a esos correos; hoy contiene **únicamente** el destinatario de la prueba. Además `daily_cap = 1`, el envío exige un mensaje **aprobado** (hoy los 13 borradores del lote 1 siguen sin aprobar) y los candidatos con «TEST» nunca salen en `live`.
+
+### Procedimiento de la autoprueba (UN solo correo, a tu propio correo)
+Destinatario propuesto: **c.wevarh@gmail.com** (se cambia con `--to`). Remitente: `christian.wevar@atacamalabs.cl`. Prospecto de la prueba: «Autoprueba Christian Wevar» (ya creado en *Investigado*, con borrador; nombre sin «TEST» a propósito).
+
+1. **Revisar el correo exacto:** `node scripts/outreach/self-test.mjs preview` (De, Para, Asunto y texto con firma y línea de baja).
+2. **Tu autorización explícita** en el chat (por ejemplo: «Autorizo el envío de prueba a c.wevarh@gmail.com»). Sin eso no se arma nada.
+3. **Armar y enviar:** `node scripts/outreach/self-test.mjs arm --confirm "<tus palabras>"`. El script se niega si hay otro mensaje aprobado, si el destinatario no es el autorizado, si la lista blanca no es solo ese correo, si el sistema está en pausa o si la autoprueba ya salió. Aprueba con el código del servidor (dos pasos, con tus palabras), pone `mode = live` (restringido: lista blanca + tope 1) y dispara **una** corrida del sender. Si no sale, vuelve a `off`.
+4. **Verificar el envío:** `self-test.mjs status` → el mensaje en `sent`, con `gmail_thread_id`; GHL: la oportunidad pasa a **Contactado** con la nota «Correo enviado…»; en tu Gmail llega el correo (revisa también spam) y en el buzón `christian.wevar@atacamalabs.cl` queda en *Enviados*.
+5. **Probar la respuesta:** respóndelo desde tu teléfono con la palabra «prueba». Corre `self-test.mjs sync` (o espera ≤ 10 min al sync automático): Gmail Sync detecta el mensaje en el mismo hilo, lo clasifica `reply`, guarda la fila entrante, y GHL pasa la oportunidad a **Respondió** con la nota «RESPUESTA por correo…»; el seguimiento de la autoprueba se detiene (planificador, ≤ 30 min: `followup_state = stopped:respondio` y tareas borradas).
+6. **Cerrar:** `self-test.mjs disarm` (vuelve a `mode = off`; cancela cualquier pendiente de la prueba). La lista blanca queda con solo tu correo hasta definir el envío real.
+7. **Limpiar:** `self-test.mjs cleanup` borra el prospecto de autoprueba por id exacto (GHL + Supabase). El hilo queda en tu Gmail.
+
+**Después de la prueba:** vaciar `send_allowlist` (o ampliarla al lote) y pasar `daily_cap = 5` se hace solo con tu orden explícita, junto con los primeros 3–5 contactos del lote 1 aprobados de a uno.
