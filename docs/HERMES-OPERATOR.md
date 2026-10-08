@@ -149,3 +149,18 @@ El MCP `atacama-os` pasó de 27 a **35 herramientas**. Todas llaman a n8n `25 At
 | `linkedin_config` · `waalaxy_lists` | 1 | Modo/destinos y listas/campañas de Waalaxy |
 
 **Lección:** las herramientas definidas después de `mcp.run()` no se registran; `ops/hermes/mcp-shape.test.mjs` lo impide y `hermes mcp test atacama-os` debe mostrar 42.
+
+## 12. Contenido de Ola A — 8 herramientas más (50 en total)
+
+| Herramienta | Qué hace |
+|---|---|
+| `content_queue` | Cola de revisión (n/6), señales candidatas, artículos RSS nuevos, entrevistas abiertas, carruseles esperando render |
+| `founder_interview` | `start` · `answer` · `cancel` · `status` · `add_question` (la IA estructura, no inventa vivencias) |
+| `submit_content_piece` | Envía UNA pieza al Content Intake (`origin`: autonomous · explicit · founder_interview); termina `in_review`, nunca publica |
+| `content_resources` | `list` (reutilizar antes de crear) · `register` · `retire` |
+| `rss_items` | `pending` · `mark` · `status` de los feeds |
+| `competitor_intel` | `list` · `latest` · `save` (inteligencia orgánica, solo fuentes públicas) |
+| `content_signals` | `candidates` · `submit` (gate de señales: URL + cita literal) · `learnings` |
+| `report_content_job` | Registra la corrida de un job (para `/ops` y avisos) |
+
+**Jobs:** `Content RSS` (lun–vie 13:15 UTC), `Content Pieces` (lun–vie 13:45 UTC) y `Competitor Intelligence` (miércoles 14:00 UTC), todos con compuerta previa (`rss_gate.sh`, `pieces_gate.sh`, `competitors_gate.sh`) que decide ANTES de gastar IA. Prompts versionados en `ops/hermes/content-*.prompt.txt`. Despliegue: `ops/hermes/deploy-to-vps.sh`.

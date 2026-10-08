@@ -949,3 +949,13 @@ Ver arquitectura §7. Hallazgos del E2E: la falla silenciosa de red (corregida),
 - **Respuesta del webhook:** ahora incluye `proposed_for`, `proposed_label`, `proposed_in_hours` y `schedule_warnings`.
 - **Pruebas:** `scripts/content/schedule-core.test.mjs` y `n8n/build/content-engine.test.mjs` (incluye «hoy 7-oct, sin solicitud explícita de publicar el 14, ninguna pieza termina el 14 por fallback», para los 3 canales y 4 categorías, con y sin sugerencia al 14). Probado en vivo con una pieza TEST (propuso jue 8-oct 09:00 Chile = 15,8 h), borrada por ID exacto.
 - **Datos existentes:** de los 4 posts de Social Planner solo uno estaba lejos por el fallback (carrusel de Instagram «Compactación…», 14-oct 10:00 Chile) → movido al 8-oct 12:30 Chile, aún `in_review`. Los otros tres no se tocaron (uno publicado, dos aprobados por Christian). Nota técnica: `PUT` de GHL reduce un carrusel a 1 imagen, así que se recreó el post con las 6 imágenes (`POST`) y se retiró el anterior; la pieza en Supabase apunta al post nuevo.
+
+## OLA A — entradas y herramientas de contenido (8-oct-2026) · ✅ en producción
+
+Detalle de arquitectura: [`ATACAMA-OS-ARQUITECTURA-FINAL.md`](ATACAMA-OS-ARQUITECTURA-FINAL.md) §11. Registro:
+
+- **Reutilizado:** Content Radar/Signals (gate de señales con cita literal), Content Intake (scoring y fechas), `content_sources/content_pieces`, Supabase y retries de los builders n8n, `ops_runs/ops_alerts`, `/ops`, MCP de Hermes (+8 herramientas), `deploy-to-vps.sh`.
+- **Agregado:** n8n 27 y 28; Governor; RSS (7 feeds); Content Pieces; inteligencia orgánica; Founder Interview; recursos + `/recursos` + primer recurso «Qué proceso de tu empresa automatizar primero»; compuertas, panel y alertas.
+- **Pruebas:** 28 suites / 996 pruebas verdes; E2E reales (todo limpiado por ID exacto): RSS (7 feeds, 104 artículos, 2.ª ingestión 0 duplicados); señales → 2 piezas reales `in_review` (score 85 y 86); Governor en vivo (autónomo bloqueado a 1/1, explícito pasa con advertencia); Founder Interview con Hermes real (test, cita literal verificada, score 84); recurso activo con enlace UTM en el post; inteligencia orgánica con 3 competidores y 4 páginas leídas.
+- **Hallazgos corregidos en el camino:** (1) `Fetch Keys` bloqueaba reenviar una pieza retenida (`idea_repetida`): ahora solo bloquean las que llegaron a revisión/descartadas; (2) las piezas de investigación necesitan el `source_key` de la señal como `key` para contar como verificadas (el Intake lo avisa); (3) PUT de GHL reduce carruseles a 1 imagen (ver corrección de fechas).
+- **Pendientes humanos:** ver el informe final de la sesión (pie legal del correo y interruptor `dry_run` de Won→Cliente en GHL).

@@ -1,6 +1,6 @@
 # Atacama OS — Arquitectura final, activación y pendientes (Bloque 3 · 7-oct-2026)
 
-> Estado: **técnicamente listo para operar comercialmente. Solo falta la decisión explícita de Christian de encenderlo.** Hoy todo envío real sigue apagado (`outreach_config.mode = off`, `linkedin_mode = off`).
+> Estado (8-oct-2026, tras la Ola A): **todo construido, probado y desplegado; el contenido (RSS, inteligencia orgánica, Founder Interview, recursos y gobernador de cola) ya opera y termina siempre en revisión.** El encendido comercial (correo en vivo) se hace con una sola orden y solo espera dos datos humanos: el pie legal del correo (razón social/RUT) y el interruptor `dry_run` de Won→Cliente en GHL. LinkedIn sigue apagado hasta tener lista y campaña de producción en Waalaxy. Ola A: ver §11.
 
 ## 1. Arquitectura (una responsabilidad por pieza)
 
@@ -124,3 +124,24 @@ node scripts/ops/activate-commercial.mjs --apply --confirm "…" --linkedin-list
 6. **VPS (requiere root)**: (a) Crawl4AI (`crawl4ai-stii`, legacy) publica `0.0.0.0:32774` (responde 401): cambiar su binding a `127.0.0.1` (n8n corre en el mismo host); (b) el puerto de OpenClaw hoy está restringido a `127.0.0.1` por un archivo adicional: persistirlo en `/docker/openclaw-655m/docker-compose.yml` (un `docker compose up` normal volvería a publicarlo); (c) el contenedor `hermes-agent` publica `0.0.0.0:32781→3000` sin servicio útil (hoy filtrado desde fuera): quitar la publicación del puerto.
 7. **Supabase**: confirmar en el panel (Database → Backups) el plan de respaldos automáticos; este bloque guardó el esquema y la configuración, no los datos.
 8. **Heredado del Bloque 1** (sin resolver): 4 correos salieron del buzón de envío a prospectos sin pasar por Atacama OS (otra herramienta usa ese buzón); afecta reputación del dominio y el tope diario real.
+
+## 11. Ola A (8-oct-2026) — nuevas entradas y herramientas de contenido
+
+Todo se montó SOBRE lo existente (Content Radar, Content Intake, Supabase, `/ops`, Hermes por Telegram). Nada publica ni contacta: toda pieza termina `in_review`.
+
+| Capacidad | Cómo funciona | Dónde vive |
+|---|---|---|
+| **Content Queue Governor** | Tope configurable de piezas en revisión (`content_config.max_pending_in_review`, por defecto **6**). Con la cola llena, lo AUTÓNOMO se bloquea en el servidor (el Content Intake responde `blocked` y no guarda nada) pero el radar sigue recolectando señales; una orden explícita de Christian pasa con advertencia. `/ops` muestra «cola n/6» | n8n 12 · `growth-core.mjs` · `ops-core.mjs` |
+| **RSS / Real-Time Content Radar** | n8n **28 Content RSS** (cada hora) lee los feeds de `content_feeds` (configurables: 7 oficiales hoy), guarda solo artículos nuevos (único por feed + hash; > 14 días se ignoran) y la salud de cada feed. El job de Hermes **Content RSS** (lun–vie 10:15 Chile, con compuerta: solo corre si hay artículos relevantes y espacio) elige hasta 3, abre la URL, cita literal → señal (n8n 13) | n8n 28 · `rss-core.mjs` · job `3423e7821026` |
+| **Content Pieces** | Job de Hermes (lun–vie 10:45 Chile, con compuerta) que convierte las señales candidatas en hasta 2 piezas de **LinkedIn Atacama Labs** (texto) y las manda al Intake. Instagram queda para render manual (`scripts/content/render-pending.mjs`) | job `f667ec9b786c` |
+| **Competitor Organic Intelligence** | Job semanal (miércoles) donde Hermes revisa solo fuentes **públicas** de competidores/referentes configurados (`content_competitors`: IAutomatiza, Vambe, respond.io; Eclectica sin dominio confirmado), y guarda un reporte (temas saturados, huecos, ángulos propios) en `content_intel_reports`. Regla: contexto, nunca copia. NO es Ads Radar | job `a88a78d263f9` |
+| **Founder Interview** | Hermes pregunta (preguntas ancladas en hechos reales, `founder_questions`), Christian responde por texto (audio si Hermes lo transcribe), Hermes estructura 1–3 piezas. El Intake RECHAZA cualquier pieza cuya cita `real_work` no aparezca literal en la respuesta. Sin cron: se usa a pedido («entrevístame») | n8n 27 + 12 · tablas `founder_*` |
+| **Resource & Conversation Engine v1** | Biblioteca `content_resources` + páginas en `atacamalabs.cl/recursos/<slug>`. La pieza puede llevar `resource_id`, `cta_mode` (resource_link · dm · diagnostic) y `{{resource_url}}` (se reemplaza por la URL con UTM de canal/recurso/pieza). **«Comenta PALABRA → DM» NO está automatizado** | n8n 12 · `/recursos` · `growth-core.mjs` |
+
+**Tablas nuevas** (RLS sin políticas, migración `20261012_ola_a.sql`): `content_config`, `content_feeds`, `content_feed_items`, `content_competitors`, `content_intel_reports`, `content_resources`, `founder_questions`, `founder_interviews`; `content_pieces` suma `resource_id`, `cta_mode`, `cta_copy`, `origin`, `interview_id`; `ops_runs.kind` suma `content_rss`, `competitor_intel`, `content_pieces`.
+
+**Workflows nuevos:** `27 Content Growth` (`M4LyGH4UxE5sYIh5`, webhook `atacama-content-growth`) y `28 Content RSS` (`6wnrHglfnt6l9va0`, cada hora + webhook `atacama-content-rss`). Cambiados: `12 Content Intake` (governor, recurso, Founder, key de fuentes) y `25 Atacama Ops` (compuertas rss/competitor/pieces, panel, alertas). Hermes pasa a **50 herramientas** (8 nuevas, ver `HERMES-OPERATOR.md` §12) y **7 jobs** (3 nuevos).
+
+**Seguridad:** nada se publica, programa ni contacta; `/ops` sigue de solo lectura; las fechas propuestas siguen la regla «noticia ≤ 24 h · normal ≤ 48 h · evergreen ≤ 72 h, una publicación por cuenta y día»; todo job reporta su corrida (`ops_runs`) y los fallos de RSS/jobs aparecen en el panel y como alerta.
+
+**Límites conocidos (honestos):** (1) la transcripción de audios depende de Hermes (STT configurado pero sin probar con un audio real; si no transcribe, Christian escribe la respuesta); (2) Hermes no puede renderizar carruseles: quedan retenidos hasta correr `render-pending.mjs`; (3) Anthropic y Meta/WhatsApp no publican RSS oficial: los cubre el Content Radar semanal con sus changelogs; (4) Apify, Pain Radar, Ads Radar, Media Gateway/Higgsfield y Call Intelligence NO se hicieron (fuera de alcance).

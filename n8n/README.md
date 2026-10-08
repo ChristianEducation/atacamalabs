@@ -256,3 +256,8 @@ El ritmo real observado en 02b Signals (llamadas OpenClaw reales contra contenid
 
 ## 12 Content Intake — fechas (7-oct-2026)
 - El nodo `Evaluate` propone la fecha con `scripts/content/schedule-core.mjs` (incrustado) leyendo antes `Fetch Scheduled` (Supabase) y `List GHL Posts` (GHL, incluye posts manuales). Sin fallback a +7 días; ver `docs/ATACAMA-OS-IMPLEMENTATION.md` «Corrección de fechas».
+
+## 27 Content Growth y 28 Content RSS (Ola A, 8-oct-2026)
+- `Atacama Labs - 27 Content Growth` (`M4LyGH4UxE5sYIh5`): webhook `POST /webhook/atacama-content-growth` (`X-Atacama-Key`) con 16 acciones (cola, Founder Interview, recursos, RSS, competencia, señales candidatas). Generado por `node n8n/build/content-growth.mjs`; pruebas `node n8n/build/content-growth.test.mjs` (51).
+- `Atacama Labs - 28 Content RSS` (`6wnrHglfnt6l9va0`): cada hora + webhook `atacama-content-rss`. Feeds en `content_feeds`. `node n8n/build/content-rss.mjs` · pruebas 27.
+- Datos iniciales idempotentes: `node scripts/content/seed-ola-a.mjs`.

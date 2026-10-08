@@ -148,3 +148,14 @@ Carga extra en n8n: ~96 consultas/día de alertas (cada una lee unas 10 tablas/e
 - **Vigilancia**: alerta por correo colgado en «enviando» > 15 min; el panel marca «Hermes · reporte de alertas» si Hermes no reporta en 35/90 min; los workflows 25 y 26 reintentan las escrituras y delatan los fallos de red.
 - **Aviso de operación**: reiniciar el agente (`sudo hermes-restart agent`) corta las corridas en curso; al desplegar una regla de avisos nueva pueden llegar mensajes de Telegram inesperados la primera vez (sembrar `ops_alerts` o anunciarlo antes).
 - **Fechas del Content Engine**: la fecha de cada pieza es una propuesta del sistema (Noticia ≤ 24 h, normal ≤ 48 h, Evergreen ≤ 72 h, hora de Chile, una publicación por cuenta y día; nunca +7 días). Si una pieza llega con fecha lejana, es porque Hermes mandó `schedule_justification`; revisar el aviso `schedule_warnings` en la respuesta del intake.
+
+## 13. Ola A — operación diaria del contenido
+
+- **Cola de revisión:** el tope vive en `content_config.max_pending_in_review` (6). Para cambiarlo: `update content_config set max_pending_in_review = N where id = 1`. Con la cola llena el sistema NO propone piezas por su cuenta; aprobar o rechazar en GHL la libera.
+- **Fuentes RSS:** tabla `content_feeds` (slug, url, topic, priority, enabled). Agregar/quitar sin tocar workflows. La salud (último chequeo, error, racha de fallos) se ve en `/ops` → Contenido → «Entradas y recursos»; 3 fallos seguidos generan alerta.
+- **Competidores:** tabla `content_competitors` (urls públicas). Solo fuentes públicas; nunca copiar. Un competidor sin dominio confirmado no se escanea.
+- **Founder Interview:** decirle a Hermes «entrevístame». Responde por texto o audio; las preguntas salen de `founder_questions` (hechos reales; Hermes puede proponer nuevas con contexto).
+- **Recursos:** páginas en `src/content/marketing/resources.ts` (slug = `content_resources.slug`). Un recurso nuevo nace en borrador y pasa a `active` cuando su URL responde 200.
+- **Carruseles retenidos:** `node scripts/content/render-pending.mjs` (lista) y `--run` (renderiza, sube a GHL y reenvía a revisión).
+- **Pausar Ola A:** `hermes cron pause 3423e7821026 f667ec9b786c a88a78d263f9` (RSS, piezas, competencia); el workflow 28 se desactiva en n8n; `content_config.rss_enabled=false` lo deja inerte sin tocar n8n.
+- **Pruebas:** `node scripts/run-all-tests.mjs` (28 suites). Datos TEST: `is_test=true`, se borran por ID exacto.
