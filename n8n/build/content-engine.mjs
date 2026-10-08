@@ -20,8 +20,10 @@ import { evaluatePiece } from '../../scripts/content/engine-core.mjs';
 import { summaryHash } from '../../scripts/content/metrics-core.mjs';
 import * as schedule from '../../scripts/content/schedule-core.mjs';
 import * as growth from '../../scripts/content/growth-core.mjs';
+import * as editorial from '../../scripts/content/editorial-core.mjs';
 
 const SCHEDULE_LIB = Object.values(schedule).filter((f) => typeof f === 'function').map((f) => f.toString()).join('\n\n');
+const EDITORIAL_LIB = Object.values(editorial).filter((f) => typeof f === 'function').map((f) => f.toString()).join('\n\n');
 const GROWTH_LIB = Object.values(growth).filter((f) => typeof f === 'function').map((f) => f.toString()).join('\n\n');
 const NONE = 'https://localhost.invalid/';
 
@@ -57,6 +59,8 @@ const EVALUATE = `${evaluatePiece.toString()}
 ${SCHEDULE_LIB}
 
 ${GROWTH_LIB}
+
+${EDITORIAL_LIB}
 
 const PACK_ID = '${PACK_ID}';
 const ACCOUNTS = ${JSON.stringify(ACCOUNTS)};
@@ -169,10 +173,10 @@ const e = $json.evaluation;
 return [{ json: { ok: false, action: 'rejected', errors: e.errors, warnings: e.warnings, score: e.score } }];`;
 const RESP_HELD = `const ev = $('Build Row').first().json;
 const saved = Array.isArray($('Upsert Piece').first().json.body) ? $('Upsert Piece').first().json.body[0] : null;
-return [{ json: { ok: true, action: 'held', reason: ev.holdReason, score: ev.evaluation.score, piece_id: saved && saved.id, status: saved && saved.status, breakdown: ev.evaluation.breakdown, lint_hits: ev.evaluation.lint_hits } }];`;
+return [{ json: { ok: true, action: 'held', reason: ev.holdReason, score: ev.evaluation.score, piece_id: saved && saved.id, status: saved && saved.status, breakdown: ev.evaluation.breakdown, lint_hits: ev.evaluation.lint_hits, editorial: ev.evaluation.editorial } }];`;
 const RESP_SUBMITTED = `const c = $('Check GHL').first().json;
 return [{ json: { ok: true, action: 'in_review', ghl_post_id: c.ghl_post_id, piece_id: ((($('Mark In Review').first().json.body) || [])[0] || {}).id || null, score: c.evaluation.score, channel: c.pieceRow.channel, status: 'in_review',
-  governor_warning: (c.governor && c.governor.warning) || null, pending_in_review: c.governor ? c.governor.pending : null, resource: c.resource, interview_id: c.interviewId,
+  editorial: c.evaluation.editorial, governor_warning: (c.governor && c.governor.warning) || null, pending_in_review: c.governor ? c.governor.pending : null, resource: c.resource, interview_id: c.interviewId,
   proposed_for: c.schedule.iso, proposed_label: c.schedule.label, proposed_in_hours: c.schedule.hours_ahead, schedule_warnings: c.schedule.warnings,
   note: 'Quedó en GHL Social Planner como in_review (fecha propuesta: ' + c.schedule.label + ' hora de Chile). Nada se programó ni publicó.' } }];`;
 

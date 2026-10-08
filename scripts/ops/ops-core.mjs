@@ -5,6 +5,8 @@
  */
 
 import { linkedinOverview, liLabel } from '../linkedin/linkedin-core.mjs';
+import { edPlan } from '../content/editorial-core.mjs';
+import { growthResourceRank } from '../content/growth-core.mjs';
 
 export function tzParts(ms, tz) {
   const p = new Intl.DateTimeFormat('en-US', { timeZone: tz || 'America/Santiago', hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', weekday: 'short' }).formatToParts(new Date(ms));
@@ -621,6 +623,25 @@ export function weeklyContent(d) {
   return { week_start: startKey, week_end: endKey, target, min: minOk, max: maxNormal, done, published, scheduled, in_review: inReview, coverage, state, state_label: labels[state], runway_days: runway, runway_min: runwayMin, runway_max: runwayMax, runway_ok: runway >= runwayMin, covered: coverage >= target };
 }
 
+/**
+ * Ola B · EDITORIAL DECISION: dada una señal (params.signal) y el estado real de la semana, la cola, las piezas recientes y los recursos existentes,
+ * decide si vale la pena publicar y propone, por cuenta, tipo editorial, ángulo, formato, visual, recurso y CTA. Solo lectura: no crea ni publica nada.
+ */
+export function editorialDecision(d, params) {
+  const p = params && typeof params === 'object' ? params : {};
+  const s = p.signal && typeof p.signal === 'object' ? p.signal : p;
+  const str = (v, n) => String(v == null ? '' : v).trim().slice(0, n);
+  const signal = { topic: str(s.topic, 200), summary: str(s.summary, 600), kind: str(s.kind, 30), type_hint: str(s.type_hint, 30), urgent: s.urgent === true, personal: s.personal === true ? true : undefined, visualizable: s.visualizable === false ? false : undefined };
+  const w = weeklyContent(d), g = summarizeGrowth(d);
+  const resources = growthResourceRank(d.resources, signal.topic + ' ' + signal.summary, { limit: 3 });
+  const recent = (d.pieces || []).filter((x) => !x.is_test).slice(0, 40).map((x) => ({ channel: x.channel, editorial_type: x.editorial_type || null, topic: x.topic, status: x.status, created_at: x.created_at }));
+  const plan = edPlan({ signal, week: w, pending: g.queue.pending, max_pending: g.queue.max, recent, resources, explicit: p.explicit === true, include_instagram: p.include_instagram === false ? false : undefined, now: d.now });
+  const lines = [plan.publish ? 'Editorial Decision: SÍ vale la pena — ' + plan.reason + '.' : 'Editorial Decision: NO publicar ahora — ' + plan.reason + '.'];
+  (plan.proposals || []).forEach((q) => lines.push('• ' + q.account + ' · ' + q.editorial_type + ' · formato ' + q.format + ' · visual ' + q.visual.need + ' · CTA ' + q.cta_mode + (q.resource ? ' · recurso «' + q.resource.name + '»' : '')));
+  (plan.notes || []).forEach((n) => lines.push('— ' + n));
+  return { ...plan, text: lines.join('\n') };
+}
+
 /** Compuerta del job que redacta piezas: solo si la cola y el ritmo semanal lo permiten y hay señales candidatas (una señal urgente puede saltarse el ritmo, nunca el tope de la cola). */
 export function piecesGate(d) {
   const now = d.now, g = summarizeGrowth(d), ct = summarizeContent(d), w = weeklyContent(d);
@@ -708,7 +729,7 @@ export function composePanel(d) {
         compare: s.compare ? [s.compare.left, s.compare.right].filter(Boolean).map((c) => clip(c.label, 28) + ': ' + clip(c.text, 110)) : [], figure: s.figure ? clip(s.figure.value, 12) + ' ' + clip(s.figure.label, 80) : null })),
       media: (Array.isArray(pc.media) ? pc.media : []).map((m) => m && m.url).filter((u) => /^https:\/\//.test(String(u || ''))).slice(0, 10),
       sources: (Array.isArray(pc.sources) ? pc.sources : []).filter((s) => s && /^https?:/.test(String(s.url || ''))).slice(0, 3).map((s) => ({ title: clip(s.title, 110), url: s.url })),
-      rationale: x.rationale ? clip(x.rationale, 320) : null, format: pc.format || null, proposed_at: x.scheduled_at || null, proposed_label: x.scheduled_at ? fmtDateTime(Date.parse(x.scheduled_at), tz) : null, ghl_post: Boolean(x.ghl_post_id), cta_mode: x.cta_mode || null, resource: x.resource && x.resource.url ? { name: clip(x.resource.name, 80), url: x.resource.url } : null };
+      rationale: x.rationale ? clip(x.rationale, 320) : null, format: pc.format || null, proposed_at: x.scheduled_at || null, proposed_label: x.scheduled_at ? fmtDateTime(Date.parse(x.scheduled_at), tz) : null, ghl_post: Boolean(x.ghl_post_id), cta_mode: x.cta_mode || null, editorial: pc.editorial_type ? { type: String(pc.editorial_type).slice(0, 30), visual_need: pc.visual && pc.visual.need ? String(pc.visual.need).slice(0, 30) : null, visual_why: pc.visual && pc.visual.rationale ? clip(pc.visual.rationale, 200) : null } : null, resource: x.resource && x.resource.url ? { name: clip(x.resource.name, 80), url: x.resource.url } : null };
   };
   const row = (p) => ({ preview: ['in_review', 'scheduled', 'approved', 'drafted'].includes(p.status) ? previewOf(p.id) : null, id: p.id, title: clip(p.topic, 90), channel: chLabel[p.channel] || p.channel, status: p.status, hook: p.hook ? clip(p.hook, 160) : null, format: p.format || null, category: p.category || null, score: p.score != null ? p.score : null,
     at: p.scheduled_at || p.published_at || p.created_at, at_label: (p.scheduled_at || p.published_at) ? fmtDateTime(Date.parse(p.scheduled_at || p.published_at), tz) : null });

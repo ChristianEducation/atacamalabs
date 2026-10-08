@@ -13,6 +13,8 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import * as core from '../../scripts/ops/ops-core.mjs';
 import * as liCore from '../../scripts/linkedin/linkedin-core.mjs';
+import * as edCore from '../../scripts/content/editorial-core.mjs';
+import { growthNorm, growthResourceRank } from '../../scripts/content/growth-core.mjs';
 
 const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 export const N8N_BASE = 'https://n8n.srv1650725.hstgr.cloud';
@@ -41,10 +43,10 @@ const sbApply = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRe
     headerParameters: { parameters: [{ name: 'Prefer', value: '={{ $json.prefer || "return=minimal" }}' }] }, sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full() } });
 const GH_HEADERS = [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', value: 'application/json' }];
 
-export const LIB = [...new Map([...Object.values(core), ...['linkedinOverview', 'linkedinView', 'liLabel'].map((k) => liCore[k])].filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
+export const LIB = [...new Map([...Object.values(core), ...['linkedinOverview', 'linkedinView', 'liLabel'].map((k) => liCore[k]), ...Object.values(edCore), growthNorm, growthResourceRank].filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
 const CFG_JSON = JSON.stringify({ tz: OPS_CFG.tz, stages: OPS_CFG.stages, ignore_opps: OPS_CFG.ignore_opps });
 
-export const ACTIONS = ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'radar_report', 'content_radar_report', 'job_report', 'alerts_poll', 'alerts_ack'];
+export const ACTIONS = ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'editorial_plan', 'radar_report', 'content_radar_report', 'job_report', 'alerts_poll', 'alerts_ack'];
 
 export const parseCode = `try {
   const first = $('Ops Webhook').first().json || {};
@@ -54,7 +56,7 @@ export const parseCode = `try {
   if (!ACTIONS.includes(action)) throw new Error('action inválida: usa ' + ACTIONS.join(' | '));
   const dry = b.dry_run === true;
   // la hora solo se puede simular en consultas de lectura o con dry_run (pruebas); las escrituras siempre usan la hora real
-  const now = Number.isFinite(Number(b.now_ms)) && (dry || ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate'].includes(action)) ? Number(b.now_ms) : Date.now();
+  const now = Number.isFinite(Number(b.now_ms)) && (dry || ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'editorial_plan'].includes(action)) ? Number(b.now_ms) : Date.now();
   const need = {
     sb: !['alerts_ack'].includes(action) || true,
     ghl: ['daily', 'today', 'urgent', 'stale', 'replies', 'panel'].includes(action),
@@ -62,7 +64,7 @@ export const parseCode = `try {
     deep: (action === 'health' && b.deep === true) || (action === 'alerts_poll' && b.deep_gmail === true) || (action === 'daily' && b.deep === true),
     learn: action === 'content_performance',
     panel: action === 'panel',
-    growth: ['panel', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'alerts_poll', 'health'].includes(action),
+    growth: ['panel', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'editorial_plan', 'alerts_poll', 'health'].includes(action),
   };
   const sb = '${SUPABASE}/rest/v1/', none = '${NONE}';
   const iso = (ms) => new Date(ms).toISOString();
@@ -70,7 +72,7 @@ export const parseCode = `try {
   const u = {
     messages: sb + 'outreach_messages?created_at=gte.' + iso(now - 45 * 86400000) + '&select=id,candidate_id,company_name,kind,direction,status,classification,subject,body,sent_at,created_at,updated_at,metadata&order=created_at.desc&limit=700',
     cands: sb + 'prospect_candidates?status=in.(in_ghl,accepted,contacted)&select=id,company_name,status,band,priority_score,source_name,created_at,ghl_stage,ghl_opportunity_id,ghl_contact_id,next_action_at,channel_state,industry,location,domain,angle:canonical->>outreach_angle,quote:canonical->evidence_quotes->0->>quote&order=created_at.desc&limit=400',
-    pieces: sb + 'content_pieces?select=id,topic,channel,status,ghl_status,ghl_approval_status,scheduled_at,published_at,is_test,learning,learned_at,created_at,format,category,score,hook:piece->>hook&order=created_at.desc&limit=120',
+    pieces: sb + 'content_pieces?select=id,topic,channel,editorial_type:piece->>editorial_type,status,ghl_status,ghl_approval_status,scheduled_at,published_at,is_test,learning,learned_at,created_at,format,category,score,hook:piece->>hook&order=created_at.desc&limit=120',
     metrics: sb + 'content_metrics?captured_at=gte.' + iso(now - 30 * 86400000) + '&select=content_piece_id,metric_window,status,likes,comments,shares,captured_at&order=captured_at.desc&limit=200',
     signals: sb + 'content_sources?signal_status=eq.candidate&select=id,title,created_at,signal_type,signal_score,angle:signal->>angle&order=created_at.desc&limit=200',
     review: need.panel ? sb + 'content_pieces?is_test=eq.false&status=in.(in_review,drafted,scored,scheduled,approved)&select=id,status,score,rationale,ghl_post_id,scheduled_at,piece,cta_mode,resource:content_resources(name,url)&order=created_at.desc&limit=10' : none,
@@ -89,7 +91,7 @@ export const parseCode = `try {
     { key: 'feeds', url: sb + 'content_feeds?select=slug,name,enabled,last_checked_at,last_status,last_error,consecutive_failures&limit=100' },
     { key: 'feed_new', url: sb + 'content_feed_items?status=eq.new&select=relevance&limit=500' },
     { key: 'intel', url: sb + 'content_intel_reports?select=created_at,competitors_scanned,report&order=created_at.desc&limit=1' },
-    { key: 'resources', url: sb + 'content_resources?select=id,slug,name,type,cta_mode,url,status&limit=100' },
+    { key: 'resources', url: sb + 'content_resources?select=id,slug,name,type,topic,audience,problem,cta_mode,url,status&limit=100' },
     { key: 'resource_use', url: sb + 'content_pieces?resource_id=not.is.null&is_test=eq.false&select=resource_id&limit=500' },
     { key: 'interviews', url: sb + 'founder_interviews?is_test=eq.false&select=status,question,asked_at&order=asked_at.desc&limit=10' },
   ] : [];
@@ -154,6 +156,7 @@ else if (A === 'content_gate') { out = contentGate(d); out.text = 'Content Radar
 else if (A === 'rss_gate') { out = rssGate(d); out.text = 'Content RSS: ' + out.mode + ' — ' + out.reason; }
 else if (A === 'competitor_gate') { out = competitorGate(d); out.text = 'Inteligencia orgánica: ' + out.mode + ' — ' + out.reason; }
 else if (A === 'pieces_gate') { out = piecesGate(d); out.text = 'Content Pieces: ' + out.mode + ' — ' + out.reason; }
+else if (A === 'editorial_plan') { out = editorialDecision(d, p.params); }
 else if (A === 'job_report') {
   const r = p.report || {};
   const kind = ['content_rss', 'competitor_intel', 'content_pieces'].includes(r.kind) ? r.kind : null;

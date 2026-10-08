@@ -39,5 +39,14 @@ t('Ola A: inteligencia orgánica es solo fuentes públicas, no copia, páginas l
   }
 }
 
+// ---- Ola B · Editorial Brain: el prompt de piezas y la skill conocen los roles por canal y la decisión visual
+{
+  const skill = fs.readFileSync(new URL('./skills/atacama-ops/SKILL.md', import.meta.url), 'utf8');
+  t('Ola B: el job de piezas llama editorial_plan antes de escribir y declara editorial_type + visual', /editorial_plan\(topic, summary/.test(pcs) && /"editorial_type"/.test(pcs) && /"visual":\{"need"/.test(pcs) && /publish=false NO escribas/.test(pcs));
+  t('Ola B: el job autónomo no escribe por Christian ni por Instagram (solo la propuesta de linkedin_page)', /SOLO la propuesta de linkedin_page/.test(pcs) && /linkedin_profile está PROHIBIDO/.test(pcs));
+  t('Ola B: reglas de marca visual en el prompt (sin robots/neón/cyber/circuitos; no es un hero de la web)', /PROHIBIDO robots, hologramas, cyber, neón, circuitos decorativos, glow/.test(pcs) && /NO es un hero/.test(pcs) && /#0F5CED/.test(pcs));
+  t('Ola B: la skill define el rol de cada cuenta y los comandos naturales (versión personal, Instagram, imagen, diagrama, recurso)', /LinkedIn Christian/.test(skill) && /Instagram Atacama Labs/.test(skill) && /hazme una versión para LinkedIn personal/.test(skill) && /adapta esto para Instagram/.test(skill) && /submit_content_piece\(origin="explicit"\)/.test(skill) && /NO uses publish_content/.test(skill));
+}
+
 console.log(`\n${pass} ok ${fail} fallos`);
 process.exit(fail ? 1 : 0);

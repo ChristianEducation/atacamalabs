@@ -272,17 +272,19 @@ def do_not_contact(target: str, reason: str, christian_order: str, request_id: s
     return _call("do_not_contact", {"target": target, "reason": reason}, order_text=christian_order, request_id=request_id)
 
 
-def _ops(action, deep=False):
+def _ops(action, deep=False, params=None):
     """Consulta de SOLO LECTURA al workflow 25 Atacama Ops (GHL + Supabase + n8n + Hermes). No escribe ni envía nada."""
     try:
         from atacama_common import hermes_state, post_ops
         body = {"action": action, "hermes": hermes_state()}
         if deep:
             body["deep"] = True
+        if params:
+            body["params"] = params
         r = post_ops(body, timeout=120)
     except Exception as ex:
         return json.dumps({"ok": False, "error": "red", "message": "No pude consultar Atacama OS: %s" % type(ex).__name__}, ensure_ascii=False)
-    keep = {k: r.get(k) for k in ("ok", "text", "overall", "count", "missing", "action_count", "review_count", "components", "errors24h", "mode", "reason") if k in r}
+    keep = {k: r.get(k) for k in ("ok", "text", "overall", "count", "missing", "action_count", "review_count", "components", "errors24h", "mode", "reason", "publish", "urgency", "window_hours", "signal_type", "proposals", "notes", "week", "signal") if k in r}
     return json.dumps(keep, ensure_ascii=False)
 
 
@@ -326,6 +328,14 @@ def get_radar_new() -> str:
 def get_content_status() -> str:
     """«¿Qué publicaciones tengo pendientes?»: piezas pendientes de aprobación, programadas, publicadas (72 h), con problemas y señales candidatas sin pieza. Nunca publica ni aprueba."""
     return _ops("content_status")
+
+
+@mcp.tool()
+def editorial_plan(topic: str, summary: str = "", kind: str = "", urgent: bool = False, explicit: bool = False, personal: bool = False, type_hint: str = "") -> str:
+    """EDITORIAL DECISION (Ola B): ANTES de escribir una pieza, pregunta si vale la pena publicar esta señal/idea y cómo. Solo lectura: no crea, no publica, no contacta. Devuelve publish (sí/no con la razón: semana cubierta, cola llena, tema ya cubierto), el estado real de la semana y, por cuenta, una propuesta DISTINTA: LinkedIn Christian (founder/constructor: primera persona, experiencia real, casi siempre sin imagen y sin CTA), LinkedIn Atacama Labs (autoridad: educativo/framework/comparación, visual si ayuda) e Instagram Atacama Labs (carrusel: entender primero, copy ≤ 600 caracteres). Cada propuesta trae tipo editorial, tono, formato, largo, visual (con su por qué; puede ser none), recurso existente a reutilizar y CTA. Una misma señal NO se copia entre cuentas.
+    kind: news | rss | founder | work | customer | market | competitor | resource | demo | integration | process | opinion | case | evergreen. urgent=true solo para una señal excepcional (el ritmo se respeta igual hasta el máximo normal). explicit=true cuando Christian lo pidió expresamente (pasa por encima del ritmo con advertencia). personal=true si nace de la experiencia de Christian. Luego redacta con la plantilla de /opt/data/content/examples (campos editorial_type y visual.need obligatorios de declarar) y envía con submit_content_piece."""
+    p = {"signal": {"topic": topic, "summary": summary, "kind": kind, "urgent": urgent or None, "personal": personal or None, "type_hint": type_hint}, "explicit": explicit or None}
+    return _ops("editorial_plan", params={k: v for k, v in p.items() if v not in (None, "", [], {})})
 
 
 @mcp.tool()
@@ -464,6 +474,7 @@ def founder_interview(action: str, interview_id: str = "", answer: str = "", sou
 def submit_content_piece(piece_path: str = "", piece_json: str = "", origin: str = "autonomous", interview_id: str = "", test: bool = False) -> str:
     """Envía UNA pieza de contenido al Content Intake (workflow 12): se valida, se puntúa y, si pasa (score ≥ 70), queda en GHL Social Planner como IN_REVIEW con una fecha PROPUESTA (noticia ≤ 24 h, normal ≤ 48 h, evergreen ≤ 72 h, hora de Chile; nunca +7 días). NADA se publica ni se programa: Christian aprueba en GHL.
     La pieza va como JSON (piece_json) o como ruta a un archivo .json en /opt/data (piece_path) con el esquema de /opt/data/content/examples. origin: 'autonomous' (cron/radar; se BLOQUEA si hay 6 o más piezas en revisión: no se guarda nada), 'explicit' (Christian lo pidió; pasa con advertencia) o 'founder_interview' (exige interview_id; las citas de las fuentes real_work deben aparecer literales en la respuesta de Christian).
+    EDITORIAL BRAIN (Ola B): declara en la pieza editorial_type (founder | educational | opinion | case | build_in_public | framework | comparison | news_explainer | resource | demo | process | integration | market_signal | customer_problem) y visual {need, rationale, composition}: need = none | editorial_image | conceptual_image | diagram | process_flow | architecture | comparison | before_after | framework | checklist | chart | annotated_screenshot | carousel | resource_visual | typographic | short_video. Cada cuenta tiene su voz: LinkedIn Christian (linkedin_profile) = primera persona, experiencia real, casi siempre sin imagen ni CTA; LinkedIn Atacama Labs (linkedin_page) = autoridad de empresa; Instagram = carrusel, caption ≤ 600 caracteres, siempre con visual. Consulta editorial_plan ANTES de redactar. visual.need=none exige format texto; marca: nada de robots, neón, cyber, circuitos ni glow.
     Campos opcionales de la pieza: resource_id (uuid de un recurso ACTIVO), cta_mode (none | resource_link | dm | diagnostic), cta_copy; en cta.text puedes usar {{resource_url}} (se reemplaza por la URL con atribución). Devuelve action = in_review | held | rejected (con errors) | blocked."""
     piece, err = _json_arg(piece_json, piece_path, "la pieza")
     if err:

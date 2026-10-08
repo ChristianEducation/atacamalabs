@@ -5,6 +5,12 @@
   "category": "Founder",
   "topic": "Por qué el alta automática de clientes arranca en modo ensayo",
   "angle": "Automatizar no es quitar el freno, es decidir dónde va el freno",
+  "editorial_type": "founder",
+  "visual": {
+    "need": "none",
+    "rationale": "Reflexión personal en primera persona, sin imagen",
+    "composition": "solo-texto"
+  },
   "audience": "Dueños y gerentes de pymes que evalúan automatizar procesos comerciales",
   "sources": [
     {

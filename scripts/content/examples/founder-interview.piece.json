@@ -5,6 +5,12 @@
   "category": "Founder",
   "topic": "Por qué cada correo comercial lo apruebo yo con un código",
   "angle": "Automatizar el trabajo no significa soltar el control: decidí dónde va mi aprobación",
+  "editorial_type": "founder",
+  "visual": {
+    "need": "none",
+    "rationale": "La idea se sostiene sola: una reflexión personal funciona mejor sin imagen",
+    "composition": "solo-texto"
+  },
   "audience": "Dueños y gerentes de pymes que evalúan automatizar su prospección",
   "sources": [
     {
@@ -12,32 +18,75 @@
       "title": "Entrevista del fundador (Founder Interview)",
       "verified": true,
       "evidence": [
-        { "quote": "cada mensaje lo apruebo yo con un código" },
-        { "quote": "el control no podía depender de mi memoria" }
+        {
+          "quote": "cada mensaje lo apruebo yo con un código"
+        },
+        {
+          "quote": "el control no podía depender de mi memoria"
+        }
       ]
     }
   ],
   "claims": [
-    { "text": "Cada correo comercial necesita la aprobación de Christian con un código antes de salir", "external": false },
-    { "text": "Cuatro correos salieron del buzón sin pasar por el sistema porque otra herramienta usaba el mismo buzón", "external": false }
+    {
+      "text": "Cada correo comercial necesita la aprobación de Christian con un código antes de salir",
+      "external": false
+    },
+    {
+      "text": "Cuatro correos salieron del buzón sin pasar por el sistema porque otra herramienta usaba el mismo buzón",
+      "external": false
+    }
   ],
   "factors": {
-    "relevance": { "value": 9, "note": "Es una decisión real de diseño de Atacama OS." },
-    "audience_fit": { "value": 8, "note": "Un dueño de pyme entiende el miedo a perder el control al automatizar." },
-    "novelty": { "value": 6, "note": "Poco común contar el error en vez de solo la solución." },
-    "evidence": { "value": 8, "note": "Cada afirmación sale de la respuesta textual de Christian." },
-    "utility": { "value": 7, "note": "Deja una regla aplicable: la aprobación no puede depender de la memoria." },
-    "clarity": { "value": 8, "note": "Una sola idea, sin jerga." },
-    "conversation": { "value": 8, "note": "Cierra con una pregunta concreta." },
-    "differentiation": { "value": 8, "note": "Incluye el hallazgo real de los cuatro correos en vez de una moraleja genérica." },
-    "non_repetition": { "value": 10, "note": "Primera pieza sobre este ángulo." }
+    "relevance": {
+      "value": 9,
+      "note": "Es una decisión real de diseño de Atacama OS."
+    },
+    "audience_fit": {
+      "value": 8,
+      "note": "Un dueño de pyme entiende el miedo a perder el control al automatizar."
+    },
+    "novelty": {
+      "value": 6,
+      "note": "Poco común contar el error en vez de solo la solución."
+    },
+    "evidence": {
+      "value": 8,
+      "note": "Cada afirmación sale de la respuesta textual de Christian."
+    },
+    "utility": {
+      "value": 7,
+      "note": "Deja una regla aplicable: la aprobación no puede depender de la memoria."
+    },
+    "clarity": {
+      "value": 8,
+      "note": "Una sola idea, sin jerga."
+    },
+    "conversation": {
+      "value": 8,
+      "note": "Cierra con una pregunta concreta."
+    },
+    "differentiation": {
+      "value": 8,
+      "note": "Incluye el hallazgo real de los cuatro correos en vez de una moraleja genérica."
+    },
+    "non_repetition": {
+      "value": 10,
+      "note": "Primera pieza sobre este ángulo."
+    }
   },
   "rationale": "Estructura una vivencia real que Christian contó por Telegram: la decisión de no automatizar la aprobación y el error que la confirmó. Toda cita de la fuente aparece literal en su respuesta. Voz en primera persona: Christian debe confirmar que refleja su criterio antes de aprobar.",
   "hook": "Podría haber automatizado la aprobación de cada correo y decidí no hacerlo.",
   "body": "En Atacama OS cada correo comercial sale solo después de que lo apruebo yo, con un código. No es desconfianza en la herramienta: cada mensaje lo apruebo yo con un código porque el primer lote me enseñó algo incómodo.\n\nCuatro correos salieron del buzón sin pasar por el sistema. Otra herramienta usaba el mismo buzón y yo no lo sabía. Ahí entendí que el control no podía depender de mi memoria, sino de cómo está armado el proceso.\n\nPor eso la aprobación quedó dentro del flujo, no en mi cabeza.\n\nSi hoy automatizaras la prospección de tu empresa, ¿qué paso dejarías siempre en manos de una persona?",
   "slides": [],
-  "cta": { "type": "none", "text": "" },
-  "hashtags": ["#automatización", "#agentesdeIA"],
+  "cta": {
+    "type": "none",
+    "text": ""
+  },
+  "hashtags": [
+    "#automatización",
+    "#agentesdeIA"
+  ],
   "evidence_urls": [],
   "visual_direction": "Solo texto. Sin imagen: la idea se sostiene sola.",
   "schedule_suggestion": null,

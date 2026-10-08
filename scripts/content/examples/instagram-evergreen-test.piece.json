@@ -5,6 +5,12 @@
   "category": "Educativo",
   "topic": "Tres preguntas antes de automatizar un proceso",
   "angle": "Mapear antes de automatizar: quién, qué falla y cómo se mide",
+  "editorial_type": "educational",
+  "visual": {
+    "need": "carousel",
+    "rationale": "Instagram es visual primero: una idea por slide",
+    "composition": "carrusel-claro"
+  },
   "audience": "Dueños y gerentes de pymes que quieren automatizar pero no saben por dónde partir",
   "sources": [
     {

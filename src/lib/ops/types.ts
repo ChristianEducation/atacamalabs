@@ -39,6 +39,7 @@ export type PiecePreview = {
   proposed_label: string | null;
   ghl_post: boolean;
   cta_mode?: string | null;
+  editorial?: { type: string; visual_need: string | null; visual_why: string | null } | null;
   resource?: { name: string; url: string } | null;
 };
 

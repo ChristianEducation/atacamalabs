@@ -11,7 +11,10 @@
  *  - nada genérico de IA (lista de frases de relleno penaliza);
  *  - calidad > frecuencia: score >= 70 para ser candidata; < 70 no se fuerza;
  *  - no repetición por idea_key.
+ *  - Ola B · Editorial Brain: tipo editorial, voz por canal, largo, decisión visual y reglas de marca (edEvaluate).
  */
+import { edEvaluate } from './editorial-core.mjs';
+
 export function evaluatePiece(piece, ctx = {}) {
   const errors = [];
   const warnings = [];
@@ -142,6 +145,11 @@ export function evaluatePiece(piece, ctx = {}) {
   if (/\bno sirve\b|somos mejores|mejor que (la competencia|otros)|garantizad[oa]|sin riesgo|el mejor del mercado/i.test(allText)) { penalties += 4; lintHits.push('ataque_o_promesa_exagerada'); }
   const emojiCount = (allText.match(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu) || []).length;
   if (emojiCount > 3) { penalties += 3; lintHits.push('exceso_de_emojis'); }
+  // Ola B · Editorial Brain por canal: tipo editorial, tono/voz, largo, decisión visual y marca.
+  const editorial = edEvaluate(p, { recentVisuals: ctx.recentVisuals });
+  editorial.errors.forEach((e) => errors.push(e));
+  editorial.warnings.forEach((w) => warnings.push(w));
+  penalties += editorial.penalties;
   penalties = Math.min(penalties, 20);
 
   // Factores 0–10 (los asigna quien genera la pieza; aquí se validan, se acotan y se aplican topes)
@@ -166,5 +174,5 @@ export function evaluatePiece(piece, ctx = {}) {
   else if (score >= THRESHOLD) decision = 'candidate';
   else decision = 'below_threshold';
 
-  return { ok: errors.length === 0, decision, score, threshold: THRESHOLD, breakdown, penalties, lint_hits: lintHits, errors, warnings, idea_key: ideaKey, post_text: postText, evidence_urls: evidenceUrls };
+  return { ok: errors.length === 0, decision, score, threshold: THRESHOLD, breakdown, penalties, lint_hits: lintHits, errors, warnings, idea_key: ideaKey, post_text: postText, evidence_urls: evidenceUrls, editorial: { type: editorial.type, inferred: editorial.inferred, visual_need: editorial.visual.need, visual_inferred: editorial.visual.inferred } };
 }

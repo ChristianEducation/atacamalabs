@@ -33,7 +33,7 @@ t('scheduleDate propuesta: futuro y dentro de 72 h (sin fallback a +7 días)', n
   const dayCL = (iso) => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
   ['linkedin_profile', 'linkedin_page', 'instagram'].forEach((ch) => ['Noticia', 'Educativo', 'Evergreen', 'Founder'].forEach((cat) => [null, '2026-10-14T13:00:00Z'].forEach((sug) => {
     const pc = clone(base); pc.channel = ch; pc.category = cat; pc.schedule_suggestion = sug;
-    if (ch === 'instagram') { pc.format = 'carrusel'; pc.visual_direction = 'Fondo claro'; pc.render = { media: [{ url: 'https://x/1.png' }, { url: 'https://x/2.png' }, { url: 'https://x/3.png' }] }; }
+    if (ch === 'instagram') { pc.format = 'carrusel'; pc.visual_direction = 'Fondo claro'; pc.visual = { need: 'carousel', rationale: 'x' }; pc.render = { media: [{ url: 'https://x/1.png' }, { url: 'https://x/2.png' }, { url: 'https://x/3.png' }] }; }
     const q = evaluate({ piece: pc }, [], [], { now: NOW7 });
     if (q.action !== 'submit') return;
     t('7-oct: ' + ch + '/' + cat + '/' + (sug ? 'sugiere 14' : 'sin sugerencia') + ' no termina el 14 (' + q.ghlBody.scheduleDate + ')', dayCL(q.ghlBody.scheduleDate) !== '2026-10-14' && Date.parse(q.ghlBody.scheduleDate) - NOW7 <= 72 * 3600000);
@@ -68,7 +68,7 @@ t('idea repetida => reject', evaluate({ piece: base }, [evaluate({ piece: base }
 const low = clone(base); Object.keys(low.factors).forEach((k) => { low.factors[k] = { value: 3, note: 'x' }; });
 r = evaluate({ piece: low });
 t('score < 70 => hold (no se fuerza) y queda como scored', r.action === 'hold' && r.pieceRow.status === 'scored' && r.holdReason === 'score_bajo_el_umbral');
-const ig = clone(base); ig.channel = 'instagram'; ig.format = 'carrusel'; ig.visual_direction = 'Fondo claro';
+const ig = clone(base); ig.channel = 'instagram'; ig.format = 'carrusel'; ig.visual_direction = 'Fondo claro'; ig.visual = { need: 'carousel', rationale: 'Instagram es visual primero' };
 ig.slides = [{ layout: 'cover', title: 'El freno es una decisión' }, { layout: 'content', title: 'Plan primero', body: 'Antes de escribir, el flujo muestra qué haría.' }, { layout: 'cta', title: '¿Dónde va tu freno?' }];
 r = evaluate({ piece: ig });
 t('Instagram sin render => hold falta_render_o_medio', r.action === 'hold' && r.holdReason === 'falta_render_o_medio');

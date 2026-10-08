@@ -52,7 +52,7 @@ t('factor faltante => rechazo', evaluatePiece(missing).errors.includes('factor_f
 // 5. Canal / formato / slides
 const ig = clone(base); ig.channel = 'instagram'; ig.format = 'texto';
 t('Instagram sin medio => rechazo', evaluatePiece(ig).errors.includes('instagram_requiere_medio'));
-const car = clone(base); car.channel = 'instagram'; car.format = 'carrusel'; car.visual_direction = 'Fondo claro, una idea por slide';
+const car = clone(base); car.channel = 'instagram'; car.format = 'carrusel'; car.visual_direction = 'Fondo claro, una idea por slide'; car.visual = { need: 'carousel', rationale: 'Instagram es visual primero' };
 car.slides = [{ layout: 'cover', title: 'Antes de automatizar, decide dónde va el freno' }, { layout: 'content', title: 'El plan primero', body: 'El flujo devuelve qué haría antes de escribir.' }, { layout: 'cta', title: '¿Dónde pondrías el freno?' }];
 t('carrusel válido (3 slides)', evaluatePiece(car).ok, JSON.stringify(evaluatePiece(car).errors));
 const car2 = clone(car); car2.slides = car2.slides.slice(0, 2);
@@ -73,7 +73,7 @@ t('entrada basura no lanza excepción', (() => { try { return evaluatePiece(null
 
 
 // 6. Reglas de la guía oficial: llamita, cifras, comparaciones, ataques
-const mk = () => { const c = clone(base); c.channel = 'instagram'; c.format = 'carrusel'; c.visual_direction = 'Fondo claro y aire';
+const mk = () => { const c = clone(base); c.channel = 'instagram'; c.format = 'carrusel'; c.visual_direction = 'Fondo claro y aire'; c.visual = { need: 'carousel', rationale: 'Instagram es visual primero' };
   c.slides = [{ layout: 'cover', title: 'Antes de automatizar, decide el freno', mascot: { sheet: 'poses', pose: 'pregunta' } }, { layout: 'content', title: 'El plan primero', body: 'Antes de escribir, el flujo muestra qué haría.' }, { layout: 'cta', title: '¿Dónde va tu freno?', mascot: { sheet: 'emociones', pose: 'alegria' } }]; return c; };
 t('llamita en portada y cierre => OK', evaluatePiece(mk()).ok, JSON.stringify(evaluatePiece(mk()).errors));
 const m1 = mk(); m1.slides[1].mascot = { sheet: 'poses', pose: 'neutral' };

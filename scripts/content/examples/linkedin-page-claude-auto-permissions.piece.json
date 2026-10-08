@@ -5,6 +5,12 @@
   "category": "Noticia",
   "topic": "Agentes de IA que piden permiso: la política «auto» de Claude Managed Agents",
   "angle": "No todas las acciones de un agente merecen el mismo control: leer solo, borrador para revisar, escribir o publicar con aprobación",
+  "editorial_type": "news_explainer",
+  "visual": {
+    "need": "none",
+    "rationale": "Una noticia explicada con una lista corta se lee bien como texto",
+    "composition": "solo-texto"
+  },
   "audience": "Dueños y gerentes de pymes que evalúan agentes de IA y temen que ejecuten acciones sin control",
   "sources": [
     {

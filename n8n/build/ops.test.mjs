@@ -159,5 +159,20 @@ t('job_report: un tipo inventado se rechaza', r.resp.ok === false || r.writes.le
 r = await call({ action: 'job_report', report: { kind: 'content_rss', status: 'error', reason: 'timeout leyendo feed' } });
 t('job_report: un error de RSS queda registrado como error', r.writes[0].body.status === 'error' && r.writes[0].body.kind === 'content_rss');
 
+// ---------- Ola B · Editorial Decision (workflow 25, solo lectura)
+{
+  const weekPieces = (k, status) => Array.from({ length: k }, (_, i) => ({ id: 'w' + status + i, topic: 'Pieza ' + i, channel: 'linkedin_page', status, ghl_status: status === 'scheduled' ? 'scheduled' : 'in_review', scheduled_at: new Date(NOW + (i + 1) * D / 2).toISOString(), published_at: null, is_test: false, created_at: iso(H) }));
+  const FXE = (sched, review, growth) => { const f = FIX({ growth: growth || {} }); f.sb = { ...f.sb, 'SB Pieces': ok200(weekPieces(sched, 'scheduled').concat(weekPieces(review, 'in_review'))) }; return f; };
+  const sig = { topic: 'Conectar a Hermes con herramientas reales', summary: 'permisos datos y supervisión', kind: 'work' };
+  let e = await call({ action: 'editorial_plan', now_ms: NOW, params: { signal: sig } }, FXE(0, 1, { resources: [{ id: 'r1', slug: 'que-proceso-automatizar-primero', name: 'Mapa de procesos', topic: 'procesos', problem: 'qué automatizar primero', status: 'active', cta_mode: 'resource_link', url: 'https://atacamalabs.cl/recursos/x' }] }));
+  t('editorial_plan (workflow): semana con espacio => SÍ publicar, propuestas distintas por cuenta y solo lectura (0 escrituras de contenido)', e.resp.publish === true && e.resp.proposals.length >= 2 && new Set(e.resp.proposals.map((q) => q.angle_directive)).size === e.resp.proposals.length && e.resp.proposals[0].channel === 'linkedin_profile' && /Editorial Decision: SÍ/.test(e.resp.text), JSON.stringify(e.resp).slice(0, 400));
+  e = await call({ action: 'editorial_plan', now_ms: NOW, params: { signal: sig } }, FXE(4, 1));
+  t('editorial_plan (workflow): semana cubierta (5/5 entre programadas y en revisión) => NO fabrica una pieza normal', e.resp.publish === false && /semana está cubierta/.test(e.resp.reason) && e.resp.proposals.length === 0, JSON.stringify(e.resp).slice(0, 300));
+  e = await call({ action: 'editorial_plan', now_ms: NOW, params: { signal: { ...sig, kind: 'news', urgent: true } } }, FXE(4, 1));
+  t('editorial_plan (workflow): señal urgente puede pasar el ritmo con UNA pieza (≤ 24 h) sin pasar el máximo', e.resp.publish === true && e.resp.urgency === 'urgent' && e.resp.window_hours === 24, JSON.stringify(e.resp).slice(0, 300));
+  e = await call({ action: 'editorial_plan', now_ms: NOW, params: { signal: { topic: '' } } }, FXE(0, 1));
+  t('editorial_plan (workflow): sin tema => no publica y lo dice', e.resp.publish === false && /falta el tema/.test(e.resp.reason));
+}
+
 console.log(`\n${pass} ok, ${fail} fallos`);
 process.exit(fail ? 1 : 0);
