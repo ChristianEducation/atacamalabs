@@ -116,7 +116,7 @@ def gate(kind):
         elif kind in ("content", "rss"):
             extra = " max_signals=%s" % r.get("max_signals")
         elif kind == "pieces":
-            extra = " max_pieces=%s" % r.get("max_pieces")
+            extra = " max_pieces=%s week=%s/%s runway_days=%s" % (r.get("max_pieces"), r.get("week_coverage"), r.get("week_target"), r.get("runway_days")) + (" URGENTE=%s" % r.get("urgent_signal") if r.get("urgent_signal") else "")
         if kind in ("content", "pieces", "rss"):
             extra += " pieces_allowed=%s pending_review=%s/%s" % (str(r.get("pieces_allowed", True)).lower(), r.get("pending_review"), r.get("max_pending_in_review"))
     print("COMPUERTA DEL %s (calculada por Atacama OS antes de esta corrida): mode=%s%s — %s" % (kind.upper(), mode, extra, reason))

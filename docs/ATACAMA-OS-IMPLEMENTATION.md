@@ -959,3 +959,9 @@ Detalle de arquitectura: [`ATACAMA-OS-ARQUITECTURA-FINAL.md`](ATACAMA-OS-ARQUITE
 - **Pruebas:** 28 suites / 996 pruebas verdes; E2E reales (todo limpiado por ID exacto): RSS (7 feeds, 104 artículos, 2.ª ingestión 0 duplicados); señales → 2 piezas reales `in_review` (score 85 y 86); Governor en vivo (autónomo bloqueado a 1/1, explícito pasa con advertencia); Founder Interview con Hermes real (test, cita literal verificada, score 84); recurso activo con enlace UTM en el post; inteligencia orgánica con 3 competidores y 4 páginas leídas.
 - **Hallazgos corregidos en el camino:** (1) `Fetch Keys` bloqueaba reenviar una pieza retenida (`idea_repetida`): ahora solo bloquean las que llegaron a revisión/descartadas; (2) las piezas de investigación necesitan el `source_key` de la señal como `key` para contar como verificadas (el Intake lo avisa); (3) PUT de GHL reduce carruseles a 1 imagen (ver corrección de fechas).
 - **Pendientes humanos:** ver el informe final de la sesión (pie legal del correo y interruptor `dry_run` de Won→Cliente en GHL).
+
+## /ops V2 — Navegación, Aprobaciones y Ritmo (8-oct-2026)
+- **Agregado:** workflow 29 Ops Actions; `ops-actions-core.mjs`; shell con sidebar/hamburguesa, centro de Aprobaciones, biblioteca de borradores editable, aprobación LinkedIn/Contenido, lista Waalaxy con `X/10`, indicador `X/5` y compuerta de ritmo en Content Engine; clave exclusiva `OPS_APPROVAL_KEY`.
+- **Reutilizado:** Outreach Engine (21), LinkedIn Engine (26), GHL Social Planner, `operator_audit_log`, `content_hash`.
+- **Pruebas:** suites offline + UI Playwright 59 + verificación EN VIVO con datos TEST (guardar/aprobar/reabrir/rechazar correo, aprobar y rechazar post GHL, doble toque, versión vieja) y limpieza por ID exacto.
+- **Hallazgos:** GHL PUT reduce carruseles a 1 imagen → se derivan a GHL; un post rechazado queda `failed` y no se puede borrar por API (el resto de pruebas se limpió pasándolo a `draft`).

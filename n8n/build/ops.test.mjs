@@ -11,6 +11,8 @@ const run = async (name, store, lists) => new AsyncFunction('$', '$json', code(n
 const ok200 = (body) => ({ statusCode: 200, body });
 
 const NOW = Date.parse('2026-10-08T11:30:00Z');
+// Las escrituras (alertas, corridas) usan la hora real del servidor: se fija para que la prueba no dependa del reloj de quien la corre.
+Date.now = () => NOW;
 const iso = (msAgo) => new Date(NOW - msAgo).toISOString();
 const H = 3600000, D = 86400000;
 const ST = { nuevo: 'aad0ad01-bffd-4ea9-b00c-7ab11dc941f6', investigado: '2216d3ae-d153-4446-bc3b-77d0a240e415', respondio: '38059f54-3ebf-47cd-9a10-126589e61b86', diagnostico: 'fec1e794-fb25-4242-806d-f3c13316df6e' };

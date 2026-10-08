@@ -6,7 +6,7 @@ import { PanelSkeleton, PanelView } from "./PanelView";
 /** Siempre dinámico: es una vista viva y privada; nada de esto se prerenderiza ni se cachea. */
 export const dynamic = "force-dynamic";
 
-export default async function OpsPage() {
+export default async function OpsPage({ searchParams }: { searchParams: Promise<{ view?: string | string[]; filter?: string | string[]; tab?: string | string[] }> }) {
   if (!(await hasSession())) {
     return (
       <main className="ops-wrap ops-wrap-narrow ops-login-page">
@@ -18,11 +18,10 @@ export default async function OpsPage() {
       </main>
     );
   }
+  const sp = await searchParams;
   return (
-    <main className="ops-wrap">
-      <Suspense fallback={<PanelSkeleton />}>
-        <PanelView />
-      </Suspense>
-    </main>
+    <Suspense fallback={<PanelSkeleton />}>
+      <PanelView sp={sp} />
+    </Suspense>
   );
 }

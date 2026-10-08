@@ -159,3 +159,9 @@ Carga extra en n8n: ~96 consultas/día de alertas (cada una lee unas 10 tablas/e
 - **Carruseles retenidos:** `node scripts/content/render-pending.mjs` (lista) y `--run` (renderiza, sube a GHL y reenvía a revisión).
 - **Pausar Ola A:** `hermes cron pause 3423e7821026 f667ec9b786c a88a78d263f9` (RSS, piezas, competencia); el workflow 28 se desactiva en n8n; `content_config.rss_enabled=false` lo deja inerte sin tocar n8n.
 - **Pruebas:** `node scripts/run-all-tests.mjs` (28 suites). Datos TEST: `is_test=true`, se borran por ID exacto.
+
+## 14. /ops V2 — aprobar desde el celular (8-oct-2026)
+- Entrar a `/ops` (PIN) → menú → **Aprobaciones**. Correos: abrir, editar asunto/cuerpo si hace falta, «Guardar cambios» (no envía) y «Aprobar envío». El envío real sigue las reglas de Gmail (5/día, lun–vie 09:00–17:30 Chile). LinkedIn: aprobar/rechazar altas (tope 10/día). Contenido: aprobar/rechazar; los carruseles se aprueban en GHL.
+- Variable nueva: `OPS_APPROVAL_KEY` (Vercel) = credencial n8n `k1OjUzoBnFXBsffh`. Rotarla: cambiar ambas y redeployar. Sin ella, `/ops` sigue funcionando en solo lectura y avisa que las aprobaciones no están configuradas.
+- Ritmo editorial en `content_config` (objetivo 5/semana, mín. 4, máx. normal 6). Para pausar generación extra basta con llegar a 5.
+- Pruebas: `node scripts/run-all-tests.mjs` (incluye workflow 29) y `node scripts/ops/ui-tests.mjs` (UI con n8n simulado; no toca producción).

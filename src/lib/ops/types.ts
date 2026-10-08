@@ -38,6 +38,8 @@ export type PiecePreview = {
   proposed_at: string | null;
   proposed_label: string | null;
   ghl_post: boolean;
+  cta_mode?: string | null;
+  resource?: { name: string; url: string } | null;
 };
 
 export type PieceRow = {
@@ -59,7 +61,19 @@ export type Signal = { title: string; type: string | null; angle: string | null;
 
 export type LinkedinRow = { company: string; short: string; state: string | null; state_label: string | null; person: string | null; role: string | null; next_action: string | null; last_event_at: string | null; reply: string | null; score: number | null };
 
+export type Weekly = {
+  week_start: string; week_end: string; target: number; min: number; max: number;
+  done: number; published: number; scheduled: number; in_review: number; coverage: number;
+  state: "falta" | "ritmo" | "correcto" | "cubierta" | "exceso"; state_label: string;
+  runway_days: number; runway_min: number; runway_max: number; runway_ok: boolean; covered: boolean;
+};
+
 export type Panel = {
+  outreach?: {
+    email: { mode: string; sent_today: number; cap: number; drafts: number; approved_waiting: number };
+    linkedin: { mode: string; imported_today: number; cap: number; ready: number; pending_approval: number; in_campaign: number; replied: number; errors: number };
+  };
+  approvals?: { emails: number; linkedin: number; content: number };
   linkedin: {
     mode: string;
     counts: Record<"pendiente" | "en_lista" | "en_campana" | "conexion" | "mensaje" | "followup" | "respondio" | "rechazo" | "error", number>;
@@ -83,6 +97,7 @@ export type Panel = {
     latest: Prospect[];
   };
   content: {
+    weekly?: Weekly;
     signals_count: number;
     signals: Signal[];
     in_review: PieceRow[];
@@ -112,3 +127,23 @@ export type Panel = {
 export type PanelResult =
   | { ok: true; panel: Panel; stale: boolean; fetchedAt: number }
   | { ok: false; reason: "not_configured" | "unreachable" | "bad_response" };
+
+/** ---- Acciones desde /ops (workflow n8n «29 Ops Actions»; la clave de aprobación vive solo en el servidor) ---- */
+export type EmailCard = {
+  id: string; candidate_id: string; kind: string; company: string; contact_name: string | null; contact_role: string | null; to: string | null; subject: string | null; body: string | null;
+  status: string; editable: boolean; can_reopen: boolean; can_approve: boolean; can_reject: boolean; hash: string | null;
+  created_at: string; updated_at: string | null; approved_at: string | null; approved_by: string | null; scheduled_for: string | null; sent_at: string | null; error: string | null;
+  score: number | null; band: string | null; reason: string | null; evidence: string | null; recommended_channel: string | null; suppressed: boolean; rejected_reason: string | null;
+};
+export type LinkedinReady = { candidate_id: string; company: string; person: string | null; role: string | null; url: string | null; score: number | null; band: string | null; angle: string | null; fact: string | null; reason: string | null; list_id: string | null; campaign_id: string | null; source: string | null };
+export type LinkedinSent = { candidate_id: string; company: string; person: string | null; role: string | null; url: string | null; approved_by: string | null; approved_at: string | null; imported_at: string | null; list_id: string | null; campaign_id: string | null; score: number | null; angle: string | null; state: string; state_label: string; last_event: string | null; last_event_at: string | null; import_code: string | null; campaign_code: string | null; mode_at_import: string | null };
+export type Overview = {
+  generated_at: string;
+  email: { mode: string; paused: boolean; cap: number; sent_today: number; window: string; cards: EmailCard[] };
+  linkedin: { mode: string; cap: number; imported_today: number; counts: Record<string, number>; ready: LinkedinReady[]; sent: LinkedinSent[] };
+};
+export type OverviewResult = { ok: true; overview: Overview } | { ok: false; reason: "not_configured" | "unreachable" | "bad_response" };
+
+export type OpsActionName = "email_save" | "email_approve" | "email_reject" | "email_reopen" | "linkedin_approve" | "linkedin_reject" | "content_approve" | "content_reject";
+export type OpsActionInput = { action: OpsActionName; request_id: string; message_id?: string; candidate_id?: string; piece_id?: string; subject?: string; body?: string; expected_hash?: string; reason?: string };
+export type OpsActionState = { ok: boolean; message: string; status?: string; hash?: string | null; needsGhl?: boolean; replayed?: boolean };

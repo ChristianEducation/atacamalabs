@@ -146,3 +146,12 @@ alter table public.content_feed_items add column if not exists feed_slug text;
 -- ops_runs: nuevos tipos de corrida de los jobs de Ola A (RSS, inteligencia orgánica, generación de piezas).
 alter table public.ops_runs drop constraint if exists ops_runs_kind_check;
 alter table public.ops_runs add constraint ops_runs_kind_check check (kind in ('prospect_radar', 'content_radar', 'daily', 'alerts', 'other', 'content_rss', 'competitor_intel', 'content_pieces'));
+
+-- /ops V2 · ritmo editorial semanal (regla persistente): objetivo 5/semana, mínimo sano 4, máximo normal 6, 1 publicación por cuenta y día, runway 3–5 días.
+alter table public.content_config
+  add column if not exists weekly_target int not null default 5 check (weekly_target between 1 and 14),
+  add column if not exists weekly_min int not null default 4 check (weekly_min between 0 and 14),
+  add column if not exists weekly_max int not null default 6 check (weekly_max between 1 and 14),
+  add column if not exists max_per_account_day int not null default 1 check (max_per_account_day between 1 and 3),
+  add column if not exists runway_min_days int not null default 3 check (runway_min_days between 0 and 30),
+  add column if not exists runway_max_days int not null default 5 check (runway_max_days between 1 and 30);

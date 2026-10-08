@@ -39,6 +39,11 @@ async function fetchPanel(): Promise<PanelResult> {
   }
 }
 
+/** Tras aprobar/rechazar: descarta la caché de 25 s para que el refresco muestre el estado real. */
+export function invalidatePanel(): void {
+  cache = null;
+}
+
 export async function getPanel(): Promise<PanelResult> {
   if (!config()) return { ok: false, reason: "not_configured" };
   if (cache && Date.now() - cache.at < TTL_MS) return { ok: true, panel: cache.panel, stale: false, fetchedAt: cache.at };

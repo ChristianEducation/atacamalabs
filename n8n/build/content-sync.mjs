@@ -43,8 +43,8 @@ export function mapGhlToPiece(post, now, piece) {
   if (post.scheduleDate) out.scheduled_at = new Date(post.scheduleDate).toISOString();
   if (st === 'published') { out.status = 'published'; out.published_at = new Date(post.publishedAt || post.updatedAt || now).toISOString(); }
   else if (st === 'scheduled' || st === 'in_progress' || st === 'publishing') out.status = 'scheduled';
-  else if (st === 'failed' || st === 'error') out.status = 'failed';
-  else if (st === 'draft') out.status = 'drafted';
+  else if (st === 'failed' || st === 'error') out.status = approval === 'rejected' ? 'discarded' : 'failed';   // rechazar desde /ops o GHL deja el post en «failed» con aprobación rechazada: es un descarte, no una falla de publicación
+  else if (st === 'draft') out.status = approval === 'rejected' ? 'discarded' : 'drafted';
   else if (st === 'in_review') out.status = approval === 'rejected' ? 'discarded' : approval === 'approved' ? 'approved' : 'in_review';
   else if (st === 'deleted') out.status = 'discarded';
   else out.status = null; // estado desconocido: no se toca la pieza

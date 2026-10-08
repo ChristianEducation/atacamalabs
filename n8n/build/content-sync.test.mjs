@@ -12,6 +12,7 @@ t('in_review rechazado → discarded', m('in_review', { postApprovalDetails: { a
 t('scheduled → scheduled con fecha', (() => { const r = m('scheduled', { scheduleDate: '2026-10-13T13:00:00.000Z' }); return r.status === 'scheduled' && r.scheduled_at === '2026-10-13T13:00:00.000Z'; })());
 t('published → published con published_at', (() => { const r = m('published', { publishedAt: '2026-10-13T13:02:00.000Z' }); return r.status === 'published' && r.published_at === '2026-10-13T13:02:00.000Z'; })());
 t('failed → failed', m('failed').status === 'failed');
+t('failed con aprobación rechazada (rechazo desde /ops o GHL) → discarded, no una falla de publicación', m('failed', { postApprovalDetails: { approvalStatus: 'rejected' } }).status === 'discarded' && m('draft', { postApprovalDetails: { approvalStatus: 'rejected' } }).status === 'discarded');
 t('post inexistente → discarded/deleted', (() => { const r = mapGhlToPiece(null, now); return r.status === 'discarded' && r.ghl_status === 'deleted'; })());
 t('estado desconocido no toca la pieza', m('algo_nuevo').status === null);
 

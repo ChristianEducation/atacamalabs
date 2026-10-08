@@ -261,3 +261,8 @@ El ritmo real observado en 02b Signals (llamadas OpenClaw reales contra contenid
 - `Atacama Labs - 27 Content Growth` (`M4LyGH4UxE5sYIh5`): webhook `POST /webhook/atacama-content-growth` (`X-Atacama-Key`) con 16 acciones (cola, Founder Interview, recursos, RSS, competencia, señales candidatas). Generado por `node n8n/build/content-growth.mjs`; pruebas `node n8n/build/content-growth.test.mjs` (51).
 - `Atacama Labs - 28 Content RSS` (`6wnrHglfnt6l9va0`): cada hora + webhook `atacama-content-rss`. Feeds en `content_feeds`. `node n8n/build/content-rss.mjs` · pruebas 27.
 - Datos iniciales idempotentes: `node scripts/content/seed-ola-a.mjs`.
+
+## 29 Ops Actions (/ops V2, 8-oct-2026)
+- Workflow `Atacama Labs - 29 Ops Actions` (`ruk7KnHLppPSI8wK`), webhook `POST /webhook/atacama-ops-actions`, header `X-Ops-Approval` (credencial `k1OjUzoBnFXBsffh`, clave exclusiva de `/ops`; la clave de Hermes/ingesta no entra). Archivo [`atacama-labs-29-ops-actions.json`](atacama-labs-29-ops-actions.json), generado por `node n8n/build/ops-actions.mjs` (prueba `node n8n/build/ops-actions.test.mjs`, 61; núcleo `scripts/ops/ops-actions-core.mjs`).
+- Compuerta de aprobaciones: reutiliza las rutas reales de 21 (Outreach Engine), 26 (LinkedIn) y GHL Social Planner; idempotente por `request_id` y auditada en `operator_audit_log`. Lista cerrada de acciones; sin ejecutor genérico.
+- Cambiados en V2: `25 Atacama Ops` (ritmo semanal, aprobaciones en el panel), `14 Content Sync` (rechazado en GHL → `discarded`).

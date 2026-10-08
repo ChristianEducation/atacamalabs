@@ -44,3 +44,4 @@ ACCESO*.md
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+ops/hermes/__pycache__/

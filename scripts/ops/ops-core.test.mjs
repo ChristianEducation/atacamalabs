@@ -370,7 +370,7 @@ ok('compuerta de piezas: sin señales o con la cola llena NO corre (no gasta IA)
   assert.match(oc.piecesGate(base({ signals_candidate: 0 })).reason, /no hay señales candidatas/);
   assert.match(oc.piecesGate(base({ signals_candidate: 4, pieces: [1, 2, 3, 4, 5, 6].map(piece6) })).reason, /cola de revisión llena/);
   let g = oc.piecesGate(base({ signals_candidate: 4, pieces: [1, 2].map(piece6) })); assert.equal(g.mode, 'run'); assert.equal(g.max_pieces, 2);
-  g = oc.piecesGate(base({ signals_candidate: 4, pieces: [1, 2, 3, 4, 5].map(piece6) })); assert.equal(g.max_pieces, 1, 'solo cabe una pieza más');
+  g = oc.piecesGate(base({ signals_candidate: 4, pieces: [1, 2, 3, 4].map(piece6) })); assert.equal(g.mode, 'run'); assert.equal(g.max_pieces, 1, 'solo cabe una pieza más para llegar a 5');
   assert.match(oc.piecesGate(base({ signals_candidate: 4, runs: [{ kind: 'content_pieces', status: 'ok', created_at: iso(3 * H) }] })).reason, /ya corrió/);
 });
 ok('panel: cola, RSS, inteligencia, recursos y Founder; avisa cola llena, feeds caídos y entrevista sin pieza', () => {
@@ -396,6 +396,63 @@ ok('salud: los workflows 27/28 y los jobs nuevos de Hermes aparecen; un feed ca�
   ['Content RSS (ingestión)', 'Content RSS (Hermes)', 'Content Pieces (Hermes)', 'Inteligencia orgánica (Hermes)'].forEach((n) => assert.ok(names.includes(n), n));
   assert.equal(h.components.find((c) => c.name === 'Content RSS (ingestión)').status, 'atencion');
   assert.equal(oc.healthReport(base()).components.find((c) => c.name === 'Content RSS (ingestión)').status, 'ok');
+});
+
+// ---------- /ops V2: ritmo editorial semanal (America/Santiago, semana lun–dom; NOW = jueves 8-oct 08:30 Chile)
+const wkPiece = (i, st, atMs, extra) => ({ id: 'w' + i, topic: 'T' + i, channel: 'linkedin_page', status: st, ghl_status: st, is_test: false, created_at: iso(2 * D), ...(st === 'published' ? { published_at: new Date(atMs).toISOString() } : { scheduled_at: new Date(atMs).toISOString() }), ...(extra || {}) });
+const MON = Date.parse('2026-10-05T15:00:00Z'), FRI = Date.parse('2026-10-09T15:00:00Z'), NEXTMON = Date.parse('2026-10-12T15:00:00Z'), SAT = Date.parse('2026-10-10T15:00:00Z'), PREVFRI = Date.parse('2026-10-02T15:00:00Z');
+ok('ritmo semanal: X = publicadas + programadas de ESTA semana (lun–dom Chile); en revisión aparte; otras semanas no cuentan', () => {
+  const w = oc.weeklyContent(base({ pieces: [wkPiece(1, 'published', MON), wkPiece(2, 'scheduled', FRI), wkPiece(3, 'in_review', SAT), wkPiece(4, 'published', PREVFRI), wkPiece(5, 'scheduled', NEXTMON)] }));
+  assert.equal(w.week_start, '2026-10-05'); assert.equal(w.week_end, '2026-10-11'); assert.equal(w.published, 1); assert.equal(w.scheduled, 1); assert.equal(w.in_review, 1); assert.equal(w.done, 2); assert.equal(w.coverage, 3); assert.equal(w.target, 5);
+  assert.equal(oc.weeklyContent(base({ pieces: [{ ...wkPiece(6, 'published', MON), is_test: true }] })).done, 0, 'las piezas de prueba no cuentan');
+});
+ok('ritmo semanal: etiquetas exactas por X (0–2 falta · 3 en ritmo · 4–5 correcto · 6 cubierta · >6 no generar)', () => {
+  const lab = (n) => oc.weeklyContent(base({ pieces: Array.from({ length: n }, (_, i) => wkPiece(i, 'published', MON + i * 3600000)) })).state_label;
+  assert.equal(lab(0), 'Falta contenido'); assert.equal(lab(2), 'Falta contenido'); assert.equal(lab(3), 'En ritmo'); assert.equal(lab(4), 'Ritmo correcto'); assert.equal(lab(5), 'Ritmo correcto'); assert.equal(lab(6), 'Semana cubierta');
+  assert.match(lab(7), /^No generar más automáticamente salvo señal excepcional o instrucción explícita$/);
+});
+ok('runway: días hasta la última pieza programada o en revisión (0 si no hay); el mínimo sano es 3', () => {
+  assert.equal(oc.weeklyContent(base()).runway_days, 0);
+  const w = oc.weeklyContent(base({ pieces: [wkPiece(1, 'scheduled', FRI), wkPiece(2, 'in_review', SAT)] }));
+  assert.equal(w.runway_days, 2); assert.equal(w.runway_ok, false);
+  assert.equal(oc.weeklyContent(base({ pieces: [wkPiece(1, 'scheduled', NEXTMON + 2 * D)] })).runway_days, 6);
+});
+ok('ritmo: la regla es configurable en content_config (objetivo, mínimo, máximo, runway)', () => {
+  const w = oc.weeklyContent(base({ content_cfg: { weekly_target: 3, weekly_min: 2, weekly_max: 4, runway_min_days: 2, runway_max_days: 7 }, pieces: [1, 2, 3].map((i) => wkPiece(i, 'published', MON + i * 3600000)) }));
+  assert.deepEqual([w.target, w.min, w.max, w.runway_min, w.runway_max], [3, 2, 4, 2, 7]); assert.equal(w.covered, true); assert.equal(w.state_label, 'Ritmo correcto');
+});
+ok('Content Engine: con la semana cubierta (publicadas+programadas+en revisión ≥ 5) NO fabrica piezas normales, aunque haya señales', () => {
+  const full = [1, 2, 3].map((i) => wkPiece(i, 'published', MON + i * 3600000)).concat([wkPiece(4, 'scheduled', FRI), wkPiece(5, 'in_review', SAT)]);
+  const g = oc.piecesGate(base({ signals_candidate: 5, pieces: full }));
+  assert.equal(g.mode, 'skip'); assert.match(g.reason, /semana cubierta \(5\/5/); assert.match(g.reason, /radares siguen recolectando/); assert.equal(g.week_coverage, 5);
+  assert.equal(oc.piecesGate(base({ signals_candidate: 5, pieces: full.slice(0, 4) })).mode, 'run', 'a 4/5 todavía genera');
+});
+ok('Content Engine: en revisión SÍ cuenta para decidir (5 en revisión = semana cubierta) aunque X sea 0', () => {
+  const g = oc.piecesGate(base({ signals_candidate: 3, pieces: [1, 2, 3, 4, 5].map((i) => wkPiece(i, 'in_review', FRI + i * 3600000)) }));
+  assert.equal(g.mode, 'skip'); assert.equal(oc.weeklyContent(base({ pieces: [1, 2, 3, 4, 5].map((i) => wkPiece(i, 'in_review', FRI + i * 3600000)) })).done, 0);
+});
+ok('Content Engine: una señal URGENTE (noticia, score ≥ 90, ≤ 48 h) puede pasar el ritmo con 1 pieza, pero nunca el máximo ni el tope de la cola', () => {
+  const full = [1, 2, 3].map((i) => wkPiece(i, 'published', MON + i * 3600000)).concat([wkPiece(4, 'scheduled', FRI), wkPiece(5, 'in_review', SAT)]);
+  const urgent = { signals_list: [{ id: 's', title: 'Cambio de precios de WhatsApp API', signal_type: 'news', signal_score: 93, created_at: iso(3 * H) }] };
+  const g = oc.piecesGate(base({ signals_candidate: 1, pieces: full, ...urgent })); assert.equal(g.mode, 'run'); assert.equal(g.max_pieces, 1); assert.match(g.reason, /URGENTE/);
+  assert.equal(oc.piecesGate(base({ signals_candidate: 1, pieces: full.concat([wkPiece(6, 'scheduled', SAT + H)]), ...urgent })).mode, 'skip', 'con 6 ya no');
+  assert.equal(oc.piecesGate(base({ signals_candidate: 1, pieces: full, signals_list: [{ id: 's', title: 'x', signal_type: 'news', signal_score: 85, created_at: iso(3 * H) }] })).mode, 'skip', 'score < 90 no es urgente');
+  assert.equal(oc.piecesGate(base({ signals_candidate: 1, pieces: full, signals_list: [{ id: 's', title: 'x', signal_type: 'news', signal_score: 95, created_at: iso(5 * D) }] })).mode, 'skip', 'una señal vieja no es urgente');
+  assert.equal(oc.piecesGate(base({ signals_candidate: 1, pieces: [1, 2, 3, 4, 5, 6].map((i) => piece6(i)), ...urgent })).mode, 'skip', 'la cola llena (6/6) manda siempre');
+});
+ok('Content Engine: runway lleno (≥ 5 días por delante) también detiene la generación normal', () => {
+  const g = oc.piecesGate(base({ signals_candidate: 2, pieces: [wkPiece(1, 'scheduled', NEXTMON + 2 * D)] }));
+  assert.equal(g.mode, 'skip'); assert.match(g.reason, /días de contenido por delante/);
+});
+ok('panel V2: contenido semanal, resumen de outreach (X/5 correo, X/10 LinkedIn) y conteo de aprobaciones', () => {
+  const todaySent = { id: 'm1', direction: 'outbound', kind: 'initial', status: 'sent', sent_at: iso(H), company_name: 'A', created_at: iso(H) };
+  const pn = oc.composePanel(base({ outreach: { mode: 'live', daily_cap: 5, linkedin_mode: 'live', linkedin_daily_cap: 10 }, messages: [todaySent, { id: 'm2', direction: 'outbound', kind: 'initial', status: 'draft', company_name: 'B', created_at: iso(H) }],
+    candidates: [{ company_name: 'LI', status: 'contacted', channel_state: { linkedin: { state: 'en_campana', imported_at: iso(2 * H), mode_at_import: 'live' } }, created_at: iso(D) }, { company_name: 'Vieja', status: 'contacted', channel_state: { linkedin: { state: 'en_campana', imported_at: iso(3 * D), mode_at_import: 'live' } }, created_at: iso(D) }],
+    pieces: [wkPiece(1, 'in_review', FRI), wkPiece(2, 'published', MON)] }));
+  assert.equal(pn.content.weekly.done, 1); assert.equal(pn.content.weekly.target, 5); assert.equal(pn.content.weekly.in_review, 1);
+  assert.equal(pn.outreach.email.sent_today, 1); assert.equal(pn.outreach.email.cap, 5); assert.equal(pn.outreach.email.drafts, 1);
+  assert.equal(pn.outreach.linkedin.imported_today, 1); assert.equal(pn.outreach.linkedin.cap, 10); assert.equal(pn.outreach.linkedin.in_campaign, 2);
+  assert.equal(pn.approvals.emails, 1); assert.equal(pn.approvals.content, 1);
 });
 
 console.log(n + ' ok');

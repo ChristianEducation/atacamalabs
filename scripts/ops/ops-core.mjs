@@ -591,15 +591,51 @@ export function competitorGate(d) {
   return { mode: 'run', reason: 'ok (' + (last ? 'última hace ' + ageText(now - last) : 'primera corrida') + ')', max_pages_per_competitor: 4 };
 }
 
-/** Compuerta del job que redacta piezas: solo si la cola lo permite y hay señales candidatas. */
+/**
+ * Ritmo editorial semanal (America/Santiago, semana lun–dom). X = publicadas + programadas (lo que cuenta como «hecho»);
+ * las que están en revisión se muestran aparte, pero SÍ cuentan para decidir si el Content Engine debe seguir generando.
+ * Regla persistente (content_config): objetivo 5/semana, mínimo sano 4, máximo normal 6, 1 publicación por cuenta y día, runway deseado 3–5 días.
+ */
+export function weeklyContent(d) {
+  const now = d.now, tz = (d.cfg && d.cfg.tz) || 'America/Santiago';
+  const c = d.content_cfg || {};
+  const num = (v, def) => (v != null && Number.isFinite(Number(v)) ? Number(v) : def);
+  const target = num(c.weekly_target, 5) > 0 ? num(c.weekly_target, 5) : 5, minOk = num(c.weekly_min, 4), maxNormal = num(c.weekly_max, 6) > 0 ? num(c.weekly_max, 6) : 6;
+  const runwayMin = num(c.runway_min_days, 3), runwayMax = num(c.runway_max_days, 5) > 0 ? num(c.runway_max_days, 5) : 5;
+  const p = tzParts(now, tz);
+  const sinceMon = (p.dow + 6) % 7;
+  const startKey = dayKey(now - sinceMon * 86400000, tz);            // lunes de esta semana (calendario de Chile)
+  const endKey = dayKey(now + (6 - sinceMon) * 86400000, tz);        // domingo de esta semana
+  const inWeek = (iso) => { if (!iso) return false; const k = dayKey(Date.parse(iso), tz); return k >= startKey && k <= endKey; };
+  const pcs = (d.pieces || []).filter((x) => !x.is_test);
+  const published = pcs.filter((x) => x.status === 'published' && inWeek(x.published_at)).length;
+  const scheduled = pcs.filter((x) => ['scheduled', 'approved'].includes(x.status) && inWeek(x.scheduled_at)).length;
+  const inReview = pcs.filter((x) => (x.status === 'in_review' || (x.ghl_status === 'in_review' && x.ghl_approval_status !== 'approved')) && inWeek(x.scheduled_at || x.created_at)).length;
+  const done = published + scheduled;
+  const coverage = done + inReview;
+  // Runway: días de calendario hasta la última pieza programada o en revisión (0 si no hay nada por delante).
+  const future = pcs.filter((x) => ['scheduled', 'approved', 'in_review'].includes(x.status) && x.scheduled_at && Date.parse(x.scheduled_at) >= now).map((x) => Date.parse(x.scheduled_at));
+  const runway = future.length ? Math.max(0, daysSince(now, Math.max(...future), tz)) : 0;
+  const state = done > maxNormal ? 'exceso' : done === maxNormal ? 'cubierta' : done >= minOk ? 'correcto' : done === 3 ? 'ritmo' : 'falta';
+  const labels = { falta: 'Falta contenido', ritmo: 'En ritmo', correcto: 'Ritmo correcto', cubierta: 'Semana cubierta', exceso: 'No generar más automáticamente salvo señal excepcional o instrucción explícita' };
+  return { week_start: startKey, week_end: endKey, target, min: minOk, max: maxNormal, done, published, scheduled, in_review: inReview, coverage, state, state_label: labels[state], runway_days: runway, runway_min: runwayMin, runway_max: runwayMax, runway_ok: runway >= runwayMin, covered: coverage >= target };
+}
+
+/** Compuerta del job que redacta piezas: solo si la cola y el ritmo semanal lo permiten y hay señales candidatas (una señal urgente puede saltarse el ritmo, nunca el tope de la cola). */
 export function piecesGate(d) {
-  const now = d.now, g = summarizeGrowth(d), ct = summarizeContent(d);
-  const base = { pending_review: g.queue.pending, max_pending_in_review: g.queue.max, candidate_signals: ct.candidate_signals };
+  const now = d.now, g = summarizeGrowth(d), ct = summarizeContent(d), w = weeklyContent(d);
+  const base = { pending_review: g.queue.pending, max_pending_in_review: g.queue.max, candidate_signals: ct.candidate_signals, week_done: w.done, week_coverage: w.coverage, week_target: w.target, runway_days: w.runway_days };
   if (g.queue.full) return { mode: 'skip', reason: 'cola de revisión llena (' + g.queue.pending + '/' + g.queue.max + '): primero se revisa', ...base };
   if (!ct.candidate_signals) return { mode: 'skip', reason: 'no hay señales candidatas', ...base };
   const last = g.pieces_run ? Date.parse(g.pieces_run.at) : null;
   if (last && now - last < 18 * 3600000) return { mode: 'skip', reason: 'ya corrió hace ' + ageText(now - last), ...base };
-  return { mode: 'run', max_pieces: Math.max(1, Math.min(2, g.queue.max - g.queue.pending)), reason: 'ok (' + ct.candidate_signals + ' señales candidatas, ' + g.queue.pending + '/' + g.queue.max + ' en revisión)', ...base };
+  // Excepción: señal urgente = noticia con score ≥ 90 detectada en las últimas 48 h; aun así nunca se pasa del máximo normal semanal.
+  const urgent = (d.signals_list || []).find((x) => Number(x.signal_score) >= 90 && now - Date.parse(x.created_at) <= 48 * 3600000 && (!x.signal_type || x.signal_type === 'news'));
+  if ((w.covered || w.runway_days >= w.runway_max) && !(urgent && w.coverage < w.max)) {
+    return { mode: 'skip', reason: w.covered ? 'semana cubierta (' + w.coverage + '/' + w.target + ' entre publicadas, programadas y en revisión): los radares siguen recolectando, no se fabrican piezas solo por llenar la cola' : 'ya hay ' + w.runway_days + ' días de contenido por delante (runway máx. ' + w.runway_max + ')', ...base };
+  }
+  const room = Math.max(1, w.target - w.coverage);
+  return { mode: 'run', max_pieces: urgent && w.covered ? 1 : Math.max(1, Math.min(2, g.queue.max - g.queue.pending, room)), urgent_signal: urgent ? String(urgent.title).slice(0, 120) : null, reason: 'ok (' + ct.candidate_signals + ' señales candidatas, ' + g.queue.pending + '/' + g.queue.max + ' en revisión, semana ' + w.coverage + '/' + w.target + (urgent && w.covered ? ', señal URGENTE' : '') + ')', ...base };
 }
 
 /** Nombre corto para Telegram/panel: quita palabras genéricas y la ciudad («Laboratorio Clínico Luis Pasteur Antofagasta» → «Luis Pasteur»). */
@@ -672,7 +708,7 @@ export function composePanel(d) {
         compare: s.compare ? [s.compare.left, s.compare.right].filter(Boolean).map((c) => clip(c.label, 28) + ': ' + clip(c.text, 110)) : [], figure: s.figure ? clip(s.figure.value, 12) + ' ' + clip(s.figure.label, 80) : null })),
       media: (Array.isArray(pc.media) ? pc.media : []).map((m) => m && m.url).filter((u) => /^https:\/\//.test(String(u || ''))).slice(0, 10),
       sources: (Array.isArray(pc.sources) ? pc.sources : []).filter((s) => s && /^https?:/.test(String(s.url || ''))).slice(0, 3).map((s) => ({ title: clip(s.title, 110), url: s.url })),
-      rationale: x.rationale ? clip(x.rationale, 320) : null, format: pc.format || null, proposed_at: x.scheduled_at || null, proposed_label: x.scheduled_at ? fmtDateTime(Date.parse(x.scheduled_at), tz) : null, ghl_post: Boolean(x.ghl_post_id) };
+      rationale: x.rationale ? clip(x.rationale, 320) : null, format: pc.format || null, proposed_at: x.scheduled_at || null, proposed_label: x.scheduled_at ? fmtDateTime(Date.parse(x.scheduled_at), tz) : null, ghl_post: Boolean(x.ghl_post_id), cta_mode: x.cta_mode || null, resource: x.resource && x.resource.url ? { name: clip(x.resource.name, 80), url: x.resource.url } : null };
   };
   const row = (p) => ({ preview: ['in_review', 'scheduled', 'approved', 'drafted'].includes(p.status) ? previewOf(p.id) : null, id: p.id, title: clip(p.topic, 90), channel: chLabel[p.channel] || p.channel, status: p.status, hook: p.hook ? clip(p.hook, 160) : null, format: p.format || null, category: p.category || null, score: p.score != null ? p.score : null,
     at: p.scheduled_at || p.published_at || p.created_at, at_label: (p.scheduled_at || p.published_at) ? fmtDateTime(Date.parse(p.scheduled_at || p.published_at), tz) : null });
@@ -683,16 +719,24 @@ export function composePanel(d) {
     return { ...row(p), metrics: ms };
   });
   const gr = summarizeGrowth(d);
-  const content = { queue: gr.queue, rss: gr.rss, intel: gr.intel, resources: gr.resources, founder: gr.founder, signals_count: Number(d.signals_candidate) || 0, signals: sig, in_review: inReview, scheduled, published, failed: ct.failed.concat(ct.late), metrics_ready: ct.snapshots.length, preview_ready: false };
+  const wk = weeklyContent(d);
+  const content = { weekly: wk, queue: gr.queue, rss: gr.rss, intel: gr.intel, resources: gr.resources, founder: gr.founder, signals_count: Number(d.signals_candidate) || 0, signals: sig, in_review: inReview, scheduled, published, failed: ct.failed.concat(ct.late), metrics_ready: ct.snapshots.length, preview_ready: false };
   // --- sistema
   const system = { overall: h.overall, components: h.components.map((x) => ({ name: x.name, status: x.status, reason: x.reason })), outreach_mode: c.outreach.mode, approved_pending: c.outreach.approved_pending, drafts: c.outreach.drafts_initial, errors24h: (d.errors24h || []).slice(0, 6), hermes_known: Boolean(d.hermes && Array.isArray(d.hermes.jobs)) };
   const lo = linkedinOverview(d.candidates || [], now);
   const linkedin = { mode: (d.outreach && d.outreach.linkedin_mode) || 'off', counts: lo.counts, ready: lo.ready_for_linkedin, rows: lo.rows.map((r) => ({ company: r.company, short: shortName(r.company), state: r.state, state_label: r.state_label || (r.recommended === 'linkedin' ? 'Listo para LinkedIn' : null), person: r.person, role: r.role, next_action: r.next_action, last_event_at: r.last_event_at, reply: r.reply ? clip(r.reply.text, 160) : null, score: r.score })).slice(0, 8),
     note: 'Waalaxy no informa por API si la invitación se envió, si la aceptaron o si respondieron: esos estados los registras tú con Hermes.' };
   const li = lo.counts;
+  const tzp = (d.cfg && d.cfg.tz) || 'America/Santiago', todayKey = dayKey(now, tzp);
+  const emailSentToday = (d.messages || []).filter((m) => m.direction === 'outbound' && m.status === 'sent' && m.sent_at && dayKey(Date.parse(m.sent_at), tzp) === todayKey).length;
+  const liToday = (d.candidates || []).filter((x) => { const l = ((x.channel_state || {}).linkedin) || {}; return l.imported_at && l.mode_at_import === 'live' && dayKey(Date.parse(l.imported_at), tzp) === todayKey; }).length;
+  const outreach = { email: { mode: c.outreach.mode, sent_today: emailSentToday, cap: Number(d.outreach && d.outreach.daily_cap) || 0, drafts: c.outreach.drafts_initial, approved_waiting: c.outreach.approved_pending },
+    linkedin: { mode: (d.outreach && d.outreach.linkedin_mode) || 'off', imported_today: liToday, cap: Number(d.outreach && d.outreach.linkedin_daily_cap) || 0, ready: lo.ready_for_linkedin, pending_approval: lo.counts.pendiente, in_campaign: lo.counts.en_campana + lo.counts.conexion + lo.counts.mensaje + lo.counts.followup, replied: lo.counts.respondio, errors: lo.counts.error } };
+  const approvals = { emails: c.outreach.drafts_initial, linkedin: lo.ready_for_linkedin + lo.counts.pendiente, content: inReview.length };
+
   add('li_pending', 'act', 'Altas a LinkedIn por confirmar', (d.candidates || []).filter((x) => ((x.channel_state || {}).linkedin || {}).state === 'aprobacion_pendiente').map((x) => x.company_name));
   add('li_error', 'act', 'Errores en LinkedIn (Waalaxy)', (d.candidates || []).filter((x) => ((x.channel_state || {}).linkedin || {}).state === 'error').map((x) => x.company_name));
-  return { linkedin, generated_at: new Date(now).toISOString(), date_label: fmtDate(now, tz), tz, attention: att, attention_total: att.length, prospecting, content, system, missing: d.missing || [] };
+  return { outreach, approvals, linkedin, generated_at: new Date(now).toISOString(), date_label: fmtDate(now, tz), tz, attention: att, attention_total: att.length, prospecting, content, system, missing: d.missing || [] };
 }
 
 /** Aviso corto de una corrida de radar (ops_runs) para Telegram: sin IDs, rutas ni telemetría. */
