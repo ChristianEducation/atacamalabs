@@ -125,7 +125,7 @@ const sourcesBody = piece.sources.filter((s) => !dbMap[keyOf(s)]).map((s) => ({ 
   summary: s.summary || null, evidence: s.evidence || [], verified: s.verified === true }));
 const pieceRow = { icp_pack_id: PACK_ID, idea_key: ev.idea_key, topic: piece.topic, angle: piece.angle, audience: piece.audience, channel: piece.channel, format: piece.format,
   category: piece.category, score: ev.score, score_breakdown: ev.breakdown, rationale: piece.rationale, evidence_urls: ev.evidence_urls, piece,
-  status: action === 'submit' ? 'drafted' : 'scored', ghl_account_id: ACCOUNTS[piece.channel], is_test: isTest, updated_at: new Date().toISOString(),
+  status: (action === 'submit' || holdReason === 'falta_render_o_medio') ? 'drafted' : 'scored', ghl_account_id: ACCOUNTS[piece.channel], is_test: isTest, updated_at: new Date().toISOString(),
   resource_id: resource ? resource.id : null, cta_mode: piece.cta_mode || (resource ? resource.cta_mode : null), cta_copy: piece.cta_copy || null, origin, interview_id: interviewId };
 
 // Fecha PROPUESTA — NUNCA hay fallback a +7 días (regla del 7-oct-2026; ver scripts/content/schedule-core.mjs): Noticia → próximo hueco (≤ 24 h), normal → ≤ 48 h,

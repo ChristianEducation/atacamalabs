@@ -10,7 +10,7 @@ const SUITES = [
   'scripts/prospecting/gateway-core.test.mjs', 'scripts/prospecting/gateway-flow.test.mjs', 'scripts/prospecting/admit-core.test.mjs',
   'n8n/build/prospect-gateway.test.mjs', 'n8n/build/prospect-flow.test.mjs', 'n8n/build/hermes-operator.test.mjs', 'scripts/operator/operator-core.test.mjs',
   'n8n/build/content-engine.test.mjs', 'n8n/build/content-signals.test.mjs', 'n8n/build/content-sync.test.mjs', 'n8n/build/content-metrics.test.mjs',
-  'scripts/content/engine-core.test.mjs', 'scripts/content/editorial-core.test.mjs', 'scripts/content/resource-factory-core.test.mjs', 'scripts/content/schedule-core.test.mjs', 'scripts/content/signal-core.test.mjs', 'scripts/content/metrics-core.test.mjs',
+  'scripts/content/engine-core.test.mjs', 'scripts/content/editorial-core.test.mjs', 'scripts/content/resource-factory-core.test.mjs', 'scripts/media/media-gateway-core.test.mjs', 'n8n/build/media-gateway.test.mjs', 'scripts/media/media-worker.test.mjs', 'scripts/content/schedule-core.test.mjs', 'scripts/content/signal-core.test.mjs', 'scripts/content/metrics-core.test.mjs',
   'n8n/build/content-rss.test.mjs', 'n8n/build/content-growth.test.mjs', 'scripts/content/rss-core.test.mjs', 'scripts/content/growth-core.test.mjs',
   'n8n/build/won-to-client.test.mjs', 'ops/hermes/radar-prompt.test.mjs', 'ops/hermes/mcp-shape.test.mjs',
 ];

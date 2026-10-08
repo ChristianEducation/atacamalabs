@@ -432,6 +432,15 @@ def _grow(body, timeout=90):
     return json.dumps(r, ensure_ascii=False)[:24000]
 
 
+def _media(body, timeout=60):
+    try:
+        from atacama_common import post_webhook
+        r = post_webhook("atacama-media-gateway", body, timeout=timeout, ua="hermes-atacama-media/1.0")
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "red", "message": "No pude consultar el Media Gateway: %s" % type(ex).__name__}, ensure_ascii=False)
+    return json.dumps(r, ensure_ascii=False)[:12000]
+
+
 def _json_arg(text, path, label):
     """Acepta el JSON como texto o como archivo dentro de /opt/data o /tmp. Devuelve (objeto, error_json)."""
     try:
@@ -492,6 +501,29 @@ def submit_content_piece(piece_path: str = "", piece_json: str = "", origin: str
     except Exception as ex:
         return json.dumps({"ok": False, "error": "red", "message": "No pude enviar la pieza al Content Intake: %s" % type(ex).__name__}, ensure_ascii=False)
     return json.dumps(r, ensure_ascii=False)[:8000]
+
+
+@mcp.tool()
+def request_visual(need: str, brief: str, piece_id: str = "", composition: str = "", operation: str = "", reference_url: str = "", source_asset_id: str = "", test: bool = False) -> str:
+    """MEDIA GATEWAY (Ola B): pide el visual de una pieza DESPUÉS de decidir que lo necesita (editorial_plan / visual.need; none es una respuesta válida: no pidas nada). need = editorial_image | conceptual_image | diagram | process_flow | architecture | comparison | before_after | framework | checklist | chart | annotated_screenshot | carousel | resource_visual | typographic | short_video. brief = qué debe comunicar el visual (15–600 caracteres; la marca se valida: nada de robots, hologramas, neón, cyber, circuitos, glow ni estética de prompt de IA; no es un hero de la web; varía la composición con composition).
+    El gateway enruta SOLO a lo que existe: carrusel, slide tipográfica, comparación, antes/después, checklist, framework y flujo van al RENDERER (texto exacto, marca oficial, sin costo; requiere que la pieza ya tenga slides y se produce en el equipo de Christian con node scripts/media/media-gateway.mjs run); capturas, fotos, diagramas, arquitectura, gráficos y video son asset MANUAL de Christian (operation="register"); las imágenes/video GENERATIVOS (Higgsfield) están APAGADOS y sin verificar: devuelven unavailable con el motivo y alternativas, no generan ni cobran nada. NO declares como hecho un visual que quedó en cola o unavailable: dile a Christian el estado real. La misma solicitud no crea dos assets (idempotente) y un render idéntico se reutiliza. Nada se publica ni se aprueba desde aquí: la pieza sigue su camino por submit_content_piece → in_review."""
+    body = {"action": "request", "need": need, "brief": brief}
+    for k, v in (("piece_id", piece_id), ("composition", composition), ("operation", operation), ("reference_url", reference_url), ("source_asset_id", source_asset_id)):
+        if v:
+            body[k] = v
+    if test:
+        body["test"] = True
+    return _media(body)
+
+
+@mcp.tool()
+def visual_status(asset_id: str = "", piece_id: str = "") -> str:
+    """Estado de un visual pedido al Media Gateway (por asset_id) o de todos los de una pieza (piece_id): queued | ready | failed | unavailable | cancelled, el proveedor, las URLs si está listo y el ERROR visible si falló. Solo lectura. Si está ready y la pieza estaba esperando su medio, Christian (o el worker local) la reenvía a revisión; tú no la publicas."""
+    if asset_id:
+        return _media({"action": "status", "id": asset_id})
+    if piece_id:
+        return _media({"action": "status", "piece_id": piece_id})
+    return json.dumps({"ok": False, "error": "falta_id", "message": "Indica asset_id o piece_id."}, ensure_ascii=False)
 
 
 @mcp.tool()

@@ -165,3 +165,10 @@ Carga extra en n8n: ~96 consultas/día de alertas (cada una lee unas 10 tablas/e
 - Variable nueva: `OPS_APPROVAL_KEY` (Vercel) = credencial n8n `k1OjUzoBnFXBsffh`. Rotarla: cambiar ambas y redeployar. Sin ella, `/ops` sigue funcionando en solo lectura y avisa que las aprobaciones no están configuradas.
 - Ritmo editorial en `content_config` (objetivo 5/semana, mín. 4, máx. normal 6). Para pausar generación extra basta con llegar a 5.
 - Pruebas: `node scripts/run-all-tests.mjs` (incluye workflow 29) y `node scripts/ops/ui-tests.mjs` (UI con n8n simulado; no toca producción).
+
+## 15. Ola B — operación diaria (8-oct-2026)
+- **Correos en frío:** en `/ops` cada borrador muestra «Calidad del correo» (score, avisos, evidencia, ángulo) y «Versión anterior». Hermes puede preguntar «¿por qué este correo tiene score bajo?» (`lint_draft`) o regenerar con `save_draft(auto=true, evidence=…)`; el guardado manual nunca se bloquea por estilo. Rollback de un correo: «Editar» y pegar la versión anterior.
+- **Contenido:** Hermes llama `editorial_plan` antes de redactar (¿vale la pena? ¿en qué cuenta, formato, visual y CTA?). Recursos: `content_resources(action="opportunity" | "backlog")`; los 5 recursos pendientes de la backlog están en borrador hasta que exista su página.
+- **Visuales:** `request_visual` → `visual_status`; para producir carruseles/slides: `node scripts/media/media-gateway.mjs run` (equipo de Christian). Lo generativo (Higgsfield) está APAGADO.
+- **Recargar Hermes tras desplegar el MCP:** `s6-svc -t /run/service/gateway-default` (y `dashboard`); verificar con `hermes mcp test atacama-os` (54 herramientas). Los prompts de los jobs de cron se guardan EN LÍNEA: tras cambiar un `.prompt.txt` hay que re-aplicarlo con `hermes cron edit <id> --prompt "$(cat archivo)"` ejecutado como el usuario hermes (`bash -c "…\$(cat …)"`), si no el prompt queda vacío.
+- **Pruebas:** `node scripts/run-all-tests.mjs` (35 suites) y `node scripts/ops/ui-tests.mjs`.

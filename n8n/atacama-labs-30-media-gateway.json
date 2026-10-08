@@ -1,0 +1,321 @@
+{
+  "name": "Atacama Labs - 30 Media Gateway",
+  "nodes": [
+    {
+      "id": "855a3789-74db-40cf-a3a1-cfdbaa2ba6c4",
+      "name": "Media Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "c2fc2750-2912-4e45-842c-b636b648949d",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "lUGhlXVaQBEiEh5S",
+          "name": "Atacama Labs - Ingest Key"
+        }
+      },
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "atacama-media-gateway",
+        "authentication": "headerAuth",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "7e652fc3-f6df-42eb-bf36-65cfc4d2946a",
+      "name": "Parse",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "jsCode": "function mgBrandRules() {\n  return {\n    palette: ['azul Atacama #0F5CED', 'azul oscuro #041228', 'fondos blancos, crema suave o azul muy pálido'],\n    style: ['sobrio, claro y tecnológico pero humano', 'mucho aire y jerarquía visual clara', 'una idea fuerte por pieza', 'poco 3D', 'la llamita solo cuando aporta personalidad'],\n    avoid: ['robot', 'holograma', 'cyber', 'neon', 'circuito', 'cripto', 'blockchain', 'matrix', 'cerebro digital', 'glow', 'degradado excesivo', 'objetos flotando'],\n  };\n}\n\nfunction mgBuildPrompt(req) {\n  const r = req && typeof req === 'object' ? req : {};\n  const b = mgBrandRules();\n  const brief = String(r.brief || '').trim().slice(0, 600);\n  const comp = String(r.composition || '').trim().slice(0, 80);\n  const lines = [\n    'Imagen para redes sociales de Atacama Labs (agentes de IA y automatización para empresas de Chile). Objetivo: ' + brief + '.',\n    'Estilo: ' + b.style.join('; ') + '.',\n    'Paleta: ' + b.palette.join('; ') + '.',\n    comp ? 'Composición: ' + comp + '. Varía la composición respecto de las piezas anteriores; no es un hero de landing.' : 'Composición propia de esta idea; no es un hero de landing (no texto grande a la izquierda con visual abstracto a la derecha).',\n    'Evitar: robots, hologramas, estética cyber, neón, circuitos decorativos, estética cripto, exceso de brillo, degradados excesivos, demasiados objetos flotando, look de prompt genérico de IA.',\n    'Sin texto dentro de la imagen salvo que el brief lo pida; el texto exacto va en el caption o en un carrusel renderizado.',\n  ];\n  return lines.join(' ');\n}\n\nfunction mgCheckBrand(text) {\n  const t = String(text == null ? '' : text).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');\n  const bad = ['robot', 'holograma', 'cyber', 'neon', 'circuito', 'cripto', 'blockchain', 'matrix', 'cerebro digital', 'glow', 'estetica de prompt'];\n  const violations = [];\n  bad.forEach((w) => {\n    let i = t.indexOf(w);\n    while (i >= 0) {\n      // la negación vale para toda la oración hasta la palabra («Evitar: robots, neón, circuitos…», «sin robots ni neón»)\n      const before = t.slice(Math.max(t.lastIndexOf('.', i), 0), i);\n      if (!/\\b(sin|no|ni|evit\\w*|nunca|nada de|ningun\\w*)\\b/.test(before)) { violations.push(w); break; }\n      i = t.indexOf(w, i + w.length);\n    }\n  });\n  const hm = /\\bhero\\b|landing|banner de (la )?web/.exec(t);\n  if (hm && !/\\b(sin|no|ni|evit\\w*|nunca|nada de)\\b/.test(t.slice(Math.max(t.lastIndexOf('.', hm.index), 0), hm.index))) violations.push('parece_un_hero_de_la_web');\n  return { ok: violations.length === 0, violations };\n}\n\nfunction mgFnv(s) {\n  let h = 0x811c9dc5;\n  const x = String(s);\n  for (let i = 0; i < x.length; i++) { h ^= x.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }\n  return h.toString(16).padStart(8, '0');\n}\n\nfunction mgNeeds() {\n  return ['none', 'editorial_image', 'conceptual_image', 'diagram', 'process_flow', 'architecture', 'comparison', 'before_after', 'framework', 'checklist', 'chart', 'annotated_screenshot', 'carousel', 'resource_visual', 'typographic', 'short_video'];\n}\n\nfunction mgOperation(req) {\n  const r = req && typeof req === 'object' ? req : {};\n  if (r.operation && ['render', 'generate', 'edit', 'variation', 'from_reference', 'video', 'register'].includes(r.operation)) return r.operation;\n  if (r.source_asset_id && r.variation === true) return 'variation';\n  if (r.source_asset_id || (r.reference_url && r.edit === true)) return 'edit';\n  if (r.reference_url) return 'from_reference';\n  if (r.need === 'short_video') return 'video';\n  if (mgProviders({}).renderer.needs.includes(r.need)) return 'render';\n  return 'generate';\n}\n\nfunction mgPlan(req, existing, cfg) {\n  const rows = Array.isArray(existing) ? existing : [];\n  const key = mgRequestKey(req);\n  const route = mgRoute(req, cfg);\n  const same = rows.find((a) => a.request_key === key);\n  if (same) {\n    if (['ready', 'queued', 'generating', 'requested'].includes(same.status)) return { action: 'existing', asset: same, route, request_key: key };\n    return { action: 'retry', asset: same, route, request_key: key };\n  }\n  const reusable = rows.find((a) => a.status === 'ready' && a.need === req.need && a.content_hash && req.content_hash && a.content_hash === req.content_hash && Array.isArray(a.urls) && a.urls.length);\n  if (reusable) return { action: 'reuse', asset: reusable, route, request_key: key };\n  return { action: 'create', route, request_key: key };\n}\n\nfunction mgProviders(cfg) {\n  const c = cfg && typeof cfg === 'object' ? cfg : {};\n  const generativeOn = c.media_generative_enabled === true && Number(c.media_generative_budget_usd) > 0;\n  return {\n    renderer: { label: 'Renderer de carruseles (Playwright)', kind: 'deterministic', runs_on: 'worker_local', enabled: true, verified: true, cost_usd: 0,\n      needs: ['carousel', 'typographic', 'comparison', 'before_after', 'checklist', 'framework', 'resource_visual', 'process_flow'], operations: ['render'],\n      note: 'Texto exacto, marca oficial, sin costo. Corre en el equipo de Christian: node scripts/media/media-gateway.mjs run' },\n    manual: { label: 'Asset propio (captura, foto, diagrama hecho a mano)', kind: 'manual', runs_on: 'christian', enabled: true, verified: true, cost_usd: 0,\n      needs: ['annotated_screenshot', 'editorial_image', 'conceptual_image', 'diagram', 'architecture', 'chart', 'short_video', 'resource_visual'], operations: ['register'],\n      note: 'Christian entrega la imagen o el video y se registra y asocia a la pieza' },\n    higgsfield: { label: 'Higgsfield (generativo)', kind: 'generative', runs_on: 'worker_local', enabled: generativeOn, verified: false, cost_usd: null,\n      needs: ['editorial_image', 'conceptual_image', 'short_video'], operations: ['generate', 'edit', 'variation', 'from_reference', 'video'],\n      note: 'PREPARADO pero APAGADO: requiere autorización de Christian, saldo API real y una prueba de punta a punta; los créditos web/promocionales no sirven para la API.' },\n  };\n}\n\nfunction mgRenderHash(piece) {\n  const p = piece && typeof piece === 'object' ? piece : {};\n  const slides = Array.isArray(p.slides) ? p.slides : [];\n  return mgFnv(JSON.stringify({ f: p.format, c: p.channel, s: slides, v: 'render-v1' }));\n}\n\nfunction mgRequestKey(req) {\n  const r = req && typeof req === 'object' ? req : {};\n  const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\\s+/g, ' ').trim();\n  return mgFnv(String(r.piece_id || '-') + '|' + String(r.need || '') + '|' + norm(r.brief) + '|' + norm(r.composition) + '|' + String(r.operation || ''));\n}\n\nfunction mgRoute(req, cfg) {\n  const r = req && typeof req === 'object' ? req : {};\n  const provs = mgProviders(cfg);\n  const op = mgOperation(r);\n  const alt = [];\n  if (provs.manual.needs.includes(r.need)) alt.push({ provider: 'manual', how: 'Entrega el asset (captura, foto o imagen propia) y se registra y asocia a la pieza' });\n  if (!provs.renderer.needs.includes(r.need)) alt.push({ provider: 'renderer', how: 'Replantea el visual como carrusel, slide tipográfica, comparación o checklist (texto exacto, marca oficial, sin costo)' });\n  const wanted = r.provider && provs[r.provider] ? r.provider : null;\n  const pick = (name) => ({ provider: name, operation: op, cost_estimate_usd: provs[name].cost_usd == null ? null : provs[name].cost_usd });\n  if (op === 'register' || wanted === 'manual') return { ...pick('manual'), operation: 'register', status: provs.manual.needs.includes(r.need) ? 'queued' : 'unavailable', reason: provs.manual.needs.includes(r.need) ? 'Esperando el asset de Christian' : 'El asset manual no aplica a esta necesidad', alternatives: alt, needs_authorization: false };\n  if ((wanted === 'renderer' || !wanted) && provs.renderer.needs.includes(r.need) && op === 'render') return { ...pick('renderer'), status: 'queued', reason: 'El renderer lo produce con texto exacto y sin costo', alternatives: [], needs_authorization: false };\n  const gen = provs.higgsfield;\n  if (!gen.needs.includes(r.need) && !['edit', 'variation', 'from_reference'].includes(op)) {\n    return { provider: null, operation: op, status: 'unavailable', reason: 'Ningún proveedor automático produce «' + r.need + '» hoy (diagrama, arquitectura, gráfico y captura anotada requieren un asset propio o replantearlo con el renderer).', alternatives: alt, cost_estimate_usd: 0, needs_authorization: false };\n  }\n  if (!gen.enabled) return { provider: 'higgsfield', operation: op, status: 'unavailable', reason: 'El proveedor generativo (Higgsfield) está APAGADO: requiere autorización de Christian, saldo API verificado y una prueba de punta a punta. Nada se genera ni se cobra.', alternatives: alt, cost_estimate_usd: null, needs_authorization: true };\n  if (r.cost_authorized !== true) return { provider: 'higgsfield', operation: op, status: 'unavailable', reason: 'Generar con Higgsfield tiene costo: falta la autorización explícita de Christian para este asset.', alternatives: alt, cost_estimate_usd: null, needs_authorization: true };\n  return { provider: 'higgsfield', operation: op, status: 'queued', reason: 'Autorizado por Christian', alternatives: [], cost_estimate_usd: null, needs_authorization: false };\n}\n\nfunction mgValidateRequest(req) {\n  const r = req && typeof req === 'object' ? req : {};\n  const errors = [];\n  if (!mgNeeds().includes(r.need)) errors.push('need_invalido:' + String(r.need || '').slice(0, 30));\n  else if (r.need === 'none') errors.push('need_none_no_requiere_asset');\n  const brief = String(r.brief || '').trim();\n  if (brief.length < 15 || brief.length > 600) errors.push('brief_debe_tener_15_600_caracteres_que_debe_comunicar_el_visual');\n  if (r.piece_id !== undefined && r.piece_id !== null && r.piece_id !== '' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(r.piece_id))) errors.push('piece_id_invalido');\n  if (r.reference_url && !/^https:\\/\\/\\S+$/i.test(String(r.reference_url))) errors.push('reference_url_debe_ser_https');\n  if (r.source_asset_id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(r.source_asset_id))) errors.push('source_asset_id_invalido');\n  const brand = mgCheckBrand(brief + ' ' + String(r.composition || ''));\n  if (!brand.ok) errors.push('brief_viola_la_marca:' + brand.violations.join(','));\n  return { ok: errors.length === 0, errors, brand };\n}\n\nfunction mgValidateResult(r) {\n  const x = r && typeof r === 'object' ? r : {};\n  const errors = [];\n  const clean = (s) => String(s == null ? '' : s).replace(/(bearer|token|key|secret|password)[=: ]+[A-Za-z0-9._-]{8,}/gi, '$1=***').slice(0, 300);\n  if (x.status === 'ready') {\n    const urls = Array.isArray(x.urls) ? x.urls : [];\n    if (!urls.length) errors.push('ready_exige_urls');\n    if (urls.some((u) => !u || !/^https:\\/\\/\\S+$/i.test(String(u.url || '')))) errors.push('urls_deben_ser_https');\n    if (urls.length > 12) errors.push('maximo_12_urls');\n  } else if (x.status === 'failed') {\n    if (!String(x.error || '').trim()) errors.push('failed_exige_error_visible');\n  } else errors.push('status_invalido_usa_ready_o_failed');\n  return { ok: errors.length === 0, errors, value: { status: x.status, urls: (Array.isArray(x.urls) ? x.urls : []).slice(0, 12).map((u) => ({ url: String(u.url), type: String(u.type || 'image/png').slice(0, 40), fileId: u.fileId ? String(u.fileId).slice(0, 80) : undefined })), error: x.status === 'failed' ? clean(x.error) : null, content_hash: x.content_hash ? String(x.content_hash).slice(0, 64) : null } };\n}\n\ntry {\n  const w = $('Media Webhook').first().json || {};\n  const b = w.body || w;\n  const action = String(b.action || '').toLowerCase();\n  const ACTIONS = [\"request\",\"status\",\"list\",\"complete\",\"cancel\"];\n  if (!ACTIONS.includes(action)) throw new Error('action inválida: usa ' + ACTIONS.join(' | '));\n  const isUuid = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v || ''));\n  const sb = 'https://uwquwjmiofixzugttals.supabase.co/rest/v1/';\n  const reads = [];\n  const add = (key, path) => reads.push({ key, url: sb + path });\n  add('config', 'content_config?id=eq.1&select=media_generative_enabled,media_generative_budget_usd');\n  const SEL = 'id,request_key,piece_id,need,operation,provider,status,brief,brand_check,reference_url,urls,content_hash,cost_estimate_usd,cost_authorized,error,attempts,meta,is_test,created_at,updated_at';\n  let key = null;\n  if (action === 'request') {\n    const req = { piece_id: b.piece_id || null, need: b.need, brief: b.brief, composition: b.composition, operation: b.operation, reference_url: b.reference_url, source_asset_id: b.source_asset_id, variation: b.variation === true, edit: b.edit === true, provider: b.provider };\n    key = mgRequestKey(req);\n    add('same', 'media_assets?request_key=eq.' + key + '&select=' + SEL);\n    if (mgNeeds().includes(String(b.need || ''))) add('ready', 'media_assets?status=eq.ready&need=eq.' + b.need + '&content_hash=not.is.null&select=' + SEL + '&order=created_at.desc&limit=40');\n    if (b.piece_id) { if (!isUuid(b.piece_id)) throw new Error('piece_id inválido'); add('piece', 'content_pieces?id=eq.' + b.piece_id + '&select=id,status,format,channel,is_test,piece'); }\n    if (b.source_asset_id && isUuid(b.source_asset_id)) add('source', 'media_assets?id=eq.' + b.source_asset_id + '&select=' + SEL);\n  } else if (action === 'status') {\n    if (isUuid(b.id)) add('assets', 'media_assets?id=eq.' + b.id + '&select=' + SEL);\n    else if (isUuid(b.piece_id)) add('assets', 'media_assets?piece_id=eq.' + b.piece_id + '&select=' + SEL + '&order=created_at.desc&limit=20');\n    else throw new Error('status necesita id o piece_id (uuid)');\n  } else if (action === 'list') {\n    const st = String(b.status || '').split(',').filter((x) => ['requested', 'queued', 'generating', 'ready', 'failed', 'unavailable', 'cancelled'].includes(x));\n    add('assets', 'media_assets?' + (st.length ? 'status=in.(' + st.join(',') + ')&' : '') + 'is_test=eq.' + (b.test === true ? 'true' : 'false') + '&select=' + SEL + '&order=created_at.desc&limit=' + Math.min(Math.max(parseInt(b.limit, 10) || 25, 1), 100));\n  } else {\n    if (!isUuid(b.id)) throw new Error('id (uuid del asset) obligatorio');\n    add('asset', 'media_assets?id=eq.' + b.id + '&select=' + SEL);\n  }\n  return [{ json: { action, b: { ...b, action: undefined }, key, reads } }];\n} catch (e) { return [{ json: { fatal: String((e && e.message) || e) } }]; }"
+      }
+    },
+    {
+      "id": "423cd7ef-6d13-4034-ac00-a5fc510fc601",
+      "name": "Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        400,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ (!$json.fatal) ? \"yes\" : \"no\" }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "3fa5da72-1b0b-4276-837a-d269a9f4d328",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        620,
+        -180
+      ],
+      "parameters": {
+        "jsCode": "return [{ json: { ok: false, error: $json.fatal, safety: { published: 0, scheduled: 0, approved: 0, generated_with_cost: 0 } } }];"
+      }
+    },
+    {
+      "id": "9fe48e55-64d1-46ed-93d8-4fb410692236",
+      "name": "Expand Reads",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        620,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const p = $('Parse').first().json;\nreturn p.reads.map((r) => ({ json: r }));"
+      }
+    },
+    {
+      "id": "5e29f8e1-b570-498d-869f-7ec99709240a",
+      "name": "Read",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        840,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true,
+      "alwaysOutputData": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "b75efc98-d2e5-4218-8929-9eb5874aed76",
+      "name": "Compute",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1060,
+        0
+      ],
+      "parameters": {
+        "jsCode": "function mgBrandRules() {\n  return {\n    palette: ['azul Atacama #0F5CED', 'azul oscuro #041228', 'fondos blancos, crema suave o azul muy pálido'],\n    style: ['sobrio, claro y tecnológico pero humano', 'mucho aire y jerarquía visual clara', 'una idea fuerte por pieza', 'poco 3D', 'la llamita solo cuando aporta personalidad'],\n    avoid: ['robot', 'holograma', 'cyber', 'neon', 'circuito', 'cripto', 'blockchain', 'matrix', 'cerebro digital', 'glow', 'degradado excesivo', 'objetos flotando'],\n  };\n}\n\nfunction mgBuildPrompt(req) {\n  const r = req && typeof req === 'object' ? req : {};\n  const b = mgBrandRules();\n  const brief = String(r.brief || '').trim().slice(0, 600);\n  const comp = String(r.composition || '').trim().slice(0, 80);\n  const lines = [\n    'Imagen para redes sociales de Atacama Labs (agentes de IA y automatización para empresas de Chile). Objetivo: ' + brief + '.',\n    'Estilo: ' + b.style.join('; ') + '.',\n    'Paleta: ' + b.palette.join('; ') + '.',\n    comp ? 'Composición: ' + comp + '. Varía la composición respecto de las piezas anteriores; no es un hero de landing.' : 'Composición propia de esta idea; no es un hero de landing (no texto grande a la izquierda con visual abstracto a la derecha).',\n    'Evitar: robots, hologramas, estética cyber, neón, circuitos decorativos, estética cripto, exceso de brillo, degradados excesivos, demasiados objetos flotando, look de prompt genérico de IA.',\n    'Sin texto dentro de la imagen salvo que el brief lo pida; el texto exacto va en el caption o en un carrusel renderizado.',\n  ];\n  return lines.join(' ');\n}\n\nfunction mgCheckBrand(text) {\n  const t = String(text == null ? '' : text).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');\n  const bad = ['robot', 'holograma', 'cyber', 'neon', 'circuito', 'cripto', 'blockchain', 'matrix', 'cerebro digital', 'glow', 'estetica de prompt'];\n  const violations = [];\n  bad.forEach((w) => {\n    let i = t.indexOf(w);\n    while (i >= 0) {\n      // la negación vale para toda la oración hasta la palabra («Evitar: robots, neón, circuitos…», «sin robots ni neón»)\n      const before = t.slice(Math.max(t.lastIndexOf('.', i), 0), i);\n      if (!/\\b(sin|no|ni|evit\\w*|nunca|nada de|ningun\\w*)\\b/.test(before)) { violations.push(w); break; }\n      i = t.indexOf(w, i + w.length);\n    }\n  });\n  const hm = /\\bhero\\b|landing|banner de (la )?web/.exec(t);\n  if (hm && !/\\b(sin|no|ni|evit\\w*|nunca|nada de)\\b/.test(t.slice(Math.max(t.lastIndexOf('.', hm.index), 0), hm.index))) violations.push('parece_un_hero_de_la_web');\n  return { ok: violations.length === 0, violations };\n}\n\nfunction mgFnv(s) {\n  let h = 0x811c9dc5;\n  const x = String(s);\n  for (let i = 0; i < x.length; i++) { h ^= x.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }\n  return h.toString(16).padStart(8, '0');\n}\n\nfunction mgNeeds() {\n  return ['none', 'editorial_image', 'conceptual_image', 'diagram', 'process_flow', 'architecture', 'comparison', 'before_after', 'framework', 'checklist', 'chart', 'annotated_screenshot', 'carousel', 'resource_visual', 'typographic', 'short_video'];\n}\n\nfunction mgOperation(req) {\n  const r = req && typeof req === 'object' ? req : {};\n  if (r.operation && ['render', 'generate', 'edit', 'variation', 'from_reference', 'video', 'register'].includes(r.operation)) return r.operation;\n  if (r.source_asset_id && r.variation === true) return 'variation';\n  if (r.source_asset_id || (r.reference_url && r.edit === true)) return 'edit';\n  if (r.reference_url) return 'from_reference';\n  if (r.need === 'short_video') return 'video';\n  if (mgProviders({}).renderer.needs.includes(r.need)) return 'render';\n  return 'generate';\n}\n\nfunction mgPlan(req, existing, cfg) {\n  const rows = Array.isArray(existing) ? existing : [];\n  const key = mgRequestKey(req);\n  const route = mgRoute(req, cfg);\n  const same = rows.find((a) => a.request_key === key);\n  if (same) {\n    if (['ready', 'queued', 'generating', 'requested'].includes(same.status)) return { action: 'existing', asset: same, route, request_key: key };\n    return { action: 'retry', asset: same, route, request_key: key };\n  }\n  const reusable = rows.find((a) => a.status === 'ready' && a.need === req.need && a.content_hash && req.content_hash && a.content_hash === req.content_hash && Array.isArray(a.urls) && a.urls.length);\n  if (reusable) return { action: 'reuse', asset: reusable, route, request_key: key };\n  return { action: 'create', route, request_key: key };\n}\n\nfunction mgProviders(cfg) {\n  const c = cfg && typeof cfg === 'object' ? cfg : {};\n  const generativeOn = c.media_generative_enabled === true && Number(c.media_generative_budget_usd) > 0;\n  return {\n    renderer: { label: 'Renderer de carruseles (Playwright)', kind: 'deterministic', runs_on: 'worker_local', enabled: true, verified: true, cost_usd: 0,\n      needs: ['carousel', 'typographic', 'comparison', 'before_after', 'checklist', 'framework', 'resource_visual', 'process_flow'], operations: ['render'],\n      note: 'Texto exacto, marca oficial, sin costo. Corre en el equipo de Christian: node scripts/media/media-gateway.mjs run' },\n    manual: { label: 'Asset propio (captura, foto, diagrama hecho a mano)', kind: 'manual', runs_on: 'christian', enabled: true, verified: true, cost_usd: 0,\n      needs: ['annotated_screenshot', 'editorial_image', 'conceptual_image', 'diagram', 'architecture', 'chart', 'short_video', 'resource_visual'], operations: ['register'],\n      note: 'Christian entrega la imagen o el video y se registra y asocia a la pieza' },\n    higgsfield: { label: 'Higgsfield (generativo)', kind: 'generative', runs_on: 'worker_local', enabled: generativeOn, verified: false, cost_usd: null,\n      needs: ['editorial_image', 'conceptual_image', 'short_video'], operations: ['generate', 'edit', 'variation', 'from_reference', 'video'],\n      note: 'PREPARADO pero APAGADO: requiere autorización de Christian, saldo API real y una prueba de punta a punta; los créditos web/promocionales no sirven para la API.' },\n  };\n}\n\nfunction mgRenderHash(piece) {\n  const p = piece && typeof piece === 'object' ? piece : {};\n  const slides = Array.isArray(p.slides) ? p.slides : [];\n  return mgFnv(JSON.stringify({ f: p.format, c: p.channel, s: slides, v: 'render-v1' }));\n}\n\nfunction mgRequestKey(req) {\n  const r = req && typeof req === 'object' ? req : {};\n  const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\\s+/g, ' ').trim();\n  return mgFnv(String(r.piece_id || '-') + '|' + String(r.need || '') + '|' + norm(r.brief) + '|' + norm(r.composition) + '|' + String(r.operation || ''));\n}\n\nfunction mgRoute(req, cfg) {\n  const r = req && typeof req === 'object' ? req : {};\n  const provs = mgProviders(cfg);\n  const op = mgOperation(r);\n  const alt = [];\n  if (provs.manual.needs.includes(r.need)) alt.push({ provider: 'manual', how: 'Entrega el asset (captura, foto o imagen propia) y se registra y asocia a la pieza' });\n  if (!provs.renderer.needs.includes(r.need)) alt.push({ provider: 'renderer', how: 'Replantea el visual como carrusel, slide tipográfica, comparación o checklist (texto exacto, marca oficial, sin costo)' });\n  const wanted = r.provider && provs[r.provider] ? r.provider : null;\n  const pick = (name) => ({ provider: name, operation: op, cost_estimate_usd: provs[name].cost_usd == null ? null : provs[name].cost_usd });\n  if (op === 'register' || wanted === 'manual') return { ...pick('manual'), operation: 'register', status: provs.manual.needs.includes(r.need) ? 'queued' : 'unavailable', reason: provs.manual.needs.includes(r.need) ? 'Esperando el asset de Christian' : 'El asset manual no aplica a esta necesidad', alternatives: alt, needs_authorization: false };\n  if ((wanted === 'renderer' || !wanted) && provs.renderer.needs.includes(r.need) && op === 'render') return { ...pick('renderer'), status: 'queued', reason: 'El renderer lo produce con texto exacto y sin costo', alternatives: [], needs_authorization: false };\n  const gen = provs.higgsfield;\n  if (!gen.needs.includes(r.need) && !['edit', 'variation', 'from_reference'].includes(op)) {\n    return { provider: null, operation: op, status: 'unavailable', reason: 'Ningún proveedor automático produce «' + r.need + '» hoy (diagrama, arquitectura, gráfico y captura anotada requieren un asset propio o replantearlo con el renderer).', alternatives: alt, cost_estimate_usd: 0, needs_authorization: false };\n  }\n  if (!gen.enabled) return { provider: 'higgsfield', operation: op, status: 'unavailable', reason: 'El proveedor generativo (Higgsfield) está APAGADO: requiere autorización de Christian, saldo API verificado y una prueba de punta a punta. Nada se genera ni se cobra.', alternatives: alt, cost_estimate_usd: null, needs_authorization: true };\n  if (r.cost_authorized !== true) return { provider: 'higgsfield', operation: op, status: 'unavailable', reason: 'Generar con Higgsfield tiene costo: falta la autorización explícita de Christian para este asset.', alternatives: alt, cost_estimate_usd: null, needs_authorization: true };\n  return { provider: 'higgsfield', operation: op, status: 'queued', reason: 'Autorizado por Christian', alternatives: [], cost_estimate_usd: null, needs_authorization: false };\n}\n\nfunction mgValidateRequest(req) {\n  const r = req && typeof req === 'object' ? req : {};\n  const errors = [];\n  if (!mgNeeds().includes(r.need)) errors.push('need_invalido:' + String(r.need || '').slice(0, 30));\n  else if (r.need === 'none') errors.push('need_none_no_requiere_asset');\n  const brief = String(r.brief || '').trim();\n  if (brief.length < 15 || brief.length > 600) errors.push('brief_debe_tener_15_600_caracteres_que_debe_comunicar_el_visual');\n  if (r.piece_id !== undefined && r.piece_id !== null && r.piece_id !== '' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(r.piece_id))) errors.push('piece_id_invalido');\n  if (r.reference_url && !/^https:\\/\\/\\S+$/i.test(String(r.reference_url))) errors.push('reference_url_debe_ser_https');\n  if (r.source_asset_id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(r.source_asset_id))) errors.push('source_asset_id_invalido');\n  const brand = mgCheckBrand(brief + ' ' + String(r.composition || ''));\n  if (!brand.ok) errors.push('brief_viola_la_marca:' + brand.violations.join(','));\n  return { ok: errors.length === 0, errors, brand };\n}\n\nfunction mgValidateResult(r) {\n  const x = r && typeof r === 'object' ? r : {};\n  const errors = [];\n  const clean = (s) => String(s == null ? '' : s).replace(/(bearer|token|key|secret|password)[=: ]+[A-Za-z0-9._-]{8,}/gi, '$1=***').slice(0, 300);\n  if (x.status === 'ready') {\n    const urls = Array.isArray(x.urls) ? x.urls : [];\n    if (!urls.length) errors.push('ready_exige_urls');\n    if (urls.some((u) => !u || !/^https:\\/\\/\\S+$/i.test(String(u.url || '')))) errors.push('urls_deben_ser_https');\n    if (urls.length > 12) errors.push('maximo_12_urls');\n  } else if (x.status === 'failed') {\n    if (!String(x.error || '').trim()) errors.push('failed_exige_error_visible');\n  } else errors.push('status_invalido_usa_ready_o_failed');\n  return { ok: errors.length === 0, errors, value: { status: x.status, urls: (Array.isArray(x.urls) ? x.urls : []).slice(0, 12).map((u) => ({ url: String(u.url), type: String(u.type || 'image/png').slice(0, 40), fileId: u.fileId ? String(u.fileId).slice(0, 80) : undefined })), error: x.status === 'failed' ? clean(x.error) : null, content_hash: x.content_hash ? String(x.content_hash).slice(0, 64) : null } };\n}\n\nconst p = $('Parse').first().json;\nconst b = p.b || {};\nconst A = p.action;\nconst res = $('Read').all().map((i) => i.json);\nconst R = {}; const bad = [];\np.reads.forEach((r, i) => { const x = res[i] || {}; if (!x.statusCode || x.statusCode >= 300) bad.push(r.key + ': ' + (x.statusCode ? 'HTTP ' + x.statusCode : 'sin respuesta')); R[r.key] = Array.isArray(x.body) ? x.body : []; });\nconst safety = { published: 0, scheduled: 0, approved: 0, generated_with_cost: 0, note: 'El Media Gateway solo produce assets; la pieza entra por el Content Intake y termina in_review.' };\nif (bad.length) return [{ json: { resp: { ok: false, error: 'lectura_fallida', message: 'No pude leer Supabase: ' + bad.join('; '), safety }, writes: [] } }];\nconst cfg = (R.config || [])[0] || {};\nconst nowIso = new Date().toISOString();\nconst uuid = () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = (Math.random() * 16) | 0; return (c === 'x' ? r : (r & 3) | 8).toString(16); });\nconst view = (a) => ({ id: a.id, piece_id: a.piece_id, need: a.need, operation: a.operation, provider: a.provider, status: a.status, error: a.error || null, urls: a.urls || [], attempts: a.attempts, cost_estimate_usd: a.cost_estimate_usd, cost_authorized: a.cost_authorized, content_hash: a.content_hash, created_at: a.created_at, updated_at: a.updated_at, reason: (a.meta || {}).reason || null, alternatives: (a.meta || {}).alternatives || [] });\nconst writes = [];\nlet resp = { ok: true, action: A };\nconst fail = (error, message, extra) => { resp = { ok: false, action: A, error, message, ...(extra || {}) }; };\n\nif (A === 'request') {\n  const req = { piece_id: b.piece_id || null, need: b.need, brief: String(b.brief || '').trim(), composition: b.composition ? String(b.composition).slice(0, 80) : '', operation: b.operation, reference_url: b.reference_url || null, source_asset_id: b.source_asset_id || null, variation: b.variation === true, edit: b.edit === true, provider: b.provider, cost_authorized: b.cost_authorized === true };\n  const v = mgValidateRequest(req);\n  const piece = (R.piece || [])[0] || null;\n  if (!v.ok) fail('solicitud_invalida', 'La solicitud no es válida: ' + v.errors.join('; '), { errors: v.errors });\n  else if (req.piece_id && !piece) fail('pieza_no_encontrada', 'No existe esa pieza (piece_id).');\n  else if (req.source_asset_id && !(R.source || [])[0]) fail('asset_origen_no_encontrado', 'No existe el asset de origen (source_asset_id) para editar o variar.');\n  else {\n    const slides = piece && piece.piece && Array.isArray(piece.piece.slides) ? piece.piece.slides : [];\n    const wantsRender = mgOperation(req) === 'render';\n    if (wantsRender && piece && !slides.length) {\n      fail('pieza_sin_slides', 'El renderer necesita las slides de la pieza (piece.slides): redáctalas primero y vuelve a pedir el visual.');\n    } else {\n      const content_hash = wantsRender && piece ? mgRenderHash(piece.piece) : null;\n      const plan = mgPlan({ ...req, content_hash }, (R.same || []).concat(R.ready || []), cfg);\n      const route = plan.route;\n      const isTest = b.test === true || (piece && piece.is_test === true);\n      const prompt = route.provider === 'higgsfield' ? mgBuildPrompt(req) : null;\n      if (plan.action === 'existing') {\n        resp = { ok: true, action: A, deduped: true, asset: view(plan.asset), message: 'Ya existe un asset para esta solicitud (' + plan.asset.status + '): no se crea otro.' };\n      } else {\n        const row = { request_key: plan.request_key, piece_id: req.piece_id, need: req.need, operation: route.operation, provider: route.provider || 'none', status: route.status, brief: req.brief, prompt, brand_check: v.brand,\n          reference_url: req.reference_url, source_asset_id: req.source_asset_id, content_hash, cost_estimate_usd: route.cost_estimate_usd == null ? 0 : route.cost_estimate_usd, cost_authorized: req.cost_authorized === true && route.provider === 'higgsfield' && route.status === 'queued',\n          error: route.status === 'unavailable' ? route.reason : null, is_test: isTest, created_by: 'media-gateway',\n          meta: { reason: route.reason, alternatives: route.alternatives, needs_authorization: route.needs_authorization, composition: req.composition || null }, updated_at: nowIso };\n        if (plan.action === 'retry') {\n          writes.push({ method: 'PATCH', path: 'media_assets?id=eq.' + plan.asset.id, body: { ...row, attempts: (plan.asset.attempts || 0) + 1 } });\n          resp = { ok: true, action: A, retried: true, asset: view({ ...plan.asset, ...row, attempts: (plan.asset.attempts || 0) + 1 }) };\n        } else {\n          const id = uuid();\n          if (plan.action === 'reuse') {\n            row.status = 'ready'; row.urls = plan.asset.urls; row.error = null; row.provider = plan.asset.provider; row.meta = { ...row.meta, reused_from: plan.asset.id, reason: 'Reutilizado: ya existía un render idéntico (mismo contenido)' };\n          }\n          writes.push({ method: 'POST', path: 'media_assets', body: { id, ...row } });\n          resp = { ok: true, action: A, created: plan.action === 'create', reused: plan.action === 'reuse', asset: view({ id, ...row, attempts: 0, created_at: nowIso }) };\n        }\n        const st = resp.asset.status;\n        resp.message = st === 'ready' ? 'Asset reutilizado: ya estaba listo para asociarlo a la pieza.' : st === 'queued' ? (route.provider === 'renderer' ? 'En cola para el renderer. Se produce en el equipo de Christian: node scripts/media/media-gateway.mjs run' : route.provider === 'manual' ? 'Esperando el asset de Christian (captura, foto o imagen propia).' : 'En cola.') : 'NO disponible: ' + route.reason;\n      }\n    }\n  }\n} else if (A === 'status') {\n  const rows = R.assets || [];\n  if (!rows.length) fail('no_encontrado', 'No hay assets para esa consulta.');\n  else resp = { ok: true, action: A, count: rows.length, assets: rows.map(view) };\n} else if (A === 'list') {\n  const rows = R.assets || [];\n  resp = { ok: true, action: A, count: rows.length, assets: rows.map(view), providers: Object.fromEntries(Object.entries(mgProviders(cfg)).map(([k, x]) => [k, { enabled: x.enabled, verified: x.verified, kind: x.kind, note: x.note }])) };\n} else if (A === 'complete') {\n  const a = (R.asset || [])[0];\n  if (!a) fail('asset_no_encontrado', 'No existe ese asset.');\n  else if (!['queued', 'generating', 'requested'].includes(a.status)) fail('estado_no_valido', 'Ese asset está en estado «' + a.status + '»: no se puede cerrar de nuevo.', { current_status: a.status });\n  else {\n    const r = mgValidateResult({ status: b.status, urls: b.urls, error: b.error, content_hash: b.content_hash });\n    if (!r.ok) fail('resultado_invalido', 'El cierre no es válido: ' + r.errors.join('; '), { errors: r.errors });\n    else {\n      const body = { status: r.value.status, urls: r.value.status === 'ready' ? r.value.urls : a.urls || [], error: r.value.error, updated_at: nowIso };\n      if (r.value.content_hash) body.content_hash = r.value.content_hash;\n      if (r.value.status === 'failed') body.attempts = (a.attempts || 0) + 1;\n      writes.push({ method: 'PATCH', path: 'media_assets?id=eq.' + a.id + '&status=in.(queued,generating,requested)', body });\n      resp = { ok: true, action: A, asset: view({ ...a, ...body }), message: r.value.status === 'ready' ? 'Asset listo y asociado a su pieza. Para que llegue a revisión, reenvía la pieza con sus medios (node scripts/content/render-pending.mjs --run).' : 'Asset marcado como fallido (error visible): ' + r.value.error };\n    }\n  }\n} else if (A === 'cancel') {\n  const a = (R.asset || [])[0];\n  if (!a) fail('asset_no_encontrado', 'No existe ese asset.');\n  else if (a.status === 'ready') fail('ya_listo', 'Ese asset ya está listo: no se cancela.');\n  else { writes.push({ method: 'PATCH', path: 'media_assets?id=eq.' + a.id, body: { status: 'cancelled', updated_at: nowIso } }); resp = { ok: true, action: A, asset: view({ ...a, status: 'cancelled' }) }; }\n}\nresp.safety = safety;\nreturn [{ json: { resp, writes } }];"
+      }
+    },
+    {
+      "id": "44edd958-6d5c-44f6-87f8-b855be6b201b",
+      "name": "Expand Writes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const w = $('Compute').first().json.writes || [];\nif (!w.length) return [{ json: { skip: true } }];\nreturn w.map((x) => ({ json: { skip: false, ...x } }));"
+      }
+    },
+    {
+      "id": "491f1006-ec39-4a5c-9f45-616d801aa316",
+      "name": "Apply Writes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1500,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true,
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1500,
+      "parameters": {
+        "method": "={{ $json.method || \"POST\" }}",
+        "url": "={{ $json.skip ? \"https://localhost.invalid/\" : \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/\" + $json.path }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "={{ $json.prefer || \"return=minimal\" }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body || {}) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "b9a6d196-548b-4f96-a3c5-66dcc2758c4f",
+      "name": "Respond",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1720,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const c = $('Compute').first().json;\nconst planned = c.writes || [];\nconst applied = $('Apply Writes').all().map((i) => i.json).slice(0, planned.length);\nconst bad = applied.filter((j) => !j.statusCode || j.statusCode >= 300);\nconst r = { ...c.resp };\nif (bad.length) { r.ok = false; r.persist_error = 'Supabase ' + (bad[0].statusCode ? 'HTTP ' + bad[0].statusCode : 'sin respuesta (red)') + ': ' + JSON.stringify(bad[0].body || {}).slice(0, 160); }\nreturn [{ json: r }];"
+      }
+    }
+  ],
+  "connections": {
+    "Media Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse": {
+      "main": [
+        [
+          {
+            "node": "Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid?": {
+      "main": [
+        [
+          {
+            "node": "Expand Reads",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand Reads": {
+      "main": [
+        [
+          {
+            "node": "Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read": {
+      "main": [
+        [
+          {
+            "node": "Compute",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute": {
+      "main": [
+        [
+          {
+            "node": "Expand Writes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand Writes": {
+      "main": [
+        [
+          {
+            "node": "Apply Writes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Writes": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -55,5 +55,14 @@ t('Ola A: inteligencia orgánica es solo fuentes públicas, no copia, páginas l
   t('Ola B: la skill fija el estándar de recursos (formato + diferenciador, sin PDF genérico) y el CTA por intención con entrega manual del keyword', /metadata\.format/.test(skill2) && /metadata\.differentiator/.test(skill2) && /PDF\/ebook/.test(skill2) && /entrega MANUAL/.test(skill2));
 }
 
+// ---- Ola B · Media Gateway en el prompt, la skill y las herramientas
+{
+  const skill3 = fs.readFileSync(new URL('./skills/atacama-ops/SKILL.md', import.meta.url), 'utf8');
+  const mcp = fs.readFileSync(new URL('./atacama_ops_mcp.py', import.meta.url), 'utf8');
+  t('Ola B: el job autónomo no genera visuales (solo texto) y deriva el visual a request_visual', /SOLO escribe piezas de texto/.test(pcs) && /request_visual/.test(pcs) && /imágenes generativas están apagadas/.test(pcs));
+  t('Ola B: la skill obliga a decir el estado real del visual (cola/unavailable) y declara apagado lo generativo', /visual_status/.test(skill3) && /APAGADOS y NO probados/.test(skill3) && /nunca digas que el visual existe si está en cola o unavailable/.test(skill3));
+  t('Ola B: request_visual/visual_status existen, validan la marca, no publican y solo hablan con el Media Gateway', /def request_visual\(/.test(mcp) && /def visual_status\(/.test(mcp) && /atacama-media-gateway/.test(mcp) && /APAGADOS y sin verificar/.test(mcp) && !/def (publish|approve)_visual/.test(mcp));
+}
+
 console.log(`\n${pass} ok ${fail} fallos`);
 process.exit(fail ? 1 : 0);

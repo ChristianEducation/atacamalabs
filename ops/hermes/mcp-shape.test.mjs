@@ -7,7 +7,7 @@ const main = s.indexOf('if __name__ == "__main__"');
 const tools = [...s.matchAll(/@mcp\.tool\(\)\s*\ndef (\w+)\(/g)];
 t('hay un único arranque del servidor y es lo último del archivo', main > 0 && s.indexOf('mcp.run()') > main && s.slice(s.indexOf('mcp.run()')).trim() === 'mcp.run()');
 t('ninguna herramienta se define después del arranque', tools.every((m) => m.index < main), tools.filter((m) => m.index > main).map((m) => m[1]).join(','));
-t('52 herramientas registradas (37 + 7 de LinkedIn + 8 de Ola A) y sin nombres repetidos', tools.length === 52 && new Set(tools.map((m) => m[1])).size === tools.length, String(tools.length));
+t('54 herramientas registradas (39 + 7 de LinkedIn + 8 de Ola A) y sin nombres repetidos', tools.length === 54 && new Set(tools.map((m) => m[1])).size === tools.length, String(tools.length));
 t('las herramientas de LinkedIn existen', ['linkedin_ready', 'linkedin_status', 'recommend_channel', 'approve_linkedin', 'log_linkedin_event', 'linkedin_config', 'waalaxy_lists'].every((n) => tools.some((m) => m[1] === n)));
 t('el MCP no expone cambiar el modo ni la lista de LinkedIn (set_config es solo del administrador)', !/set_config/.test(s));
 t('las herramientas de Ola A existen', ['content_queue', 'founder_interview', 'submit_content_piece', 'content_resources', 'rss_items', 'competitor_intel', 'content_signals', 'report_content_job'].every((n) => tools.some((m) => m[1] === n)));

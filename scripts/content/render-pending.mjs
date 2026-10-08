@@ -24,10 +24,10 @@ const ONE = args.includes('--id') ? args[args.indexOf('--id') + 1] : null;
 const H = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: 'Bearer ' + env.SUPABASE_SERVICE_ROLE_KEY };
 
 /** Pieza visual retenida por falta de render (nunca las de prueba). */
-export const isWaitingRender = (r) => r && r.status === 'drafted' && r.is_test === false && r.piece && ['imagen', 'carrusel'].includes(r.piece.format) && !(r.piece.media || []).length && (r.piece.slides || []).length > 0;
+export const isWaitingRender = (r) => r && ['drafted', 'scored'].includes(r.status) && Number(r.score == null ? 100 : r.score) >= 70 && r.is_test === false && r.piece && ['imagen', 'carrusel'].includes(r.piece.format) && !(r.piece.media || []).length && (r.piece.slides || []).length > 0;
 
 async function main() {
-  const q = `content_pieces?status=eq.drafted&is_test=eq.false&select=id,topic,channel,format,origin,interview_id,piece,created_at&order=created_at.asc&limit=50`;
+  const q = `content_pieces?status=in.(drafted,scored)&is_test=eq.false&select=id,topic,channel,format,origin,interview_id,piece,score,created_at&order=created_at.asc&limit=50`;
   const rows = ((await (await fetch(env.SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/' + q, { headers: H })).json()) || []).map((r) => ({ ...r, is_test: false, status: 'drafted' })).filter((r) => (ONE ? r.id === ONE : true) && isWaitingRender(r));
   if (!rows.length) { console.log('No hay carruseles ni imágenes esperando render.'); return; }
   console.log(rows.length + ' esperando render:'); rows.forEach((r) => console.log(' -', r.id, r.channel, r.format, '·', String(r.topic).slice(0, 70)));

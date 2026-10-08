@@ -72,6 +72,7 @@ const ig = clone(base); ig.channel = 'instagram'; ig.format = 'carrusel'; ig.vis
 ig.slides = [{ layout: 'cover', title: 'El freno es una decisión' }, { layout: 'content', title: 'Plan primero', body: 'Antes de escribir, el flujo muestra qué haría.' }, { layout: 'cta', title: '¿Dónde va tu freno?' }];
 r = evaluate({ piece: ig });
 t('Instagram sin render => hold falta_render_o_medio', r.action === 'hold' && r.holdReason === 'falta_render_o_medio');
+t('Ola B: la pieza retenida por falta de render queda «drafted» (la buscan render-pending, queue_status y el Media Gateway), no «scored»', r.pieceRow.status === 'drafted');
 ig.media = [{ url: 'https://example.com/a.png', type: 'image/png' }, { url: 'https://example.com/b.png', type: 'image/png' }, { url: 'https://example.com/c.png', type: 'image/png' }];
 r = evaluate({ piece: ig });
 t('Instagram con render => submit con 3 medios', r.action === 'submit' && r.ghlBody.media.length === 3 && r.ghlBody.accountIds[0] === ACCOUNTS.instagram);

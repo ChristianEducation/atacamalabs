@@ -138,7 +138,7 @@ export function edEvaluate(piece, ctx) {
   BAD.forEach((w) => {
     let i = vtext.indexOf(w);
     while (i >= 0) {
-      const before = vtext.slice(Math.max(0, i - 28), i);
+      const before = vtext.slice(Math.max(vtext.lastIndexOf('.', i), 0), i);
       if (!/\b(sin|no|ni|evit\w*|nunca|nada de|ningun\w*)\b/.test(before)) { errors.push('visual_viola_brand:' + w); break; }
       i = vtext.indexOf(w, i + w.length);
     }
