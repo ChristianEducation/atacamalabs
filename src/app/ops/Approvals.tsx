@@ -38,6 +38,47 @@ export function useRunner() {
 
 const STATUS: Record<string, string> = { draft: "Borrador", approved: "Aprobado · esperando envío", sending: "Enviándose", sent: "Enviado", failed: "Error", cancelled: "Rechazado / cancelado", dry_run: "Simulado", received: "Recibido" };
 
+const LEVEL_BAND: Record<string, string> = { bueno: "alta", aceptable: "valida", bajo: "pendiente" };
+
+/** Calidad del correo (Cold Email v2): score, por qué, evidencia usada y la versión anterior si fue regenerado. */
+function QualityBlock({ card }: { card: EmailCard }) {
+  const q = card.cold;
+  const prev = card.previous;
+  if (!q && !prev) return null;
+  return (
+    <div className="ops-quality">
+      {q ? (
+        <details>
+          <summary className="ops-q-sum">
+            <span>Calidad del correo</span>
+            <span className={`ops-score ops-score-${LEVEL_BAND[q.level ?? ""] ?? "neutral"}`} title="Score Cold Email v2 (0–100)">{q.score}</span>
+            <span className="ops-foot ops-q-level">{q.level ?? ""}</span>
+          </summary>
+          <dl className="ops-detail">
+            {q.angle ? (<><dt>Ángulo</dt><dd>{q.angle}</dd></>) : null}
+            {q.evidence.length ? (<><dt>Evidencia usada</dt><dd>{q.evidence.join(" · ")}</dd></>) : null}
+            {q.insight ? (<><dt>Insight</dt><dd>{q.insight}</dd></>) : null}
+            {q.friction ? (<><dt>Fricción probable</dt><dd>{q.friction}</dd></>) : null}
+            {q.cta_reason ? (<><dt>Por qué este cierre</dt><dd>{q.cta_reason}</dd></>) : null}
+            {q.similarity && q.similarity.max > 0 ? (<><dt>Parecido con otros</dt><dd>{Math.round(q.similarity.max * 100)}%{q.similarity.with ? ` (${q.similarity.with})` : ""}</dd></>) : null}
+            {q.warnings.length ? (<><dt>Avisos</dt><dd><ul className="ops-q-list">{q.warnings.map((w, i) => (<li key={i}>{w}</li>))}</ul></dd></>) : (<><dt>Avisos</dt><dd>Sin avisos.</dd></>)}
+            {q.rewards.length ? (<><dt>A favor</dt><dd><ul className="ops-q-list">{q.rewards.map((w, i) => (<li key={i}>{w}</li>))}</ul></dd></>) : null}
+          </dl>
+        </details>
+      ) : null}
+      {prev ? (
+        <details>
+          <summary className="ops-q-sum"><span>Versión anterior</span>{prev.score != null ? <span className="ops-score ops-score-pendiente" title="Score de la versión anterior">{prev.score}</span> : null}<span className="ops-foot ops-q-level">{prev.reason ?? ""}{prev.at ? ` · ${fmtCl(prev.at)}` : ""}</span></summary>
+          <h4 className="ops-h4">Asunto (anterior)</h4>
+          <p className="ops-copy ops-copy-s">{prev.subject}</p>
+          <h4 className="ops-h4">Texto (anterior)</h4>
+          <p className="ops-copy">{prev.body}</p>
+        </details>
+      ) : null}
+    </div>
+  );
+}
+
 function ScoreChip({ score, band }: { score: number | null; band?: string | null }) {
   if (score == null) return null;
   return <span className={`ops-score ops-score-${band ?? "neutral"}`} title="Score del prospecto">{score}</span>;
@@ -111,6 +152,8 @@ export function EmailCardView({ card, selectable, selected, onToggle, defaultOpe
               <p className="ops-copy">{card.body}</p>
             </>
           )}
+
+          {!editing ? <QualityBlock card={card} /> : null}
 
           {!editing ? (
             <div className="ops-btns">

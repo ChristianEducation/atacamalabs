@@ -4,7 +4,7 @@
 import { spawnSync } from 'node:child_process';
 
 const SUITES = [
-  'scripts/ops/ops-core.test.mjs', 'n8n/build/ops.test.mjs', 'n8n/build/ops-actions.test.mjs',
+  'scripts/ops/ops-core.test.mjs', 'n8n/build/ops.test.mjs', 'n8n/build/ops-actions.test.mjs', 'scripts/outreach/coldmail-core.test.mjs',
   'scripts/linkedin/linkedin-core.test.mjs', 'n8n/build/linkedin.test.mjs',
   'scripts/outreach/outreach-core.test.mjs', 'n8n/build/outreach.test.mjs',
   'scripts/prospecting/gateway-core.test.mjs', 'scripts/prospecting/gateway-flow.test.mjs', 'scripts/prospecting/admit-core.test.mjs',

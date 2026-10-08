@@ -218,5 +218,17 @@ t('contenido: sin post en GHL => error claro', r.resp.ok === false && r.resp.err
 r = await exec({ ...reqBase, action: 'content_approve', piece_id: PID });
 t('contenido: nada se publica solo: ningún cuerpo enviado a GHL pide status scheduled/published (GHL lo decide al aprobar)', r.calls.filter((c) => c.kind === 'ghl' && c.body).every((c) => c.body.status === 'in_review'));
 
+// ---- Cold Email v2 en las tarjetas de /ops: calidad + versión anterior accesibles, sin romper borradores viejos
+{
+  const oa = await import('../../scripts/ops/ops-actions-core.mjs');
+  const meta = { cold: { v: 2, score: 84, level: 'bueno', warnings: [{ code: 'x', text: 'aviso uno', pts: 4 }], rewards: [{ code: 'y', text: 'a favor uno', pts: 8 }], similarity: { max: 0.1, with: 'Otra' }, cta_kind: 'example', words: 70, evidence: [{ fact: 'Dos sedes' }], insight: 'ins', friction: 'fri', angle: 'ang', cta_reason: 'por qué' },
+    history: [{ at: '2026-10-08T12:00:00Z', by: 'Hermes', reason: 'Cold Email v2', subject: 'Una idea para X', body: 'Texto viejo', score: 12 }] };
+  const [c1, c2] = oa.oaEmailCards([{ id: 'a', candidate_id: 'c', status: 'draft', metadata: meta, subject: 's', body: 'b', to_email: 'x@y.cl' }, { id: 'b', candidate_id: 'c', status: 'draft', metadata: {}, subject: 's', body: 'b', to_email: 'x@y.cl' }], [], []);
+  t('tarjeta de correo: expone score, avisos, evidencia, ángulo y la versión anterior (antes/después) del MISMO registro', c1.cold.score === 84 && c1.cold.warnings[0] === 'aviso uno' && c1.cold.evidence[0] === 'Dos sedes' && c1.cold.angle === 'ang' && c1.previous.subject === 'Una idea para X' && c1.previous.score === 12 && c1.previous.versions === 1);
+  t('tarjeta de correo: un borrador anterior a v2 no rompe (cold y previous nulos)', c2.cold === null && c2.previous === null);
+  const r2 = await exec({ ...reqBase, action: 'email_save', message_id: MID, expected_hash: H1, subject: 'consultas entre sedes', body: 'Hola equipo, cuando una consulta llega sin sede, recepción tiene que volver a preguntar. ¿Te mando un ejemplo?' });
+  t('email_save desde /ops pasa por el motor de correo (draft) con motivo «Editado desde /ops» y no envía', r2.calls.some((c) => c.kind === 'ingest' && /outreach-engine/.test(c.url) && c.body.action === 'draft' && c.body.reason === 'Editado desde /ops') && !r2.calls.some((c) => /send/.test(c.url)));
+}
+
 console.log(`\n${pass} ok, ${fail} fallos`);
 process.exit(fail ? 1 : 0);

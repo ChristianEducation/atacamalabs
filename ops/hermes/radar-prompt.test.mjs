@@ -29,5 +29,15 @@ t('Ola A: piezas autónomas solo linkedin_page (linkedin_profile es de Christian
 t('/ops V2: el prompt de piezas conoce el ritmo semanal (5/semana, no fabricar por llenar la cola, variedad como guía)', /objetivo 5 piezas por semana/.test(pcs) && /NO fabriques piezas solo por llenar la cola/.test(pcs) && /Guía de variedad/.test(pcs) && /URGENTE=/.test(pcs));
 t('Ola A: piezas reutilizan recursos existentes y respetan la cola', /content_resources\(action="list"/.test(pcs) && /pieces_allowed/.test(pcs) && /blocked \(cola llena: detente/.test(pcs));
 t('Ola A: inteligencia orgánica es solo fuentes públicas, no copia, páginas leídas reales y no es Ads Radar', /PÚBLICAS/.test(cmp) && /sin iniciar sesión/.test(cmp) && /NO es copiar/.test(cmp) && /NO es el radar de anuncios pagados/.test(cmp) && /SOLO las URLs que abriste/.test(cmp) && /nunca adivines un sitio|no adivines|Nunca adivines|no lo encuentras con certeza/i.test(cmp));
+// ---- Ola B · Cold Email v2: los dos radares redactan con la filosofía nueva
+{
+  const r1 = fs.readFileSync(new URL('./prospect-radar.prompt.txt', import.meta.url), 'utf8');
+  for (const [name, txt] of [['v2', p], ['v1', r1]]) {
+    t('Ola B (' + name + '): el borrador sigue la filosofía Cold Email v2 (una idea, 50–100 palabras, CTA de baja fricción, asunto específico)', /COLD EMAIL v2/.test(txt) && /50–100 palabras/.test(txt) && /baja fricción/.test(txt) && /PROHIBIDO «Una idea para \{empresa\}»/.test(txt) && /NO pidas 15 minutos/.test(txt));
+    t('Ola B (' + name + '): ya no ordena abrir con «Vi que…» + hipótesis (la plantilla que aplanaba los correos)', !/Abre con un hecho verificable de la evidencia/.test(txt) && !/sigue con UNA hipótesis marcada como hipótesis/.test(txt) && /varía la apertura/.test(txt));
+    t('Ola B (' + name + '): sigue siendo seguro (solo texto, no se envía; sin cifras ni resultados sin respaldo)', /solo texto, NO se envía/.test(txt) && /cifras o resultados que no puedas respaldar/.test(txt));
+  }
+}
+
 console.log(`\n${pass} ok ${fail} fallos`);
 process.exit(fail ? 1 : 0);

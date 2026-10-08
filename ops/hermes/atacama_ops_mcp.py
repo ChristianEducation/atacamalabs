@@ -217,9 +217,17 @@ def discard_prospect(target: str, reason: str, christian_order: str, request_id:
 
 
 @mcp.tool()
-def save_draft(target: str, subject: str = "", body: str = "", to_email: str = "", kind: str = "initial", override_to: bool = False, request_id: str = "") -> str:
-    """Crea o edita el borrador de CORREO de un prospecto GUARDADO en Atacama OS (NO lo envía). Sin subject/body parte del borrador del Gateway. kind: initial | followup_1 | followup_2 | reply (reply requiere body). Editar un correo ya aprobado anula la aprobación. El destinatario debe ser un correo publicado por la empresa."""
-    return _call("save_draft", {"target": target, "subject": subject, "body": body, "to_email": to_email, "kind": kind, "override_to": override_to or None}, request_id=request_id)
+def save_draft(target: str, subject: str = "", body: str = "", to_email: str = "", kind: str = "initial", override_to: bool = False, auto: bool = False, evidence: list[str] = [], insight: str = "", friction: str = "", angle: str = "", cta_reason: str = "", reason: str = "", request_id: str = "") -> str:
+    """Crea o edita el borrador de CORREO de un prospecto GUARDADO en Atacama OS (NO lo envía). kind: initial | followup_1 | followup_2 | reply (reply requiere body). Editar un correo ya aprobado anula la aprobación. El destinatario debe ser un correo publicado por la empresa.
+    COLD EMAIL v2 (léelo antes de redactar): investigación profunda por detrás, correo simple por delante; el primer correo busca una RESPUESTA, no una reunión. Piensa en cadena: evidencia → insight → fricción probable → ángulo → mensaje → CTA. Una sola idea, 50–100 palabras, suena a persona, asunto corto y específico del proceso (ej. «reservas por WhatsApp», NO «Una idea para X»), apertura distinta cada vez (observación, pregunta, contraste; evita repetir «Vi que…» y «Mi hipótesis…»), CTA de baja fricción («¿te mando un ejemplo?», «¿esto lo ve alguien de operaciones?»), sin explicar Atacama más de una oración, sin cifras ni resultados que no puedas respaldar. Los seguimientos deben AGREGAR algo (ejemplo, dato, versión más simple, pregunta distinta), nunca «solo retomo».
+    Si el borrador lo generas TÚ de forma automática (radar, lote), pasa auto=true y evidence (1–3 hechos verificados del prospecto, uno por elemento) más insight/friction/angle/cta_reason (una línea cada uno): el sistema lo evalúa (score 0–100 contra los demás borradores) y si queda bajo 70 NO lo guarda y te devuelve los avisos: reescríbelo y vuelve a llamar. Si Christian te pidió el texto explícitamente, no uses auto. reason = por qué se reescribe (queda en el historial de versiones del mismo borrador)."""
+    return _call("save_draft", {"target": target, "subject": subject, "body": body, "to_email": to_email, "kind": kind, "override_to": override_to or None, "auto": auto or None, "evidence": evidence or None, "insight": insight or None, "friction": friction or None, "angle": angle or None, "cta_reason": cta_reason or None, "reason": reason or None}, request_id=request_id)
+
+
+@mcp.tool()
+def lint_draft(target: str, kind: str = "initial", subject: str = "", body: str = "", request_id: str = "") -> str:
+    """Explica el score de calidad (0–100) de un correo en frío de un prospecto: avisos con su peso, premios, parecido con otros borradores y enviados, estructura y tipo de CTA. Sin subject/body evalúa el borrador guardado; con ellos evalúa un texto propuesto SIN guardarlo. Solo lectura. Úsalo para «muéstrame por qué este correo tiene score bajo» o para revisar un texto antes de guardarlo."""
+    return _call("lint_draft", {"target": target, "kind": kind, "subject": subject or None, "body": body or None}, request_id=request_id)
 
 
 @mcp.tool()

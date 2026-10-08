@@ -30,7 +30,9 @@ const UID = (n) => '00000000-0000-4000-8000-' + String(n).padStart(12, '0');
 const card = (n, status, o = {}) => ({ id: UID(n), candidate_id: UID(100 + n), kind: 'initial', company: 'Empresa ' + n, contact_name: 'Contacto ' + n, contact_role: 'Gerente', to: `contacto${n}@empresa${n}.cl`, subject: 'Una idea para Empresa ' + n, body: `Hola equipo ${n},\n\nRevisé su sitio y creo que podemos ordenar su recepción con un agente.\n\n¿Les sirve verlo en 15 minutos?`,
   status, editable: status === 'draft', can_reopen: status === 'approved', can_approve: status === 'draft', can_reject: status === 'draft' || status === 'approved', hash: 'hash000' + n, created_at: ISO(-n), updated_at: ISO(-n), approved_at: status === 'approved' ? ISO(-1) : null, approved_by: status === 'approved' ? 'Christian via /ops' : null,
   scheduled_for: status === 'approved' ? ISO(2) : null, sent_at: status === 'sent' ? ISO(-3) : null, error: null, score: 90 - n, band: 'alta', reason: 'Recepción repite las mismas preguntas', evidence: 'agenda online', recommended_channel: 'email', suppressed: false, rejected_reason: null, ...o });
-const CARDS = [card(1, 'draft'), card(2, 'draft'), card(3, 'draft'), card(4, 'approved'), card(5, 'sending'), card(6, 'sent'), card(7, 'cancelled', { rejected_reason: 'Muy genérico' })];
+const COLD3 = { score: 86, level: 'bueno', warnings: ['La apertura se parece a otro correo'], rewards: ['Usa la evidencia investigada.'], similarity: { max: 0.12, with: 'Empresa 9' }, cta_kind: 'example', words: 72, evidence: ['Dos sedes con agenda por WhatsApp'], insight: 'Recepción averigua la sede', friction: 'Consultas sin sede', angle: 'Ordenar antes de responder', cta_reason: 'Ofrecer un ejemplo baja la fricción', linted_at: ISO(-1) };
+const PREV3 = { subject: 'Una idea para Empresa 3', body: 'Texto ANTERIOR plantilla: Vi que atienden dos sedes. Mi hipótesis es que...', score: 8, at: ISO(-5), by: 'Hermes', reason: 'Cold Email v2', versions: 1 };
+const CARDS = [card(1, 'draft'), card(2, 'draft'), card(3, 'draft', { cold: COLD3, previous: PREV3 }), card(4, 'approved'), card(5, 'sending'), card(6, 'sent'), card(7, 'cancelled', { rejected_reason: 'Muy genérico' })];
 const LI_READY = [{ candidate_id: UID(201), company: 'Persona SpA', person: 'Ana Pérez', role: 'Gerente General', url: 'https://www.linkedin.com/in/ana-perez', score: 80, band: 'alta', angle: 'Agendamiento', fact: 'Reservas por WhatsApp', reason: 'Persona identificada con perfil verificable', list_id: 'L1', campaign_id: 'C1', source: 'https://persona.cl/equipo' }];
 const LI_SENT = [{ candidate_id: UID(301), company: 'Enviada Ltda', person: 'Eva Ríos', role: 'Directora', url: 'https://www.linkedin.com/in/eva', approved_by: 'Christian via /ops', approved_at: ISO(-2), imported_at: ISO(-2), list_id: '6ac66b417b5c4af5e7c260e4', campaign_id: '6ac6fd0277c561efd0331116', score: 85, angle: 'A', state: 'en_campana', state_label: 'En campaña (conexión)', last_event: 'alta_en_campana', last_event_at: ISO(-2), import_code: 'success', campaign_code: 'success', mode_at_import: 'live' }];
 const overview = () => ({ ok: true, action: 'overview', generated_at: new Date().toISOString(), email: { mode: 'live', paused: false, cap: 5, sent_today: 1, window: '09:00–17:30', cards: state.cards }, linkedin: { mode: 'live', cap: 10, imported_today: 1, counts: { pendiente: 0, en_lista: 0, en_campana: 1, conexion: 0, mensaje: 0, followup: 0, respondio: 0, rechazo: 0, error: 0 }, ready: LI_READY, sent: LI_SENT } });
@@ -152,17 +154,17 @@ async function main() {
     await page.locator('#ops-q').fill('');
     t('biblioteca: «sending» y «sent» bloqueados (sin Editar ni Aprobar)', await (async () => {
       for (const n of [5, 6]) {
-        const c = page.locator('.ops-ap', { hasText: `Empresa ${n}` }).first(); await c.locator('summary').click();
+        const c = page.locator('.ops-ap', { hasText: `Empresa ${n}` }).first(); await c.locator('summary.ops-ap-sum').click();
         if ((await c.getByRole('button', { name: 'Editar' }).count()) || (await c.getByRole('button', { name: /Aprobar envío/ }).count()) || (await c.getByRole('button', { name: 'Rechazar' }).count())) return false;
       } return true;
     })());
-    t('biblioteca: aprobado ofrece «Volver a borrador» y NO «Editar»', await (async () => { const c = page.locator('.ops-ap', { hasText: 'Empresa 4' }).first(); await c.locator('summary').click(); return (await c.getByRole('button', { name: 'Volver a borrador' }).count()) === 1 && (await c.getByRole('button', { name: 'Editar' }).count()) === 0; })());
+    t('biblioteca: aprobado ofrece «Volver a borrador» y NO «Editar»', await (async () => { const c = page.locator('.ops-ap', { hasText: 'Empresa 4' }).first(); await c.locator('summary.ops-ap-sum').click(); return (await c.getByRole('button', { name: 'Volver a borrador' }).count()) === 1 && (await c.getByRole('button', { name: 'Editar' }).count()) === 0; })());
 
     // ---------------------------------------------------------------- editar y guardar (NO envía)
     await reset();
     await page.goto(APP + '/ops?view=outreach&tab=email');
     const c1 = page.locator('.ops-ap', { hasText: 'Empresa 1' }).first();
-    await c1.locator('summary').click();
+    await c1.locator('summary.ops-ap-sum').click();
     t('detalle: texto completo, destinatario, asunto, score y razón', /contacto1@empresa1\.cl/.test(await c1.innerText()) && /ordenar su recepción/.test(await c1.innerText()) && /Recepción repite/.test(await c1.innerText()));
     await c1.getByRole('button', { name: 'Editar' }).click();
     t('editar: solo asunto y cuerpo (el destinatario no es editable)', (await c1.locator('input.ops-input').count()) === 1 && (await c1.locator('textarea').count()) === 1 && !(await c1.locator('input[type="email"]').count()));
@@ -174,11 +176,21 @@ async function main() {
     t('guardar: una sola llamada email_save con la versión vista (hash), asunto y cuerpo; NINGUNA aprobación', cs.length === 1 && cs[0].action === 'email_save' && cs[0].message_id === UID(1) && cs[0].expected_hash === 'hash0001' && cs[0].subject === 'Asunto nuevo de Christian' && cs[0].body.startsWith('Texto nuevo') && !cs.some((c) => /approve/.test(c.action)) && /^[A-Za-z0-9_-]{8,64}$/.test(cs[0].request_id));
     t('guardar: avisa «NO se envió» con el mensaje real del backend', /NO se envió/.test(await page.locator('.ops-toast').first().innerText()));
 
+    // ---------------------------------------------------------------- Cold Email v2: calidad y versión anterior
+    const cq = page.locator('.ops-ap', { hasText: 'Empresa 3' }).first();
+    await cq.locator('summary.ops-ap-sum').click();
+    t('calidad del correo: muestra el score Cold Email v2 y la versión anterior como bloques plegables', /Calidad del correo/.test(await cq.innerText()) && /Versión anterior/.test(await cq.innerText()) && /86/.test(await cq.locator('.ops-quality').first().innerText()));
+    await cq.locator('.ops-quality summary', { hasText: 'Calidad del correo' }).click();
+    t('calidad del correo: evidencia usada, ángulo, razón del CTA y avisos visibles', /Dos sedes con agenda por WhatsApp/.test(await cq.innerText()) && /Ordenar antes de responder/.test(await cq.innerText()) && /baja la fricci/.test(await cq.innerText()) && /se parece a otro correo/.test(await cq.innerText()));
+    await cq.locator('.ops-quality summary', { hasText: 'Versión anterior' }).click();
+    t('versión anterior: el texto viejo queda accesible para comparar (antes/después)', /Texto ANTERIOR plantilla/.test(await cq.innerText()));
+    t('un correo sin datos v2 no muestra el bloque de calidad', !(await page.locator('.ops-ap', { hasText: 'Empresa 2' }).first().locator('.ops-quality').count()));
+
     // ---------------------------------------------------------------- aprobar / rechazar correo
     await reset();
     await page.goto(APP + '/ops?view=outreach&tab=email');
     const c2 = page.locator('.ops-ap', { hasText: 'Empresa 2' }).first();
-    await c2.locator('summary').click();
+    await c2.locator('summary.ops-ap-sum').click();
     await shot(page, 'desktop-correo-abierto');
     await c2.getByRole('button', { name: 'Aprobar envío' }).dblclick();
     await page.waitForSelector('.ops-toast');
@@ -189,7 +201,7 @@ async function main() {
     await reset();
     await page.goto(APP + '/ops?view=outreach&tab=email');
     const c3 = page.locator('.ops-ap', { hasText: 'Empresa 3' }).first();
-    await c3.locator('summary').click();
+    await c3.locator('summary.ops-ap-sum').click();
     await c3.getByRole('button', { name: 'Rechazar' }).click();
     await c3.locator('input[id^="r-"]').fill('Muy genérico');
     await c3.getByRole('button', { name: 'Confirmar rechazo' }).click();
@@ -199,7 +211,7 @@ async function main() {
     await reset();
     await page.goto(APP + '/ops?view=outreach&tab=email');
     const c4 = page.locator('.ops-ap', { hasText: 'Empresa 4' }).first();
-    await c4.locator('summary').click();
+    await c4.locator('summary.ops-ap-sum').click();
     await c4.getByRole('button', { name: 'Volver a borrador' }).click();
     await page.waitForSelector('.ops-toast');
     t('«Volver a borrador» llama email_reopen (la aprobación anterior se anula en el backend)', (await calls()).some((c) => c.action === 'email_reopen' && c.message_id === UID(4)));
@@ -208,14 +220,14 @@ async function main() {
     await reset(); await setMode('error');
     await page.goto(APP + '/ops?view=outreach&tab=email');
     const c5 = page.locator('.ops-ap', { hasText: 'Empresa 2' }).first();
-    await c5.locator('summary').click();
+    await c5.locator('summary.ops-ap-sum').click();
     await c5.getByRole('button', { name: 'Aprobar envío' }).click();
     await page.waitForSelector('.ops-toast-err');
     t('el motor rechaza => aviso de error con su motivo y sin «aprobado»', /El motor rechazó/.test(await page.locator('.ops-toast-err').first().innerText()) && (await page.locator('.ops-toast-ok').count()) === 0);
     await reset(); await setMode('down');
     await page.goto(APP + '/ops?view=outreach&tab=email');
     const c6 = page.locator('.ops-ap', { hasText: 'Empresa 2' }).first();
-    await c6.locator('summary').click();
+    await c6.locator('summary.ops-ap-sum').click();
     await c6.getByRole('button', { name: 'Aprobar envío' }).click();
     await page.waitForSelector('.ops-toast-err');
     t('backend caído (500) => error claro, sin éxito falso', (await page.locator('.ops-toast-ok').count()) === 0 && /error|No pude|No se pudo|Sin respuesta/i.test(await page.locator('.ops-toast-err').first().innerText()));
@@ -247,7 +259,7 @@ async function main() {
     await reset();
     await page.goto(APP + '/ops?view=aprobaciones&filter=linkedin');
     const li = page.locator('.ops-ap[data-kind="linkedin"]').first();
-    await li.locator('summary').click();
+    await li.locator('summary.ops-ap-sum').click();
     t('LinkedIn: persona, cargo, empresa, URL, score, ángulo, hecho, motivo y destino', /Ana Pérez/.test(await li.innerText()) && /Gerente General/.test(await li.innerText()) && /linkedin\.com\/in\/ana-perez/.test(await li.innerText()) && /Reservas por WhatsApp/.test(await li.innerText()) && /Atacama OS — LinkedIn Producción/.test(await li.innerText()));
     await li.getByRole('button', { name: 'Aprobar LinkedIn' }).click();
     await page.waitForSelector('.ops-toast');
@@ -255,7 +267,7 @@ async function main() {
     await reset();
     await page.goto(APP + '/ops?view=aprobaciones&filter=linkedin');
     const li2 = page.locator('.ops-ap[data-kind="linkedin"]').first();
-    await li2.locator('summary').click();
+    await li2.locator('summary.ops-ap-sum').click();
     await li2.getByRole('button', { name: 'Rechazar' }).click();
     await li2.getByRole('button', { name: 'Confirmar rechazo' }).click();
     await page.waitForSelector('.ops-toast');
@@ -287,7 +299,7 @@ async function main() {
     await reset();
     await page.goto(APP + '/ops?view=outreach&tab=email');
     const c7 = page.locator('.ops-ap', { hasText: 'Empresa 2' }).first();
-    await c7.locator('summary').click();
+    await c7.locator('summary.ops-ap-sum').click();
     await ctx.clearCookies();
     await c7.getByRole('button', { name: 'Aprobar envío' }).click();
     await page.waitForSelector('#ops-pin, .ops-toast-err', { timeout: 30000 }).catch(() => {});

@@ -247,3 +247,12 @@ html:has(.ops), body:has(.ops) { overflow-x: clip; }
   .ops-ap-body { padding: 2px 12px 14px; }
 }
 @media (prefers-reduced-motion: reduce) { .ops-stat-link { transition: none; } }
+
+/* Cold Email v2: calidad y versión anterior dentro de cada correo */
+.ops-quality { display: grid; gap: 6px; margin-top: 12px; }
+.ops-quality details { border: 1px solid var(--line); border-radius: var(--r-6); padding: 8px 12px; background: var(--paper); }
+.ops-q-sum { display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 14px; list-style: none; min-height: 32px; }
+.ops-q-sum::-webkit-details-marker { display: none; }
+.ops-q-level { margin: 0; text-transform: capitalize; }
+.ops-q-list { margin: 0; padding-left: 18px; }
+.ops-q-list li { margin: 2px 0; }

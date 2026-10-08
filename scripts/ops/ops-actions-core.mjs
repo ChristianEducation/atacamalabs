@@ -80,6 +80,22 @@ export function oaDay(ms, tz) {
 }
 
 /** Tarjetas de correo para /ops: el texto completo, de quién es y si todavía se puede editar. */
+/** Calidad Cold Email v2 guardada en el borrador (score, avisos, evidencia, ángulo). null si el borrador es anterior a v2. */
+export function oaCold(meta) {
+  const c = meta && meta.cold;
+  if (!c || typeof c.score !== 'number') return null;
+  return { score: c.score, level: c.level || null, warnings: (c.warnings || []).slice(0, 6).map((w) => w.text), rewards: (c.rewards || []).slice(0, 6).map((r) => r.text), similarity: c.similarity || null, cta_kind: c.cta_kind || null, words: c.words || null,
+    evidence: (c.evidence || []).slice(0, 4).map((e) => e.fact), insight: c.insight || null, friction: c.friction || null, angle: c.angle || null, cta_reason: c.cta_reason || null, linted_at: c.linted_at || null };
+}
+
+/** Última versión anterior guardada en el mismo registro (para comparar antes/después). */
+export function oaPrevious(meta) {
+  const h = meta && Array.isArray(meta.history) ? meta.history : [];
+  if (!h.length) return null;
+  const p = h[h.length - 1];
+  return { subject: p.subject || '', body: p.body || '', score: typeof p.score === 'number' ? p.score : null, at: p.at || null, by: p.by || null, reason: p.reason || null, versions: h.length };
+}
+
 export function oaEmailCards(messages, cands, suppression) {
   const byId = {};
   (Array.isArray(cands) ? cands : []).forEach((c) => { byId[c.id] = c; });
@@ -98,6 +114,7 @@ export function oaEmailCards(messages, cands, suppression) {
       recommended_channel: ((c.channel_state || {}).recommended || {}).channel || null,
       suppressed: sup.has(String(m.to_email || '').toLowerCase()),
       rejected_reason: (m.metadata && m.metadata.rejected_reason) || null,
+      cold: oaCold(m.metadata), previous: oaPrevious(m.metadata),
     };
   });
 }
@@ -192,7 +209,7 @@ export function oaStep(req, R, results, nowMs, env) {
         if (st !== 'draft') return fail('no_editable', st === 'sending' || st === 'sent' ? 'Ese correo ya se está enviando o se envió: no se puede editar.' : 'Ese correo está en estado «' + st + '» y no se puede editar.', { current_status: st });
         if (m.content_hash !== req.expected_hash) return fail('desactualizado', 'El correo cambió desde que lo abriste. Recarga para ver la versión actual.', { current_hash: m.content_hash });
         if (String(m.subject || '').trim() === req.subject && String(m.body || '').trim() === req.body) return done({ ok: true, status: 'unchanged', message: 'Sin cambios: el texto es el mismo.', hash: m.content_hash });
-        return ingest('atacama-outreach-engine', { action: 'draft', candidate_id: m.candidate_id, kind: m.kind, subject: req.subject, body: req.body, by });
+        return ingest('atacama-outreach-engine', { action: 'draft', candidate_id: m.candidate_id, kind: m.kind, subject: req.subject, body: req.body, by, reason: 'Editado desde /ops' });
       }
       const b = results[0] && results[0].body;
       if (b && b.ok && b.draft) return done({ ok: true, status: 'saved', message: 'Guardado. NO se envió: aprueba el envío cuando estés listo.', hash: b.draft.hash || null, draft: { subject: b.draft.subject, body: b.draft.body, status: b.draft.status } });

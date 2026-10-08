@@ -13,6 +13,7 @@
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import * as oc from '../../scripts/outreach/outreach-core.mjs';
+import * as cm from '../../scripts/outreach/coldmail-core.mjs';
 
 const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 export const N8N_BASE = 'https://n8n.srv1650725.hstgr.cloud';
@@ -47,7 +48,7 @@ const ghlExecX = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpR
 const gatewayHttp = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: pos, credentials: INGEST_CRED, continueOnFail: true, alwaysOutputData: true,
   parameters: { method: 'POST', url: '={{ $json.skip ? "' + NONE + '" : "' + N8N_BASE + '/webhook/atacama-prospect-gateway" }}', authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth', sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full(120000) } });
 
-export const LIB = [...new Map(Object.values(oc).filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
+export const LIB = [...new Map([...Object.values(cm), ...Object.values(oc)].filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
 
 const CAND_SELECT = 'id,company_name,status,canonical,drafts,ghl_contact_id,ghl_opportunity_id,ghl_stage,domain,website,last_contact_at,last_contact_channel,channel_state';
 const MSG_SELECT = '*';
@@ -66,9 +67,9 @@ try {
   const first = $('Engine Webhook').first().json || {};
   const b = first.body || first;
   const action = String(b.action || '').toLowerCase();
-  if (!['draft', 'approve', 'cancel', 'get', 'list', 'replies', 'suppress', 'followups'].includes(action)) throw new Error('action inválida: usa draft | approve | cancel | get | list | replies | suppress | followups');
+  if (!['draft', 'approve', 'cancel', 'get', 'list', 'replies', 'suppress', 'followups', 'lint'].includes(action)) throw new Error('action inválida: usa draft | approve | cancel | get | list | replies | suppress | followups | lint');
   const cid = String(b.candidate_id || '').trim();
-  const needsCand = ['draft', 'approve', 'cancel', 'get', 'suppress'].includes(action);
+  const needsCand = ['draft', 'approve', 'cancel', 'get', 'suppress', 'lint'].includes(action);
   if (needsCand && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cid)) throw new Error('candidate_id (uuid del prospecto guardado) es obligatorio en ' + action);
   const kind = b.kind ? String(b.kind) : null;
   if (kind && !['initial', 'followup_1', 'followup_2', 'reply'].includes(kind)) throw new Error('kind inválido: initial | followup_1 | followup_2 | reply');
@@ -82,7 +83,9 @@ try {
   else { const st = { drafts: 'status=eq.draft', approved: 'status=eq.approved', sent: 'status=eq.sent', failed: 'status=eq.failed' }[filter]; hist = sb + 'outreach_messages?direction=eq.outbound&' + (st ? st + '&' : '') + 'select=${MSG_SELECT}&order=created_at.desc&limit=' + limit; }
   return [{ json: { action, candidate_id: cid || null, kind, subject: b.subject != null ? String(b.subject) : null, body: b.body != null ? String(b.body) : null, to_email: b.to_email ? String(b.to_email) : null, override_to: b.override_to === true,
     confirmation_code: b.confirmation_code ? String(b.confirmation_code) : '', order_text: b.order_text ? String(b.order_text) : '', by: String(b.by || 'Christian vía Hermes').slice(0, 60), filter, limit, now: Date.now(),
-    reason: b.reason ? String(b.reason) : '', cand_url: needsCand ? sb + 'prospect_candidates?id=eq.' + cid + '&select=${CAND_SELECT}&limit=1' : '${NONE}', hist_url: hist } }];
+    reason: b.reason ? String(b.reason) : '', auto: b.auto === true, min_score: b.min_score != null ? Number(b.min_score) : null,
+    cold: { evidence: b.evidence, insight: b.insight, friction: b.friction, angle: b.angle, cta_reason: b.cta_reason },
+    peers_url: ['draft', 'lint'].includes(action) ? sb + 'outreach_messages?direction=eq.outbound&kind=in.(initial,followup_1,followup_2)&status=in.(draft,approved,sending,sent)&created_at=gte.' + new Date(Date.now() - 75 * 86400000).toISOString() + '&select=id,candidate_id,company_name,kind,status,subject,body&order=created_at.desc&limit=80' : '${NONE}', cand_url: needsCand ? sb + 'prospect_candidates?id=eq.' + cid + '&select=${CAND_SELECT}&limit=1' : '${NONE}', hist_url: hist } }];
 } catch (e) { return [{ json: { fatal: String((e && e.message) || e) } }]; }`;
 
 export const engineDecideCode = `${LIB}
@@ -93,9 +96,11 @@ const candidate = arr('Load Candidate')[0] || null;
 const history = arr('Load History');
 const suppression = arr('Load Suppression');
 const config = arr('Load Config')[0] || { mode: 'off', daily_cap: 10, window_start: '09:00', window_end: '17:30', tz: 'America/Santiago' };
-const ctx = { now: req.now, candidate, history, suppression, config, new_id: newId() };
+const peers = arr('Load Peers');
+const ctx = { now: req.now, candidate, history, suppression, config, peers, new_id: newId() };
 let out;
 if (req.action === 'draft') out = planDraft(req, ctx);
+else if (req.action === 'lint') out = planLint(req, ctx);
 else if (req.action === 'approve') out = planApprove(req, ctx);
 else if (req.action === 'cancel') out = planCancel(req, ctx);
 else if (req.action === 'suppress') out = planSuppress(req, ctx);
@@ -138,13 +143,14 @@ export function buildEngine() {
     sbGet('Load History', '={{ $("Parse").first().json.hist_url }}', [720, 0]),
     sbGet('Load Suppression', `${SUPABASE}/rest/v1/outreach_suppression?select=email,domain,reason&limit=1000`, [960, 0]),
     sbGet('Load Config', `${SUPABASE}/rest/v1/outreach_config?id=eq.1&select=*`, [1200, 0]),
+    sbGet('Load Peers', '={{ $("Parse").first().json.peers_url }}', [1320, 0]),
     code('Decide', engineDecideCode, [1440, 0]),
     code('Expand Writes', expandCode('$("Decide").first().json.writes'), [1680, 0]),
     sbApply('Apply Writes', [1920, 0]),
     code('Respond', engineRespondCode, [2160, 0]),
   ];
   const c = { 'Engine Webhook': { main: [to('Parse')] }, 'Parse': { main: [to('Valid?')] }, 'Valid?': { main: [to('Load Candidate'), to('Respond Error')] }, 'Load Candidate': { main: [to('Load History')] }, 'Load History': { main: [to('Load Suppression')] },
-    'Load Suppression': { main: [to('Load Config')] }, 'Load Config': { main: [to('Decide')] }, 'Decide': { main: [to('Expand Writes')] }, 'Expand Writes': { main: [to('Apply Writes')] }, 'Apply Writes': { main: [to('Respond')] } };
+    'Load Suppression': { main: [to('Load Config')] }, 'Load Config': { main: [to('Load Peers')] }, 'Load Peers': { main: [to('Decide')] }, 'Decide': { main: [to('Expand Writes')] }, 'Expand Writes': { main: [to('Apply Writes')] }, 'Apply Writes': { main: [to('Respond')] } };
   return { name: 'Atacama Labs - 21 Outreach Engine', nodes, connections: c, settings: { executionOrder: 'v1' } };
 }
 

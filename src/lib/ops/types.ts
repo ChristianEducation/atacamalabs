@@ -134,7 +134,10 @@ export type EmailCard = {
   status: string; editable: boolean; can_reopen: boolean; can_approve: boolean; can_reject: boolean; hash: string | null;
   created_at: string; updated_at: string | null; approved_at: string | null; approved_by: string | null; scheduled_for: string | null; sent_at: string | null; error: string | null;
   score: number | null; band: string | null; reason: string | null; evidence: string | null; recommended_channel: string | null; suppressed: boolean; rejected_reason: string | null;
+  cold?: ColdQuality | null; previous?: PreviousVersion | null;
 };
+export type ColdQuality = { score: number; level: string | null; warnings: string[]; rewards: string[]; similarity: { max: number; with: string | null } | null; cta_kind: string | null; words: number | null; evidence: string[]; insight: string | null; friction: string | null; angle: string | null; cta_reason: string | null; linted_at: string | null };
+export type PreviousVersion = { subject: string; body: string; score: number | null; at: string | null; by: string | null; reason: string | null; versions: number };
 export type LinkedinReady = { candidate_id: string; company: string; person: string | null; role: string | null; url: string | null; score: number | null; band: string | null; angle: string | null; fact: string | null; reason: string | null; list_id: string | null; campaign_id: string | null; source: string | null };
 export type LinkedinSent = { candidate_id: string; company: string; person: string | null; role: string | null; url: string | null; approved_by: string | null; approved_at: string | null; imported_at: string | null; list_id: string | null; campaign_id: string | null; score: number | null; angle: string | null; state: string; state_label: string; last_event: string | null; last_event_at: string | null; import_code: string | null; campaign_code: string | null; mode_at_import: string | null };
 export type Overview = {

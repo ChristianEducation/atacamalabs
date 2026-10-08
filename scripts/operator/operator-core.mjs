@@ -30,6 +30,7 @@ export function operatorTools() {
     force_import_prospect: { level: L2, kind: 'gateway', summary: 'FORCE_IMPORT: mete un prospecto aunque su score sea bajo (orden explícita de Christian).' },
     discard_prospect: { level: L2, kind: 'gateway', summary: 'Descarta un prospecto (orden explícita de Christian).' },
     save_draft: { level: L1, kind: 'engine', summary: 'Crea o edita el borrador de correo de un prospecto (no lo envía). Parte del borrador del Gateway.' },
+    lint_draft: { level: L1, kind: 'engine', summary: 'Explica el score de calidad (Cold Email v2) de un correo pendiente: avisos, premios y parecido con otros borradores. Solo lectura.' },
     get_draft: { level: L1, kind: 'engine', summary: 'Muestra los correos pendientes, el historial y las respuestas de un prospecto.' },
     approve_outreach: { level: L3, kind: 'engine', summary: 'Aprueba el envío de un borrador: primero devuelve el correo exacto y un código; con el código y la confirmación de Christian queda aprobado y sale en la próxima ventana.' },
     cancel_outreach: { level: L1, kind: 'engine', summary: 'Cancela un correo pendiente (borrador o aprobado, antes de salir).' },
@@ -104,7 +105,7 @@ export function resolveQueries(req, sbUrl) {
   const base = sbUrl + '/rest/v1/prospect_candidates?' + sel;
   const enc = encodeURIComponent;
   const q = { rows_url: null, analysis_url: null };
-  const needsTarget = ['save_draft', 'get_draft', 'approve_outreach', 'cancel_outreach', 'do_not_contact', 'get_replies', 'get_prospect', 'prepare_outreach', 'log_manual_contact', 'add_note', 'move_opportunity', 'create_followup', 'force_import_prospect', 'discard_prospect'].includes(req.tool);
+  const needsTarget = ['save_draft', 'lint_draft', 'get_draft', 'approve_outreach', 'cancel_outreach', 'do_not_contact', 'get_replies', 'get_prospect', 'prepare_outreach', 'log_manual_contact', 'add_note', 'move_opportunity', 'create_followup', 'force_import_prospect', 'discard_prospect'].includes(req.tool);
   if (needsTarget) {
     const t = parseTarget(p.target != null ? p.target : p.number);
     if (t && t.kind !== 'number') {
@@ -244,7 +245,7 @@ export function buildCalls(req, rows, analysis, cfg) {
     }
     Object.keys(act).forEach((k) => act[k] === undefined && delete act[k]);
     out.gateway_body = { action: 'act', source: sourceOf(req), act, targets: [r.candidate], options: { by: req.actor } };
-  } else if (['save_draft', 'get_draft', 'approve_outreach', 'cancel_outreach', 'do_not_contact'].includes(t) || (t === 'get_replies' && (p.target != null || p.number != null)) || t === 'list_outreach' || t === 'get_replies' || t === 'get_followups') {
+  } else if (['save_draft', 'lint_draft', 'get_draft', 'approve_outreach', 'cancel_outreach', 'do_not_contact'].includes(t) || (t === 'get_replies' && (p.target != null || p.number != null)) || t === 'list_outreach' || t === 'get_replies' || t === 'get_followups') {
     const hasTarget = !['list_outreach', 'get_followups'].includes(t) && !(t === 'get_replies' && p.target == null && p.number == null);
     let r = null;
     if (hasTarget) {
@@ -252,7 +253,8 @@ export function buildCalls(req, rows, analysis, cfg) {
       if (!r.row || !r.row.id) { out.error = { status: 'not_found', code: 'no_guardado', message: '«' + r.candidate.company_name + '» todavía no está guardado en Atacama OS (solo está en el análisis): impórtalo primero con import_prospects.' }; return out; }
     }
     const eb = { candidate_id: r ? r.row.id : undefined, by: req.actor };
-    if (t === 'save_draft') Object.assign(eb, { action: 'draft', kind: p.kind || 'initial', subject: p.subject, body: p.body, to_email: p.to_email, override_to: p.override_to === true });
+    if (t === 'save_draft') Object.assign(eb, { action: 'draft', kind: p.kind || 'initial', subject: p.subject, body: p.body, to_email: p.to_email, override_to: p.override_to === true, auto: p.auto === true ? true : undefined, min_score: p.min_score, reason: p.reason ? String(p.reason).slice(0, 200) : undefined, evidence: p.evidence, insight: p.insight, friction: p.friction, angle: p.angle, cta_reason: p.cta_reason });
+    else if (t === 'lint_draft') Object.assign(eb, { action: 'lint', kind: p.kind || 'initial', subject: p.subject, body: p.body });
     else if (t === 'get_draft') eb.action = 'get';
     else if (t === 'approve_outreach') Object.assign(eb, { action: 'approve', kind: p.kind, confirmation_code: req.confirmation_code || p.confirmation_code, order_text: req.order_text });
     else if (t === 'cancel_outreach') Object.assign(eb, { action: 'cancel', kind: p.kind });

@@ -39,6 +39,7 @@ async function engine(body, st = {}) {
   store['Load History'] = ok200(st.history || []);
   store['Load Suppression'] = ok200(st.suppression || []);
   store['Load Config'] = ok200([st.config || CFG({ mode: 'live' })]);
+  store['Load Peers'] = ok200(st.peers || []);
   const dec = (await run('engine', 'Decide', store))[0].json; store.Decide = dec;
   const ex = (await run('engine', 'Expand Writes', store)).map((x) => x.json);
   store['Apply Writes'] = ok200({}); const lists = { 'Apply Writes': ex.map(() => ({ statusCode: st.writeStatus || 201, body: {} })) };
@@ -57,6 +58,22 @@ r = await engine({ action: 'draft', candidate_id: CAND.id, kind: 'initial' }, { 
 t('21 draft: prospecto no guardado → error y 0 escrituras', r.resp.ok === false && r.resp.error === 'candidato_no_encontrado' && r.ex[0].skip === true);
 r = await engine({ action: 'draft', candidate_id: CAND.id, kind: 'initial', body: 'x' });
 t('21 draft: cuerpo inválido → no guarda', r.resp.error === 'borrador_invalido');
+const GOODB = 'Hola Andrea,\n\nCuando una paciente escribe por WhatsApp preguntando por una limpieza, ¿recepción tiene que averiguar primero en cuál de las dos sedes hay hora? Esa pregunta suele comerse buena parte del día.\n\nSe puede ordenar para que la consulta llegue con sede y tratamiento ya definidos. ¿Te mando un ejemplo de cómo se vería?';
+const OLDB = 'Hola, equipo,\n\nVi que atienden en dos sucursales y reciben solicitudes por formularios y WhatsApp. Mi hipótesis (no lo he visto por dentro) es que recepción repite preguntas sobre tratamiento y horarios antes de convertir la consulta en hora.\n\nEn Atacama Labs armamos agentes que identifican tratamiento y sucursal. ¿Te parece si lo vemos en 15 minutos?';
+r = await engine({ action: 'draft', candidate_id: CAND.id, kind: 'initial', subject: 'consultas entre sedes', body: GOODB, evidence: ['Atienden en dos sedes', 'Reciben consultas por WhatsApp'], insight: 'recepción averigua la sede', angle: 'ordenar antes de responder', cta_reason: 'bajar fricción', auto: true }, { history: [msgRow()] });
+t('21 draft v2: el Parse lleva evidencia/ángulo/auto y Decide guarda metadata.cold con score y evidencia en el MISMO registro (PATCH, sin POST)', r.resp.ok && r.ex.length === 1 && r.ex[0].method === 'PATCH' && r.ex[0].path === 'outreach_messages?id=eq.m-1' && r.ex[0].body.metadata.cold.score >= 70 && r.ex[0].body.metadata.cold.evidence.length === 2 && r.ex[0].body.metadata.history.length === 1 && r.ex[0].body.status === 'draft' && r.resp.safety.messages_sent === 0, JSON.stringify(r.resp).slice(0, 300));
+r = await engine({ action: 'draft', candidate_id: CAND.id, kind: 'initial', subject: 'Una idea para Clínica TEST Rica', body: OLDB, evidence: ['Atienden en dos sedes'], auto: true });
+t('21 draft v2: automático con score bajo → low_quality, NO guarda (0 escrituras) y devuelve los avisos', r.resp.status === 'low_quality' && r.ex[0].skip === true && r.resp.warnings.length >= 3, JSON.stringify(r.resp).slice(0, 300));
+r = await engine({ action: 'draft', candidate_id: CAND.id, kind: 'initial', subject: 'Una idea para Clínica TEST Rica', body: OLDB });
+t('21 draft v2: manual con score bajo → se guarda igual con avisos (el estilo no bloquea)', r.resp.ok && r.resp.cold.score < 55 && r.resp.warnings.length >= 3 && r.ex[0].method === 'POST');
+const peersOld = [1, 2, 3, 4].map((i) => ({ id: 'p' + i, candidate_id: 'cc-' + i, company_name: 'Emp' + i, kind: 'initial', status: 'draft', subject: 'Una idea para Emp' + i, body: OLDB }));
+r = await engine({ action: 'draft', candidate_id: CAND.id, kind: 'initial', subject: 'Una idea para Clínica TEST Rica', body: OLDB }, { peers: peersOld });
+t('21 draft v2 (Similarity Guard): contra 4 borradores casi idénticos marca muy similar / misma estructura', r.resp.ok && r.resp.warnings.some((w) => /casi igual|misma estructura/.test(w)) && r.resp.cold.similarity.max >= 0.5, JSON.stringify(r.resp.cold));
+r = await engine({ action: 'lint', candidate_id: CAND.id, kind: 'initial' }, { history: [msgRow({ body: OLDB })], peers: peersOld });
+t('21 lint: solo lectura (0 escrituras), explica avisos y compara con los otros borradores', r.resp.ok && r.resp.score < 40 && r.resp.compared_with === 4 && r.ex[0].skip === true && r.resp.warnings.length >= 4);
+r = await engine({ action: 'draft', candidate_id: CAND.id, kind: 'initial', subject: 'consultas entre sedes', body: GOODB + ' Reducimos 40% el tiempo.' });
+t('21 draft v2: afirmación cuantificada sin respaldo → bloqueo duro (invalid_draft), 0 escrituras', r.resp.error === 'borrador_invalido' && r.ex[0].skip === true);
+
 r = await engine({ action: 'approve', candidate_id: CAND.id }, { history: [msgRow()] });
 t('21 approve sin código: confirmation_required con vista previa; solo guarda el código', r.resp.status === 'confirmation_required' && /^CONF-\d{6}$/.test(r.resp.confirmation_code) && r.resp.safety.messages_sent === 0 && r.ex.length === 1 && !('status' in r.ex[0].body) && r.ex[0].body.confirm_code === r.resp.confirmation_code);
 const code1 = r.resp.confirmation_code;

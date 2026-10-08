@@ -5,6 +5,8 @@
  * candidato+tipo, effect_key idempotente) · nunca a un correo suprimido · el modo lo cambia solo Christian (Hermes no puede).
  */
 
+import { cmNormCold, coldLint, coldSummary, coldHistory } from './coldmail-core.mjs';
+
 export function stripAcc(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, ''); }
 export function normEmail(e) { return String(e == null ? '' : e).trim().toLowerCase().replace(/^mailto:/, ''); }
 export function isValidEmail(e) { return /^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[a-z]{2,}$/i.test(normEmail(e)); }
@@ -160,8 +162,8 @@ export function validateDraft(d, ctx) {
 export function followupTemplate(kind, cand, firstSubject) {
   const co = (cand && cand.company_name) || 'su empresa';
   const subj = 'Re: ' + String(firstSubject || 'Atacama Labs').replace(/^re:\s*/i, '');
-  if (kind === 'followup_2') return { subject: subj, body: 'Hola, retomo mi mensaje anterior por si se perdió entre otros correos. Si automatizar la atención o la agenda de ' + co + ' no es prioridad hoy, no hay problema y no insisto más. Si te interesa, te muestro un ejemplo concreto en 10 minutos.' };
-  return { subject: subj, body: 'Hola, te escribí hace unos días sobre cómo podríamos ayudar a ' + co + ' a ahorrar tiempo en tareas repetitivas. ¿Tiene sentido que te muestre un ejemplo concreto en 10 minutos? Si no es buen momento, dímelo y lo dejamos ahí.' };
+  if (kind === 'followup_2') return { subject: subj, body: 'Hola, otra forma de verlo para ' + co + ': si hoy una persona atiende esas consultas una por una, la idea es que el sistema las ordene primero y solo pase a una persona lo que necesita criterio. Si quieres, te mando un esquema de cómo se vería. Y si no es prioridad, lo dejamos aquí sin problema.' };
+  return { subject: subj, body: 'Hola, te dejo un ejemplo concreto de lo que te comentaba: un agente que responde la primera consulta, pide los datos que faltan y deja el caso listo para que ' + co + ' lo cierre. ¿Te sirve que te mande cómo lo plantearía?' };
 }
 
 export function escapeHtml(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
@@ -263,20 +265,52 @@ export function planDraft(req, ctx) {
   const inbound = inboundMsg;
   const v = validateDraft({ to_email: to, subject, body }, { suppression: ctx.suppression, allowed_emails: published, override_to: req.override_to === true });
   if (!v.ok) return { response: { ok: false, status: 'invalid_draft', error: 'borrador_invalido', message: 'El borrador no se puede guardar: ' + v.errors.join('; ') + '.', errors: v.errors }, writes: [] };
+  const isCold = kind !== 'reply';
+  const cold = cmNormCold(req.cold);
+  let lint = null;
+  if (isCold) {
+    const peers = (ctx.peers || []).filter((p) => p.candidate_id !== cand.id && (!live || p.id !== live.id));
+    lint = coldLint({ subject, body, kind }, peers, cold);
+    if (lint.hard.length) return { response: { ok: false, status: 'invalid_draft', error: 'borrador_invalido', message: 'El borrador no se puede guardar: ' + lint.hard.join('; ') + '.', errors: lint.hard, cold: { score: lint.score } }, writes: [] };
+    if (req.auto === true) {
+      if (kind === 'initial' && !cold.evidence.length) return { response: { ok: false, status: 'needs_evidence', error: 'sin_evidencia', message: 'Un borrador automático necesita evidence (1–3 hechos verificados del prospecto que respaldan lo que dice el correo). Agrégala y vuelve a guardarlo.', safety: { messages_sent: 0 } }, writes: [] };
+      const min = Number(req.min_score) > 0 ? Number(req.min_score) : 70;
+      if (lint.score < min) return { response: { ok: false, status: 'low_quality', error: 'calidad_baja', score: lint.score, min_score: min, level: lint.level, message: 'El correo quedó con score ' + lint.score + ' (mínimo ' + min + '): NO se guardó. Reescríbelo corrigiendo los avisos y vuelve a llamar a save_draft.', warnings: lint.warnings.slice(0, 6).map((w) => w.text), safety: { messages_sent: 0 } }, writes: [] };
+    }
+  }
   const hash = contentHash(to, subject, body);
   const base = { to_email: to, subject: String(subject).trim(), body: String(body).trim(), content_hash: hash, status: 'draft', confirm_code: null, confirm_hash: null, confirm_expires_at: null, approved_by: null, approved_at: null, approval_text: null, scheduled_for: null, updated_at: now };
   let writes, msg, invalidated = false;
   if (live) {
     invalidated = live.status === 'approved' && live.content_hash !== hash;
     if (live.content_hash === hash && live.status !== 'draft') return { response: { ok: true, status: 'unchanged', message: 'El borrador ya está así y ' + (live.status === 'approved' ? 'aprobado.' : 'guardado.'), draft: preview(live) }, writes: [] };
-    msg = { ...live, ...base };
-    writes = [{ method: 'PATCH', path: 'outreach_messages?id=eq.' + live.id, body: base }];
+    const textChanged = live.subject !== base.subject || live.body !== base.body;
+    const meta = { ...(live.metadata || {}) };
+    if (textChanged) meta.history = coldHistory(meta, live, now, req.reason || 'regenerado', req.by);
+    if (lint) meta.cold = coldSummary(lint, cold, now, req.by);
+    const patch = lint || textChanged ? { ...base, metadata: meta } : base;
+    msg = { ...live, ...patch };
+    writes = [{ method: 'PATCH', path: 'outreach_messages?id=eq.' + live.id, body: patch }];
   } else {
     const id = ctx.new_id;
-    msg = { id, candidate_id: cand.id, company_name: cand.company_name, ghl_contact_id: cand.ghl_contact_id || null, ghl_opportunity_id: cand.ghl_opportunity_id || null, kind, direction: 'outbound', from_email: ctx.config && ctx.config.from_email || null, created_by: req.by || 'Christian vía Hermes', created_at: now, metadata: inbound ? { reply_to_message_id: inbound.id } : {}, gmail_thread_id: inbound ? inbound.gmail_thread_id : (initialSent ? initialSent.gmail_thread_id : null), in_reply_to: inbound ? (inbound.rfc_message_id || null) : (initialSent ? (initialSent.rfc_message_id || null) : null), ...base };
+    msg = { id, candidate_id: cand.id, company_name: cand.company_name, ghl_contact_id: cand.ghl_contact_id || null, ghl_opportunity_id: cand.ghl_opportunity_id || null, kind, direction: 'outbound', from_email: ctx.config && ctx.config.from_email || null, created_by: req.by || 'Christian vía Hermes', created_at: now, metadata: Object.assign(inbound ? { reply_to_message_id: inbound.id } : {}, lint ? { cold: coldSummary(lint, cold, now, req.by) } : {}), gmail_thread_id: inbound ? inbound.gmail_thread_id : (initialSent ? initialSent.gmail_thread_id : null), in_reply_to: inbound ? (inbound.rfc_message_id || null) : (initialSent ? (initialSent.rfc_message_id || null) : null), ...base };
     writes = [{ method: 'POST', path: 'outreach_messages', body: msg, prefer: 'return=minimal' }];
   }
-  return { response: { ok: true, status: live ? 'updated' : 'created', message: (live ? 'Actualicé' : 'Guardé') + ' el borrador de ' + cand.company_name + ' (' + kind + ', NO enviado)' + (invalidated ? '. La aprobación anterior quedó anulada: hay que aprobarlo de nuevo.' : '.'), draft: preview(msg), approval_invalidated: invalidated, warnings: [], next: 'approve_outreach' }, writes, message: msg };
+  return { response: { ok: true, status: live ? 'updated' : 'created', message: (live ? 'Actualicé' : 'Guardé') + ' el borrador de ' + cand.company_name + ' (' + kind + ', NO enviado)' + (invalidated ? '. La aprobación anterior quedó anulada: hay que aprobarlo de nuevo.' : '.'), draft: preview(msg), approval_invalidated: invalidated, warnings: lint ? lint.warnings.slice(0, 6).map((w) => w.text) : [], cold: lint ? { score: lint.score, level: lint.level, cta_kind: lint.cta_kind, similarity: lint.similarity } : null, next: 'approve_outreach' }, writes, message: msg };
+}
+
+/** Solo lectura: explica el score de un correo pendiente (o de un asunto/cuerpo dado) frente a los demás borradores y enviados. */
+export function planLint(req, ctx) {
+  const cand = ctx.candidate;
+  const history = ctx.history || [];
+  const kind = req.kind || 'initial';
+  const live = history.find((m) => m.kind === kind && m.direction === 'outbound' && ['draft', 'approved', 'sending', 'sent'].includes(m.status)) || null;
+  const subject = req.subject != null ? req.subject : live && live.subject, body = req.body != null ? req.body : live && live.body;
+  if (!cand || subject == null || body == null) return { response: { ok: false, status: 'not_found', error: 'sin_borrador', message: 'No hay un correo ' + kind + ' de ese prospecto para evaluar: guarda un borrador o indica subject y body.' }, writes: [] };
+  const peers = (ctx.peers || []).filter((p) => p.candidate_id !== cand.id);
+  const stored = live && live.metadata && live.metadata.cold ? live.metadata.cold : null;
+  const lint = coldLint({ subject, body, kind }, peers, cmNormCold(req.cold || (stored ? { evidence: stored.evidence } : {})));
+  return { response: { ok: true, status: 'executed', company: cand.company_name, kind, score: lint.score, level: lint.level, hard: lint.hard, warnings: lint.warnings, rewards: lint.rewards, similarity: lint.similarity, cta_kind: lint.cta_kind, signature: lint.signature, words: lint.metrics.words, compared_with: peers.length, message: 'Score ' + lint.score + '/100 (' + lint.level + ') para ' + cand.company_name + ': ' + (lint.warnings.length ? lint.warnings.slice(0, 4).map((w) => w.text).join(' ') : 'sin avisos.') }, writes: [] };
 }
 
 export function planApprove(req, ctx) {
