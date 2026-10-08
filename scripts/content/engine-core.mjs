@@ -14,6 +14,7 @@
  *  - Ola B · Editorial Brain: tipo editorial, voz por canal, largo, decisión visual y reglas de marca (edEvaluate).
  */
 import { edEvaluate } from './editorial-core.mjs';
+import { rfCtaCheck } from './resource-factory-core.mjs';
 
 export function evaluatePiece(piece, ctx = {}) {
   const errors = [];
@@ -150,6 +151,10 @@ export function evaluatePiece(piece, ctx = {}) {
   editorial.errors.forEach((e) => errors.push(e));
   editorial.warnings.forEach((w) => warnings.push(w));
   penalties += editorial.penalties;
+  // Ola B · Authority Resource Factory: el CTA debe ser coherente con la intención de la pieza.
+  const ctaChk = rfCtaCheck(p);
+  ctaChk.warnings.forEach((w) => warnings.push(w));
+  penalties += ctaChk.penalties;
   penalties = Math.min(penalties, 20);
 
   // Factores 0–10 (los asigna quien genera la pieza; aquí se validan, se acotan y se aplican topes)

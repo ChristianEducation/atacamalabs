@@ -7,6 +7,7 @@
 import { linkedinOverview, liLabel } from '../linkedin/linkedin-core.mjs';
 import { edPlan } from '../content/editorial-core.mjs';
 import { growthResourceRank } from '../content/growth-core.mjs';
+import { rfAuthority } from '../content/resource-factory-core.mjs';
 
 export function tzParts(ms, tz) {
   const p = new Intl.DateTimeFormat('en-US', { timeZone: tz || 'America/Santiago', hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', weekday: 'short' }).formatToParts(new Date(ms));
@@ -441,7 +442,14 @@ export function composePerformance(d) {
     withData.slice(0, 3).forEach((r, i) => lines.push((i + 1) + '. «' + String(r.topic).slice(0, 60) + '» (' + r.channel + ', ' + r.window + '): ' + r.engagement + ' (' + (r.likes || 0) + ' likes, ' + (r.comments || 0) + ' comentarios, ' + (r.shares || 0) + ' compartidos)'));
     if (withData.length < 5) lines.push('Muestra pequeña (n=' + withData.length + '): son indicios, no conclusiones; no se comparan canales entre sí.');
   }
-  return { text: lines.join('\n'), pieces: rows };
+  // Ola B · atención vs autoridad: la interacción visible (likes) no es lo mismo que conversación útil o leads.
+  const au = rfAuthority({ pieces: pcs, metrics, resources: d.resources || [], leads: d.leads || [] });
+  if (au.pieces_measured) {
+    lines.push('Atención vs autoridad (' + au.pieces_measured + ' medidas): ' + au.authority + ' con conversación/leads, ' + au.attention_only + ' solo atención, ' + au.mixed + ' mixtas.');
+    au.learn.forEach((l) => lines.push('• ' + l));
+    lines.push('No se puede medir hoy: guardados, clics ni visitas al recurso; la atribución UTM de cada lead vive en GHL.');
+  }
+  return { text: lines.join('\n'), pieces: rows, authority: au };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

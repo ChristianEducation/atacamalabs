@@ -495,19 +495,24 @@ def submit_content_piece(piece_path: str = "", piece_json: str = "", origin: str
 
 
 @mcp.tool()
-def content_resources(action: str, query: str = "", resource_json: str = "", slug: str = "") -> str:
-    """Biblioteca de recursos reutilizables (checklists, guías, plantillas en atacamalabs.cl/recursos/...). action = list | register | retire.
+def content_resources(action: str, query: str = "", resource_json: str = "", slug: str = "", topic: str = "", summary: str = "", editorial_type: str = "", channel: str = "", allow_keyword: bool = False) -> str:
+    """Biblioteca de recursos reutilizables (checklists, guías, plantillas en atacamalabs.cl/recursos/...). action = list | register | retire | opportunity | backlog.
+    AUTHORITY RESOURCE FACTORY (Ola B): opportunity (topic, summary, editorial_type, channel) → ¿esta pieza debe usar un recurso? Devuelve reuse (hay uno activo: úsalo, no crees otro), backlog (ya está en borrador, falta su página), propose (la backlog tiene un candidato que encaja) o none (publica sin recurso: opinión, reflexión, noticia o tema sin recurso que aporte), más el CTA recomendado (sin CTA | resource_link | dm | diagnostic; «comenta PALABRA» solo con recurso de valor real y entrega MANUAL). backlog → candidatos de recursos con su estado. Un recurso nuevo exige metadata.format (mapa_de_procesos | checklist_interactivo | mini_diagnostico | calculadora | comparador | framework | canvas | plantilla | arquitectura_visual | guia_corta | caso_desmontado | mini_auditoria | demo | recurso_interactivo | herramienta_web) y metadata.differentiator (qué lo hace distinto y útil); NO PDF/ebook/«guía gratis» genéricos ni recursos creados solo para tener un CTA.
     list (query opcional) → ANTES de crear un recurso nuevo revisa si ya existe uno que resuelva el mismo problema y reutilízalo (resource_id en la pieza). register → resource_json con slug, name, type (guia|checklist|plantilla|diagnostico|prompt|documento|comparativa|caso|herramienta|pagina), topic, audience, problem (qué resuelve, ≥ 20 caracteres), cta_mode (resource_link | dm | diagnostic), cta_copy, url (https://atacamalabs.cl/recursos/<slug>), status (draft | active; active exige que la página responda 200). Un recurso nuevo queda en borrador hasta que exista su página: NO inventes recursos para tener un CTA. retire → slug."""
     if action == "list":
         return _grow({"action": "resources_list", **({"query": query} if query else {})})
     if action == "retire":
         return _grow({"action": "resource_retire", "slug": slug})
+    if action == "opportunity":
+        return _grow({"action": "resource_opportunity", "topic": topic, "summary": summary, "editorial_type": editorial_type, "channel": channel, "allow_keyword": allow_keyword or None})
+    if action == "backlog":
+        return _grow({"action": "resource_backlog"})
     if action == "register":
         res, err = _json_arg(resource_json, "", "el recurso")
         if err:
             return err
         return _grow({"action": "resource_register", "resource": res, "slug": res.get("slug", "")})
-    return json.dumps({"ok": False, "error": "action_invalida", "message": "action = list | register | retire"}, ensure_ascii=False)
+    return json.dumps({"ok": False, "error": "action_invalida", "message": "action = list | register | retire | opportunity | backlog"}, ensure_ascii=False)
 
 
 @mcp.tool()

@@ -14,6 +14,7 @@
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import * as growth from '../../scripts/content/growth-core.mjs';
+import * as resourceFactory from '../../scripts/content/resource-factory-core.mjs';
 
 const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 const PACK_ID = '0ba54785-bff0-4a2d-a397-64e697d34e38';
@@ -29,8 +30,8 @@ const sbApply = (name, pos) => ({ id: randomUUID(), name, type: 'n8n-nodes-base.
   parameters: { method: '={{ $json.method || "POST" }}', url: `={{ $json.skip ? "${NONE}" : "${SUPABASE}/rest/v1/" + $json.path }}`, authentication: 'predefinedCredentialType', nodeCredentialType: 'supabaseApi', sendHeaders: true,
     headerParameters: { parameters: [{ name: 'Prefer', value: '={{ $json.prefer || "return=minimal" }}' }] }, sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full() } });
 
-export const LIB = Object.values(growth).filter((f) => typeof f === 'function').map((f) => f.toString()).join('\n\n');
-export const ACTIONS = ['queue_status', 'founder_start', 'founder_add_question', 'founder_answer', 'founder_cancel', 'founder_status', 'resources_list', 'resource_register', 'resource_retire', 'rss_pending', 'rss_mark', 'rss_status', 'competitors_list', 'competitor_report', 'intel_latest', 'signals_candidates'];
+export const LIB = [...Object.values(growth), ...Object.values(resourceFactory)].filter((f) => typeof f === 'function').map((f) => f.toString()).join('\n\n');
+export const ACTIONS = ['queue_status', 'founder_start', 'founder_add_question', 'founder_answer', 'founder_cancel', 'founder_status', 'resources_list', 'resource_register', 'resource_retire', 'rss_pending', 'rss_mark', 'rss_status', 'competitors_list', 'competitor_report', 'intel_latest', 'signals_candidates', 'resource_opportunity', 'resource_backlog'];
 
 export const PARSE = `try {
   const w = $('Growth Webhook').first().json || {};
@@ -62,7 +63,7 @@ export const PARSE = `try {
     add('interview', iid ? 'founder_interviews?id=eq.' + iid + '&select=*' : 'founder_interviews?status=eq.asked&is_test=eq.' + (b.test === true ? 'true' : 'false') + '&select=*&order=asked_at.desc&limit=1');
   } else if (action === 'founder_status') {
     add('interviews', 'founder_interviews?is_test=eq.false&select=id,status,question,answer_source,piece_ids,asked_at,answered_at&order=asked_at.desc&limit=10');
-  } else if (action === 'resources_list') {
+  } else if (action === 'resources_list' || action === 'resource_opportunity' || action === 'resource_backlog') {
     add('resources', 'content_resources?select=*&order=created_at.desc&limit=200');
   } else if (action === 'resource_register' || action === 'resource_retire') {
     const slug = String(b.slug || (b.resource || {}).slug || '').trim();
@@ -173,6 +174,15 @@ if (A === 'queue_status') {
   const ranked = b.query ? growthResourceRank(base.map((r) => ({ ...r, status: r.status === 'draft' && !st ? 'draft' : r.status })), String(b.query), { includeDraft: true, limit: 8 }) : base.slice(0, 20).map((r) => ({ ...r, match_score: null }));
   resp = { ok: true, action: A, count: ranked.length, resources: ranked.map((r) => ({ id: r.id, slug: r.slug, name: r.name, type: r.type, topic: r.topic, audience: r.audience, problem: r.problem, cta_mode: r.cta_mode, cta_copy: r.cta_copy, url: r.url, status: r.status, match_score: r.match_score })),
     message: ranked.length ? 'Antes de crear un recurso nuevo, reutiliza uno de estos si responde al mismo problema.' : 'No hay un recurso adecuado: puedes proponer uno nuevo con resource_register (queda en borrador hasta que exista su página).' };
+} else if (A === 'resource_opportunity') {
+  const r = rfAssess({ topic: str(b.topic, 200), summary: str(b.summary, 600), editorial_type: str(b.editorial_type, 30), channel: str(b.channel, 30) }, R.resources);
+  const cta = rfCta({ editorial_type: str(b.editorial_type, 30) || 'educational', channel: str(b.channel, 30) || 'linkedin_page', resource: r.action === 'reuse' ? { id: r.resource.id, status: 'active', format: ((R.resources.find((x) => x.id === r.resource.id) || {}).metadata || {}).format } : null, allow_keyword: b.allow_keyword === true });
+  resp = { ok: true, action: A, decision: r.action, reason: r.reason, resource: r.resource || null, candidate: r.candidate || null, matches: r.matches, cta, message: r.action === 'reuse' ? 'Reutiliza este recurso: resource_id en la pieza, cta_mode ' + cta.cta_mode + ' y {{resource_url}} en el texto del CTA.' : r.action === 'propose' ? 'Puedes registrar el candidato con content_resources(action="register") (queda en borrador hasta que exista su página); la pieza de hoy sale sin recurso.' : 'Publica la pieza sin recurso. ' + cta.why };
+} else if (A === 'resource_backlog') {
+  const have = {}; R.resources.forEach((x) => { have[x.slug] = x; });
+  const fm = rfFormats();
+  resp = { ok: true, action: A, count: rfBacklog().length, backlog: rfBacklog().map((c) => ({ slug: c.slug, name: c.name, format: c.format, type: fm[c.format].type, interactive: fm[c.format].interactive, effort: fm[c.format].effort, priority: c.priority, state: have[c.slug] ? have[c.slug].status : 'sin_registrar', differentiator: c.differentiator })).sort((a, c) => c.priority - a.priority),
+    message: 'Backlog editorial de recursos. Un recurso pasa a activo solo cuando existe su página y responde 200; no se crean recursos solo para tener un CTA.' };
 } else if (A === 'resource_register') {
   const input = { ...(b.resource || {}), ...b };
   const v = growthValidateResource({ slug: input.slug, name: input.name, type: input.type, topic: input.topic, audience: input.audience, problem: input.problem, cta_mode: input.cta_mode, cta_copy: input.cta_copy, url: input.url, status: input.status, metadata: input.metadata, created_by: 'hermes' });
@@ -180,7 +190,8 @@ if (A === 'queue_status') {
   if (!v.ok) fail('recurso_invalido', 'El recurso no es válido: ' + v.errors.join(', '), { errors: v.errors });
   else if (v.value.status === 'active' && !(probeRes && probeRes.statusCode === 200)) fail('url_no_responde_200', 'No se puede activar: la URL del recurso no respondió 200 (' + (probeRes ? probeRes.statusCode || 'sin respuesta' : 'sin verificar') + '). Publica la página y vuelve a registrar.');
   else if (ex && ex.status === 'retired') fail('recurso_retirado', 'Ese slug pertenece a un recurso retirado.');
-  else if (ex) { const patch = { ...v.value, updated_at: nowIso }; delete patch.created_by; writes.push({ method: 'PATCH', path: 'content_resources?id=eq.' + ex.id, body: patch }); resp = { ok: true, action: A, resource_id: ex.id, slug: v.value.slug, status: v.value.status, updated: true }; }
+  else if (!ex && rfValidateNew(v.value).errors.length) { const q = rfValidateNew(v.value); fail('recurso_de_baja_calidad', 'El recurso no cumple el estándar de autoridad: ' + q.errors.join(', '), { errors: q.errors, warnings: q.warnings }); }
+  else if (ex) { const patch = { ...v.value, metadata: { ...(ex.metadata || {}), ...(v.value.metadata || {}) }, updated_at: nowIso }; delete patch.created_by; writes.push({ method: 'PATCH', path: 'content_resources?id=eq.' + ex.id, body: patch }); resp = { ok: true, action: A, resource_id: ex.id, slug: v.value.slug, status: v.value.status, updated: true }; }
   else { const id = uuid(); writes.push({ method: 'POST', path: 'content_resources', body: { id, ...v.value } }); resp = { ok: true, action: A, resource_id: id, slug: v.value.slug, status: v.value.status, created: true, note: v.value.status === 'draft' ? 'Queda en borrador: pasa a active cuando su página responda 200.' : null }; }
 } else if (A === 'resource_retire') {
   const ex = R.resource[0];

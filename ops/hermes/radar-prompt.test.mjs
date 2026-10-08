@@ -48,5 +48,12 @@ t('Ola A: inteligencia orgánica es solo fuentes públicas, no copia, páginas l
   t('Ola B: la skill define el rol de cada cuenta y los comandos naturales (versión personal, Instagram, imagen, diagrama, recurso)', /LinkedIn Christian/.test(skill) && /Instagram Atacama Labs/.test(skill) && /hazme una versión para LinkedIn personal/.test(skill) && /adapta esto para Instagram/.test(skill) && /submit_content_piece\(origin="explicit"\)/.test(skill) && /NO uses publish_content/.test(skill));
 }
 
+// ---- Ola B · Authority Resource Factory en el prompt y la skill
+{
+  const skill2 = fs.readFileSync(new URL('./skills/atacama-ops/SKILL.md', import.meta.url), 'utf8');
+  t('Ola B: el job de piezas consulta la oportunidad de recurso y nunca crea recursos solo para tener un CTA', /content_resources\(action="opportunity"/.test(pcs) && /nunca crees un recurso solo para tener un CTA/.test(pcs) && /opinión, reflexión y noticia van sin CTA comercial/.test(pcs));
+  t('Ola B: la skill fija el estándar de recursos (formato + diferenciador, sin PDF genérico) y el CTA por intención con entrega manual del keyword', /metadata\.format/.test(skill2) && /metadata\.differentiator/.test(skill2) && /PDF\/ebook/.test(skill2) && /entrega MANUAL/.test(skill2));
+}
+
 console.log(`\n${pass} ok ${fail} fallos`);
 process.exit(fail ? 1 : 0);

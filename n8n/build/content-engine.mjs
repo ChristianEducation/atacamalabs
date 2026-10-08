@@ -21,9 +21,11 @@ import { summaryHash } from '../../scripts/content/metrics-core.mjs';
 import * as schedule from '../../scripts/content/schedule-core.mjs';
 import * as growth from '../../scripts/content/growth-core.mjs';
 import * as editorial from '../../scripts/content/editorial-core.mjs';
+import * as resourceFactory from '../../scripts/content/resource-factory-core.mjs';
 
 const SCHEDULE_LIB = Object.values(schedule).filter((f) => typeof f === 'function').map((f) => f.toString()).join('\n\n');
 const EDITORIAL_LIB = Object.values(editorial).filter((f) => typeof f === 'function').map((f) => f.toString()).join('\n\n');
+const RESOURCE_LIB = Object.values(resourceFactory).filter((f) => typeof f === 'function').map((f) => f.toString()).join('\n\n');
 const GROWTH_LIB = Object.values(growth).filter((f) => typeof f === 'function').map((f) => f.toString()).join('\n\n');
 const NONE = 'https://localhost.invalid/';
 
@@ -61,6 +63,8 @@ ${SCHEDULE_LIB}
 ${GROWTH_LIB}
 
 ${EDITORIAL_LIB}
+
+${RESOURCE_LIB}
 
 const PACK_ID = '${PACK_ID}';
 const ACCOUNTS = ${JSON.stringify(ACCOUNTS)};

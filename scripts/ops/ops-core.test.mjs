@@ -184,6 +184,14 @@ ok('rendimiento del contenido: sin publicaciones, sin snapshots y con cifras (si
   const r = oc.composePerformance(base({ pieces: [{ id: 'a', topic: 'A', channel: 'instagram', status: 'published', published_at: iso(5 * D) }, { id: 'b', topic: 'B', channel: 'linkedin_page', status: 'published', published_at: iso(5 * D) }], metrics: [{ content_piece_id: 'a', metric_window: '72h', status: 'ok', likes: 5, comments: 1, shares: 0, captured_at: iso(D) }, { content_piece_id: 'b', metric_window: '72h', status: 'ok', likes: 20, comments: 4, shares: 2, captured_at: iso(D) }] }));
   assert.match(r.text, /1\. «B» \(linkedin_page, 72h\): 26/); assert.match(r.text, /no entrega impresiones por publicación/); assert.match(r.text, /Muestra pequeña \(n=2\)/); assert.ok(!/impresiones: \d/.test(r.text));
 });
+ok('Ola B: rendimiento separa atención de autoridad (conversación y leads) y declara lo que no se puede medir', () => {
+  const pieces = [{ id: 'a', topic: 'Viral', channel: 'linkedin_page', status: 'published', published_at: iso(5 * D), editorial_type: 'news_explainer' }, { id: 'b', topic: 'Conversada', channel: 'linkedin_profile', status: 'published', published_at: iso(5 * D), editorial_type: 'build_in_public' }];
+  const metrics = [{ content_piece_id: 'a', metric_window: '72h', status: 'ok', likes: 40, comments: 1, shares: 0, captured_at: iso(D) }, { content_piece_id: 'b', metric_window: '72h', status: 'ok', likes: 6, comments: 8, shares: 2, captured_at: iso(D) }];
+  const r = oc.composePerformance(base({ pieces, metrics, resources: [], leads: [] }));
+  assert.match(r.text, /Atención vs autoridad \(2 medidas\): 1 con conversación\/leads, 1 solo atención/); assert.match(r.text, /No se puede medir hoy: guardados, clics ni visitas/);
+  assert.equal(r.authority.attention_only, 1); assert.equal(r.authority.authority, 1);
+  assert.ok(!/Atención vs autoridad/.test(oc.composePerformance(base({ pieces: [{ id: 'p', topic: 'X', channel: 'instagram', status: 'published', published_at: iso(5 * H) }] })).text));
+});
 ok('urgente: solo lo que requiere acción; nada urgente no inventa', () => {
   assert.match(oc.composeUrgent(rich()).text, /^URGENTE \(\d+\):/);
   assert.match(oc.composeUrgent(base()).text, /^Nada urgente ahora \(jue 8 oct\)\. Todo en orden\./);
