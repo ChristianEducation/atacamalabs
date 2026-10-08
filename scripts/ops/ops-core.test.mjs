@@ -14,7 +14,7 @@ const msg = (o) => ({ id: 'm' + Math.random().toString(36).slice(2, 7), candidat
 const WF_ACTIVE = oc.monitoredWorkflows().map((w) => ({ id: w.id, name: w.label, active: true }));
 const execs = (status, mins) => Array.from({ length: 3 }, (_, i) => ({ status, startedAt: iso((mins + i * 5) * 60000) }));
 const HEALTHY_EXECS = () => { const e = {}; oc.monitoredWorkflows().forEach((w) => { e[w.id] = execs('success', w.every ? Math.min(w.every, 5) : 120); }); return e; };
-const HERMES_OK = () => ({ gateway_ok: true, disk_pct: 40, jobs: [{ id: 'j1', name: 'Atacama Labs — Prospect Radar', state: 'paused', enabled: false }, { id: 'j2', name: 'Atacama Labs — Content Radar', state: 'paused', enabled: false }, { id: 'j3', name: 'atacama-daily', state: 'scheduled', enabled: true, last_status: 'ok', last_run_at: iso(23 * H), next_run_at: new Date(NOW + 1 * H).toISOString(), failure_streak: 0 }] });
+const HERMES_OK = () => ({ gateway_ok: true, disk_pct: 40, jobs: [{ id: 'j1', name: 'Atacama Labs — Prospect Radar', state: 'paused', enabled: false }, { id: 'j2', name: 'Atacama Labs — Content Radar', state: 'paused', enabled: false }, { id: 'j4', name: 'Atacama Labs — Content RSS', state: 'scheduled', enabled: true, last_status: 'ok', last_run_at: iso(5 * H), next_run_at: new Date(NOW + 1 * H).toISOString(), failure_streak: 0 }, { id: 'j5', name: 'Atacama Labs — Content Pieces', state: 'scheduled', enabled: true, last_status: 'ok', last_run_at: iso(5 * H), next_run_at: new Date(NOW + 1 * H).toISOString(), failure_streak: 0 }, { id: 'j6', name: 'Atacama Labs — Competitor Intelligence', state: 'scheduled', enabled: true, last_status: 'ok', last_run_at: iso(2 * D), next_run_at: new Date(NOW + 1 * H).toISOString(), failure_streak: 0 }, { id: 'j3', name: 'atacama-daily', state: 'scheduled', enabled: true, last_status: 'ok', last_run_at: iso(23 * H), next_run_at: new Date(NOW + 1 * H).toISOString(), failure_streak: 0 }] });
 const base = (o) => ({ now: NOW, cfg: CFG, opps: [], tasks: [], messages: [], candidates: [], pieces: [], metrics: [], signals_candidate: 0, alerts: [], runs: [], outreach: { mode: 'off' }, workflows: WF_ACTIVE, execs: HEALTHY_EXECS(), hermes: HERMES_OK(), errors24h: [], gmail: null, ...(o || {}) });
 
 ok('fechas Chile: día, diferencia de días y formato', () => {
@@ -224,8 +224,11 @@ ok('compuerta del Content Radar: corre, o se salta por cadencia / revisión pend
   let g = oc.contentGate(base()); assert.equal(g.mode, 'run'); assert.equal(g.max_signals, 5);
   g = oc.contentGate(base({ runs: [{ kind: 'content_radar', status: 'ok', created_at: iso(2 * D) }] })); assert.equal(g.mode, 'skip'); assert.match(g.reason, /ya corrió/);
   g = oc.contentGate(base({ runs: [{ kind: 'content_radar', status: 'skipped', created_at: iso(1 * D) }] })); assert.equal(g.mode, 'run');
-  g = oc.contentGate(base({ pieces: [piece(1), piece(2), piece(3)] })); assert.equal(g.mode, 'skip'); assert.match(g.reason, /esperando tu revisión/);
-  g = oc.contentGate(base({ signals_candidate: 5 })); assert.equal(g.mode, 'skip'); assert.match(g.reason, /señales candidatas/);
+  // Ola A · Governor: con piezas pendientes el radar SIGUE recolectando; solo avisa si se pueden crear piezas (tope configurable, 6 por defecto)
+  g = oc.contentGate(base({ pieces: [piece(1), piece(2), piece(3)] })); assert.equal(g.mode, 'run'); assert.equal(g.pieces_allowed, true); assert.equal(g.max_pending_in_review, 6);
+  g = oc.contentGate(base({ pieces: [1, 2, 3, 4, 5, 6].map(piece) })); assert.equal(g.mode, 'run'); assert.equal(g.pieces_allowed, false); assert.match(g.reason, /cola llena/);
+  g = oc.contentGate(base({ content_cfg: { max_pending_in_review: 2 }, pieces: [piece(1), piece(2)] })); assert.equal(g.pieces_allowed, false);
+  g = oc.contentGate(base({ signals_candidate: 12 })); assert.equal(g.mode, 'skip'); assert.match(g.reason, /señales candidatas/);
 });
 ok('alerta guardada pero nunca confirmada (Telegram falló) se reintenta; un evento ya avisado no', () => {
   const ev = base({ messages: [msg({ id: 'r9', direction: 'inbound', classification: 'reply', created_at: iso(H) })] });
@@ -331,4 +334,68 @@ ok('si Hermes deja de reportar, el panel lo muestra (atención a los 35 min, fal
   assert.equal(st(10).status, 'ok'); assert.equal(st(50).status, 'atencion'); assert.equal(st(120).status, 'fallo'); assert.match(st(120).reason, /no reporta hace 120 min/);
   assert.ok(!oc.healthReport(base()).components.some((c) => /reporte de alertas/.test(c.name)), 'sin snapshot no se inventa el componente');
 });
+// ---------- Ola A: Governor, RSS, inteligencia orgánica, recursos y Founder Interview
+const piece6 = (i) => ({ id: 'q' + i, topic: 'Tema ' + i, channel: 'linkedin_page', status: 'in_review', ghl_status: 'in_review', ghl_approval_status: 'pending', created_at: iso(H) });
+ok('summarizeGrowth: cola (6 por defecto), RSS, inteligencia orgánica, recursos con uso y Founder', () => {
+  const g = oc.summarizeGrowth(base({
+    pieces: [1, 2, 3].map(piece6), content_cfg: { max_pending_in_review: 6, rss_enabled: true, competitor_enabled: true },
+    feeds: [{ slug: 'a', enabled: true, last_status: 'ok', consecutive_failures: 0, last_checked_at: iso(H) }, { slug: 'b', enabled: true, last_status: 'error', last_error: 'http_503', consecutive_failures: 3, last_checked_at: iso(2 * H) }, { slug: 'c', enabled: false }],
+    feed_new: [{ relevance: 7 }, { relevance: 1 }], runs: [{ kind: 'content_rss', status: 'ok', created_at: iso(4 * H), summary: {} }],
+    intel: { created_at: iso(2 * D), competitors_scanned: ['vambe'], report: { gaps: ['costo real'], saturated_topics: ['24/7'], own_angles: [{ angle: 'Cuánto cuesta' }] } },
+    resources: [{ id: 'r1', slug: 'x', name: 'X', type: 'checklist', cta_mode: 'resource_link', url: 'https://atacamalabs.cl/recursos/x', status: 'active' }, { id: 'r2', slug: 'y', status: 'draft' }], resource_use: [{ resource_id: 'r1' }, { resource_id: 'r1' }],
+    interviews: [{ status: 'answered', question: '¿Por qué?', asked_at: iso(3 * H) }, { status: 'asked', question: 'Otra', asked_at: iso(9 * D) }] }));
+  assert.deepEqual([g.queue.pending, g.queue.max, g.queue.full], [3, 6, false]);
+  assert.equal(g.rss.feeds_total, 2); assert.equal(g.rss.feeds_ok, 1); assert.equal(g.rss.failing[0].slug, 'b'); assert.equal(g.rss.new_items, 2); assert.ok(g.rss.last_run);
+  assert.deepEqual(g.intel.gaps, ['costo real']); assert.equal(g.intel.competitors[0], 'vambe'); assert.equal(g.intel.own_angles[0], 'Cuánto cuesta');
+  assert.equal(g.resources.active, 1); assert.equal(g.resources.rows[0].uses, 2);
+  assert.equal(g.founder.pending_answer, 1); assert.equal(g.founder.answered_without_pieces, 1);
+  assert.equal(oc.summarizeGrowth(base({ pieces: [1, 2, 3, 4, 5, 6].map(piece6) })).queue.full, true);
+  assert.equal(oc.summarizeGrowth(base()).queue.max, 6, 'sin configuración: tope 6');
+});
+ok('compuerta RSS: corre solo con artículos relevantes nuevos; respeta desactivado, cadencia y señales sin pieza', () => {
+  assert.match(oc.rssGate(base({ feed_new: [] })).reason, /sin artículos nuevos relevantes/);
+  assert.equal(oc.rssGate(base({ feed_new: [{ relevance: 1 }] })).mode, 'skip');
+  const run = oc.rssGate(base({ feed_new: [{ relevance: 6 }, { relevance: 3 }] })); assert.equal(run.mode, 'run'); assert.equal(run.max_signals, 3); assert.equal(run.relevant_items, 2);
+  assert.equal(oc.rssGate(base({ content_cfg: { rss_enabled: false }, feed_new: [{ relevance: 9 }] })).mode, 'skip');
+  assert.match(oc.rssGate(base({ feed_new: [{ relevance: 9 }], runs: [{ kind: 'content_rss', status: 'ok', created_at: iso(3 * H) }] })).reason, /ya corrió/);
+  assert.equal(oc.rssGate(base({ feed_new: [{ relevance: 9 }], signals_candidate: 12 })).mode, 'skip');
+});
+ok('compuerta de inteligencia orgánica: semanal, solo si está activada', () => {
+  assert.equal(oc.competitorGate(base()).mode, 'run');
+  assert.equal(oc.competitorGate(base({ runs: [{ kind: 'competitor_intel', status: 'ok', created_at: iso(2 * D) }] })).mode, 'skip');
+  assert.equal(oc.competitorGate(base({ runs: [{ kind: 'competitor_intel', status: 'ok', created_at: iso(6 * D) }] })).mode, 'run');
+  assert.equal(oc.competitorGate(base({ content_cfg: { competitor_enabled: false } })).mode, 'skip');
+});
+ok('compuerta de piezas: sin señales o con la cola llena NO corre (no gasta IA); con espacio acota max_pieces', () => {
+  assert.match(oc.piecesGate(base({ signals_candidate: 0 })).reason, /no hay señales candidatas/);
+  assert.match(oc.piecesGate(base({ signals_candidate: 4, pieces: [1, 2, 3, 4, 5, 6].map(piece6) })).reason, /cola de revisión llena/);
+  let g = oc.piecesGate(base({ signals_candidate: 4, pieces: [1, 2].map(piece6) })); assert.equal(g.mode, 'run'); assert.equal(g.max_pieces, 2);
+  g = oc.piecesGate(base({ signals_candidate: 4, pieces: [1, 2, 3, 4, 5].map(piece6) })); assert.equal(g.max_pieces, 1, 'solo cabe una pieza más');
+  assert.match(oc.piecesGate(base({ signals_candidate: 4, runs: [{ kind: 'content_pieces', status: 'ok', created_at: iso(3 * H) }] })).reason, /ya corrió/);
+});
+ok('panel: cola, RSS, inteligencia, recursos y Founder; avisa cola llena, feeds caídos y entrevista sin pieza', () => {
+  const pn = oc.composePanel(base({ pieces: [1, 2, 3, 4, 5, 6].map(piece6), feeds: [{ slug: 'b', enabled: true, last_status: 'error', last_error: 'http_503', consecutive_failures: 3 }], interviews: [{ status: 'answered', question: 'x', asked_at: iso(H) }], resources: [], content_cfg: {} }));
+  assert.equal(pn.content.queue.full, true); assert.equal(pn.content.queue.max, 6); assert.ok(pn.content.rss && pn.content.intel && pn.content.resources && pn.content.founder);
+  const keys = pn.attention.map((a) => a.key); assert.ok(keys.includes('content_queue_full') && keys.includes('rss_failing') && keys.includes('founder_answered'));
+  assert.ok(!oc.composePanel(base()).attention.some((a) => a.key === 'content_queue_full'));
+});
+ok('alertas: feed RSS con 3+ fallos avisa; los avisos de corrida de Ola A son cortos y el RSS exitoso es silencioso', () => {
+  const ev = oc.evaluateAlerts(base({ feeds: [{ slug: 'b', enabled: true, consecutive_failures: 3, last_error: 'http_503' }] }), []);
+  assert.ok(ev.notify.some((x) => x.key === 'rss_feed:b'));
+  const runs = [{ id: 'r1', kind: 'content_rss', status: 'ok', created_at: iso(H), summary: {} }, { id: 'r2', kind: 'content_pieces', status: 'ok', created_at: iso(H), summary: { minutes: 6 } }, { id: 'r3', kind: 'competitor_intel', status: 'ok', created_at: iso(H), summary: {} }];
+  const ev2 = oc.evaluateAlerts(base({ runs, pieces: [{ ...piece6(1), created_at: iso(H) }], intel: { created_at: iso(H), competitors_scanned: ['vambe'], report: { gaps: ['costo real'] } } }), []);
+  const keys = ev2.notify.map((x) => x.key);
+  assert.ok(!keys.includes('run:r1')); assert.ok(keys.includes('run:r2') && keys.includes('run:r3'));
+  const t = oc.alertsText(ev2.notify); assert.match(t, /CONTENT[\s\S]*Nada publicado ni aprobado/); assert.match(t, /INTELIGENCIA ORGÁNICA/); assert.doesNotMatch(t, /[0-9a-f]{8}-[0-9a-f]{4}/);
+  assert.equal(oc.runNotice(base(), { kind: 'content_rss', status: 'ok', created_at: iso(H) }), null);
+  assert.equal(oc.runNotice(base(), { kind: 'content_rss', status: 'error', created_at: iso(H), summary: { reason: 'timeout' } }).severity, 'high');
+});
+ok('salud: los workflows 27/28 y los jobs nuevos de Hermes aparecen; un feed caído da atención', () => {
+  const h = oc.healthReport(base({ feeds: [{ slug: 'b', enabled: true, consecutive_failures: 4, last_error: 'http_503', last_status: 'error' }] }));
+  const names = h.components.map((c) => c.name);
+  ['Content RSS (ingestión)', 'Content RSS (Hermes)', 'Content Pieces (Hermes)', 'Inteligencia orgánica (Hermes)'].forEach((n) => assert.ok(names.includes(n), n));
+  assert.equal(h.components.find((c) => c.name === 'Content RSS (ingestión)').status, 'atencion');
+  assert.equal(oc.healthReport(base()).components.find((c) => c.name === 'Content RSS (ingestión)').status, 'ok');
+});
+
 console.log(n + ' ok');

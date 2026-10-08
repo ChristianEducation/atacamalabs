@@ -403,6 +403,160 @@ def waalaxy_lists() -> str:
     """Listas y campañas (pausadas o en curso) que existen hoy en Waalaxy, para elegir destino. Solo lectura."""
     return _li({"action": "lists"})
 
+# ---------------------------------------------------------------- Ola A · Content: Founder Interview · RSS · Recursos · Inteligencia orgánica · cola
+# Todo entra por los workflows 27 «Content Growth» y 12 «Content Intake» de n8n: nada se publica, nada se contacta y toda pieza termina «en revisión» en GHL.
+def _grow(body, timeout=90):
+    try:
+        from atacama_common import post_webhook
+        r = post_webhook("atacama-content-growth", body, timeout=timeout, ua="hermes-atacama-content/1.0")
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "red", "message": "No pude consultar Atacama OS (content-growth): %s" % type(ex).__name__}, ensure_ascii=False)
+    return json.dumps(r, ensure_ascii=False)[:24000]
+
+
+def _json_arg(text, path, label):
+    """Acepta el JSON como texto o como archivo dentro de /opt/data o /tmp. Devuelve (objeto, error_json)."""
+    try:
+        if path:
+            raw, _ = _read_file(path)
+        else:
+            raw = text
+        if not raw or not str(raw).strip():
+            return None, json.dumps({"ok": False, "error": "falta_" + label, "message": "Envía %s como JSON (texto) o como ruta a un archivo .json en /opt/data." % label}, ensure_ascii=False)
+        return json.loads(raw), None
+    except ValueError as ex:
+        return None, json.dumps({"ok": False, "error": "json_invalido", "message": "No pude leer %s: %s" % (label, str(ex)[:160])}, ensure_ascii=False)
+
+
+@mcp.tool()
+def content_queue() -> str:
+    """Estado de la cola de contenido: cuántas piezas esperan la revisión de Christian (de un tope de 6), si el sistema puede proponer piezas por su cuenta, señales candidatas, artículos RSS nuevos, entrevistas abiertas y carruseles esperando render. Solo lectura. Si la cola está llena, NO crees piezas de forma autónoma (el servidor igual las bloquea); una orden explícita de Christian sí puede saltarse el límite."""
+    return _grow({"action": "queue_status"})
+
+
+@mcp.tool()
+def founder_interview(action: str, interview_id: str = "", answer: str = "", source: str = "text", question: str = "", context: str = "", topic: str = "", test: bool = False) -> str:
+    """Founder Interview (contenido con la experiencia REAL de Christian). action = start | answer | cancel | status | add_question.
+    start → elige una pregunta basada en un hecho real y abre la entrevista (devuelve question + context + interview_id): muéstrasela a Christian tal cual, con el contexto breve.
+    answer → guarda la respuesta TEXTUAL de Christian (interview_id opcional: usa la última abierta). source = text | audio (si vino de un audio transcrito). Exige sustancia (≥ 120 caracteres): si es corta, pide más detalle; NUNCA completes tú lo que falta.
+    cancel → cancela la entrevista abierta. status → últimas entrevistas. add_question → propone una pregunta nueva (question + context con el hecho real que la motiva; nada genérico).
+    Después de answer: estructura 1–3 piezas (LinkedIn de Christian en primera persona, adaptación distinta para LinkedIn Atacama Labs, Instagram solo si aporta) y envíalas con submit_content_piece(origin="founder_interview", interview_id=...). Cada fuente real_work debe llevar evidence con citas LITERALES de la respuesta."""
+    body = {"action": {"start": "founder_start", "answer": "founder_answer", "cancel": "founder_cancel", "status": "founder_status", "add_question": "founder_add_question"}.get(action, "")}
+    if not body["action"]:
+        return json.dumps({"ok": False, "error": "action_invalida", "message": "action = start | answer | cancel | status | add_question"}, ensure_ascii=False)
+    for k, v in (("interview_id", interview_id), ("answer", answer), ("source", source), ("question", question), ("context", context), ("topic", topic)):
+        if v:
+            body[k] = v
+    if test:
+        body["test"] = True  # SOLO pruebas técnicas: la entrevista queda marcada is_test y no consume preguntas reales
+    return _grow(body)
+
+
+@mcp.tool()
+def submit_content_piece(piece_path: str = "", piece_json: str = "", origin: str = "autonomous", interview_id: str = "", test: bool = False) -> str:
+    """Envía UNA pieza de contenido al Content Intake (workflow 12): se valida, se puntúa y, si pasa (score ≥ 70), queda en GHL Social Planner como IN_REVIEW con una fecha PROPUESTA (noticia ≤ 24 h, normal ≤ 48 h, evergreen ≤ 72 h, hora de Chile; nunca +7 días). NADA se publica ni se programa: Christian aprueba en GHL.
+    La pieza va como JSON (piece_json) o como ruta a un archivo .json en /opt/data (piece_path) con el esquema de /opt/data/content/examples. origin: 'autonomous' (cron/radar; se BLOQUEA si hay 6 o más piezas en revisión: no se guarda nada), 'explicit' (Christian lo pidió; pasa con advertencia) o 'founder_interview' (exige interview_id; las citas de las fuentes real_work deben aparecer literales en la respuesta de Christian).
+    Campos opcionales de la pieza: resource_id (uuid de un recurso ACTIVO), cta_mode (none | resource_link | dm | diagnostic), cta_copy; en cta.text puedes usar {{resource_url}} (se reemplaza por la URL con atribución). Devuelve action = in_review | held | rejected (con errors) | blocked."""
+    piece, err = _json_arg(piece_json, piece_path, "la pieza")
+    if err:
+        return err
+    if origin not in ("autonomous", "explicit", "founder_interview"):
+        return json.dumps({"ok": False, "error": "origin_invalido", "message": "origin = autonomous | explicit | founder_interview"}, ensure_ascii=False)
+    body = {"piece": piece, "origin": origin}
+    if interview_id:
+        body["interview_id"] = interview_id
+    if test:
+        body["test"] = True
+    try:
+        from atacama_common import post_webhook
+        r = post_webhook("atacama-content-intake", body, timeout=150, ua="hermes-atacama-content/1.0")
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "red", "message": "No pude enviar la pieza al Content Intake: %s" % type(ex).__name__}, ensure_ascii=False)
+    return json.dumps(r, ensure_ascii=False)[:8000]
+
+
+@mcp.tool()
+def content_resources(action: str, query: str = "", resource_json: str = "", slug: str = "") -> str:
+    """Biblioteca de recursos reutilizables (checklists, guías, plantillas en atacamalabs.cl/recursos/...). action = list | register | retire.
+    list (query opcional) → ANTES de crear un recurso nuevo revisa si ya existe uno que resuelva el mismo problema y reutilízalo (resource_id en la pieza). register → resource_json con slug, name, type (guia|checklist|plantilla|diagnostico|prompt|documento|comparativa|caso|herramienta|pagina), topic, audience, problem (qué resuelve, ≥ 20 caracteres), cta_mode (resource_link | dm | diagnostic), cta_copy, url (https://atacamalabs.cl/recursos/<slug>), status (draft | active; active exige que la página responda 200). Un recurso nuevo queda en borrador hasta que exista su página: NO inventes recursos para tener un CTA. retire → slug."""
+    if action == "list":
+        return _grow({"action": "resources_list", **({"query": query} if query else {})})
+    if action == "retire":
+        return _grow({"action": "resource_retire", "slug": slug})
+    if action == "register":
+        res, err = _json_arg(resource_json, "", "el recurso")
+        if err:
+            return err
+        return _grow({"action": "resource_register", "resource": res, "slug": res.get("slug", "")})
+    return json.dumps({"ok": False, "error": "action_invalida", "message": "action = list | register | retire"}, ensure_ascii=False)
+
+
+@mcp.tool()
+def rss_items(action: str, limit: int = 12, item_ids: list[str] = [], status: str = "", note: str = "", signal_source_id: str = "") -> str:
+    """Artículos de los feeds RSS/Atom configurados (ingeridos por n8n cada hora, deduplicados). action = pending | mark | status.
+    pending → los más relevantes sin revisar (título, URL, resumen, fuente, fecha, relevancia) + si la cola permite crear piezas. mark → marca como signal (abriste una señal) o ignored (no sirve) para que no vuelvan; item_ids = ids de pending. status → salud de cada feed.
+    Un artículo solo vale como señal si lo abres, copias una CITA literal de la página y la envías con content_signals(submit)."""
+    if action == "pending":
+        return _grow({"action": "rss_pending", "limit": limit})
+    if action == "mark":
+        return _grow({"action": "rss_mark", "item_ids": item_ids, "status": status, "note": note, **({"signal_source_id": signal_source_id} if signal_source_id else {})})
+    if action == "status":
+        return _grow({"action": "rss_status"})
+    return json.dumps({"ok": False, "error": "action_invalida", "message": "action = pending | mark | status"}, ensure_ascii=False)
+
+
+@mcp.tool()
+def competitor_intel(action: str, report_path: str = "", report_json: str = "", signals_submitted: int = 0) -> str:
+    """Inteligencia ORGÁNICA de competencia (fuentes públicas; NO es Ads Radar; nunca copiar). action = list | latest | save.
+    list → competidores/referentes configurados (urls públicas) y el último reporte. latest → el último reporte (huecos, temas saturados, ángulos propios). save → guarda el reporte de esta corrida (report_json o report_path) con: run_id único, competitors[{slug, pages_read[urls que SÍ abriste], recent_topics, formats, hooks, offers, resources, repeated_messages}], saturated_topics, gaps, own_angles[{angle, why, channel_suggestion}]. Exige páginas leídas de cada competidor y al menos un hueco o ángulo propio con su porqué."""
+    if action == "list":
+        return _grow({"action": "competitors_list"})
+    if action == "latest":
+        return _grow({"action": "intel_latest"})
+    if action == "save":
+        rep, err = _json_arg(report_json, report_path, "el reporte")
+        if err:
+            return err
+        return _grow({"action": "competitor_report", "report": rep, "signals_submitted": signals_submitted})
+    return json.dumps({"ok": False, "error": "action_invalida", "message": "action = list | latest | save"}, ensure_ascii=False)
+
+
+@mcp.tool()
+def content_signals(action: str, signals_path: str = "", signals_json: str = "") -> str:
+    """Señales de contenido. action = candidates | submit | learnings.
+    candidates → señales candidatas YA verificadas (título, URL, resumen, cita literal, ángulo, canal sugerido), lo que ya está cubierto (no repetir) y si la cola permite piezas. submit → envía señales nuevas al gate (workflow 13: abre la URL y comprueba que la cita exista); signals_json/signals_path = {"icp_pack_id":"0ba54785-bff0-4a2d-a397-64e697d34e38","batch_id":"...","signals":[...]} con el mismo formato del Content Radar. learnings → ganchos a no repetir y aprendizajes por canal."""
+    if action == "candidates":
+        return _grow({"action": "signals_candidates"})
+    if action == "submit":
+        sig, err = _json_arg(signals_json, signals_path, "las señales")
+        if err:
+            return err
+        try:
+            from atacama_common import post_webhook
+            r = post_webhook("atacama-content-signals", sig, timeout=170, ua="hermes-atacama-content/1.0")
+        except Exception as ex:
+            return json.dumps({"ok": False, "error": "red", "message": "No pude enviar las señales: %s" % type(ex).__name__}, ensure_ascii=False)
+        return json.dumps(r, ensure_ascii=False)[:12000]
+    if action == "learnings":
+        try:
+            from atacama_common import get_webhook
+            return json.dumps(get_webhook("atacama-content-learnings", ua="hermes-atacama-content/1.0"), ensure_ascii=False)[:12000]
+        except Exception as ex:
+            return json.dumps({"ok": False, "error": "red", "message": "No pude leer los aprendizajes: %s" % type(ex).__name__}, ensure_ascii=False)
+    return json.dumps({"ok": False, "error": "action_invalida", "message": "action = candidates | submit | learnings"}, ensure_ascii=False)
+
+
+@mcp.tool()
+def report_content_job(kind: str, status: str = "ok", mode: str = "run", reason: str = "", minutes: int = 0, items_reviewed: int = 0, signals: int = 0, created: int = 0, blocked: int = 0, held: int = 0, competitors: int = 0, searches: int = 0, pages_opened: int = 0, est_cost_usd: float = 0.0) -> str:
+    """Registra la corrida de un job de contenido (para /ops y los avisos). kind = content_rss | competitor_intel | content_pieces. Hazlo SIEMPRE al terminar (también si no hubo nada) con cifras reales; si fallaste, status='error' y reason corto. Solo registra: no avisa por sí mismo."""
+    try:
+        from atacama_common import post_ops
+        r = post_ops({"action": "job_report", "report": {"kind": kind, "status": status, "mode": mode, "reason": reason[:300], "minutes": minutes, "items_reviewed": items_reviewed, "signals": signals, "created": created, "blocked": blocked, "held": held, "competitors": competitors, "searches": searches, "pages_opened": pages_opened, "est_cost_usd": est_cost_usd}}, timeout=60)
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "red", "message": "No pude registrar la corrida: %s" % type(ex).__name__}, ensure_ascii=False)
+    return json.dumps({k: r.get(k) for k in ("ok", "text", "recorded", "error")}, ensure_ascii=False)
+
+
 if __name__ == "__main__":
     mcp.run()
 

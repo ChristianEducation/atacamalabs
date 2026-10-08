@@ -27,7 +27,7 @@ const FIX = (o) => ({
   execs: Object.fromEntries(mons.map((w) => [w.id, okExecs(w.every)])),
   ...(o || {}),
 });
-const hermesOk = { gateway_ok: true, disk_pct: 41, jobs: [{ id: 'j1', name: 'Atacama Labs — Prospect Radar', state: 'paused', enabled: false }, { id: 'j3', name: 'Atacama Labs — Content Radar', state: 'paused', enabled: false }, { id: 'j2', name: 'atacama-daily', state: 'scheduled', enabled: true, last_status: 'ok', last_run_at: iso(23 * H), next_run_at: new Date(NOW + H).toISOString(), failure_streak: 0 }] };
+const hermesOk = { gateway_ok: true, disk_pct: 41, jobs: [{ id: 'j1', name: 'Atacama Labs — Prospect Radar', state: 'paused', enabled: false }, { id: 'j3', name: 'Atacama Labs — Content Radar', state: 'paused', enabled: false }, { id: 'j7', name: 'Atacama Labs — Content RSS', state: 'scheduled', enabled: true, last_status: 'ok', last_run_at: iso(5 * H), next_run_at: new Date(NOW + H).toISOString(), failure_streak: 0 }, { id: 'j8', name: 'Atacama Labs — Content Pieces', state: 'scheduled', enabled: true, last_status: 'ok', last_run_at: iso(5 * H), next_run_at: new Date(NOW + H).toISOString(), failure_streak: 0 }, { id: 'j9', name: 'Atacama Labs — Competitor Intelligence', state: 'scheduled', enabled: true, last_status: 'ok', last_run_at: iso(2 * D), next_run_at: new Date(NOW + H).toISOString(), failure_streak: 0 }, { id: 'j2', name: 'atacama-daily', state: 'scheduled', enabled: true, last_status: 'ok', last_run_at: iso(23 * H), next_run_at: new Date(NOW + H).toISOString(), failure_streak: 0 }] };
 
 async function call(body, fx) {
   const f = fx || FIX();
@@ -39,7 +39,10 @@ async function call(body, fx) {
   const execRes = ex.map((e) => (e.skip ? { statusCode: 0 } : (f.execs[e.wf_id] || { statusCode: 200, body: { data: [] } })));
   store['N8N Execs'] = execRes[0];
   store['Gmail Check 22'] = f.g22 || { statusCode: 0 }; store['Gmail Check 23'] = f.g23 || { statusCode: 0 }; store.Learnings = f.learn || { statusCode: 0 };
-  const comp = (await run('Compute', store, { 'Expand Execs': ex, 'N8N Execs': execRes }))[0].json; store.Compute = comp;
+  const gx = (await run('Expand Growth', store)).map((x) => x.json); store['Expand Growth'] = gx[0];
+  const gRes = gx.map((e) => (e.skip ? { statusCode: 0 } : (f.growth && f.growth[e.key] === 'FAIL' ? { statusCode: 500, body: {} } : ok200((f.growth && f.growth[e.key]) || []))));
+  store['SB Growth'] = gRes[0];
+  const comp = (await run('Compute', store, { 'Expand Execs': ex, 'N8N Execs': execRes, 'Expand Growth': gx, 'SB Growth': gRes }))[0].json; store.Compute = comp;
   const w = (await run('Expand Writes', store)).map((x) => x.json);
   store['Apply Writes'] = ok200({});
   const resp = (await run('Respond', store, { 'Apply Writes': w.map(() => ({ statusCode: f.writeNet ? undefined : (f.writeStatus || 201), body: {} })) }))[0].json;
@@ -124,6 +127,35 @@ r = await call({ action: 'alerts_poll', now_ms: 5, hermes: hermesOk });
 t('alerts_poll ignora now_ms sin dry_run (escribe con hora real)', r.parsed.now > Date.now() - 60000);
 r = await call({ action: 'alerts_poll', hermes: hermesOk }, FIX({ writeStatus: 500 }));
 t('si Supabase falla al guardar alertas, la respuesta lo informa', r.resp.ok === false && /Supabase HTTP 500/.test(r.resp.persist_error));
+
+// ---------- Ola A: compuertas, panel y reportes de los jobs nuevos
+const piecesIn = (k) => ({ 'SB Pieces': ok200(Array.from({ length: k }, (_, i) => ({ id: 'pp' + i, topic: 'Tema ' + i, channel: 'linkedin_page', status: 'in_review', ghl_status: 'in_review', ghl_approval_status: 'pending', is_test: false, created_at: iso(H) }))) });
+const FXG = (growth, k = 1) => { const f = FIX({ growth }); f.sb = { ...f.sb, ...piecesIn(k) }; return f; };
+r = await call({ action: 'rss_gate', now_ms: NOW }, FXG({ feed_new: [{ relevance: 7 }, { relevance: 1 }] }));
+t('rss_gate (workflow): lee feeds y decide correr si hay artículos relevantes', r.resp.mode === 'run' && r.resp.relevant_items === 1 && r.resp.max_signals === 3, JSON.stringify(r.resp));
+r = await call({ action: 'rss_gate', now_ms: NOW }, FXG({ feed_new: [] }));
+t('rss_gate (workflow): sin artículos nuevos => skip (no gasta IA)', r.resp.mode === 'skip');
+r = await call({ action: 'pieces_gate', now_ms: NOW }, FXG({}, 6));
+t('pieces_gate (workflow): cola llena (6/6 en revisión) => skip', r.resp.mode === 'skip' && /cola de revisión llena/.test(r.resp.reason), JSON.stringify(r.resp));
+r = await call({ action: 'pieces_gate', now_ms: NOW }, FXG({ content_cfg: [{ max_pending_in_review: 3 }] }, 3));
+t('pieces_gate (workflow): respeta el tope configurable en content_config (3/3 => skip)', r.resp.mode === 'skip' && r.resp.max_pending_in_review === 3, JSON.stringify(r.resp));
+r = await call({ action: 'pieces_gate', now_ms: NOW }, FXG({}, 1));
+t('pieces_gate (workflow): hay señales y espacio => run con max_pieces', r.resp.mode === 'run' && r.resp.max_pieces === 2, JSON.stringify(r.resp));
+r = await call({ action: 'competitor_gate', now_ms: NOW }, FXG({}));
+t('competitor_gate (workflow): primera corrida => run', r.resp.mode === 'run');
+r = await call({ action: 'content_gate', now_ms: NOW }, FXG({}, 6));
+t('content_gate (workflow): cola llena => el radar corre igual pero avisa pieces_allowed=false', r.resp.mode === 'run' && r.resp.pieces_allowed === false, JSON.stringify(r.resp));
+r = await call({ action: 'panel', now_ms: NOW, hermes: hermesOk }, FXG({ feeds: [{ slug: 'n8n-blog', enabled: true, last_status: 'ok', consecutive_failures: 0, last_checked_at: iso(H) }], feed_new: [{ relevance: 5 }], interviews: [{ status: 'asked', question: '¿Por qué?', asked_at: iso(2 * H) }], resources: [{ id: 'r1', slug: 'x', name: 'X', type: 'checklist', cta_mode: 'resource_link', url: 'https://atacamalabs.cl/recursos/x', status: 'active' }] }, 2));
+t('panel (workflow): incluye cola 2/6, RSS, recursos activos y Founder pendiente', (() => { const c = r.resp.panel.content; return c.queue.pending === 2 && c.queue.max === 6 && c.rss.feeds_total === 1 && c.rss.new_items === 1 && c.resources.active === 1 && c.founder.pending_answer === 1; })(), JSON.stringify(r.resp.panel && r.resp.panel.content && r.resp.panel.content.queue));
+t('panel (workflow): sigue siendo solo lectura (0 escrituras)', r.writes.length === 0);
+r = await call({ action: 'panel', now_ms: NOW, hermes: hermesOk }, FXG({ feeds: 'FAIL' }));
+t('panel (workflow): si falla una lectura de Ola A lo declara (missing) y no inventa', r.resp.missing.some((m) => /^growth:feeds/.test(m)));
+r = await call({ action: 'job_report', report: { kind: 'content_pieces', status: 'ok', created: 2, blocked: 0, held: 1, minutes: 7, est_cost_usd: 0.31, mode: 'run' } });
+t('job_report: registra la corrida con su tipo y cifras (solo ops_runs)', r.writes.length === 1 && r.writes[0].path === 'ops_runs' && r.writes[0].body.kind === 'content_pieces' && r.writes[0].body.summary.created === 2 && r.writes[0].body.est_cost_usd === 0.31);
+r = await call({ action: 'job_report', report: { kind: 'otro', status: 'ok' } });
+t('job_report: un tipo inventado se rechaza', r.resp.ok === false || r.writes.length === 0, JSON.stringify(r.resp));
+r = await call({ action: 'job_report', report: { kind: 'content_rss', status: 'error', reason: 'timeout leyendo feed' } });
+t('job_report: un error de RSS queda registrado como error', r.writes[0].body.status === 'error' && r.writes[0].body.kind === 'content_rss');
 
 console.log(`\n${pass} ok, ${fail} fallos`);
 process.exit(fail ? 1 : 0);

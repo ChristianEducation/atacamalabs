@@ -90,6 +90,12 @@ export type Panel = {
     published: PieceRow[];
     failed: string[];
     metrics_ready: number;
+    /** Ola A (8-oct-2026): campos opcionales para tolerar un payload anterior. */
+    queue?: { pending: number; max: number; full: boolean };
+    rss?: { enabled: boolean; feeds_total: number; feeds_ok: number; failing: { slug: string; error: string; failures: number }[]; new_items: number; last_checked_ago: string | null; last_run: { ago: string } | null };
+    intel?: { enabled: boolean; report_ago: string | null; competitors: string[]; gaps: string[]; saturated: string[]; own_angles: string[]; last_run: { ago: string } | null };
+    resources?: { active: number; rows: { slug: string; name: string; type: string; cta_mode: string; url: string; uses: number }[] };
+    founder?: { pending_answer: number; answered_without_pieces: number; last: { status: string; question: string; ago: string } | null };
   };
   system: {
     overall: Status;

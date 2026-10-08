@@ -101,3 +101,40 @@ def post_linkedin(body, timeout=90):
                                  headers={"Content-Type": "application/json", "X-Atacama-Key": key, "User-Agent": "hermes-atacama-linkedin/1.0"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode("utf-8", "replace"))
+
+
+def _webhook_url(path, env=None):
+    e = env or load_env()
+    p = urllib.parse.urlparse(e.get("ATACAMA_INGEST_URL", ""))
+    if not p.scheme or not p.netloc:
+        return ""
+    return f"{p.scheme}://{p.netloc}/webhook/{path}"
+
+
+def post_webhook(path, body, timeout=90, ua="hermes-atacama/1.0"):
+    """POST con la clave de ingesta a un webhook de n8n (Ola A: content-growth · content-intake · content-signals). Lanza excepción si n8n no responde."""
+    e = load_env()
+    url, key = _webhook_url(path, e), e.get("ATACAMA_INGEST_KEY", "")
+    if not url or not key:
+        raise RuntimeError("falta ATACAMA_INGEST_URL / ATACAMA_INGEST_KEY en /opt/data/.env")
+    req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), method="POST",
+                                 headers={"Content-Type": "application/json", "X-Atacama-Key": key, "User-Agent": ua})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return json.loads(r.read().decode("utf-8", "replace"))
+    except urllib.error.HTTPError as ex:  # 4xx/5xx con cuerpo JSON útil (p. ej. el intake responde 400 con los errores de validación)
+        try:
+            return json.loads(ex.read().decode("utf-8", "replace"))
+        except Exception:
+            raise
+
+
+def get_webhook(path, timeout=60, ua="hermes-atacama/1.0"):
+    """GET con la clave de ingesta (p. ej. atacama-content-learnings)."""
+    e = load_env()
+    url, key = _webhook_url(path, e), e.get("ATACAMA_INGEST_KEY", "")
+    if not url or not key:
+        raise RuntimeError("falta ATACAMA_INGEST_URL / ATACAMA_INGEST_KEY en /opt/data/.env")
+    req = urllib.request.Request(url, method="GET", headers={"X-Atacama-Key": key, "User-Agent": ua})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read().decode("utf-8", "replace"))

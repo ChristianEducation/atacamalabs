@@ -9,6 +9,7 @@
  * Uso: node scripts/content/submit.mjs <pieza.json> [--test] [--no-review]
  *   --test       marca la pieza como PRUEBA (prefijo «[PRUEBA ATACAMA OS — NO PUBLICAR]» y is_test=true)
  *   --no-review  solo valida/puntúa/guarda en Supabase; no crea el post en GHL
+ *   --origin X   explicit (default: orden de Christian) | autonomous (respeta el tope de la cola) | founder_interview (con --interview <id>)
  * Variables (.env.local): N8N_BASE_URL, ATACAMA_INGEST_KEY, GHL_PRIVATE_INTEGRATION_TOKEN2, GHL_LOCATION_ID.
  */
 import fs from 'node:fs';
@@ -21,10 +22,13 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const env = Object.fromEntries(fs.readFileSync(path.join(ROOT, '.env.local'), 'utf8').split(/\r?\n/).filter((l) => l.includes('=') && !l.startsWith('#'))
   .map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1).replace(/^["']|["']$/g, '')]));
 const args = process.argv.slice(2);
-const file = args.find((a) => !a.startsWith('--'));
+const file = args.find((a, i) => !a.startsWith('--') && !['--origin', '--interview'].includes(args[i - 1]));
 if (!file) { console.error('Uso: node scripts/content/submit.mjs <pieza.json> [--test] [--no-review]'); process.exit(1); }
 const isTest = args.includes('--test');
 const noReview = args.includes('--no-review');
+const flagVal = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : null; };
+const origin = flagVal('--origin') || 'explicit';          // explicit (orden de Christian) | autonomous (cron: respeta el tope de la cola) | founder_interview
+const interviewId = flagVal('--interview');
 const piece = JSON.parse(fs.readFileSync(file, 'utf8'));
 
 async function uploadToGhl(png) {
@@ -46,6 +50,6 @@ if (['imagen', 'carrusel'].includes(piece.format) && !(piece.media || []).length
 }
 
 const url = env.N8N_BASE_URL.replace(/\/$/, '') + '/webhook/atacama-content-intake';
-const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Atacama-Key': env.ATACAMA_INGEST_KEY }, body: JSON.stringify({ piece, test: isTest, submit_to_review: !noReview }) });
+const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Atacama-Key': env.ATACAMA_INGEST_KEY }, body: JSON.stringify({ piece, test: isTest, submit_to_review: !noReview, origin, ...(interviewId ? { interview_id: interviewId } : {}) }) });
 const out = await res.json().catch(() => ({}));
 console.log(JSON.stringify({ http: res.status, ...out, media_file_ids: (piece.media || []).map((m) => m.fileId).filter(Boolean) }, null, 2));

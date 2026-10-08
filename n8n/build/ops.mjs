@@ -44,7 +44,7 @@ const GH_HEADERS = [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', 
 export const LIB = [...new Map([...Object.values(core), ...['linkedinOverview', 'linkedinView', 'liLabel'].map((k) => liCore[k])].filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
 const CFG_JSON = JSON.stringify({ tz: OPS_CFG.tz, stages: OPS_CFG.stages, ignore_opps: OPS_CFG.ignore_opps });
 
-export const ACTIONS = ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'content_gate', 'radar_report', 'content_radar_report', 'alerts_poll', 'alerts_ack'];
+export const ACTIONS = ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'radar_report', 'content_radar_report', 'job_report', 'alerts_poll', 'alerts_ack'];
 
 export const parseCode = `try {
   const first = $('Ops Webhook').first().json || {};
@@ -54,7 +54,7 @@ export const parseCode = `try {
   if (!ACTIONS.includes(action)) throw new Error('action inválida: usa ' + ACTIONS.join(' | '));
   const dry = b.dry_run === true;
   // la hora solo se puede simular en consultas de lectura o con dry_run (pruebas); las escrituras siempre usan la hora real
-  const now = Number.isFinite(Number(b.now_ms)) && (dry || ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'content_gate'].includes(action)) ? Number(b.now_ms) : Date.now();
+  const now = Number.isFinite(Number(b.now_ms)) && (dry || ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate'].includes(action)) ? Number(b.now_ms) : Date.now();
   const need = {
     sb: !['alerts_ack'].includes(action) || true,
     ghl: ['daily', 'today', 'urgent', 'stale', 'replies', 'panel'].includes(action),
@@ -62,6 +62,7 @@ export const parseCode = `try {
     deep: (action === 'health' && b.deep === true) || (action === 'alerts_poll' && b.deep_gmail === true) || (action === 'daily' && b.deep === true),
     learn: action === 'content_performance',
     panel: action === 'panel',
+    growth: ['panel', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'alerts_poll', 'health'].includes(action),
   };
   const sb = '${SUPABASE}/rest/v1/', none = '${NONE}';
   const iso = (ms) => new Date(ms).toISOString();
@@ -83,7 +84,16 @@ export const parseCode = `try {
     gmail: need.deep ? '${N8N_BASE}/webhook/' : none,
     learn: need.learn ? '${N8N_BASE}/webhook/atacama-content-learnings' : none,
   };
-  return [{ json: { action, params: b.params && typeof b.params === 'object' ? b.params : {}, hermes: b.hermes && typeof b.hermes === 'object' ? b.hermes : null, keys: Array.isArray(b.keys) ? b.keys.map(String).slice(0, 50) : [], report: b.report && typeof b.report === 'object' ? b.report : {}, dry, now, need, u } }];
+  const growth_reads = need.growth ? [
+    { key: 'content_cfg', url: sb + 'content_config?id=eq.1&select=*' },
+    { key: 'feeds', url: sb + 'content_feeds?select=slug,name,enabled,last_checked_at,last_status,last_error,consecutive_failures&limit=100' },
+    { key: 'feed_new', url: sb + 'content_feed_items?status=eq.new&select=relevance&limit=500' },
+    { key: 'intel', url: sb + 'content_intel_reports?select=created_at,competitors_scanned,report&order=created_at.desc&limit=1' },
+    { key: 'resources', url: sb + 'content_resources?select=id,slug,name,type,cta_mode,url,status&limit=100' },
+    { key: 'resource_use', url: sb + 'content_pieces?resource_id=not.is.null&is_test=eq.false&select=resource_id&limit=500' },
+    { key: 'interviews', url: sb + 'founder_interviews?is_test=eq.false&select=status,question,asked_at&order=asked_at.desc&limit=10' },
+  ] : [];
+  return [{ json: { growth_reads, action, params: b.params && typeof b.params === 'object' ? b.params : {}, hermes: b.hermes && typeof b.hermes === 'object' ? b.hermes : null, keys: Array.isArray(b.keys) ? b.keys.map(String).slice(0, 50) : [], report: b.report && typeof b.report === 'object' ? b.report : {}, dry, now, need, u } }];
 } catch (e) { return [{ json: { fatal: String((e && e.message) || e) } }]; }`;
 
 export const expandExecsCode = `${LIB}
@@ -91,6 +101,10 @@ export const expandExecsCode = `${LIB}
 const p = $('Parse').first().json;
 if (!p.need.n8n) return [{ json: { skip: true, url: '${NONE}' } }];
 return monitoredWorkflows().map((w) => ({ json: { skip: false, wf_id: w.id, url: '${N8N_BASE}/api/v1/executions?workflowId=' + w.id + '&limit=5' } }));`;
+
+export const expandGrowthCode = `const p = $('Parse').first().json;
+if (!p.growth_reads || !p.growth_reads.length) return [{ json: { skip: true, key: null, url: '${NONE}' } }];
+return p.growth_reads.map((r) => ({ json: { skip: false, key: r.key, url: r.url } }));`;
 
 export const computeCode = `${LIB}
 
@@ -112,12 +126,15 @@ const errBody = node('N8N Errors').body;
 const errCount = {};
 (p.need.n8n && errBody && Array.isArray(errBody.data) ? errBody.data : []).filter((e) => p.now - Date.parse(e.startedAt) <= 24 * 3600000).forEach((e) => { const nm = nameOf[e.workflowId] || ('workflow ' + e.workflowId); errCount[nm] = (errCount[nm] || 0) + 1; });
 const errors24h = Object.keys(errCount).map((k) => ({ name: k, count: errCount[k] })).sort((a, b) => b.count - a.count);
+const G = {};
+if (p.growth_reads && p.growth_reads.length) { const gi = $('Expand Growth').all().map((i) => i.json); const gr = $('SB Growth').all().map((i) => i.json || {}); gi.forEach((e, i) => { if (e.skip) return; const r = gr[i] || {}; if ((r.statusCode || 0) < 300 && Array.isArray(r.body)) G[e.key] = r.body; else missing.push('growth:' + e.key); }); }
 const gb = (n) => { const x = node(n); return (x.statusCode || 0) < 300 && x.body && typeof x.body === 'object' ? x.body : null; };
 const gmail = p.need.deep ? { w22: gb('Gmail Check 22'), w23: gb('Gmail Check 23') } : null;
 const oppBody = node('GHL Opps').body, taskBody = node('GHL Tasks').body;
 const d = { now: p.now, cfg: CFG, opps: p.need.ghl && oppBody && Array.isArray(oppBody.opportunities) ? oppBody.opportunities : [], tasks: p.need.ghl && taskBody && Array.isArray(taskBody.tasks) ? taskBody.tasks : [],
   messages: arr('SB Messages'), candidates: arr('SB Candidates'), pieces: arr('SB Pieces'), metrics: arr('SB Metrics'), signals_candidate: arr('SB Signals').length, signals_list: arr('SB Signals'), review_pieces: arr('SB Review Pieces'), alerts: arr('SB Alerts'), runs: arr('SB Runs'), outreach: arr('SB Config')[0] || null,
-  workflows, execs, errors24h, hermes: p.hermes, gmail, missing };
+  workflows, execs, errors24h, hermes: p.hermes, gmail, missing,
+  content_cfg: (G.content_cfg || [])[0] || null, feeds: G.feeds || [], feed_new: G.feed_new || [], intel: (G.intel || [])[0] || null, resources: G.resources || [], resource_use: G.resource_use || [], interviews: G.interviews || [] };
 const A = p.action, writes = [], nowIso = new Date(p.now).toISOString();
 if (!d.hermes) { const hs = d.alerts.find((a) => a.alert_key === '_state:hermes'); if (hs && hs.meta && Array.isArray(hs.meta.jobs)) { d.hermes = hs.meta; d.hermes_age_ms = Math.max(0, p.now - Date.parse(hs.last_seen_at)); } }
 let out;
@@ -134,6 +151,19 @@ else if (A === 'content_status') { out = composeContentStatus(d); }
 else if (A === 'content_performance') { const perf = composePerformance(d); const lb = gb('Learnings'); const le = composeLearnings(lb); out = { text: perf.text + '\\n\\n' + le.text, pieces: perf.pieces }; }
 else if (A === 'radar_gate') { out = radarGate(d); out.text = 'Radar: ' + out.mode + ' — ' + out.reason; }
 else if (A === 'content_gate') { out = contentGate(d); out.text = 'Content Radar: ' + out.mode + ' — ' + out.reason; }
+else if (A === 'rss_gate') { out = rssGate(d); out.text = 'Content RSS: ' + out.mode + ' — ' + out.reason; }
+else if (A === 'competitor_gate') { out = competitorGate(d); out.text = 'Inteligencia orgánica: ' + out.mode + ' — ' + out.reason; }
+else if (A === 'pieces_gate') { out = piecesGate(d); out.text = 'Content Pieces: ' + out.mode + ' — ' + out.reason; }
+else if (A === 'job_report') {
+  const r = p.report || {};
+  const kind = ['content_rss', 'competitor_intel', 'content_pieces'].includes(r.kind) ? r.kind : null;
+  if (!kind) out = { ok: false, error: 'report.kind debe ser content_rss | competitor_intel | content_pieces', text: 'Tipo de corrida no válido.' };
+  else {
+  const n0 = (v) => Math.max(0, Math.min(1000, Number(v) || 0));
+  writes.push({ method: 'POST', path: 'ops_runs', body: { kind, status: ['ok', 'skipped', 'error'].includes(r.status) ? r.status : 'ok', summary: { mode: String(r.mode || ''), reason: String(r.reason || '').slice(0, 300), minutes: n0(r.minutes), items_reviewed: n0(r.items_reviewed), signals: n0(r.signals), created: n0(r.created), blocked: n0(r.blocked), held: n0(r.held), competitors: n0(r.competitors), searches: n0(r.searches), pages_opened: n0(r.pages_opened) }, est_cost_usd: Number.isFinite(Number(r.est_cost_usd)) ? Math.max(0, Math.min(50, Number(r.est_cost_usd))) : null }, prefer: 'return=minimal' });
+  out = { text: 'Corrida registrada (' + kind + ').', recorded: kind };
+  }
+}
 else if (A === 'radar_report' || A === 'content_radar_report') {
   const r = p.report || {};
   const row = { kind: A === 'radar_report' ? 'prospect_radar' : 'content_radar', status: ['ok', 'skipped', 'error'].includes(r.status) ? r.status : 'ok', summary: { mode: String(r.mode || ''), reason: String(r.reason || '').slice(0, 300), searches: Number(r.searches) || 0, pages_opened: Number(r.pages_opened) || 0, candidates: Number(r.candidates) || 0, imported: Number(r.imported) || 0, minutes: Number(r.minutes) || 0 }, est_cost_usd: Number.isFinite(Number(r.est_cost_usd)) ? Number(r.est_cost_usd) : null, started_at: nowIso };
@@ -193,6 +223,9 @@ export function buildOps() {
     { id: uuid(), name: 'Gmail Check 23', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [3600, 0], credentials: INGEST_CRED, continueOnFail: true, alwaysOutputData: true,
       parameters: { method: 'POST', url: `={{ $("Parse").first().json.need.deep ? $("Parse").first().json.u.gmail + "atacama-gmail-sync" : "${NONE}" }}`, authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth', sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify({ gmail_check: true }) }}', options: full(45000) } },
     get('Learnings', u('learn'), INGEST_CRED, 'ingest', [3800, 0]),
+    code('Expand Growth', expandGrowthCode, [3900, 0]),
+    { id: uuid(), name: 'SB Growth', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [3950, 0], credentials: SUPABASE_CRED, continueOnFail: true, alwaysOutputData: true,
+      parameters: { method: 'GET', url: '={{ $json.skip ? "' + NONE + '" : $json.url }}', authentication: 'predefinedCredentialType', nodeCredentialType: 'supabaseApi', options: full() } },
     code('Compute', computeCode, [4000, 0]),
     code('Expand Writes', `const w = $('Compute').first().json.writes || [];\nif (!w.length) return [{ json: { skip: true } }];\nreturn w.map((x) => ({ json: { skip: false, ...x } }));`, [4200, 0]),
     sbApply('Apply Writes', [4400, 0]),
@@ -203,7 +236,7 @@ export function buildOps() {
     'SB Messages': { main: [to('SB Candidates')] }, 'SB Candidates': { main: [to('SB Pieces')] }, 'SB Pieces': { main: [to('SB Metrics')] }, 'SB Metrics': { main: [to('SB Signals')] }, 'SB Signals': { main: [to('SB Review Pieces')] }, 'SB Review Pieces': { main: [to('SB Alerts')] },
     'SB Alerts': { main: [to('SB Runs')] }, 'SB Runs': { main: [to('SB Config')] }, 'SB Config': { main: [to('GHL Opps')] }, 'GHL Opps': { main: [to('GHL Tasks')] }, 'GHL Tasks': { main: [to('N8N Workflows')] },
     'N8N Workflows': { main: [to('N8N Errors')] }, 'N8N Errors': { main: [to('Expand Execs')] }, 'Expand Execs': { main: [to('N8N Execs')] }, 'N8N Execs': { main: [to('Gmail Check 22')] },
-    'Gmail Check 22': { main: [to('Gmail Check 23')] }, 'Gmail Check 23': { main: [to('Learnings')] }, 'Learnings': { main: [to('Compute')] }, 'Compute': { main: [to('Expand Writes')] }, 'Expand Writes': { main: [to('Apply Writes')] }, 'Apply Writes': { main: [to('Respond')] } };
+    'Gmail Check 22': { main: [to('Gmail Check 23')] }, 'Gmail Check 23': { main: [to('Learnings')] }, 'Learnings': { main: [to('Expand Growth')] }, 'Expand Growth': { main: [to('SB Growth')] }, 'SB Growth': { main: [to('Compute')] }, 'Compute': { main: [to('Expand Writes')] }, 'Expand Writes': { main: [to('Apply Writes')] }, 'Apply Writes': { main: [to('Respond')] } };
   return { name: 'Atacama Labs - 25 Atacama Ops', nodes, connections: c, settings: { executionOrder: 'v1' } };
 }
 

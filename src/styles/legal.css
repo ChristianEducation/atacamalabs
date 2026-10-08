@@ -123,3 +123,90 @@
     columns: 1;
   }
 }
+
+/* Recursos (/recursos): mismo ancho de lectura que las páginas legales; un solo CTA al cierre. */
+.mk-rs-criteria {
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 14px;
+}
+.mk-rs-criterion {
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+}
+.mk-rs-criterion h3 {
+  margin: 0 0 6px;
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: 20px;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.mk-rs-criterion p {
+  margin: 0 0 8px;
+}
+.mk-rs-criterion p:last-child {
+  margin-bottom: 0;
+}
+.mk-rs-question {
+  font-weight: 600;
+}
+.mk-rs-cta {
+  margin-top: clamp(36px, 5vw, 56px);
+  padding: clamp(22px, 4vw, 32px);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+}
+.mk-rs-cta h2 {
+  margin: 0 0 10px;
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: clamp(24px, 3.4vw, 30px);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.mk-rs-cta p {
+  margin: 0 0 18px;
+  font-size: 16.5px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+.mk-rs-list {
+  margin: clamp(24px, 4vw, 36px) 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 16px;
+}
+.mk-rs-item {
+  padding: 20px 22px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+}
+.mk-rs-item h2 {
+  margin: 4px 0 8px;
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+}
+.mk-rs-item p {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+.mk-rs-type {
+  font-family: var(--font-mono);
+  font-size: 12px !important;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--subtle) !important;
+}

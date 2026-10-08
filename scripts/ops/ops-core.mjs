@@ -55,6 +55,8 @@ export function monitoredWorkflows() {
     { id: 'f29HJ40N7Vz8M3Rm', label: 'Content Learnings', every: null, critical: false },
     { id: 'aGe77cEyCmobdAg7', label: 'Prospect Search (Radar)', every: null, critical: false },
     { id: 've4uKTMQkGWzzmBV', label: 'LinkedIn Engine', every: null, critical: false },
+    { id: 'M4LyGH4UxE5sYIh5', label: 'Content Growth', every: null, critical: false },
+    { id: '6wnrHglfnt6l9va0', label: 'Content RSS', every: 60, critical: false },
   ];
 }
 
@@ -82,7 +84,7 @@ export function hermesJobChecks(hermes, nowMs) {
   const jobs = (hermes && hermes.jobs) || [];
   for (const j of jobs) {
     const nm = String(j.name || '');
-    if (!/(Prospect Radar|Content Radar|^atacama-)/i.test(nm)) continue;
+    if (!/(Prospect Radar|Content Radar|Content RSS|Content Pieces|Competitor|^atacama-)/i.test(nm)) continue;
     const last = j.last_run_at ? Date.parse(j.last_run_at) : null;
     const paused = j.state === 'paused' || j.enabled === false;
     let status = 'ok', reason = paused ? 'pausado (esperado)' : 'activo';
@@ -211,6 +213,14 @@ export function healthReport(d) {
   const cont = summarizeContent(d);
   const ce = comp[comp.length - 1];
   if (cont.failed.length || cont.late.length) { ce.status = 'fallo'; ce.reason += ' · publicación con problema: ' + names(cont.failed.concat(cont.late), 2); }
+  pick(['6wnrHglfnt6l9va0'], 'Content RSS (ingestión)');
+  const g0 = summarizeGrowth(d);
+  const rssc = comp[comp.length - 1];
+  if (g0.rss.failing.length && rssc.status === 'ok') { rssc.status = 'atencion'; rssc.reason = 'feeds con fallos: ' + g0.rss.failing.map((f) => f.slug + ' (' + (f.error || 'error') + ')').join(', '); }
+  [[/Content RSS/i, 'Content RSS (Hermes)'], [/Content Pieces/i, 'Content Pieces (Hermes)'], [/Competitor/i, 'Inteligencia orgánica (Hermes)']].forEach(([re, nm]) => {
+    const j = jb(re);
+    comp.push(j ? { name: nm, status: j.status, reason: j.reason } : { name: nm, status: noHermes ? 'ok' : 'atencion', reason: noHermes ? 'estado del job no informado (se lee desde Hermes)' : 'no aparece entre los jobs de Hermes' });
+  });
   pick(['HDUZ0nrGFiO01hYN', 'f29HJ40N7Vz8M3Rm'], 'Métricas de contenido', cont.metric_errors ? ' · ' + cont.metric_errors + ' snapshot(s) con error' : '');
   const mc = comp[comp.length - 1]; if (cont.metric_errors && mc.status === 'ok') mc.status = 'atencion';
   pick(['idniXY0Du2qet57O', 'VsLCMZ6MeDsNvGzI'], 'Captura de leads y reservas (web)');
@@ -366,11 +376,14 @@ export function evaluateAlerts(d, existing) {
   if (d.hermes && d.hermes.gateway_ok === false) add('hermes_gateway', 'critical', 'Hermes: el gateway de mensajería no responde', 'Telegram puede no estar entregando mensajes.', false);
   if (d.hermes && Number(d.hermes.disk_pct) >= 90) add('disk_full', 'high', 'Servidor de Hermes con el disco al ' + d.hermes.disk_pct + '%', 'Se puede quedar sin espacio.', false);
   // 6) avisos de corrida de los radares: una vez por corrida, en formato corto (no son fallas)
-  for (const r of (d.runs || []).filter((x) => ['prospect_radar', 'content_radar'].includes(x.kind) && x.id && now - Date.parse(x.created_at) <= 24 * 3600000)) {
+  for (const r of (d.runs || []).filter((x) => ['prospect_radar', 'content_radar', 'content_rss', 'competitor_intel', 'content_pieces'].includes(x.kind) && x.id && now - Date.parse(x.created_at) <= 24 * 3600000)) {
     if (r.status === 'skipped' || (r.summary || {}).mode === 'skip') continue;
     const n = runNotice(d, r);
+    if (!n) continue;
     add('run:' + r.id, n.severity, n.title, '', true, { notice: n.text });
   }
+  // 7) feeds RSS con 3+ fallos seguidos (aviso, no crítico)
+  summarizeGrowth(d).rss.failing.forEach((f) => add('rss_feed:' + f.slug, 'high', 'Feed RSS con fallos: ' + f.slug, f.error + ' (' + f.failures + ' veces seguidas)', false));
   // --- dedupe
   existing = (existing || []).filter((e) => !/^_(state|lock):/.test(String(e.alert_key)));
   const ex = {}; (existing || []).forEach((e) => { ex[e.alert_key] = e; });
@@ -517,12 +530,76 @@ export function composeLearnings(L) {
 export function contentGate(d) {
   const now = d.now;
   const ct = summarizeContent(d);
+  const g = summarizeGrowth(d);
   const runs = (d.runs || []).filter((r) => r.kind === 'content_radar' && r.status === 'ok');
   const last = runs[0] ? Date.parse(runs[0].created_at) : null;
-  if (last && now - last < 5 * 86400000) return { mode: 'skip', reason: 'ya corrió hace ' + ageText(now - last) + ' (cadencia semanal)', pending_review: ct.pending_review.length, candidate_signals: ct.candidate_signals };
-  if (ct.pending_review.length >= 3) return { mode: 'skip', reason: 'hay ' + ct.pending_review.length + ' piezas esperando tu revisión: primero se revisan', pending_review: ct.pending_review.length, candidate_signals: ct.candidate_signals };
-  if (ct.candidate_signals >= 5) return { mode: 'skip', reason: 'ya hay ' + ct.candidate_signals + ' señales candidatas sin convertir en pieza', pending_review: ct.pending_review.length, candidate_signals: ct.candidate_signals };
-  return { mode: 'run', max_signals: 5, reason: 'ok (' + ct.pending_review.length + ' piezas en revisión, ' + ct.candidate_signals + ' señales candidatas)', pending_review: ct.pending_review.length, candidate_signals: ct.candidate_signals };
+  const base = { pending_review: ct.pending_review.length, max_pending_in_review: g.queue.max, candidate_signals: ct.candidate_signals, pieces_allowed: !g.queue.full };
+  if (last && now - last < 5 * 86400000) return { mode: 'skip', reason: 'ya corrió hace ' + ageText(now - last) + ' (cadencia semanal)', ...base };
+  // Content Queue Governor: con la cola llena el radar SIGUE recolectando señales, pero no se crean piezas por cuenta propia.
+  if (ct.candidate_signals >= 12) return { mode: 'skip', reason: 'ya hay ' + ct.candidate_signals + ' señales candidatas sin convertir en pieza', ...base };
+  return { mode: 'run', max_signals: 5, reason: 'ok (' + ct.pending_review.length + '/' + g.queue.max + ' piezas en revisión' + (g.queue.full ? ': cola llena, solo recolecta señales' : '') + ', ' + ct.candidate_signals + ' señales candidatas)', ...base };
+}
+
+/** Ola A · Resumen de lo nuevo (cola, RSS, inteligencia orgánica, recursos, Founder Interview) para compuertas, panel y alertas. */
+export function summarizeGrowth(d) {
+  const now = d.now, tz = (d.cfg && d.cfg.tz) || 'America/Santiago';
+  const cfg = d.content_cfg || {};
+  const max = Number(cfg.max_pending_in_review) > 0 ? Number(cfg.max_pending_in_review) : 6;
+  const pending = summarizeContent(d).pending_review.length;
+  const feeds = (d.feeds || []).filter((f) => f.enabled !== false);
+  const failing = feeds.filter((f) => (Number(f.consecutive_failures) || 0) >= 3).map((f) => ({ slug: f.slug, error: f.last_error || 'error', failures: Number(f.consecutive_failures) || 0 }));
+  const checked = feeds.map((f) => (f.last_checked_at ? Date.parse(f.last_checked_at) : 0)).filter(Boolean);
+  const lastChecked = checked.length ? Math.max(...checked) : null;
+  const run = (kind) => (d.runs || []).find((r) => r.kind === kind && r.status === 'ok') || null;
+  const runInfo = (r) => (r ? { at: r.created_at, ago: ageText(now - Date.parse(r.created_at)), summary: r.summary || {} } : null);
+  const newItems = (d.feed_new || []).length;
+  const rep = d.intel || null;
+  const R = rep && rep.report ? rep.report : {};
+  const use = {}; (d.resource_use || []).forEach((x) => { if (x.resource_id) { use[x.resource_id] = (use[x.resource_id] || 0) + 1; } });
+  const resources = (d.resources || []).filter((r) => r.status === 'active').map((r) => ({ slug: r.slug, name: r.name, type: r.type, cta_mode: r.cta_mode, url: r.url, uses: use[r.id] || 0 }));
+  const ivs = d.interviews || [];
+  const lastIv = ivs[0] || null;
+  return {
+    queue: { pending, max, full: pending >= max },
+    rss: { enabled: cfg.rss_enabled !== false, feeds_total: feeds.length, feeds_ok: feeds.filter((f) => f.last_status === 'ok').length, failing, new_items: newItems, last_checked_ago: lastChecked ? ageText(now - lastChecked) : null, last_checked_ms: lastChecked, last_run: runInfo(run('content_rss')) },
+    intel: { enabled: cfg.competitor_enabled !== false, last_run: runInfo(run('competitor_intel')), report_at: rep ? rep.created_at : null, report_ago: rep ? ageText(now - Date.parse(rep.created_at)) : null, competitors: rep ? rep.competitors_scanned || [] : [], gaps: (R.gaps || []).slice(0, 4), saturated: (R.saturated_topics || []).slice(0, 4), own_angles: (R.own_angles || []).slice(0, 3).map((a) => a.angle) },
+    resources: { active: resources.length, rows: resources.slice(0, 8) },
+    founder: { pending_answer: ivs.filter((x) => x.status === 'asked').length, answered_without_pieces: ivs.filter((x) => x.status === 'answered').length, last: lastIv ? { status: lastIv.status, question: clip(lastIv.question, 140), at: lastIv.asked_at, ago: ageText(now - Date.parse(lastIv.asked_at)) } : null },
+    pieces_run: runInfo(run('content_pieces')), tz,
+  };
+}
+
+/** Compuerta del job «Content RSS» de Hermes: solo corre (y gasta IA) si hay artículos nuevos relevantes y la cola lo permite. */
+export function rssGate(d) {
+  const now = d.now, g = summarizeGrowth(d), ct = summarizeContent(d);
+  const rel = (d.feed_new || []).filter((x) => (Number(x.relevance) || 0) >= 2).length;
+  const base = { new_items: g.rss.new_items, relevant_items: rel, pending_review: g.queue.pending, max_pending_in_review: g.queue.max, candidate_signals: ct.candidate_signals };
+  if (!g.rss.enabled) return { mode: 'skip', reason: 'RSS desactivado en la configuración del Content', ...base };
+  if (!rel) return { mode: 'skip', reason: 'sin artículos nuevos relevantes (' + g.rss.new_items + ' nuevos en total)', ...base };
+  const last = g.rss.last_run ? Date.parse(g.rss.last_run.at) : null;
+  if (last && now - last < 10 * 3600000) return { mode: 'skip', reason: 'ya corrió hace ' + ageText(now - last), ...base };
+  if (ct.candidate_signals >= 12) return { mode: 'skip', reason: 'ya hay ' + ct.candidate_signals + ' señales candidatas sin pieza', ...base };
+  return { mode: 'run', max_signals: 3, reason: 'ok (' + rel + ' artículos relevantes nuevos)', ...base };
+}
+
+/** Compuerta de la inteligencia orgánica de competencia: cadencia semanal y solo fuentes públicas. */
+export function competitorGate(d) {
+  const now = d.now, g = summarizeGrowth(d);
+  if (!g.intel.enabled) return { mode: 'skip', reason: 'inteligencia orgánica desactivada en la configuración del Content' };
+  const last = g.intel.last_run ? Date.parse(g.intel.last_run.at) : null;
+  if (last && now - last < 5 * 86400000) return { mode: 'skip', reason: 'ya corrió hace ' + ageText(now - last) + ' (cadencia semanal)' };
+  return { mode: 'run', reason: 'ok (' + (last ? 'última hace ' + ageText(now - last) : 'primera corrida') + ')', max_pages_per_competitor: 4 };
+}
+
+/** Compuerta del job que redacta piezas: solo si la cola lo permite y hay señales candidatas. */
+export function piecesGate(d) {
+  const now = d.now, g = summarizeGrowth(d), ct = summarizeContent(d);
+  const base = { pending_review: g.queue.pending, max_pending_in_review: g.queue.max, candidate_signals: ct.candidate_signals };
+  if (g.queue.full) return { mode: 'skip', reason: 'cola de revisión llena (' + g.queue.pending + '/' + g.queue.max + '): primero se revisa', ...base };
+  if (!ct.candidate_signals) return { mode: 'skip', reason: 'no hay señales candidatas', ...base };
+  const last = g.pieces_run ? Date.parse(g.pieces_run.at) : null;
+  if (last && now - last < 18 * 3600000) return { mode: 'skip', reason: 'ya corrió hace ' + ageText(now - last), ...base };
+  return { mode: 'run', max_pieces: Math.max(1, Math.min(2, g.queue.max - g.queue.pending)), reason: 'ok (' + ct.candidate_signals + ' señales candidatas, ' + g.queue.pending + '/' + g.queue.max + ' en revisión)', ...base };
 }
 
 /** Nombre corto para Telegram/panel: quita palabras genéricas y la ciudad («Laboratorio Clínico Luis Pasteur Antofagasta» → «Luis Pasteur»). */
@@ -566,6 +643,7 @@ export function composePanel(d) {
   add('stale', 'warn', 'Oportunidades estancadas', c.stale.map((x) => x.company + ' · ' + x.stage + ' · ' + x.days + ' d'));
   add('content_pending', 'act', 'Contenido por aprobar', ct.pending_review.map((x) => x));
   add('content_failed', 'act', 'Publicación con problema', ct.failed.concat(ct.late));
+  { const g1 = summarizeGrowth(d); if (g1.queue.full) add('content_queue_full', 'warn', 'Cola de contenido llena', ['Hay ' + g1.queue.pending + ' de ' + g1.queue.max + ' piezas en revisión: el sistema no propone más hasta que apruebes o rechaces']); if (g1.founder.answered_without_pieces) add('founder_answered', 'warn', 'Entrevista respondida sin pieza', ['Christian respondió y falta estructurar la pieza']); if (g1.rss.failing.length) add('rss_failing', 'warn', 'Feeds RSS con fallos', g1.rss.failing.map((f) => f.slug + ' · ' + f.error)); }
   add('system_fail', 'act', 'Sistema con fallas', h.components.filter((x) => x.status === 'fallo').map((x) => x.name + ' · ' + x.reason));
   // --- prospección
   const cands = d.candidates || [];
@@ -604,7 +682,8 @@ export function composePanel(d) {
     const ms = (d.metrics || []).filter((m) => m.content_piece_id === p.id && m.status !== 'error').map((m) => ({ window: m.metric_window, likes: m.likes, comments: m.comments, shares: m.shares, partial: m.status === 'partial' }));
     return { ...row(p), metrics: ms };
   });
-  const content = { signals_count: Number(d.signals_candidate) || 0, signals: sig, in_review: inReview, scheduled, published, failed: ct.failed.concat(ct.late), metrics_ready: ct.snapshots.length, preview_ready: false };
+  const gr = summarizeGrowth(d);
+  const content = { queue: gr.queue, rss: gr.rss, intel: gr.intel, resources: gr.resources, founder: gr.founder, signals_count: Number(d.signals_candidate) || 0, signals: sig, in_review: inReview, scheduled, published, failed: ct.failed.concat(ct.late), metrics_ready: ct.snapshots.length, preview_ready: false };
   // --- sistema
   const system = { overall: h.overall, components: h.components.map((x) => ({ name: x.name, status: x.status, reason: x.reason })), outreach_mode: c.outreach.mode, approved_pending: c.outreach.approved_pending, drafts: c.outreach.drafts_initial, errors24h: (d.errors24h || []).slice(0, 6), hermes_known: Boolean(d.hermes && Array.isArray(d.hermes.jobs)) };
   const lo = linkedinOverview(d.candidates || [], now);
@@ -620,6 +699,19 @@ export function composePanel(d) {
 export function runNotice(d, run) {
   const tz = (d.cfg && d.cfg.tz) || 'America/Santiago';
   const sm = run.summary || {};
+  if (run.kind === 'content_rss') return run.status === 'error' ? { title: 'Content RSS falló', text: 'CONTENT RSS\nLa corrida falló' + (sm.reason ? ' (' + clip(sm.reason, 100) + ')' : '') + '. Quedó registrada.', severity: 'high' } : null;
+  if (run.kind === 'competitor_intel') {
+    if (run.status === 'error') return { title: 'Inteligencia orgánica falló', text: 'INTELIGENCIA ORGÁNICA\nLa corrida falló' + (sm.reason ? ' (' + clip(sm.reason, 100) + ')' : '') + '. Quedó registrada.', severity: 'high' };
+    const g = summarizeGrowth(d);
+    return { title: 'Inteligencia orgánica', text: ['INTELIGENCIA ORGÁNICA', g.intel.competitors.length + (g.intel.competitors.length === 1 ? ' referente revisado' : ' referentes revisados') + ' (fuentes públicas)', g.intel.gaps.length ? 'Huecos: ' + g.intel.gaps.slice(0, 2).map((x) => clip(x, 70)).join(' · ') : 'Sin huecos claros esta vez', 'Solo contexto: no copiamos nada.'].join('\n'), severity: 'info' };
+  }
+  if (run.kind === 'content_pieces') {
+    if (run.status === 'error') return { title: 'Redacción de piezas falló', text: 'CONTENT\nLa corrida falló' + (sm.reason ? ' (' + clip(sm.reason, 100) + ')' : '') + '. Quedó registrada.', severity: 'high' };
+    const at = Date.parse(run.created_at), win = ((Number(sm.minutes) || 5) + 10) * 60000;
+    const mine = (d.pieces || []).filter((x) => !x.is_test && x.status === 'in_review' && Date.parse(x.created_at) >= at - win && Date.parse(x.created_at) <= at + 120000);
+    if (!mine.length) return { title: 'Content sin piezas nuevas', text: 'CONTENT\nNo se creó ninguna pieza esta vez' + (sm.reason ? ' (' + clip(sm.reason, 80) + ')' : '') + '.', severity: 'info' };
+    return { title: 'Piezas nuevas en revisión', text: ['CONTENT', mine.length + (mine.length === 1 ? ' pieza nueva' : ' piezas nuevas') + ' esperando tu revisión', mine.slice(0, 2).map((x) => '• ' + clip(x.topic, 60)).join('\n'), 'Nada publicado ni aprobado.'].join('\n'), severity: 'info' };
+  }
   const at = Date.parse(run.created_at), win = ((Number(sm.minutes) || 5) + 10) * 60000;
   if (run.kind === 'prospect_radar') {
     if (run.status === 'error') return { title: 'Prospect Radar falló', text: 'PROSPECT RADAR\nLa corrida falló' + (sm.reason ? ' (' + clip(sm.reason, 100) + ')' : '') + '. Quedó registrada; revisa el panel si se repite.', severity: 'high' };

@@ -16,5 +16,17 @@ t('contacto solo público y de la propia empresa; sin adivinar correos; sin cont
 t('sin secretos incrustados en el prompt', !/(pit-[0-9a-f]{8}|eyJ[A-Za-z0-9_-]{20}|sk-[A-Za-z0-9]{20}|Bearer [A-Za-z0-9]{20})/.test(p));
 const c = fs.readFileSync(new URL('./content-radar.prompt.txt', import.meta.url), 'utf8');
 t('ambos radares terminan en [SILENT]: el aviso a Telegram lo arma Atacama OS, no el agente', /EXACTAMENTE «\[SILENT\]»/.test(p) && /EXACTAMENTE «\[SILENT\]»/.test(c) && /content_radar_report/.test(c) && !/Responde SOLO con un resumen/i.test(p + c));
+// ---- Ola A: prompts de los jobs de contenido (RSS, piezas, inteligencia orgánica)
+const rss = fs.readFileSync(new URL('./content-rss.prompt.txt', import.meta.url), 'utf8');
+const pcs = fs.readFileSync(new URL('./content-pieces.prompt.txt', import.meta.url), 'utf8');
+const cmp = fs.readFileSync(new URL('./content-competitors.prompt.txt', import.meta.url), 'utf8');
+const all = [['rss', rss], ['pieces', pcs], ['competitors', cmp]];
+t('Ola A: los tres prompts obedecen la compuerta (skip → [SILENT]) y terminan en [SILENT]', all.every(([, x]) => /COMPUERTA/.test(x) && /mode=skip/.test(x) && /exactamente «\[SILENT\]»/i.test(x)));
+t('Ola A: los tres registran la corrida con report_content_job y su tipo', /kind="content_rss"/.test(rss) && /kind="content_pieces"/.test(pcs) && /kind="competitor_intel"/.test(cmp) && all.every(([, x]) => /report_content_job/.test(x)));
+t('Ola A: ninguno publica, programa ni contacta, y ninguno trae claves', all.every(([, x]) => /no publicas|Nada se publica|no contactes|no contactas/i.test(x)) && all.every(([, x]) => !/(pit-[0-9a-f]{8}|eyJ[A-Za-z0-9_-]{20}|sk-[A-Za-z0-9]{20}|Bearer [A-Za-z0-9]{20})/.test(x)));
+t('Ola A: RSS exige abrir la URL y cita LITERAL, marcar todos los revisados y no redactar piezas', /LITERALMENTE/.test(rss) && /rss_items\(action="mark"/.test(rss) && /NO redactes la pieza/.test(rss));
+t('Ola A: piezas autónomas solo linkedin_page (linkedin_profile es de Christian), origin autonomous, sin comment_keyword', /linkedin_profile está PROHIBIDO/.test(pcs) && /origin="autonomous"/.test(pcs) && /NUNCA inventes un recurso ni uses comment_keyword/.test(pcs) && /schedule_suggestion: null/.test(pcs));
+t('Ola A: piezas reutilizan recursos existentes y respetan la cola', /content_resources\(action="list"/.test(pcs) && /pieces_allowed/.test(pcs) && /blocked \(cola llena: detente/.test(pcs));
+t('Ola A: inteligencia orgánica es solo fuentes públicas, no copia, páginas leídas reales y no es Ads Radar', /PÚBLICAS/.test(cmp) && /sin iniciar sesión/.test(cmp) && /NO es copiar/.test(cmp) && /NO es el radar de anuncios pagados/.test(cmp) && /SOLO las URLs que abriste/.test(cmp) && /nunca adivines un sitio|no adivines|Nunca adivines|no lo encuentras con certeza/i.test(cmp));
 console.log(`\n${pass} ok ${fail} fallos`);
 process.exit(fail ? 1 : 0);

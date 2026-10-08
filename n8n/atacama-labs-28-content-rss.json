@@ -1,0 +1,385 @@
+{
+  "name": "Atacama Labs - 28 Content RSS",
+  "nodes": [
+    {
+      "id": "9cde4f57-f012-46b3-b494-23ca188001e2",
+      "name": "Every Hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        -140
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "8c001479-7696-41b3-9f78-8d895172ebff",
+      "name": "RSS Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        80
+      ],
+      "webhookId": "439a191e-3ed0-4e40-bf20-340ed593d08d",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "lUGhlXVaQBEiEh5S",
+          "name": "Atacama Labs - Ingest Key"
+        }
+      },
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "atacama-content-rss",
+        "authentication": "headerAuth",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "16de31a9-4ec0-4205-900f-a1fe8b3d30a9",
+      "name": "Prepare",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "jsCode": "let b = {};\ntry { const w = $('RSS Webhook').first().json; b = (w && (w.body || w)) || {}; } catch (e) { b = {}; }\nconst slug = typeof b.feed_slug === 'string' && /^[a-z0-9-]{2,60}$/.test(b.feed_slug) ? b.feed_slug : null;\nreturn [{ json: { feed_slug: slug, manual: Boolean(b.action || b.feed_slug) } }];"
+      }
+    },
+    {
+      "id": "7d267da7-c287-4334-9413-748b5d800ec6",
+      "name": "Fetch Config",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true,
+      "alwaysOutputData": true,
+      "parameters": {
+        "method": "GET",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/content_config?id=eq.1&select=rss_enabled",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "377e573e-5f10-4d0b-b076-07d188eff3bc",
+      "name": "Fetch Feeds",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true,
+      "alwaysOutputData": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/content_feeds?enabled=eq.true&select=*&order=priority.desc\" + ($(\"Prepare\").first().json.feed_slug ? \"&slug=eq.\" + $(\"Prepare\").first().json.feed_slug : \"\") }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "aa9636eb-ccdf-415c-8c1e-394c9cad9ffa",
+      "name": "Expand Feeds",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const p = $('Prepare').first().json;\nconst cfgRes = $('Fetch Config').first().json || {};\nconst cfg = (cfgRes.statusCode || 0) < 300 && Array.isArray(cfgRes.body) ? (cfgRes.body[0] || {}) : {};\nconst fr = $('Fetch Feeds').first().json || {};\nconst feeds = (fr.statusCode || 0) < 300 && Array.isArray(fr.body) ? fr.body : [];\nif (cfg.rss_enabled === false && !p.manual) return [{ json: { skip: true, reason: 'rss_desactivado_en_content_config' } }];\nif ((fr.statusCode || 0) >= 300 || !fr.statusCode) return [{ json: { skip: true, reason: 'no_pude_leer_content_feeds', error: true } }];\nif (!feeds.length) return [{ json: { skip: true, reason: 'sin_feeds_activos' } }];\nreturn feeds.map((feed) => ({ json: { feed } }));"
+      }
+    },
+    {
+      "id": "6e250f2f-fa4a-4d93-a8b9-40de5967555a",
+      "name": "Read Feed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        0
+      ],
+      "continueOnFail": true,
+      "alwaysOutputData": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.skip ? \"https://localhost.invalid/\" : $json.feed.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "AtacamaOS-RSS/1.0 (+https://atacamalabs.cl)"
+            },
+            {
+              "name": "Accept",
+              "value": "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.5"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "7351dd54-f4b2-45e1-a6cd-59ec4dc29fd4",
+      "name": "Collect",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        0
+      ],
+      "parameters": {
+        "jsCode": "function rssCanonicalUrl(raw, base) {\n  let u = String(raw || '').trim();\n  if (!u) return '';\n  if (/^\\/\\//.test(u)) u = 'https:' + u;\n  if (!/^https?:\\/\\//i.test(u)) {\n    const m = /^(https?:\\/\\/[^/]+)/i.exec(String(base || ''));\n    if (!m) return '';\n    u = m[1] + (u.startsWith('/') ? '' : '/') + u;\n  }\n  u = u.replace(/#.*$/, '');\n  const q = u.indexOf('?');\n  let query = '';\n  if (q >= 0) {\n    const keep = u.slice(q + 1).split('&').filter((p) => p && !/^(utm_[a-z]+|fbclid|gclid|mc_cid|mc_eid|ref|source)=/i.test(p));\n    query = keep.length ? '?' + keep.join('&') : '';\n    u = u.slice(0, q);\n  }\n  return u.replace(/\\/+$/, '') + query;\n}\n\nfunction rssFeedHealth(feed, res, parsed, nowIso) {\n  const f = feed || {};\n  const code = Number(res && res.statusCode);\n  let error = null;\n  if (!res || res.error || !Number.isFinite(code)) error = 'sin_respuesta';\n  else if (code < 200 || code >= 300) error = 'http_' + code;\n  else if (parsed && parsed.error) error = parsed.error;\n  else if (parsed && !parsed.items.length) error = 'feed_sin_articulos';\n  const failures = error ? (Number(f.consecutive_failures) || 0) + 1 : 0;\n  return { last_checked_at: nowIso, last_status: error ? 'error' : 'ok', last_error: error, last_item_count: parsed ? parsed.items.length : 0, consecutive_failures: failures };\n}\n\nfunction rssFnv(text) {\n  const s = String(text || '');\n  let h = 0x811c9dc5;\n  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }\n  return h.toString(16).padStart(8, '0');\n}\n\nfunction rssItemHash(item) {\n  const key = String((item && (item.guid || item.url)) || '').trim().toLowerCase();\n  return rssFnv(key);\n}\n\nfunction rssParseFeed(xml, opts) {\n  const o = opts || {};\n  const limit = o.limit || 30;\n  const src = String(xml || '').slice(0, o.maxChars || 600000);\n  if (!/<(rss|feed|rdf:RDF)\\b/i.test(src)) return { format: null, items: [], error: 'no_es_feed_rss_ni_atom' };\n  const atom = /<feed\\b/i.test(src) && !/<rss\\b/i.test(src);\n  const blocks = src.match(atom ? /<entry\\b[\\s\\S]*?<\\/entry>/gi : /<item\\b[\\s\\S]*?<\\/item>/gi) || [];\n  const tag = (blk, names) => {\n    for (const n of names) {\n      const m = new RegExp('<' + n + '(?:\\\\s[^>]*)?>([\\\\s\\\\S]*?)</' + n + '>', 'i').exec(blk);\n      if (m) return m[1];\n    }\n    return '';\n  };\n  const items = [];\n  for (const blk of blocks) {\n    const title = rssPlain(tag(blk, ['title']), 200);\n    let link = '';\n    if (atom) {\n      const links = blk.match(/<link\\b[^>]*>/gi) || [];\n      const alt = links.find((l) => /rel=[\"']alternate[\"']/i.test(l)) || links.find((l) => !/rel=/i.test(l)) || links[0] || '';\n      const h = /href=[\"']([^\"']+)[\"']/i.exec(alt);\n      link = h ? h[1] : '';\n    } else {\n      link = rssPlain(tag(blk, ['link']), 600);\n      if (!link) { const h = /<link\\b[^>]*href=[\"']([^\"']+)[\"']/i.exec(blk); link = h ? h[1] : ''; }\n    }\n    link = link.replace(/&amp;/g, '&');\n    const url = rssCanonicalUrl(link, o.base);\n    const guid = rssPlain(tag(blk, ['guid', 'id']), 300);\n    const summary = rssPlain(tag(blk, ['content:encoded', 'description', 'summary', 'content']), o.summaryChars || 700);\n    const dateRaw = rssPlain(tag(blk, ['pubDate', 'published', 'updated', 'dc:date']), 80);\n    const t = dateRaw ? Date.parse(dateRaw) : NaN;\n    if (!title || !url) continue;\n    const item = { title, url, guid: guid || url, summary, published_at: Number.isFinite(t) ? new Date(t).toISOString() : null };\n    item.hash = rssItemHash(item);\n    items.push(item);\n  }\n  items.sort((a, b) => (Date.parse(b.published_at || 0) || 0) - (Date.parse(a.published_at || 0) || 0));\n  return { format: atom ? 'atom' : 'rss', items: items.slice(0, limit) };\n}\n\nfunction rssPlain(raw, max) {\n  const named = { amp: '&', lt: '<', gt: '>', quot: '\"', apos: \"'\", nbsp: ' ', hellip: '…', mdash: '—', ndash: '–', rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“' };\n  const decode = (t) => t.replace(/&#x([0-9a-f]+);/gi, (m, h) => { const n = parseInt(h, 16); return n > 31 && n < 0x110000 ? String.fromCodePoint(n) : ' '; })\n    .replace(/&#(\\d+);/g, (m, d) => { const n = parseInt(d, 10); return n > 31 && n < 0x110000 ? String.fromCodePoint(n) : ' '; })\n    .replace(/&([a-z]+);/gi, (m, n) => (Object.prototype.hasOwnProperty.call(named, n.toLowerCase()) ? named[n.toLowerCase()] : m));\n  const strip = (t) => t.replace(/<script[\\s\\S]*?<\\/script>|<style[\\s\\S]*?<\\/style>/gi, ' ').replace(/<br\\s*\\/?>|<\\/p>|<\\/li>|<\\/h\\d>/gi, ' ').replace(/<[^>]+>/g, ' ');\n  let s = String(raw || '').replace(/<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>/g, '$1');\n  s = decode(strip(s));\n  // Feeds con HTML escapado (&lt;p&gt;…): tras decodificar aparece marcado; se limpia una segunda vez.\n  if (/<[a-z/][^>]*>/i.test(s)) s = decode(strip(s));\n  s = s.replace(/\\s+/g, ' ').trim();\n  return max && s.length > max ? s.slice(0, max - 1).trimEnd() + '…' : s;\n}\n\nfunction rssRelevance(item) {\n  const t = (String((item && item.title) || '') + ' ' + String((item && item.summary) || '')).toLowerCase();\n  const strong = ['agent', 'agente', 'automat', 'workflow', 'whatsapp', 'crm', 'mcp', 'n8n', 'integrat', 'integraci', 'voice', 'assistant', 'asistente', 'customer support', 'api', 'webhook', 'supabase', 'tool use', 'function calling', 'zapier', 'no-code', 'low-code', 'small business', 'pyme'];\n  const medium = ['claude', 'gpt', 'gemini', 'llm', 'model', 'pricing', 'precio', 'release', 'launch', 'lanza', 'email', 'calendar', 'sales', 'ventas', 'support', 'chatbot', 'enterprise', 'security', 'data'];\n  const noise = ['hiring', 'we are hiring', 'podcast', 'webinar', 'award', 'research paper', 'dataset', 'benchmark'];\n  let s = 0;\n  strong.forEach((k) => { if (t.includes(k)) s += 2; });\n  medium.forEach((k) => { if (t.includes(k)) s += 1; });\n  noise.forEach((k) => { if (t.includes(k)) s -= 2; });\n  return Math.max(0, Math.min(10, s));\n}\n\nconst MAX_AGE_DAYS = 14;\nconst feedsIn = $('Expand Feeds').all().map((i) => i.json);\nif (feedsIn.length === 1 && feedsIn[0].skip) return [{ json: { writes: [], skipped: feedsIn[0].reason, fatal: feedsIn[0].error === true, meta: [] } }];\nconst resps = $input.all();\nconst nowMs = Date.now(), nowIso = new Date(nowMs).toISOString();\nconst writes = [], meta = [];\nconst rows = new Map();\nfeedsIn.forEach((fi, idx) => {\n  const feed = fi.feed;\n  const r = resps.find((x) => x.pairedItem && x.pairedItem.item === idx) || resps[idx] || { json: {} };\n  const res = r.json || {};\n  // n8n entrega el texto de la respuesta en data (responseFormat text); body por si cambia.\n  const text = typeof res.data === 'string' ? res.data : (typeof res.body === 'string' ? res.body : '');\n  let parsed = null;\n  if (Number(res.statusCode) >= 200 && Number(res.statusCode) < 300) parsed = text ? rssParseFeed(text, { base: feed.url, limit: 40 }) : { format: null, items: [], error: 'respuesta_vacia' };\n  const health = rssFeedHealth(feed, res.error ? { error: true } : res, parsed, nowIso);\n  writes.push({ method: 'PATCH', path: 'content_feeds?id=eq.' + feed.id, body: health, prefer: 'return=minimal' });\n  let fresh = 0;\n  (parsed ? parsed.items : []).forEach((it) => {\n    const t = it.published_at ? Date.parse(it.published_at) : null;\n    if (t !== null && nowMs - t > MAX_AGE_DAYS * 86400000) return;\n    if (t !== null && t - nowMs > 2 * 86400000) return;\n    const key = feed.id + ':' + it.hash;\n    if (rows.has(key)) return;\n    rows.set(key, { feed_id: feed.id, feed_slug: feed.slug, item_hash: it.hash, title: it.title.slice(0, 200), url: it.url, summary: it.summary || null, published_at: it.published_at, relevance: rssRelevance(it), status: 'new' });\n    fresh++;\n  });\n  meta.push({ slug: feed.slug, status: health.last_status, error: health.last_error, found: parsed ? parsed.items.length : 0, fresh, failures: health.consecutive_failures });\n});\nif (rows.size) writes.push({ method: 'POST', path: 'content_feed_items?on_conflict=feed_id,item_hash', body: Array.from(rows.values()), prefer: 'resolution=ignore-duplicates,return=representation' });\nreturn [{ json: { writes, meta } }];"
+      }
+    },
+    {
+      "id": "92e19d45-c9a9-4ad0-b2d2-3918a837c235",
+      "name": "Expand Writes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const w = $('Collect').first().json.writes || [];\nif (!w.length) return [{ json: { skip: true } }];\nreturn w.map((x) => ({ json: { skip: false, ...x } }));"
+      }
+    },
+    {
+      "id": "14d57df0-9987-4e5d-85c3-121d07c9de06",
+      "name": "Apply Writes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1760,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "continueOnFail": true,
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1500,
+      "parameters": {
+        "method": "={{ $json.method || \"POST\" }}",
+        "url": "={{ $json.skip ? \"https://localhost.invalid/\" : \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/\" + $json.path }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "={{ $json.prefer || \"return=minimal\" }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body || {}) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "7b3a651f-e8ab-4316-b459-17e9b0b00c2c",
+      "name": "Respond",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const c = $('Collect').first().json;\nif (c.fatal) return [{ json: { ok: false, error: c.skipped, safety: { pieces_created: 0, published: 0 } } }];\nconst applied = $('Apply Writes').all().map((i) => i.json);\nconst planned = c.writes || [];\nconst bad = applied.slice(0, planned.length).filter((j, i) => !planned[i] || !j.statusCode || j.statusCode >= 300);\nconst itemsIdx = planned.findIndex((w) => /^content_feed_items/.test(w.path));\nconst inserted = itemsIdx >= 0 && Array.isArray((applied[itemsIdx] || {}).body) ? applied[itemsIdx].body : [];\nconst failed = (c.meta || []).filter((m) => m.status === 'error');\nconst out = { ok: bad.length === 0 && !c.fatal, skipped: c.skipped || null, feeds_checked: (c.meta || []).length, feeds_ok: (c.meta || []).filter((m) => m.status === 'ok').length, feeds_failed: failed.length,\n  failures: failed.map((m) => m.slug + ': ' + m.error + ' (racha ' + m.failures + ')'), new_items: inserted.length,\n  new: inserted.slice(0, 25).map((r) => ({ id: r.id, feed: r.feed_slug, title: r.title, url: r.url, relevance: r.relevance, published_at: r.published_at })),\n  per_feed: c.meta, safety: { pieces_created: 0, published: 0, note: 'Solo detecta y guarda artículos; Hermes decide si alguno merece una señal.' } };\nif (bad.length) out.persist_error = 'Supabase ' + (bad[0].statusCode ? 'HTTP ' + bad[0].statusCode : 'sin respuesta (red)') + ': ' + JSON.stringify(bad[0].body || {}).slice(0, 160);\nreturn [{ json: out }];"
+      }
+    }
+  ],
+  "connections": {
+    "Every Hour": {
+      "main": [
+        [
+          {
+            "node": "Prepare",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Webhook": {
+      "main": [
+        [
+          {
+            "node": "Prepare",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare": {
+      "main": [
+        [
+          {
+            "node": "Fetch Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Config": {
+      "main": [
+        [
+          {
+            "node": "Fetch Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Feeds": {
+      "main": [
+        [
+          {
+            "node": "Expand Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand Feeds": {
+      "main": [
+        [
+          {
+            "node": "Read Feed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Feed": {
+      "main": [
+        [
+          {
+            "node": "Collect",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect": {
+      "main": [
+        [
+          {
+            "node": "Expand Writes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand Writes": {
+      "main": [
+        [
+          {
+            "node": "Apply Writes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Writes": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -224,12 +224,14 @@ function Body({ panel, fetchedAt, stale }: { panel: Panel; fetchedAt: number; st
       </Section>
 
       <Section id="ops-con" title="Contenido" aside={<span className="ops-note">Nada se publica sin tu aprobación</span>}>
-        <div className="ops-stats">
+        <div className="ops-stats ops-stats-6">
+          {ct.queue ? <Stat n={`${ct.queue.pending}/${ct.queue.max}`} label={ct.queue.full ? "cola llena" : "cola de revisión"} tone={ct.queue.full ? "hi" : undefined} /> : null}
           <Stat n={ct.signals_count} label="señales sin pieza" />
           <Stat n={ct.in_review.length} label="por aprobar" tone={ct.in_review.length ? "hi" : undefined} />
           <Stat n={ct.scheduled.length} label="programadas" />
           <Stat n={ct.published.length} label="publicadas" />
         </div>
+        {ct.queue?.full ? <p className="ops-alert-line">La cola está llena: el sistema sigue recolectando señales pero no propone piezas hasta que apruebes o rechaces.</p> : null}
         {ct.failed.length ? <p className="ops-alert-line">Publicación con problema: {ct.failed.join(" · ")}</p> : null}
         {ct.in_review.length ? (<><h3>Por aprobar</h3><ul className="ops-list">{ct.in_review.map((p) => <PieceItem key={p.id} p={p} kind="review" />)}</ul></>) : null}
         {ct.scheduled.length ? (<><h3>Programadas</h3><ul className="ops-list">{ct.scheduled.map((p) => <PieceItem key={p.id} p={p} kind="scheduled" />)}</ul></>) : null}
@@ -241,6 +243,37 @@ function Body({ panel, fetchedAt, stale }: { panel: Panel; fetchedAt: number; st
               {ct.signals.slice(0, 5).map((s) => (
                 <li key={s.title}><span className="ops-row-title">{s.title}</span><span className="ops-row-sub">{[s.type, `hace ${s.ago}`].filter(Boolean).join(" · ")}</span></li>
               ))}
+            </ul>
+          </>
+        ) : null}
+        {ct.rss || ct.intel || ct.resources || ct.founder ? (
+          <>
+            <h3>Entradas y recursos</h3>
+            <ul className="ops-list ops-signals">
+              {ct.rss ? (
+                <li>
+                  <span className="ops-row-title">RSS · {ct.rss.enabled ? `${ct.rss.feeds_ok}/${ct.rss.feeds_total} feeds sanos` : "apagado"}</span>
+                  <span className="ops-row-sub">{[`${ct.rss.new_items} artículos nuevos`, ct.rss.last_checked_ago ? `último chequeo hace ${ct.rss.last_checked_ago}` : null, ct.rss.failing.length ? `con fallos: ${ct.rss.failing.map((f) => f.slug).join(", ")}` : null].filter(Boolean).join(" · ")}</span>
+                </li>
+              ) : null}
+              {ct.intel ? (
+                <li>
+                  <span className="ops-row-title">Inteligencia orgánica · {ct.intel.report_ago ? `hace ${ct.intel.report_ago}` : "aún sin corridas"}</span>
+                  <span className="ops-row-sub">{ct.intel.report_ago ? [ct.intel.competitors.length ? `referentes: ${ct.intel.competitors.join(", ")}` : null, ct.intel.gaps.length ? `huecos: ${ct.intel.gaps.slice(0, 2).join(" · ")}` : null].filter(Boolean).join(" · ") : "Se revisan fuentes públicas una vez por semana"}</span>
+                </li>
+              ) : null}
+              {ct.resources ? (
+                <li>
+                  <span className="ops-row-title">Recursos activos · {ct.resources.active}</span>
+                  <span className="ops-row-sub">{ct.resources.rows.length ? ct.resources.rows.map((r) => `${r.name} (${r.uses} ${r.uses === 1 ? "uso" : "usos"})`).join(" · ") : "Ninguno todavía"}</span>
+                </li>
+              ) : null}
+              {ct.founder ? (
+                <li>
+                  <span className="ops-row-title">Founder Interview · {ct.founder.pending_answer ? "esperando tu respuesta" : ct.founder.answered_without_pieces ? "respondida, falta la pieza" : "al día"}</span>
+                  <span className="ops-row-sub">{ct.founder.last ? `Última: ${ct.founder.last.question} · hace ${ct.founder.last.ago}` : "Pídele a Hermes «entrevístame» cuando tengas una historia real"}</span>
+                </li>
+              ) : null}
             </ul>
           </>
         ) : null}

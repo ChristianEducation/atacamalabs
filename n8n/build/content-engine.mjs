@@ -19,8 +19,11 @@ import fs from 'node:fs';
 import { evaluatePiece } from '../../scripts/content/engine-core.mjs';
 import { summaryHash } from '../../scripts/content/metrics-core.mjs';
 import * as schedule from '../../scripts/content/schedule-core.mjs';
+import * as growth from '../../scripts/content/growth-core.mjs';
 
 const SCHEDULE_LIB = Object.values(schedule).filter((f) => typeof f === 'function').map((f) => f.toString()).join('\n\n');
+const GROWTH_LIB = Object.values(growth).filter((f) => typeof f === 'function').map((f) => f.toString()).join('\n\n');
+const NONE = 'https://localhost.invalid/';
 
 const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 const PACK_ID = '0ba54785-bff0-4a2d-a397-64e697d34e38'; // icp_packs.atacama-labs
@@ -53,6 +56,8 @@ const EVALUATE = `${evaluatePiece.toString()}
 
 ${SCHEDULE_LIB}
 
+${GROWTH_LIB}
+
 const PACK_ID = '${PACK_ID}';
 const ACCOUNTS = ${JSON.stringify(ACCOUNTS)};
 const APPROVER = '${APPROVER_USER_ID}';
@@ -73,7 +78,24 @@ piece.sources = piece.sources.map((s) => { const internal = s.kind === 'real_wor
 const wantsReview = body.submit_to_review !== false;
 const rows = ($('Fetch Keys').first().json || {}).body;
 const existing = Array.isArray(rows) ? rows.map((r) => r.idea_key) : [];
-const ev = evaluatePiece(piece, { existingIdeaKeys: existing });
+const nodeJson = (n) => { try { return $(n).first().json || {}; } catch (e) { return {}; } };
+const okRows = (n) => { const x = nodeJson(n); return (x.statusCode || 0) >= 200 && (x.statusCode || 0) < 300 && Array.isArray(x.body) ? x.body : []; };
+// Ola A: origen de la orden (cron/radar = autonomous · Christian = explicit · entrevista = founder_interview) y recurso asociado.
+const interviewId = typeof body.interview_id === 'string' && /^[0-9a-f-]{36}$/i.test(body.interview_id) ? body.interview_id : null;
+const origin = ['autonomous', 'explicit', 'founder_interview'].includes(body.origin) ? body.origin : (interviewId ? 'founder_interview' : 'explicit');
+const resource = okRows('Fetch Resource')[0] || null;
+const interview = okRows('Fetch Interview')[0] || null;
+const ev = evaluatePiece(piece, { existingIdeaKeys: existing, resource, resourceChecked: Boolean(piece.resource_id) });
+// Founder Interview: la pieza solo vale si cada vivencia está anclada a lo que Christian realmente respondió (la IA estructura, no inventa).
+const extra = [];
+if (origin === 'founder_interview') {
+  if (!interviewId || !interview) extra.push('founder_entrevista_no_encontrada');
+  else if (!['answered', 'submitted'].includes(interview.status)) extra.push('founder_entrevista_sin_respuesta');
+  else { const fe = growthFounderEvidence(interview.answer_text, piece); if (!fe.ok) extra.push(fe.reason); }
+} else if (interviewId) extra.push('interview_id_requiere_origin_founder_interview');
+// Una fuente de investigación (hermes_research) solo cuenta como verificada si trae el source_key de la señal como key.
+piece.sources.forEach((src, i) => { if (src.kind === 'hermes_research' && src.verified !== true && !src.key) extra.push('fuente_' + (i + 1) + '_sin_key_copia_source_key_de_la_senal'); });
+if (extra.length) { ev.errors = ev.errors.concat(extra); ev.ok = false; ev.decision = 'rejected'; }
 const base = { test: isTest, evaluation: ev };
 if (ev.decision === 'rejected') return [{ json: { ...base, action: 'reject' } }];
 
@@ -84,6 +106,10 @@ let action = ev.decision === 'candidate' ? 'submit' : 'hold';
 let holdReason = ev.decision === 'candidate' ? null : 'score_bajo_el_umbral';
 if (action === 'submit' && needsMedia && !media.length) { action = 'hold'; holdReason = 'falta_render_o_medio'; }
 if (action === 'submit' && !wantsReview) { action = 'hold'; holdReason = 'submit_to_review_false'; }
+// Content Queue Governor: la generación AUTÓNOMA se detiene con la cola de revisión llena (no se guarda nada: la idea sigue disponible); una orden explícita pasa con advertencia.
+const cfgRow = okRows('Fetch Config')[0] || {};
+const gov = growthGovernor({ pending: okRows('Fetch Pending').filter((r) => Boolean(r.is_test) === isTest).length, max: cfgRow.max_pending_in_review, origin });
+if (action === 'submit' && !gov.allowed) return [{ json: { ...base, action: 'blocked', blockReason: gov.reason, governor: gov } }];
 
 const slug = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
 const existingSourceIds = piece.sources.map((s) => dbMap[keyOf(s)] && dbMap[keyOf(s)].id).filter(Boolean);
@@ -91,12 +117,12 @@ const sourcesBody = piece.sources.filter((s) => !dbMap[keyOf(s)]).map((s) => ({ 
   summary: s.summary || null, evidence: s.evidence || [], verified: s.verified === true }));
 const pieceRow = { icp_pack_id: PACK_ID, idea_key: ev.idea_key, topic: piece.topic, angle: piece.angle, audience: piece.audience, channel: piece.channel, format: piece.format,
   category: piece.category, score: ev.score, score_breakdown: ev.breakdown, rationale: piece.rationale, evidence_urls: ev.evidence_urls, piece,
-  status: action === 'submit' ? 'drafted' : 'scored', ghl_account_id: ACCOUNTS[piece.channel], is_test: isTest, updated_at: new Date().toISOString() };
+  status: action === 'submit' ? 'drafted' : 'scored', ghl_account_id: ACCOUNTS[piece.channel], is_test: isTest, updated_at: new Date().toISOString(),
+  resource_id: resource ? resource.id : null, cta_mode: piece.cta_mode || (resource ? resource.cta_mode : null), cta_copy: piece.cta_copy || null, origin, interview_id: interviewId };
 
 // Fecha PROPUESTA — NUNCA hay fallback a +7 días (regla del 7-oct-2026; ver scripts/content/schedule-core.mjs): Noticia → próximo hueco (≤ 24 h), normal → ≤ 48 h,
 // Evergreen → ≤ 72 h, siempre America/Santiago y máx. 1 publicación por cuenta y día (se consideran los posts de Atacama OS y los manuales). Una fecha sugerida posterior
 // a 72 h solo vale con schedule_justification escrita. Es solo una propuesta: el post nace in_review y nada se programa ni publica sin aprobación.
-const nodeJson = (n) => { try { return $(n).first().json || {}; } catch (e) { return {}; } };
 const taken = [];
 const rowsSched = nodeJson('Fetch Scheduled').body;
 (Array.isArray(rowsSched) ? rowsSched : []).forEach((r) => { if (r && r.scheduled_at) taken.push({ account: r.ghl_account_id, at: Date.parse(r.scheduled_at) }); });
@@ -104,12 +130,23 @@ const gp = (nodeJson('List GHL Posts').body || {}).results;
 ((gp && Array.isArray(gp.posts)) ? gp.posts : []).forEach((q) => { if (q && q.scheduleDate && !['deleted', 'failed'].includes(q.status)) (q.accountIds || []).forEach((a) => taken.push({ account: a, at: Date.parse(q.scheduleDate) })); });
 const sched = proposeSlot({ now: Date.now(), channel: piece.channel, category: piece.category, account: ACCOUNTS[piece.channel], suggestion: piece.schedule_suggestion, justification: piece.schedule_justification, taken });
 const when = sched.ms;
-const summary = (isTest ? '[PRUEBA ATACAMA OS — NO PUBLICAR] ' : '') + ev.post_text;
+// Recurso asociado: {{resource_url}} se reemplaza por la URL con atribución (UTM); si el modo es enlace directo y el texto no la trae, se agrega al final.
+let postText = ev.post_text;
+const scheduleWarnings = (sched.warnings || []).slice();
+if (resource) {
+  const rUrl = growthUtmUrl(resource.url, { channel: piece.channel, slug: resource.slug, ideaKey: ev.idea_key });
+  const mode = piece.cta_mode || resource.cta_mode;
+  if (postText.includes('{{resource_url}}')) postText = postText.split('{{resource_url}}').join(rUrl);
+  else if (mode === 'resource_link' && !postText.includes(resource.url)) postText += '\\n\\n' + (piece.cta_copy || resource.cta_copy || resource.name) + ': ' + rUrl;
+  if (piece.channel === 'instagram' && mode === 'resource_link') scheduleWarnings.push('instagram_no_enlaza_en_el_texto_usa_dm_o_link_en_bio');
+}
+if (postText.includes('{{resource_url}}')) throw new Error('El texto trae {{resource_url}} pero la pieza no tiene un recurso activo asociado.');
+const summary = (isTest ? '[PRUEBA ATACAMA OS — NO PUBLICAR] ' : '') + postText;
 // Las etiquetas/categorías de Social Planner exigen ObjectIds creados desde la interfaz (la API con token de integración no puede crearlos): por ahora formato y categoría viajan en Supabase.
 const ghlBody = { accountIds: [ACCOUNTS[piece.channel]], summary, type: 'post', status: 'in_review', userId: APPROVER, media: media.map((m) => ({ url: m.url, type: m.type || 'image/png' })),
   scheduleDate: new Date(when).toISOString(), postApprovalDetails: { approver: APPROVER }, ...(CATEGORIES[piece.category] ? { categoryId: CATEGORIES[piece.category] } : {}), ...(TAGS[piece.format] ? { tags: [TAGS[piece.format]] } : {}) };
 if (ghlBody.status !== 'in_review') throw new Error('SEGURIDAD: este workflow solo puede crear posts en in_review.');
-return [{ json: { ...base, action, holdReason, sourcesBody, existingSourceIds, pieceRow, ghlBody, schedule: sched } }];`;
+return [{ json: { ...base, action, holdReason, sourcesBody, existingSourceIds, pieceRow, ghlBody, schedule: { ...sched, warnings: scheduleWarnings }, governor: gov, resource: resource ? { id: resource.id, slug: resource.slug } : null, interviewId, interviewPieceIds: (interview && interview.piece_ids) || [] } }];`;
 
 const BUILD_ROW = `if (($json.statusCode || 0) >= 300) throw new Error('Supabase content_sources falló (HTTP ' + $json.statusCode + '): ' + JSON.stringify($json.body || {}).slice(0, 300));
 const ev = $('Evaluate').first().json;
@@ -127,13 +164,15 @@ if (!post || !post._id) throw new Error('GHL no creó el post (HTTP ' + res.stat
 if (post.status !== 'in_review') throw new Error('SEGURIDAD: GHL devolvió estado ' + post.status + ' (se esperaba in_review). Revisar/borrar el post ' + post._id);
 return [{ json: { ...ev, ghl_post_id: post._id, patchBody: { status: 'in_review', ghl_post_id: post._id, ghl_status: 'in_review', ghl_summary_hash: summaryHash(post.summary || ev.ghlBody.summary), updated_at: new Date().toISOString() } } }];`;
 
-const RESP_REJECT = `const e = $json.evaluation;
+const RESP_REJECT = `if ($json.action === 'blocked') return [{ json: { ok: false, action: 'blocked', reason: $json.blockReason, pending_in_review: $json.governor.pending, max_pending_in_review: $json.governor.max, score: $json.evaluation.score, note: 'La cola de revisión está llena: no se creó la pieza (nada se guardó). Una orden explícita de Christian puede saltarse el límite.' } }];
+const e = $json.evaluation;
 return [{ json: { ok: false, action: 'rejected', errors: e.errors, warnings: e.warnings, score: e.score } }];`;
 const RESP_HELD = `const ev = $('Build Row').first().json;
 const saved = Array.isArray($('Upsert Piece').first().json.body) ? $('Upsert Piece').first().json.body[0] : null;
 return [{ json: { ok: true, action: 'held', reason: ev.holdReason, score: ev.evaluation.score, piece_id: saved && saved.id, status: saved && saved.status, breakdown: ev.evaluation.breakdown, lint_hits: ev.evaluation.lint_hits } }];`;
 const RESP_SUBMITTED = `const c = $('Check GHL').first().json;
 return [{ json: { ok: true, action: 'in_review', ghl_post_id: c.ghl_post_id, piece_id: ((($('Mark In Review').first().json.body) || [])[0] || {}).id || null, score: c.evaluation.score, channel: c.pieceRow.channel, status: 'in_review',
+  governor_warning: (c.governor && c.governor.warning) || null, pending_in_review: c.governor ? c.governor.pending : null, resource: c.resource, interview_id: c.interviewId,
   proposed_for: c.schedule.iso, proposed_label: c.schedule.label, proposed_in_hours: c.schedule.hours_ahead, schedule_warnings: c.schedule.warnings,
   note: 'Quedó en GHL Social Planner como in_review (fecha propuesta: ' + c.schedule.label + ' hora de Chile). Nada se programó ni publicó.' } }];`;
 
@@ -141,15 +180,19 @@ export function buildContentIntake() {
   const nodes = [
     { id: randomUUID(), name: 'Intake Webhook', type: 'n8n-nodes-base.webhook', typeVersion: 2, position: [0, 0], webhookId: randomUUID(), credentials: INGEST_CRED,
       parameters: { httpMethod: 'POST', path: 'atacama-content-intake', authentication: 'headerAuth', responseMode: 'lastNode', options: {} } },
-    sb('Fetch Keys', 'GET', `${SUPABASE}/rest/v1/content_pieces?icp_pack_id=eq.${PACK_ID}&select=idea_key&limit=1000`, null, [240, 0]),
+    sb('Fetch Keys', 'GET', `${SUPABASE}/rest/v1/content_pieces?icp_pack_id=eq.${PACK_ID}&status=not.in.(idea,scored,drafted)&select=idea_key&limit=1000`, null, [240, 0]),
     sb('Fetch Sources', 'GET', `${SUPABASE}/rest/v1/content_sources?icp_pack_id=eq.${PACK_ID}&select=id,source_key,verified&limit=3000`, null, [360, 0]),
+    { ...sb('Fetch Config', 'GET', `${SUPABASE}/rest/v1/content_config?id=eq.1&select=max_pending_in_review`, null, [420, 0]), continueOnFail: true, alwaysOutputData: true },
+    { ...sb('Fetch Pending', 'GET', `${SUPABASE}/rest/v1/content_pieces?icp_pack_id=eq.${PACK_ID}&status=eq.in_review&select=id,is_test&limit=200`, null, [440, 0]), continueOnFail: true, alwaysOutputData: true },
+    { ...sb('Fetch Resource', 'GET', `={{ (() => { const b = $("Intake Webhook").first().json; const id = ((b.body || b).piece || {}).resource_id; return /^[0-9a-f-]{36}$/i.test(String(id || "")) ? "${SUPABASE}/rest/v1/content_resources?id=eq." + id + "&status=eq.active&select=id,slug,name,url,cta_mode,cta_copy" : "${NONE}"; })() }}`, null, [460, 0]), continueOnFail: true, alwaysOutputData: true },
+    { ...sb('Fetch Interview', 'GET', `={{ (() => { const b = $("Intake Webhook").first().json; const id = (b.body || b).interview_id; return /^[0-9a-f-]{36}$/i.test(String(id || "")) ? "${SUPABASE}/rest/v1/founder_interviews?id=eq." + id + "&select=id,status,answer_text,piece_ids,is_test" : "${NONE}"; })() }}`, null, [470, 0]), continueOnFail: true, alwaysOutputData: true },
     { ...sb('Fetch Scheduled', 'GET', `={{ "${SUPABASE}/rest/v1/content_pieces?icp_pack_id=eq.${PACK_ID}&scheduled_at=gte." + new Date(Date.now() - 36 * 3600000).toISOString() + "&status=in.(drafted,in_review,approved,scheduled,published)&select=ghl_account_id,scheduled_at,status&limit=300" }}`, null, [480, 0]), continueOnFail: true, alwaysOutputData: true },
     { id: randomUUID(), name: 'List GHL Posts', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [600, 0], credentials: GHL_CRED, continueOnFail: true, alwaysOutputData: true,
       parameters: { method: 'POST', url: `https://services.leadconnectorhq.com/social-media-posting/${GHL_LOCATION}/posts/list`, authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth',
         sendHeaders: true, headerParameters: { parameters: [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', value: 'application/json' }] },
         sendBody: true, specifyBody: 'json', jsonBody: `={{ JSON.stringify({ type: 'all', accounts: ${JSON.stringify(Object.values(ACCOUNTS).join(','))}, skip: '0', limit: '100', fromDate: new Date(Date.now() - 2 * 86400000).toISOString(), toDate: new Date(Date.now() + 45 * 86400000).toISOString(), includeUsers: 'false' }) }}`, options: full() } },
     code('Evaluate', EVALUATE, [720, 0]),
-    iff('Rejected?', '$json.action === "reject"', [720, 0]),
+    iff('Rejected?', '$json.action === "reject" || $json.action === "blocked"', [720, 0]),
     code('Respond Rejected', RESP_REJECT, [960, -140]),
     sb('Upsert Sources', 'POST', `${SUPABASE}/rest/v1/content_sources?on_conflict=icp_pack_id,source_key`, '={{ JSON.stringify($json.sourcesBody) }}', [960, 60], 'resolution=merge-duplicates,return=representation'),
     code('Build Row', BUILD_ROW, [1200, 60]),
@@ -163,13 +206,19 @@ export function buildContentIntake() {
     code('Check GHL', CHECK_GHL, [2160, 160]),
     sb('Mark In Review', 'PATCH', `={{ "${SUPABASE}/rest/v1/content_pieces?icp_pack_id=eq.${PACK_ID}&idea_key=eq." + $json.evaluation.idea_key }}`, '={{ JSON.stringify($json.patchBody) }}', [2400, 160], 'return=representation'),
     sb('Mark Sources Used', 'PATCH', `={{ "${SUPABASE}/rest/v1/content_sources?icp_pack_id=eq.${PACK_ID}&signal_status=eq.candidate&id=in.(" + (($('Build Row').first().json.pieceRowFull.source_ids || []).concat(['00000000-0000-0000-0000-000000000000'])).join(',') + ")" }}`, '={{ JSON.stringify({ signal_status: "used" }) }}', [2640, 160], 'return=minimal'),
+    { ...sb('Link Interview', 'PATCH', `={{ $("Build Row").first().json.interviewId ? "${SUPABASE}/rest/v1/founder_interviews?id=eq." + $("Build Row").first().json.interviewId : "${NONE}" }}`,
+      '={{ JSON.stringify({ status: "submitted", piece_ids: (($("Build Row").first().json.interviewPieceIds || []).concat([((($("Mark In Review").first().json.body) || [])[0] || {}).id].filter(Boolean))).filter((v, i, a) => a.indexOf(v) === i), updated_at: new Date().toISOString() }) }}', [2760, 160], 'return=minimal'), continueOnFail: true, alwaysOutputData: true },
     code('Respond Submitted', RESP_SUBMITTED, [2880, 160]),
   ];
   const to = (n) => [{ node: n, type: 'main', index: 0 }];
   const connections = {
     'Intake Webhook': { main: [to('Fetch Keys')] },
     'Fetch Keys': { main: [to('Fetch Sources')] },
-    'Fetch Sources': { main: [to('Fetch Scheduled')] },
+    'Fetch Sources': { main: [to('Fetch Config')] },
+    'Fetch Config': { main: [to('Fetch Pending')] },
+    'Fetch Pending': { main: [to('Fetch Resource')] },
+    'Fetch Resource': { main: [to('Fetch Interview')] },
+    'Fetch Interview': { main: [to('Fetch Scheduled')] },
     'Fetch Scheduled': { main: [to('List GHL Posts')] },
     'List GHL Posts': { main: [to('Evaluate')] },
     'Evaluate': { main: [to('Rejected?')] },
@@ -181,7 +230,8 @@ export function buildContentIntake() {
     'Create GHL Post': { main: [to('Check GHL')] },
     'Check GHL': { main: [to('Mark In Review')] },
     'Mark In Review': { main: [to('Mark Sources Used')] },
-    'Mark Sources Used': { main: [to('Respond Submitted')] },
+    'Mark Sources Used': { main: [to('Link Interview')] },
+    'Link Interview': { main: [to('Respond Submitted')] },
   };
   return { name: 'Atacama Labs - 12 Content Intake', nodes, connections, settings: { executionOrder: 'v1' } };
 }

@@ -54,6 +54,13 @@ export function evaluatePiece(piece, ctx = {}) {
   if (ctaObj.type === 'comment_keyword' && (!str(ctaObj.keyword) || !str(ctaObj.resource))) errors.push('cta_keyword_requiere_keyword_y_recurso');
   if (ctaObj.type === 'resource' && !str(ctaObj.resource)) errors.push('cta_recurso_obligatorio');
   const ctaText = str(ctaObj.text);
+  // Ola A · Resource & Conversation Engine v1: recurso asociado (opcional). «Comenta PALABRA → DM» NO está automatizado: la entrega es manual.
+  if (p.cta_mode !== undefined && p.cta_mode !== null && !['none', 'resource_link', 'dm', 'diagnostic'].includes(p.cta_mode)) errors.push('cta_mode_invalido');
+  if (p.resource_id !== undefined && p.resource_id !== null && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(p.resource_id))) errors.push('resource_id_invalido');
+  if (p.cta_mode === 'resource_link' && !p.resource_id) errors.push('cta_resource_link_requiere_resource_id');
+  if (p.resource_id && ctx.resourceChecked && !ctx.resource) errors.push('recurso_no_existe_o_no_activo');
+  if (str(p.cta_copy).length > 240) errors.push('cta_copy_largo');
+  if (ctaObj.type === 'comment_keyword') warnings.push('comment_keyword_sin_automatizacion_entrega_manual');
 
   // Texto final del post
   let postText = hook + '\n\n' + body;

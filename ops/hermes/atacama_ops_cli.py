@@ -3,7 +3,7 @@
 
   atacama_ops_cli.py daily  [--force]   Resumen diario por Telegram (08:30 Chile; el cron dispara 11:30/11:45/12:30/12:45 UTC y aquí se decide).
   atacama_ops_cli.py alerts             Cada 15 min: imprime SOLO alertas nuevas (vacío = silencio). Deduplicado en n8n.
-  atacama_ops_cli.py gate radar|content Compuerta previa de los radares (la salida se inyecta en el prompt del agente; si dice skip, el agente termina).
+  atacama_ops_cli.py gate radar|content|rss|competitors|pieces   Compuerta previa de los jobs con IA (la salida se inyecta en el prompt del agente; si dice skip, el agente termina).
 
 stdout se entrega tal cual a Telegram en los jobs --no-agent. Nunca imprime claves."""
 import datetime
@@ -84,9 +84,17 @@ def alerts():
             pass  # si falla el ack se reintenta en la próxima consulta (alertas nunca confirmadas)
 
 
+GATES = {  # tipo → (acción de compuerta, cómo se registra una omisión)
+    "radar": ("radar_gate", {"action": "radar_report"}),
+    "content": ("content_gate", {"action": "content_radar_report"}),
+    "rss": ("rss_gate", {"action": "job_report", "kind": "content_rss"}),
+    "competitors": ("competitor_gate", {"action": "job_report", "kind": "competitor_intel"}),
+    "pieces": ("pieces_gate", {"action": "job_report", "kind": "content_pieces"}),
+}
+
+
 def gate(kind):
-    action = "radar_gate" if kind == "radar" else "content_gate"
-    rep = "radar_report" if kind == "radar" else "content_radar_report"
+    action, rep = GATES[kind]
     try:
         r = post_ops({"action": action, "hermes": hermes_state()}, timeout=60)
     except Exception as ex:
@@ -95,10 +103,22 @@ def gate(kind):
     mode, reason = r.get("mode", "skip"), r.get("reason", "")
     if mode == "skip":
         try:
-            post_ops({"action": rep, "report": {"status": "skipped", "mode": "skip", "reason": reason}})
+            body = {"status": "skipped", "mode": "skip", "reason": reason}
+            if rep.get("kind"):
+                body["kind"] = rep["kind"]
+            post_ops({"action": rep["action"], "report": body})
         except Exception:
             pass
-    extra = " max_imports=%s" % r.get("max_imports") if kind == "radar" and mode != "skip" else (" max_signals=%s" % r.get("max_signals") if mode != "skip" else "")
+    extra = ""
+    if mode != "skip":
+        if kind == "radar":
+            extra = " max_imports=%s" % r.get("max_imports")
+        elif kind in ("content", "rss"):
+            extra = " max_signals=%s" % r.get("max_signals")
+        elif kind == "pieces":
+            extra = " max_pieces=%s" % r.get("max_pieces")
+        if kind in ("content", "pieces", "rss"):
+            extra += " pieces_allowed=%s pending_review=%s/%s" % (str(r.get("pieces_allowed", True)).lower(), r.get("pending_review"), r.get("max_pending_in_review"))
     print("COMPUERTA DEL %s (calculada por Atacama OS antes de esta corrida): mode=%s%s — %s" % (kind.upper(), mode, extra, reason))
 
 
@@ -108,10 +128,10 @@ def main():
         daily("--force" in a)
     elif a[0] == "alerts":
         alerts()
-    elif a[0] == "gate" and len(a) > 1 and a[1] in ("radar", "content"):
+    elif a[0] == "gate" and len(a) > 1 and a[1] in GATES:
         gate(a[1])
     else:
-        print("uso: atacama_ops_cli.py daily [--force] | alerts | gate radar|content")
+        print("uso: atacama_ops_cli.py daily [--force] | alerts | gate radar|content|rss|competitors|pieces")
 
 
 if __name__ == "__main__":
