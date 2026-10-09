@@ -33,7 +33,7 @@ export function cmCtaKind(body) {
   const p = cmParts(body);
   const last = cmNorm(p.sentences.slice(-2).join(' '));
   if (/(\b\d+\s*(min|minutos)\b|reunion|llamada|videollamada|agendar|agendemos|coordinar|conversemos|conversar (un|unos)|\bcafe\b|demo en vivo|calendario)/.test(last)) return 'meeting';
-  if (/(te mando|te envio|te muestro|te dejo|te comparto|te paso|puedo mandarte|puedo enviarte|te puedo mostrar|quieres ver|te sirve que|vale la pena que te|tiene sentido que te)/.test(last)) return 'example';
+  if (/(te mando|te envio|te muestro|te dejo|te comparto|te paso|te cuento|les mando|les envio|les muestro|les dejo|les comparto|les paso|les cuento|puedo mandarte|puedo enviarte|puedo mostrarles|te puedo mostrar|quieres ver|quieren ver|te sirve que|les sirve que|vale la pena que (te|les)|tiene sentido que (te|les)|les parece que)/.test(last)) return 'example';
   if (/(lo ve alguien|quien (ve|lleva|maneja|se encarga)|con quien (hablo|puedo)|es algo que (ve|ven)|corresponde a|le corresponde)/.test(last)) return 'who';
   if (/\?/.test(last)) return 'question';
   return 'statement';
@@ -146,7 +146,7 @@ export function coldLint(d, peers, cold) {
   if (!isFollow && cta === 'statement') warn('cta_ausente', 'El correo no cierra con algo fácil de responder (una pregunta corta).', 6);
 
   // ---- foco y largo
-  const atcSent = parts.sentences.filter((s) => /(atacama|armamos|implementamos|ayudamos a|nuestros agentes|trabajamos con empresas|somos una)/.test(cmNorm(s)));
+  const atcSent = parts.sentences.filter((s) => /(atacama|armamos|implementamos|ayudamos a|nuestros agentes|trabajamos con empresas|somos una)/.test(cmNorm(s)) && !(/^(soy|me llamo) [^.]{0,40}atacama labs[.!]?$/.test(cmNorm(s)) && cmWords(s).length <= 9));
   const atcWords = atcSent.reduce((n, s) => n + cmWords(s).length, 0);
   if (atcSent.length > 1 || (atcSent.length === 1 && nWords > 0 && atcWords / nWords > 0.4)) warn('explica_atacama', 'Explica demasiado a Atacama Labs (' + atcSent.length + ' oraciones): el correo es sobre el prospecto, no sobre nosotros.', atcSent.length > 1 ? 10 : 6);
   if (nWords > 130) warn('largo', 'Tiene ' + nWords + ' palabras: un correo en frío funciona mejor con 50–100.', 10);

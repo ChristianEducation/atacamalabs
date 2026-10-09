@@ -187,4 +187,15 @@ ok('las respuestas (kind reply) no pasan por el linter de correo en frío', () =
   assert.equal(r.response.ok, true); assert.equal(r.response.cold, null);
 });
 
+ok('tono cercano: presentarse en una frase corta NO cuenta como explicar a Atacama; el cierre de interés en trato de «ustedes» se reconoce', () => {
+  const close = { kind: 'initial', subject: 'consultas entre sedes', body: 'Hola,\n\nCon sedes en Las Condes y Providencia, imagino que cuando alguien escribe por WhatsApp pidiendo una primera evaluación, recepción tiene que averiguar primero en cuál sede le acomoda atenderse.\n\nSoy Christian, de Atacama Labs. Armamos sistemas que se encargan de esa primera conversación para que recepción reciba la consulta con sede y tratamiento ya definidos.\n\n¿Les mando un ejemplo de cómo podría funcionar en su caso?' };
+  const l = cm.coldLint(close, [], EV);
+  assert.ok(!l.warnings.some((w) => w.code === 'explica_atacama'), JSON.stringify(l.warnings.map((w) => w.code)));
+  assert.equal(l.cta_kind, 'example'); assert.ok(l.score >= 80, String(l.score)); assert.deepEqual(l.hard, []);
+  for (const q of ['¿Les muestro cómo se vería?', '¿Les cuento cómo se vería?', '¿Les sirve que les mande un ejemplo?', '¿Tiene sentido que les muestre la idea?', '¿Vale la pena que les envíe un esquema?', '¿Les parece que les cuente cómo sería?']) assert.equal(cm.cmCtaKind('Hola.\n\nObservación.\n\n' + q), 'example', q);
+  // explicar a Atacama en varias oraciones sigue penalizando
+  const much = { ...close, body: close.body.replace('Soy Christian, de Atacama Labs. Armamos', 'Soy Christian. En Atacama Labs ayudamos a empresas de todos los rubros a ordenar su operación. Además armamos') };
+  assert.ok(cm.coldLint(much, [], EV).warnings.some((w) => w.code === 'explica_atacama'));
+});
+
 console.log(n + ' ok');
