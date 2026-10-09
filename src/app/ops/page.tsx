@@ -3,7 +3,10 @@ import { hasSession, opsConfigured } from "@/lib/ops/auth";
 import { LoginForm } from "./Client";
 import { PanelSkeleton, PanelView } from "./PanelView";
 
-/** Siempre dinámico: es una vista viva y privada; nada de esto se prerenderiza ni se cachea. */
+/**
+ * Siempre dinámico: es una vista viva y privada; la página y la sesión nunca se prerenderizan ni se cachean.
+ * (Lo único que se guarda, en memoria del servidor y con refresco por detrás, es la LECTURA de n8n: ver src/lib/ops/swr.ts.)
+ */
 export const dynamic = "force-dynamic";
 
 export default async function OpsPage({ searchParams }: { searchParams: Promise<{ view?: string | string[]; filter?: string | string[]; tab?: string | string[] }> }) {

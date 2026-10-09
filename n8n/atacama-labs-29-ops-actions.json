@@ -2,7 +2,7 @@
   "name": "Atacama Labs - 29 Ops Actions",
   "nodes": [
     {
-      "id": "cd3d35e3-593d-436d-89bd-319f54fccfc7",
+      "id": "deb92eb4-6ed7-4d15-98d4-f176021bbb53",
       "name": "Actions Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -10,7 +10,7 @@
         0,
         0
       ],
-      "webhookId": "6a6ccc8c-35d8-415f-9125-454a5e8d828a",
+      "webhookId": "e57dce17-72a6-4634-874d-257e4ede8bf8",
       "credentials": {
         "httpHeaderAuth": {
           "id": "k1OjUzoBnFXBsffh",
@@ -26,7 +26,7 @@
       }
     },
     {
-      "id": "1fd3cb58-de94-4bca-936d-cf489f895cb7",
+      "id": "851d87dc-89a9-4dcf-ae60-bf4b7a0fc577",
       "name": "Parse",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -39,7 +39,7 @@
       }
     },
     {
-      "id": "8e242dcc-3265-4e47-8c9d-6d2699eb558f",
+      "id": "3e1c8fec-f202-4785-a4e6-a713a0b278bd",
       "name": "Valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -70,7 +70,7 @@
       }
     },
     {
-      "id": "449d011d-321d-4332-b803-40a6e15484bd",
+      "id": "060ed0e7-f458-474e-b055-c699f7e81b70",
       "name": "Respond Error",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -83,7 +83,7 @@
       }
     },
     {
-      "id": "2777a0f0-f100-4430-9d86-9551bdba9c6a",
+      "id": "23d4d098-dcd6-408c-994a-0a07d2b38eb4",
       "name": "Expand Reads",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -96,7 +96,7 @@
       }
     },
     {
-      "id": "91d689e4-13a5-482f-9b65-b8b5e0a8dfbc",
+      "id": "0ae80771-fc27-402a-975a-7c8d818f722b",
       "name": "Read",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -130,7 +130,7 @@
       }
     },
     {
-      "id": "bb2344c1-ef5d-43c3-9fdd-ae5e0adc419d",
+      "id": "ce116f82-7561-44a6-92b8-29e3e2adde01",
       "name": "Plan 1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -143,7 +143,7 @@
       }
     },
     {
-      "id": "b07c7b4f-a9fc-46db-9e04-3cf29d50f131",
+      "id": "82d5f26b-4f35-44f0-b6b8-bedc250e1396",
       "name": "Ingest 1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -180,7 +180,7 @@
       }
     },
     {
-      "id": "0c1d3e3c-f940-4e95-8e26-08012445a676",
+      "id": "87474b7d-f26d-40f6-bd02-9fcce22759a5",
       "name": "GHL Get 1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -227,7 +227,7 @@
       }
     },
     {
-      "id": "fe3c8232-d01c-4c72-99a8-9d46267d0758",
+      "id": "36fbf908-8234-49f0-b881-47d6f0550ef8",
       "name": "GHL Put 1",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -277,7 +277,7 @@
       }
     },
     {
-      "id": "61b131a4-657d-467f-9ae6-aa669c9bdf24",
+      "id": "71f63502-260e-44eb-87bd-37004e74f346",
       "name": "Plan 2",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -290,7 +290,7 @@
       }
     },
     {
-      "id": "58be74b0-4897-4696-a546-85dccfd43fbe",
+      "id": "f182174a-0707-49b7-9738-d541c13e360e",
       "name": "Ingest 2",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -327,7 +327,7 @@
       }
     },
     {
-      "id": "d50366dd-56ff-4c2e-a1fa-66adf23a67c8",
+      "id": "d16a7b14-3225-4945-aeb9-a0fda8405a03",
       "name": "GHL Get 2",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -374,7 +374,7 @@
       }
     },
     {
-      "id": "4ea0d133-e277-496b-a8f2-33f871b8ec6c",
+      "id": "988d9c4f-2fcc-4b2b-b888-2f86ee9ef3b9",
       "name": "GHL Put 2",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -424,7 +424,7 @@
       }
     },
     {
-      "id": "eee649f3-3b50-4469-835b-12d47e12a36f",
+      "id": "f84ba896-bc32-4764-844d-6dd41bcefbdb",
       "name": "Plan 3",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -437,7 +437,7 @@
       }
     },
     {
-      "id": "6e82965c-71ff-4d7b-b6c3-4bfd5d48b0a5",
+      "id": "1942fa60-7e94-43bb-bc10-4634337a3764",
       "name": "Ingest 3",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -474,7 +474,7 @@
       }
     },
     {
-      "id": "94b5e312-feb4-4bb6-92cd-067d3e8c079b",
+      "id": "df16c491-b658-4a80-ba93-1c1aae9a40af",
       "name": "GHL Get 3",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -521,7 +521,7 @@
       }
     },
     {
-      "id": "39e1f62b-6d02-41b9-9a9e-a843c746a465",
+      "id": "25c060f8-9dc8-44b4-b1cf-b86c2ce503a9",
       "name": "GHL Put 3",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -571,7 +571,7 @@
       }
     },
     {
-      "id": "ee373127-d577-4541-b021-64e55a81c471",
+      "id": "08851aea-75ec-4a15-b4f0-ca6ce68d72b8",
       "name": "Plan 4",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -584,7 +584,7 @@
       }
     },
     {
-      "id": "43ae4a16-47d8-47b7-83af-a33941b71fb6",
+      "id": "5c18c752-8b1e-436a-b35b-1faac0342807",
       "name": "Finish",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -597,7 +597,7 @@
       }
     },
     {
-      "id": "8c752566-b9db-4a69-88d2-70c19edc1a14",
+      "id": "c872dc99-37b9-4e94-a372-5958f1ffd963",
       "name": "Expand Writes",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -610,7 +610,7 @@
       }
     },
     {
-      "id": "9042ca21-32e8-4f1b-a4b8-8e4da8d36aef",
+      "id": "4edc5a74-49ea-4ba6-bdc3-0872d40db1b6",
       "name": "Apply Writes",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -630,8 +630,8 @@
       "maxTries": 3,
       "waitBetweenTries": 1500,
       "parameters": {
-        "method": "={{ $json.method || \"POST\" }}",
-        "url": "={{ $json.skip ? \"https://localhost.invalid/\" : \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/\" + $json.path }}",
+        "method": "={{ $json.skip ? \"GET\" : ($json.method || \"POST\") }}",
+        "url": "={{ $json.skip ? \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/content_config?select=id&limit=1\" : \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/\" + $json.path }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "supabaseApi",
         "sendHeaders": true,
@@ -659,7 +659,7 @@
       }
     },
     {
-      "id": "e3ca3c28-2d1e-4cfd-8065-4e7197ea9930",
+      "id": "a64b5ea6-736b-40cb-ab10-5c9c4c8e8480",
       "name": "Respond",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,

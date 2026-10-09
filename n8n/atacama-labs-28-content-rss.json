@@ -2,7 +2,7 @@
   "name": "Atacama Labs - 28 Content RSS",
   "nodes": [
     {
-      "id": "9cde4f57-f012-46b3-b494-23ca188001e2",
+      "id": "f9cd5a52-f629-4ba0-8039-0d58d7e2a5b9",
       "name": "Every Hour",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -22,7 +22,7 @@
       }
     },
     {
-      "id": "8c001479-7696-41b3-9f78-8d895172ebff",
+      "id": "d1c9d1a7-e4c2-4532-a244-b861dbacde2f",
       "name": "RSS Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -30,7 +30,7 @@
         0,
         80
       ],
-      "webhookId": "439a191e-3ed0-4e40-bf20-340ed593d08d",
+      "webhookId": "4052aebd-1763-4edc-94cd-093924316d01",
       "credentials": {
         "httpHeaderAuth": {
           "id": "lUGhlXVaQBEiEh5S",
@@ -46,7 +46,7 @@
       }
     },
     {
-      "id": "16de31a9-4ec0-4205-900f-a1fe8b3d30a9",
+      "id": "802563f8-5f67-4492-b28a-4d27929b741e",
       "name": "Prepare",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -59,7 +59,7 @@
       }
     },
     {
-      "id": "7d267da7-c287-4334-9413-748b5d800ec6",
+      "id": "fbc9881b-63d8-4f98-a8cd-6736f2a09d83",
       "name": "Fetch Config",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -93,7 +93,7 @@
       }
     },
     {
-      "id": "377e573e-5f10-4d0b-b076-07d188eff3bc",
+      "id": "ba232a86-89b9-4d3a-a411-d1bb16253dfb",
       "name": "Fetch Feeds",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -127,7 +127,7 @@
       }
     },
     {
-      "id": "aa9636eb-ccdf-415c-8c1e-394c9cad9ffa",
+      "id": "55850e4d-d470-47d8-a1b6-b3a9ab7ae1f5",
       "name": "Expand Feeds",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -140,7 +140,7 @@
       }
     },
     {
-      "id": "6e250f2f-fa4a-4d93-a8b9-40de5967555a",
+      "id": "3d8cf601-8691-44aa-85be-21555b3f2ed3",
       "name": "Read Feed",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -179,7 +179,7 @@
       }
     },
     {
-      "id": "7351dd54-f4b2-45e1-a6cd-59ec4dc29fd4",
+      "id": "ad1adbb6-5145-464e-928f-a5a6465bcf2f",
       "name": "Collect",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -192,7 +192,7 @@
       }
     },
     {
-      "id": "92e19d45-c9a9-4ad0-b2d2-3918a837c235",
+      "id": "8d12e23c-fc05-491c-a31d-250c7886c167",
       "name": "Expand Writes",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -205,7 +205,7 @@
       }
     },
     {
-      "id": "14d57df0-9987-4e5d-85c3-121d07c9de06",
+      "id": "5400876a-a7cc-475c-bace-8996c2c420a2",
       "name": "Apply Writes",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -225,8 +225,8 @@
       "maxTries": 3,
       "waitBetweenTries": 1500,
       "parameters": {
-        "method": "={{ $json.method || \"POST\" }}",
-        "url": "={{ $json.skip ? \"https://localhost.invalid/\" : \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/\" + $json.path }}",
+        "method": "={{ $json.skip ? \"GET\" : ($json.method || \"POST\") }}",
+        "url": "={{ $json.skip ? \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/content_config?select=id&limit=1\" : \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/\" + $json.path }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "supabaseApi",
         "sendHeaders": true,
@@ -254,7 +254,7 @@
       }
     },
     {
-      "id": "7b3a651f-e8ab-4316-b459-17e9b0b00c2c",
+      "id": "012d78f5-ee41-42f0-8190-a40a728d4e5f",
       "name": "Respond",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,

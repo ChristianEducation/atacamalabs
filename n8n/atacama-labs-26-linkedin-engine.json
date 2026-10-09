@@ -2,7 +2,7 @@
   "name": "Atacama Labs - 26 LinkedIn Engine",
   "nodes": [
     {
-      "id": "dc4d211f-fdc9-41b6-8837-b66d28dd1d15",
+      "id": "5dd2b0f1-dabf-4e58-bd9b-e3a589a8b80e",
       "name": "LI Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -10,7 +10,7 @@
         0,
         0
       ],
-      "webhookId": "1eebeb03-aaa6-446f-a8e3-c2e18d5a654b",
+      "webhookId": "e4ccbad7-73d1-4307-98c4-404dbd7167f5",
       "credentials": {
         "httpHeaderAuth": {
           "id": "lUGhlXVaQBEiEh5S",
@@ -26,7 +26,7 @@
       }
     },
     {
-      "id": "bbda97dc-5a6f-47f0-8bbb-dc4bb03c55ec",
+      "id": "7a84aab0-ee75-456f-9a40-40ff0bc90939",
       "name": "Parse",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -39,7 +39,7 @@
       }
     },
     {
-      "id": "55ac394c-ef61-4270-bd5a-e1f33a567460",
+      "id": "2016d75f-90ba-43e6-b057-6aa9b0b92fb2",
       "name": "Valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -70,7 +70,7 @@
       }
     },
     {
-      "id": "9df4692b-93e6-43bd-ab3d-6aafa66150d1",
+      "id": "eef444fc-2a36-466d-ac45-aee5471b0bf6",
       "name": "Respond Error",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -83,7 +83,7 @@
       }
     },
     {
-      "id": "6e19bc39-aaea-4da7-8b57-4c86d9ce12f4",
+      "id": "fbaad73c-7d60-4e79-b205-fa6ddbe4229f",
       "name": "SB Config",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -117,7 +117,7 @@
       }
     },
     {
-      "id": "707191d3-95c9-4280-a6a5-78539f5a7320",
+      "id": "dacfa39e-d391-4b84-93ce-2e7e8481688c",
       "name": "SB Candidates",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -151,7 +151,7 @@
       }
     },
     {
-      "id": "a5f01906-5ebe-462e-ada8-b3cd4f8fca73",
+      "id": "cd3ab00f-faa4-4323-9628-d3de7ae7900d",
       "name": "SB Messages",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -185,7 +185,7 @@
       }
     },
     {
-      "id": "2ec6901a-52c2-4ea0-97c1-7aa7547aaaa1",
+      "id": "2805c521-0358-4f4c-b6c6-9b8684ae6736",
       "name": "SB Suppression",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -219,7 +219,7 @@
       }
     },
     {
-      "id": "79ea14cb-a00b-4426-9109-04c69a0007f1",
+      "id": "c9ec24de-e6b2-485a-a6c8-3dd69dfe03c2",
       "name": "Waalaxy Lists",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -262,7 +262,7 @@
       }
     },
     {
-      "id": "241190b5-03d6-44b6-9705-f94663ef71ca",
+      "id": "39ef759d-5309-48ba-b001-90e1d6752616",
       "name": "Waalaxy Campaigns",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -305,7 +305,7 @@
       }
     },
     {
-      "id": "e597b0cd-b868-4cff-bfeb-7074e4afaf20",
+      "id": "90cf0c75-da99-4447-92b0-9dfee7cbe9ae",
       "name": "Waalaxy Test",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -348,7 +348,7 @@
       }
     },
     {
-      "id": "e51ed626-d900-4021-bf8d-0a5caedc7da8",
+      "id": "b8f43cdc-7bc4-4abc-937b-3a6bea1c7cab",
       "name": "Compute",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -361,7 +361,7 @@
       }
     },
     {
-      "id": "b0f2cd7c-c586-4940-9540-f70d1b387b27",
+      "id": "b2121717-6903-43bb-b6ae-e8d20a7849b1",
       "name": "Waalaxy Import",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -407,7 +407,7 @@
       }
     },
     {
-      "id": "ae826a06-e13f-4dcf-8fa5-c5f37daebff9",
+      "id": "fd640f16-4be5-4570-b231-6d1e471f1300",
       "name": "Finish",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -420,7 +420,7 @@
       }
     },
     {
-      "id": "ae52eec2-1429-41a3-b7b0-f632471bca9f",
+      "id": "a200b67f-9501-431f-9b5c-baf603203e70",
       "name": "Expand Writes",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -433,7 +433,7 @@
       }
     },
     {
-      "id": "b1d782d5-a0e0-46a0-940a-61d273190c7c",
+      "id": "8f50dca3-9868-4924-bc1c-6e93edfa7d18",
       "name": "Apply Writes",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -453,8 +453,8 @@
       "maxTries": 3,
       "waitBetweenTries": 1500,
       "parameters": {
-        "method": "={{ $json.method || \"POST\" }}",
-        "url": "={{ $json.skip ? \"https://localhost.invalid/\" : \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/\" + $json.path }}",
+        "method": "={{ $json.skip ? \"GET\" : ($json.method || \"POST\") }}",
+        "url": "={{ $json.skip ? \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/content_config?select=id&limit=1\" : \"https://uwquwjmiofixzugttals.supabase.co/rest/v1/\" + $json.path }}",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "supabaseApi",
         "sendHeaders": true,
@@ -482,7 +482,7 @@
       }
     },
     {
-      "id": "0b45d2bf-a432-4ef8-bf02-c985a93e3ae0",
+      "id": "89411f4f-9e94-423e-bd21-db8c322fcb6e",
       "name": "Expand Gateway",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -495,7 +495,7 @@
       }
     },
     {
-      "id": "c8fbc6c3-a774-4e84-86fe-a5616185b216",
+      "id": "f365d7c4-5e06-47dc-8b62-1754d7070b3a",
       "name": "Gateway Act",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -532,7 +532,7 @@
       }
     },
     {
-      "id": "a0fbdb53-6acd-409e-ab58-53507d68502a",
+      "id": "e6c5e286-7e65-47f8-a636-60a18d86ef47",
       "name": "Respond",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,

@@ -188,8 +188,8 @@ function Inicio({ panel, fetchedAt, stale }: { panel: Panel; fetchedAt: number; 
 }
 
 /* ------------------------------------------------------------- Aprobaciones */
-async function Aprobaciones({ panel, fetchedAt, stale, filter }: { panel: Panel; fetchedAt: number; stale: boolean; filter: ApprovalFilter }) {
-  const ov = await getOverview();
+async function Aprobaciones({ panel, fetchedAt, stale, filter, ovP }: { panel: Panel; fetchedAt: number; stale: boolean; filter: ApprovalFilter; ovP: ReturnType<typeof getOverview> }) {
+  const ov = await ovP;
   return (
     <>
       <Head title="Aprobaciones" sub="Correos, LinkedIn y publicaciones que esperan tu decisión" fetchedAt={fetchedAt} stale={stale} />
@@ -231,8 +231,8 @@ function Prospeccion({ panel, fetchedAt, stale }: { panel: Panel; fetchedAt: num
 }
 
 /* ------------------------------------------------------------------ Outreach */
-async function Outreach({ panel, fetchedAt, stale, tab }: { panel: Panel; fetchedAt: number; stale: boolean; tab: "email" | "linkedin" }) {
-  const ov = await getOverview();
+async function Outreach({ panel, fetchedAt, stale, tab, ovP }: { panel: Panel; fetchedAt: number; stale: boolean; tab: "email" | "linkedin"; ovP: ReturnType<typeof getOverview> }) {
+  const ov = await ovP;
   const out = panel.outreach;
   const o: Overview | null = ov.ok ? ov.overview : null;
   const li = panel.linkedin;
@@ -395,6 +395,8 @@ function Sistema({ panel, fetchedAt, stale }: { panel: Panel; fetchedAt: number;
 /** Marco + vista elegida. `sp` = parámetros de la URL (?view=…&filter=…&tab=…). */
 export async function PanelView({ sp }: { sp: { view?: string | string[]; filter?: string | string[]; tab?: string | string[] } }) {
   const view: ViewId = parseView(sp.view);
+  // Las aprobaciones se piden EN PARALELO con el panel (antes iban una tras otra) y solo en las vistas que las usan.
+  const ovP = view === "aprobaciones" || view === "outreach" ? getOverview() : Promise.resolve<Awaited<ReturnType<typeof getOverview>>>({ ok: false, reason: "not_configured" });
   const r = await getPanel();
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
   if (!r.ok) {
@@ -413,9 +415,9 @@ export async function PanelView({ sp }: { sp: { view?: string | string[]; filter
   return (
     <Shell view={view} badges={badges}>
       {view === "inicio" ? <Inicio panel={panel} fetchedAt={fetchedAt} stale={stale} />
-        : view === "aprobaciones" ? <Aprobaciones panel={panel} fetchedAt={fetchedAt} stale={stale} filter={filter} />
+        : view === "aprobaciones" ? <Aprobaciones panel={panel} fetchedAt={fetchedAt} stale={stale} filter={filter} ovP={ovP} />
         : view === "prospeccion" ? <Prospeccion panel={panel} fetchedAt={fetchedAt} stale={stale} />
-        : view === "outreach" ? <Outreach panel={panel} fetchedAt={fetchedAt} stale={stale} tab={tab} />
+        : view === "outreach" ? <Outreach panel={panel} fetchedAt={fetchedAt} stale={stale} tab={tab} ovP={ovP} />
         : view === "contenido" ? <Contenido panel={panel} fetchedAt={fetchedAt} stale={stale} />
         : <Sistema panel={panel} fetchedAt={fetchedAt} stale={stale} />}
     </Shell>

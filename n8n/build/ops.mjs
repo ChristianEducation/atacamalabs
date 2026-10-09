@@ -40,7 +40,7 @@ const get = (name, urlExpr, cred, credKind, pos, extra) => ({ id: uuid(), name, 
     ...(extra && extra.headers ? { sendHeaders: true, headerParameters: { parameters: extra.headers } } : {}), options: full(extra && extra.timeout) } });
 const u = (k) => `={{ $("Parse").first().json.u.${k} }}`;
 const sbApply = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: pos, credentials: SUPABASE_CRED, continueOnFail: true, alwaysOutputData: true, retryOnFail: true, maxTries: 3, waitBetweenTries: 1500,
-  parameters: { method: '={{ $json.method || "POST" }}', url: `={{ $json.skip ? "${NONE}" : "${SUPABASE}/rest/v1/" + $json.path }}`, authentication: 'predefinedCredentialType', nodeCredentialType: 'supabaseApi', sendHeaders: true,
+  parameters: { method: '={{ $json.skip ? "GET" : ($json.method || "POST") }}', url: `={{ $json.skip ? "${SUPABASE}/rest/v1/content_config?select=id&limit=1" : "${SUPABASE}/rest/v1/" + $json.path }}`, authentication: 'predefinedCredentialType', nodeCredentialType: 'supabaseApi', sendHeaders: true,
     headerParameters: { parameters: [{ name: 'Prefer', value: '={{ $json.prefer || "return=minimal" }}' }] }, sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full() } });
 const GH_HEADERS = [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', value: 'application/json' }];
 

@@ -77,7 +77,7 @@ const mock = http.createServer((req, res) => {
 });
 
 async function startApp() {
-  const env = { ...process.env, N8N_BASE_URL: `http://localhost:${MOCK_PORT}`, ATACAMA_INGEST_KEY: INGEST_KEY, OPS_APPROVAL_KEY: OPS_KEY, OPS_PANEL_PASSWORD: PIN, OPS_PANEL_SECRET: 'secreto-de-prueba-largo-1234567890', SUPABASE_URL: 'http://127.0.0.1:9', SUPABASE_SERVICE_ROLE_KEY: 'x', NEXT_TELEMETRY_DISABLED: '1' };
+  const env = { ...process.env, N8N_BASE_URL: `http://localhost:${MOCK_PORT}`, ATACAMA_INGEST_KEY: INGEST_KEY, OPS_APPROVAL_KEY: OPS_KEY, OPS_NO_CACHE: '1', OPS_PANEL_PASSWORD: PIN, OPS_PANEL_SECRET: 'secreto-de-prueba-largo-1234567890', SUPABASE_URL: 'http://127.0.0.1:9', SUPABASE_SERVICE_ROLE_KEY: 'x', NEXT_TELEMETRY_DISABLED: '1' };
   const child = spawn(process.execPath, [path.join(ROOT, 'node_modules/next/dist/bin/next'), 'dev', '-p', String(APP_PORT)], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
   let log = '';
   child.stdout.on('data', (d) => { log += d; }); child.stderr.on('data', (d) => { log += d; });
@@ -198,6 +198,7 @@ async function main() {
     const ap = await calls();
     t('doble toque en «Aprobar envío» => UNA sola llamada, con la versión que se leyó', ap.filter((c) => c.action === 'email_approve').length === 1 && ap[0].expected_hash === 'hash0002' && ap[0].message_id === UID(2));
     t('aprobar: el aviso muestra lo que respondió el sistema (no un texto inventado)', /Hecho \(prueba\): email_approve/.test(await page.locator('.ops-toast').first().innerText()));
+    t('Ola B · velocidad: al aprobar, la tarjeta pasa a «Aprobado» al instante (estado optimista) y ofrece «Volver a borrador» sin esperar la recarga', /Aprobado/.test(await c2.innerText()) && (await c2.getByRole('button', { name: 'Volver a borrador' }).count()) === 1 && (await c2.getByRole('button', { name: /Aprobar envío/ }).count()) === 0);
     await reset();
     await page.goto(APP + '/ops?view=outreach&tab=email');
     const c3 = page.locator('.ops-ap', { hasText: 'Empresa 3' }).first();
@@ -289,9 +290,12 @@ async function main() {
     t('contenido aprobar => content_approve; el aviso es el del backend (GHL), no inventado', (await calls()).some((c) => c.action === 'content_approve' && c.piece_id === UID(401)) && /programada en GHL/.test(await page.locator('.ops-toast').first().innerText()));
     const car = page.locator('.ops-ap[data-kind="content"]', { hasText: 'Carrusel' }).first();   // en Contenido las tarjetas ya vienen abiertas
     t('carrusel (3 imágenes): NO ofrece aprobar por API; enlaza a GHL con la razón (GHL lo reduce a 1 imagen)', (await car.getByRole('button', { name: 'Aprobar y programar' }).count()) === 0 && (await car.getByRole('link', { name: 'Aprobar en GHL' }).count()) === 1 && /lo reduce a 1 imagen/.test(await car.innerText()), (await car.innerText()).slice(0, 300) + ' | botones: ' + (await car.getByRole('button').allInnerTexts()).join(','));
+    t('Ola B · velocidad: la publicación aprobada muestra su resultado al instante (sin botones de nuevo)', /aprobada y programada/.test(await post.innerText()) && (await post.getByRole('button', { name: 'Aprobar y programar' }).count()) === 0);
     await reset();
-    await post.getByRole('button', { name: 'Rechazar' }).click();
-    await post.getByRole('button', { name: 'Confirmar rechazo' }).click();
+    await page.goto(APP + '/ops?view=contenido'); await page.waitForSelector('#ops-main h1');
+    const post2 = page.locator('.ops-ap[data-kind="content"]').first();
+    await post2.getByRole('button', { name: 'Rechazar' }).click();
+    await post2.getByRole('button', { name: 'Confirmar rechazo' }).click();
     for (let i = 0; i < 40 && !(await calls()).length; i++) await page.waitForTimeout(250);
     t('contenido rechazar => content_reject', (await calls()).some((c) => c.action === 'content_reject' && c.piece_id === UID(401)));
 

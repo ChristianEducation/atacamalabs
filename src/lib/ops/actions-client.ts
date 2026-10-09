@@ -1,4 +1,5 @@
 import "server-only";
+import { swr } from "./swr";
 import type { OpsActionInput, OpsActionState, OverviewResult, Overview } from "./types";
 
 /**
@@ -27,15 +28,23 @@ async function call(body: Record<string, unknown>, timeoutMs: number): Promise<{
   return { ok: res.ok, status: res.status, json };
 }
 
+/** Aprobaciones en memoria con «stale-while-revalidate» (ver swr.ts): pasados 20 s se muestra lo último al instante y se refresca por detrás. Se descarta tras cada acción. */
+const overviewCache = swr<Overview>(async () => {
+  const r = await call({ action: "overview" }, 28_000);
+  const o = r.json as unknown as (Overview & { ok?: boolean }) | null;
+  if (!r.ok || !o || o.ok !== true || !o.email || !Array.isArray(o.email.cards) || !o.linkedin) throw new Error("bad_response");
+  return { value: o, at: Date.parse(o.generated_at) || Date.now() };
+}, { freshMs: 20_000, maxStaleMs: 10 * 60_000 });
+
+export function dropOverview(): void { overviewCache.drop(); }
+
 export async function getOverview(): Promise<OverviewResult> {
   if (!config()) return { ok: false, reason: "not_configured" };
   try {
-    const r = await call({ action: "overview" }, 28_000);
-    const o = r.json as unknown as (Overview & { ok?: boolean }) | null;
-    if (!r.ok || !o || o.ok !== true || !o.email || !Array.isArray(o.email.cards) || !o.linkedin) return { ok: false, reason: "bad_response" };
-    return { ok: true, overview: o };
-  } catch {
-    return { ok: false, reason: "unreachable" };
+    const r = await overviewCache.get();
+    return { ok: true, overview: r.value };
+  } catch (e) {
+    return { ok: false, reason: e instanceof Error && e.message === "bad_response" ? "bad_response" : "unreachable" };
   }
 }
 

@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { opsAct } from "./actions";
-import { useToast } from "./Shell";
+import { useOptimistic, useToast, type Opt } from "./Shell";
 import { GHL_PLANNER_URL, Preview, fmtCl } from "./Parts";
 import type { EmailCard, LinkedinReady, LinkedinSent, OpsActionInput, OpsActionState, Overview, PieceRow } from "@/lib/ops/types";
 
@@ -35,6 +35,17 @@ export function useRunner() {
   }, [router, toast]);
   return { pending, run };
 }
+
+/** Firma de lo que se vio (estado + versión): el parche optimista solo vale mientras la tarjeta del servidor siga igual. */
+const sigOf = (c: EmailCard) => `${c.status}|${c.hash ?? ""}`;
+/** La tarjeta con el cambio optimista aplicado (si todavía corresponde). */
+export function effCard(c: EmailCard, opt: Opt): EmailCard {
+  const p = opt.email[c.id];
+  return p && p.sig === sigOf(c) ? { ...c, ...p.fields } : c;
+}
+const AFTER_APPROVE: Partial<EmailCard> = { status: "approved", editable: false, can_approve: false, can_reopen: true, can_reject: true, approved_by: "Christian via /ops" };
+const AFTER_REOPEN: Partial<EmailCard> = { status: "draft", editable: true, can_approve: true, can_reopen: false, can_reject: true, approved_by: null, approved_at: null, scheduled_for: null };
+const AFTER_REJECT: Partial<EmailCard> = { status: "cancelled", editable: false, can_approve: false, can_reopen: false, can_reject: false };
 
 const STATUS: Record<string, string> = { draft: "Borrador", approved: "Aprobado · esperando envío", sending: "Enviándose", sent: "Enviado", failed: "Error", cancelled: "Rechazado / cancelado", dry_run: "Simulado", received: "Recibido" };
 
@@ -85,11 +96,13 @@ function ScoreChip({ score, band }: { score: number | null; band?: string | null
 }
 
 /* ------------------------------------------------------------------ correo */
-export function EmailCardView({ card, selectable, selected, onToggle, defaultOpen }: { card: EmailCard; selectable?: boolean; selected?: boolean; onToggle?: (id: string) => void; defaultOpen?: boolean }) {
+export function EmailCardView({ card: raw, selectable, selected, onToggle, defaultOpen }: { card: EmailCard; selectable?: boolean; selected?: boolean; onToggle?: (id: string) => void; defaultOpen?: boolean }) {
   const { pending, run } = useRunner();
+  const { opt, patchEmail } = useOptimistic();
+  const card = effCard(raw, opt);
   const [editing, setEditing] = useState(false);
-  const [subject, setSubject] = useState(card.subject ?? "");
-  const [body, setBody] = useState(card.body ?? "");
+  const [subject, setSubject] = useState(raw.subject ?? "");
+  const [body, setBody] = useState(raw.body ?? "");
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
   const dirty = subject.trim() !== (card.subject ?? "").trim() || body.trim() !== (card.body ?? "").trim();
@@ -98,7 +111,7 @@ export function EmailCardView({ card, selectable, selected, onToggle, defaultOpe
 
   const save = async () => {
     const r = await run({ action: "email_save", message_id: card.id, expected_hash: hash, subject, body });
-    if (r?.ok) setEditing(false);
+    if (r?.ok) { patchEmail(raw.id, sigOf(raw), { subject: subject.trim(), body: body.trim(), hash: r.hash ?? card.hash }); setEditing(false); }
   };
   const lines = (card.body ?? "").length;
 
@@ -157,9 +170,9 @@ export function EmailCardView({ card, selectable, selected, onToggle, defaultOpe
 
           {!editing ? (
             <div className="ops-btns">
-              {card.can_approve ? <button type="button" className="ops-btn ops-btn-primary" disabled={pending || card.suppressed} onClick={() => run({ action: "email_approve", message_id: card.id, expected_hash: hash })}>{pending ? "Aprobando…" : "Aprobar envío"}</button> : null}
+              {card.can_approve ? <button type="button" className="ops-btn ops-btn-primary" disabled={pending || card.suppressed} onClick={async () => { const r = await run({ action: "email_approve", message_id: card.id, expected_hash: hash }); if (r?.ok) patchEmail(raw.id, sigOf(raw), AFTER_APPROVE); }}>{pending ? "Aprobando…" : "Aprobar envío"}</button> : null}
               {card.editable ? <button type="button" className="ops-btn" disabled={pending} onClick={() => setEditing(true)}>Editar</button> : null}
-              {card.can_reopen ? <button type="button" className="ops-btn" disabled={pending} onClick={() => run({ action: "email_reopen", message_id: card.id })}>Volver a borrador</button> : null}
+              {card.can_reopen ? <button type="button" className="ops-btn" disabled={pending} onClick={async () => { const r = await run({ action: "email_reopen", message_id: card.id }); if (r?.ok) patchEmail(raw.id, sigOf(raw), AFTER_REOPEN); }}>Volver a borrador</button> : null}
               {card.can_reject && !rejecting ? <button type="button" className="ops-btn ops-btn-danger" disabled={pending} onClick={() => setRejecting(true)}>Rechazar</button> : null}
               {locked && !card.can_reopen && !card.can_reject ? <span className="ops-foot">{card.status === "sending" || card.status === "sent" ? "Bloqueado: ya se está enviando o se envió." : "Sin acciones en este estado."}</span> : null}
             </div>
@@ -169,7 +182,7 @@ export function EmailCardView({ card, selectable, selected, onToggle, defaultOpe
               <label className="ops-lab" htmlFor={`r-${card.id}`}>Motivo (opcional)</label>
               <input id={`r-${card.id}`} className="ops-input" value={reason} maxLength={200} placeholder="Ej.: muy genérico" onChange={(e) => setReason(e.target.value)} />
               <div className="ops-btns">
-                <button type="button" className="ops-btn ops-btn-danger" disabled={pending} onClick={async () => { const r = await run({ action: "email_reject", message_id: card.id, reason }); if (r?.ok) setRejecting(false); }}>Confirmar rechazo</button>
+                <button type="button" className="ops-btn ops-btn-danger" disabled={pending} onClick={async () => { const r = await run({ action: "email_reject", message_id: card.id, reason }); if (r?.ok) { patchEmail(raw.id, sigOf(raw), { ...AFTER_REJECT, rejected_reason: reason.trim() || null }); setRejecting(false); } }}>Confirmar rechazo</button>
                 <button type="button" className="ops-btn" disabled={pending} onClick={() => setRejecting(false)}>Cancelar</button>
               </div>
             </div>
@@ -183,8 +196,11 @@ export function EmailCardView({ card, selectable, selected, onToggle, defaultOpe
 /* ---------------------------------------------------------------- LinkedIn */
 export function LinkedinReadyCard({ p }: { p: LinkedinReady }) {
   const { pending, run } = useRunner();
+  const { opt, markGone } = useOptimistic();
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
+  const done = opt.gone[`l-${p.candidate_id}`];
+  if (done) return (<article className="ops-ap ops-ap-done" data-kind="linkedin"><p className="ops-done" role="status">{p.person ?? p.company}: {done}</p></article>);
   return (
     <article className="ops-ap" data-kind="linkedin">
       <details>
@@ -208,7 +224,7 @@ export function LinkedinReadyCard({ p }: { p: LinkedinReady }) {
           </dl>
           <p className="ops-foot">Al aprobar entra a la lista y a la campaña y Waalaxy ejecuta la secuencia. Respeta el tope diario y la regla de no contactar por correo y LinkedIn a la vez.</p>
           <div className="ops-btns">
-            <button type="button" className="ops-btn ops-btn-primary" disabled={pending} onClick={() => run({ action: "linkedin_approve", candidate_id: p.candidate_id })}>{pending ? "Aprobando…" : "Aprobar LinkedIn"}</button>
+            <button type="button" className="ops-btn ops-btn-primary" disabled={pending} onClick={async () => { const r = await run({ action: "linkedin_approve", candidate_id: p.candidate_id }); if (r?.ok) markGone(`l-${p.candidate_id}`, "✓ aprobado: entra a la lista y a la campaña de Waalaxy. Actualizando…"); }}>{pending ? "Aprobando…" : "Aprobar LinkedIn"}</button>
             {!rejecting ? <button type="button" className="ops-btn ops-btn-danger" disabled={pending} onClick={() => setRejecting(true)}>Rechazar</button> : null}
           </div>
           {rejecting ? (
@@ -216,7 +232,7 @@ export function LinkedinReadyCard({ p }: { p: LinkedinReady }) {
               <label className="ops-lab" htmlFor={`lr-${p.candidate_id}`}>Motivo (opcional)</label>
               <input id={`lr-${p.candidate_id}`} className="ops-input" value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} />
               <div className="ops-btns">
-                <button type="button" className="ops-btn ops-btn-danger" disabled={pending} onClick={async () => { const r = await run({ action: "linkedin_reject", candidate_id: p.candidate_id, reason }); if (r?.ok) setRejecting(false); }}>Confirmar rechazo</button>
+                <button type="button" className="ops-btn ops-btn-danger" disabled={pending} onClick={async () => { const r = await run({ action: "linkedin_reject", candidate_id: p.candidate_id, reason }); if (r?.ok) { markGone(`l-${p.candidate_id}`, "✓ rechazado. Actualizando…"); setRejecting(false); } }}>Confirmar rechazo</button>
                 <button type="button" className="ops-btn" disabled={pending} onClick={() => setRejecting(false)}>Cancelar</button>
               </div>
             </div>
@@ -253,8 +269,11 @@ export function LinkedinSentRow({ s }: { s: LinkedinSent }) {
 /* --------------------------------------------------------------- contenido */
 export function ContentApprovalCard({ p, defaultOpen }: { p: PieceRow; defaultOpen?: boolean }) {
   const { pending, run } = useRunner();
+  const { opt, markGone } = useOptimistic();
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
+  const done = opt.gone[`c-${p.id}`];
+  if (done) return (<article className="ops-ap ops-ap-done" data-kind="content"><p className="ops-done" role="status">{p.title}: {done}</p></article>);
   const pv = p.preview ?? null;
   const carousel = (pv?.media.length ?? 0) > 1;
   const when = pv?.proposed_label ?? p.at_label;
@@ -276,7 +295,7 @@ export function ContentApprovalCard({ p, defaultOpen }: { p: PieceRow; defaultOp
           <div className="ops-btns">
             {carousel
               ? <a className="ops-btn ops-btn-primary" href={GHL_PLANNER_URL} target="_blank" rel="noreferrer noopener">Aprobar en GHL</a>
-              : <button type="button" className="ops-btn ops-btn-primary" disabled={pending} onClick={() => run({ action: "content_approve", piece_id: p.id })}>{pending ? "Aprobando…" : "Aprobar y programar"}</button>}
+              : <button type="button" className="ops-btn ops-btn-primary" disabled={pending} onClick={async () => { const r = await run({ action: "content_approve", piece_id: p.id }); if (r?.ok) markGone(`c-${p.id}`, "✓ aprobada y programada en GHL. Actualizando…"); }}>{pending ? "Aprobando…" : "Aprobar y programar"}</button>}
             {!rejecting ? <button type="button" className="ops-btn ops-btn-danger" disabled={pending} onClick={() => setRejecting(true)}>Rechazar</button> : null}
           </div>
           {rejecting ? (
@@ -284,7 +303,7 @@ export function ContentApprovalCard({ p, defaultOpen }: { p: PieceRow; defaultOp
               <label className="ops-lab" htmlFor={`cr-${p.id}`}>Motivo (opcional)</label>
               <input id={`cr-${p.id}`} className="ops-input" value={reason} maxLength={200} onChange={(e) => setReason(e.target.value)} />
               <div className="ops-btns">
-                <button type="button" className="ops-btn ops-btn-danger" disabled={pending} onClick={async () => { const r = await run({ action: "content_reject", piece_id: p.id, reason }); if (r?.ok) setRejecting(false); }}>Confirmar rechazo</button>
+                <button type="button" className="ops-btn ops-btn-danger" disabled={pending} onClick={async () => { const r = await run({ action: "content_reject", piece_id: p.id, reason }); if (r?.ok) { markGone(`c-${p.id}`, "✓ rechazada: no se publicará. Actualizando…"); setRejecting(false); } }}>Confirmar rechazo</button>
                 <button type="button" className="ops-btn" disabled={pending} onClick={() => setRejecting(false)}>Cancelar</button>
               </div>
             </div>
@@ -312,20 +331,21 @@ export function ApprovalsCenter({ overview, review, initialFilter, now }: { over
   const [confirm, setConfirm] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
   const { pending, run } = useRunner();
+  const { opt, patchEmail } = useOptimistic();
 
-  const drafts = useMemo(() => (overview?.email.cards ?? []).filter((c) => c.status === "draft"), [overview]);
+  const drafts = useMemo(() => (overview?.email.cards ?? []).filter((c) => effCard(c, opt).status === "draft"), [overview, opt]);
   const cap = overview?.email.cap ?? 5;
   const items = useMemo<Item[]>(() => {
     const out: Item[] = [];
     drafts.forEach((c) => out.push({ key: `e-${c.id}`, kind: "email", urgency: 1, age: Date.parse(c.created_at) || 0, score: c.score ?? 0, node: <EmailCardView key={`${c.id}-${c.hash}`} card={c} selectable selected={sel.includes(c.id)} onToggle={(id) => setSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : s.length >= cap ? s : [...s, id]))} /> }));
-    (overview?.linkedin.ready ?? []).forEach((p) => out.push({ key: `l-${p.candidate_id}`, kind: "linkedin", urgency: 1, age: 0, score: p.score ?? 0, node: <LinkedinReadyCard key={p.candidate_id} p={p} /> }));
-    review.forEach((p) => {
+    (overview?.linkedin.ready ?? []).filter((p) => !opt.gone[`l-${p.candidate_id}`]).forEach((p) => out.push({ key: `l-${p.candidate_id}`, kind: "linkedin", urgency: 1, age: 0, score: p.score ?? 0, node: <LinkedinReadyCard key={p.candidate_id} p={p} /> }));
+    review.filter((p) => !opt.gone[`c-${p.id}`]).forEach((p) => {
       const t = Date.parse(p.preview?.proposed_at ?? p.at ?? "");
       const hrs = Number.isFinite(t) ? (t - now) / 3600000 : 99;
       out.push({ key: `c-${p.id}`, kind: "content", urgency: hrs < 24 ? 3 : hrs < 48 ? 2 : 1, age: Number.isFinite(t) ? t : 0, score: p.score ?? 0, node: <ContentApprovalCard key={p.id} p={p} /> });
     });
     return out.sort((a, b) => b.urgency - a.urgency || a.age - b.age || b.score - a.score);
-  }, [drafts, overview, review, sel, cap, now]);
+  }, [drafts, overview, review, sel, cap, now, opt]);
 
   const want = filter === "todas" ? null : filter === "correos" ? "email" : filter === "linkedin" ? "linkedin" : "content";
   const list = items.filter((i) => !want || i.kind === want);
@@ -341,7 +361,7 @@ export function ApprovalsCenter({ overview, review, initialFilter, now }: { over
       setProgress(`Aprobando ${i + 1} de ${selDrafts.length}…`);
       const r = await run({ action: "email_approve", message_id: c.id, expected_hash: c.hash ?? "" });
       if (r === null) { await new Promise((res) => setTimeout(res, 500)); i--; continue; }   // otra acción en curso: se espera y se reintenta el mismo
-      if (r.ok) ok++;
+      if (r.ok) { ok++; patchEmail(c.id, sigOf(c), AFTER_APPROVE); }
     }
     setProgress(null);
     setSel([]);

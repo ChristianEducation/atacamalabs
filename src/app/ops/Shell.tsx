@@ -3,12 +3,23 @@
 import Link from "next/link";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { logout } from "./actions";
+import type { EmailCard } from "@/lib/ops/types";
 import { VIEWS, type ViewId } from "./views";
 
 /* ---- avisos breves (resultado de aprobar/rechazar; sobreviven al refresco de datos) ---- */
 type Toast = { id: number; ok: boolean; text: string };
 const ToastCtx = createContext<(ok: boolean, text: string) => void>(() => {});
 export const useToast = () => useContext(ToastCtx);
+
+/**
+ * Estado optimista: al aprobar/rechazar/editar, la tarjeta cambia AL INSTANTE (los datos reales llegan unos segundos después con el refresco).
+ * Cada parche lleva la «firma» de la tarjeta que se vio (estado + versión): cuando llegan datos nuevos del servidor la firma deja de coincidir y el
+ * parche se ignora solo, así nunca tapa la verdad.
+ */
+export type Opt = { email: Record<string, { sig: string; fields: Partial<EmailCard> }>; gone: Record<string, string> };
+type OptApi = { opt: Opt; patchEmail: (id: string, sig: string, fields: Partial<EmailCard>) => void; markGone: (key: string, note: string) => void };
+const OptCtx = createContext<OptApi>({ opt: { email: {}, gone: {} }, patchEmail: () => {}, markGone: () => {} });
+export const useOptimistic = () => useContext(OptCtx);
 
 function Brand() {
   return (
@@ -40,6 +51,9 @@ function Nav({ view, badges, onPick }: { view: ViewId; badges: Partial<Record<Vi
 export function Shell({ view, badges, children }: { view: ViewId; badges: Partial<Record<ViewId, number>>; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [opt, setOpt] = useState<Opt>({ email: {}, gone: {} });
+  const patchEmail = useCallback((id: string, sig: string, fields: Partial<EmailCard>) => setOpt((o) => ({ ...o, email: { ...o.email, [id]: { sig, fields: { ...(o.email[id] && o.email[id].sig === sig ? o.email[id].fields : {}), ...fields } } } })), []);
+  const markGone = useCallback((key: string, note: string) => setOpt((o) => ({ ...o, gone: { ...o.gone, [key]: note } })), []);
   const burger = useRef<HTMLButtonElement>(null);
   const drawer = useRef<HTMLDivElement>(null);
   const closeBtn = useRef<HTMLButtonElement>(null);
@@ -80,6 +94,7 @@ export function Shell({ view, badges, children }: { view: ViewId; badges: Partia
 
   return (
     <ToastCtx.Provider value={push}>
+      <OptCtx.Provider value={{ opt, patchEmail, markGone }}>
       <div className="ops-app">
         <aside className="ops-side" aria-label="Navegación">
           <Brand />
@@ -110,6 +125,7 @@ export function Shell({ view, badges, children }: { view: ViewId; badges: Partia
           {toasts.map((t) => (<p key={t.id} className={t.ok ? "ops-toast ops-toast-ok" : "ops-toast ops-toast-err"}>{t.text}</p>))}
         </div>
       </div>
+      </OptCtx.Provider>
     </ToastCtx.Provider>
   );
 }

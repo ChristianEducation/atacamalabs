@@ -10,14 +10,14 @@ const SUITES = [
   'scripts/prospecting/gateway-core.test.mjs', 'scripts/prospecting/gateway-flow.test.mjs', 'scripts/prospecting/admit-core.test.mjs',
   'n8n/build/prospect-gateway.test.mjs', 'n8n/build/prospect-flow.test.mjs', 'n8n/build/hermes-operator.test.mjs', 'scripts/operator/operator-core.test.mjs',
   'n8n/build/content-engine.test.mjs', 'n8n/build/content-signals.test.mjs', 'n8n/build/content-sync.test.mjs', 'n8n/build/content-metrics.test.mjs',
-  'scripts/content/engine-core.test.mjs', 'scripts/content/editorial-core.test.mjs', 'scripts/content/resource-factory-core.test.mjs', 'scripts/media/media-gateway-core.test.mjs', 'n8n/build/media-gateway.test.mjs', 'scripts/media/media-worker.test.mjs', 'scripts/content/schedule-core.test.mjs', 'scripts/content/signal-core.test.mjs', 'scripts/content/metrics-core.test.mjs',
+  'scripts/content/engine-core.test.mjs', 'scripts/content/editorial-core.test.mjs', 'scripts/content/resource-factory-core.test.mjs', 'scripts/media/media-gateway-core.test.mjs', 'n8n/build/media-gateway.test.mjs', 'scripts/media/media-worker.test.mjs', '--conditions=react-server --experimental-strip-types --import ./scripts/ops/swr-test-hooks.mjs scripts/ops/swr.test.mjs', 'scripts/content/schedule-core.test.mjs', 'scripts/content/signal-core.test.mjs', 'scripts/content/metrics-core.test.mjs',
   'n8n/build/content-rss.test.mjs', 'n8n/build/content-growth.test.mjs', 'scripts/content/rss-core.test.mjs', 'scripts/content/growth-core.test.mjs',
   'n8n/build/won-to-client.test.mjs', 'ops/hermes/radar-prompt.test.mjs', 'ops/hermes/mcp-shape.test.mjs',
 ];
 
 let failed = 0, total = 0;
 for (const f of SUITES) {
-  const r = spawnSync(process.execPath, [f], { encoding: 'utf8', timeout: 180000 });
+  const r = spawnSync(process.execPath, f.split(" "), { encoding: 'utf8', timeout: 180000 });
   const out = (r.stdout || '') + (r.stderr || '');
   const last = out.trim().split('\n').filter(Boolean).pop() || '';
   const m = out.match(/(\d+) ok(?:,| )\s*(\d+)? ?fallos?/) || out.match(/^(\d+) ok$/m);
