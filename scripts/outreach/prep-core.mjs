@@ -95,6 +95,12 @@ export function prepClassify(cand, msgs, nowMs) {
   return out('sin_accion', 'Investigado válido sin próxima acción');
 }
 
+/** Rango de prioridad para ORDENAR (A y sin prioridad primero, luego B, luego C). La prioridad nunca impide preparar el contacto: solo define el orden y el nivel de automatización. */
+export function prepPrioRank(cand) {
+  const f = (cand && ((cand.canonical && cand.canonical.source_flags) || cand.sflags)) || {};
+  return f.study_priority === 'C' ? 2 : f.study_priority === 'B' ? 1 : 0;
+}
+
 export function prepDay(ms, tz) { return new Date(ms).toLocaleDateString('en-CA', { timeZone: tz || 'America/Santiago' }); }
 
 /** Fila compacta para listas. */
@@ -126,7 +132,8 @@ export function prepSummary(cands, msgs, nowMs, tz, opts) {
     if (counts[cls.state] != null) counts[cls.state]++;
     if (lists[cls.state] && lists[cls.state].length < limit) lists[cls.state].push(prepRow(c, cls, messages));
   });
-  Object.keys(lists).forEach((k) => lists[k].sort((a, b) => (b.score || 0) - (a.score || 0)));
+  const rank = (r) => (r.priority === 'C' ? 2 : r.priority === 'B' ? 1 : 0);
+  Object.keys(lists).forEach((k) => lists[k].sort((a, b) => rank(a) - rank(b) || (b.score || 0) - (a.score || 0)));
   const today = prepDay(nowMs, tz);
   const sentToday = messages.filter((m) => m.direction === 'outbound' && m.status === 'sent' && m.sent_at && prepDay(Date.parse(m.sent_at), tz) === today).length;
   const replies = messages.filter((m) => m.direction === 'inbound' && ['reply', 'decline'].includes(m.classification) && nowMs - Date.parse(m.created_at) <= 7 * 86400000).length;

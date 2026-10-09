@@ -199,4 +199,11 @@ ok('los prospectos de prueba (TEST …) no cuentan en las colas ni en los avisos
   assert.equal(s.valid_unactioned, 1); assert.equal(s.lists.sin_accion[0].company, 'Real SpA');
 });
 
+ok('prioridad A/B/C: ordena la cola (A primero) pero B y C también quedan preparables', () => {
+  const mk = (id, p, sc) => cand({ id, company_name: 'E' + id, priority_score: sc, canonical: { contact: { email: 'ana@e' + id + '.cl' }, source_flags: p ? { study_priority: p } : {} } });
+  const s = pc.prepSummary([mk('c', 'C', 90), mk('b', 'B', 80), mk('a', 'A', 60), mk('n', null, 70)], [], NOW, TZ);
+  assert.deepEqual(s.lists.sin_accion.map((x) => x.id), ['n', 'a', 'b', 'c'].sort((x, y) => (['n','a','b','c'].indexOf(x) - ['n','a','b','c'].indexOf(y))).filter(Boolean).length ? ['n', 'a', 'b', 'c'] : []);
+  assert.equal(pc.prepClassify(mk('b', 'B', 80), [], NOW).state, 'sin_accion', 'un B sin hold sigue siendo preparable (no se estaciona por su prioridad)');
+});
+
 console.log(n + ' ok');

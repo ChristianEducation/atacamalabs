@@ -96,7 +96,7 @@ if (!resp) {
   else if (A === 'prep_summary') { const s = prepSummary(cands, pmsgs.concat(inboundRows), nowMs, 'America/Santiago', { limit: p.prep.limit || 40 }); resp = { ok: true, status: 'prep_summary', autosend: safeCfg.autosend_enabled, ...s, text: 'Preparación: correo listo ' + s.counts.email_listo + ' · LinkedIn por enviar ' + s.counts.linkedin_listo + ' · buscar contacto ' + s.counts.buscar_contacto + ' · en espera ' + (s.counts.en_espera + s.counts.no_contactar) + ' · INVESTIGADOS VÁLIDOS SIN ACCIÓN: ' + s.valid_unactioned + '.' }; }
   else if (A === 'prep_queue') {
     const lim = p.prep.limit || 10;
-    const open = cands.filter((c) => ['in_ghl', 'accepted'].includes(c.status) && prepClassify(c, pmsgs, nowMs).state === 'sin_accion').sort((a, b) => (b.priority_score || 0) - (a.priority_score || 0));
+    const open = cands.filter((c) => ['in_ghl', 'accepted'].includes(c.status) && prepClassify(c, pmsgs, nowMs).state === 'sin_accion').sort((a, b) => prepPrioRank(a) - prepPrioRank(b) || (b.priority_score || 0) - (a.priority_score || 0));
     const items = open.slice(0, lim).map((c) => prepQueueItem(c, { suppressed: sup }));
     const byRoute = {}; items.forEach((i) => { byRoute[i.route] = (byRoute[i.route] || 0) + 1; });
     resp = { ok: true, status: 'prep_queue', count: open.length, shown: items.length, by_route: byRoute, items, text: open.length ? open.length + ' Investigado(s) válido(s) sin próxima acción. Para cada uno: ruta email → save_draft; ruta linkedin → save_linkedin_prep; ruta find_contact → set_prep_state(find_contact) con el mensaje ya redactado; si NO conviene contactar → set_prep_state(hold|no_contact) con razón comercial explícita.' : 'No hay Investigados válidos sin acción: todo tiene próxima acción.' };

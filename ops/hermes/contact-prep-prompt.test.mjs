@@ -10,7 +10,8 @@ t('usa solo herramientas que existen en el MCP', ['style_samples', 'prep_queue',
 t('lee el estilo de Christian ANTES de redactar y no copia hechos entre empresas', p.indexOf('style_samples') < p.indexOf('prep_queue') && /NUNCA copies hechos de otra empresa/.test(p));
 t('los correos genéricos NO bloquean la prospección', /genéricos NO bloquean/.test(p));
 t('un borrador NUNCA se aprueba ni se envía; el autoenvío es solo de Christian', /NUNCA lo apruebes ni lo envíes/.test(p) && /no enciendas ni apagues el envío automático/i.test(p));
-t('EN ESPERA / NO CONTACTAR exigen razón comercial y NO basta con que falte el correo', /razón comercial explícita/.test(p) && /NO basta con que falte el correo/.test(p));
+t('EN ESPERA / NO CONTACTAR exigen una razón explícita y NO basta con que falte el correo ni con ser B o C', /RAZÓN explícita/.test(p) && /NO basta con que sea B o C, ni con que falte el correo/.test(p));
+t('la prioridad A/B/C solo ordena y gradúa la automatización: ya no manda a B/C a espera', /solo define el ORDEN/.test(p) && /NUNCA impide que exista el borrador/.test(p) && !/study_priority B o C → hold/.test(p));
 t('sin correo ni LinkedIn: una búsqueda pública acotada y, si no, BUSCAR CONTACTO con el mensaje redactado', /find_contact/.test(p) && /máximo 2 páginas/.test(p) && /Nunca adivines correos/.test(p));
 t('LinkedIn: manual, sin Waalaxy, y «Leads Pro» solo si la fuente lo dice', /MANUAL/.test(p) && /no se usa Waalaxy/.test(p) && /Solo menciona «Leads Pro» si el campo source/.test(p));
 t('reporta la corrida y termina con [SILENT]', /report_content_job\(kind="contact_prep"/.test(p) && /EXACTAMENTE «\[SILENT\]»/.test(p));

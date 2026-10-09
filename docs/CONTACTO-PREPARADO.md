@@ -8,7 +8,7 @@
 | **LINKEDIN LISTO** (`linkedin_listo`) | Invitación + mensaje + enlace del perfil, para enviar a mano | `/ops` → Control → «LinkedIn por enviar» |
 | **LinkedIn / Waalaxy en curso** | Ya se contactó (Christian lo confirmó) | Control |
 | **BUSCAR CONTACTO** (`buscar_contacto`) | Sin correo ni LinkedIn: queda redactado el mensaje; solo falta pegar el contacto | Control → «Buscar contacto» |
-| **EN ESPERA / NO CONTACTAR** | Solo con una **razón comercial explícita** (no basta con que falte el correo) | Control → «En espera» (con «Liberar») |
+| **EN ESPERA / NO CONTACTAR** | Solo con una **razón explícita** para no prospectar: mal fit, identidad dudosa, no corresponde, falta demasiada evidencia, riesgo/regulación, competidor o instrucción manual de Christian. **No** por ser prioridad B o C, ni por faltar el correo | Control → «En espera» (con «Liberar») |
 | **SIN ACCIÓN** | El problema: ya no debería existir | Control (rojo si > 0) |
 
 El estado se **deduce** de datos existentes (mensajes de correo + `prospect_candidates.channel_state`): `channel_state.prep` = `{state: hold|no_contact|find_contact, reason, draft}` y `channel_state.li_manual` = `{status: ready|invite_sent|connected|message_sent|replied|closed, profile_url, invitation, message, …}`. Código puro: `scripts/outreach/prep-core.mjs` (+ test).
@@ -19,6 +19,9 @@ El estado se **deduce** de datos existentes (mensajes de correo + `prospect_cand
 - **Workflow 29** (Ops Actions, clave exclusiva de /ops): `autosend_set`, `autosend_sweep`, `prep_li_sent`, `prep_hold`, `prep_release`, `prep_contact`.
 - **Hermes** (61 herramientas): `prep_queue`, `style_samples`, `prep_summary`, `set_prep_state`, `save_linkedin_prep`, `log_linkedin_manual`, `save_contact`. Job cron **«Atacama Labs — Contact Prep»** (`25562a86293c`, `55 12,16,19 * * 1-5` UTC = 09:55/13:55/16:55 Chile en horario de verano) con compuerta `prep_gate.sh`; el Prospect Radar pasó a `30 12,16,19 * * 1-5`. **En abril (cambio de hora de Chile) hay que mover ambos cron +1 h** (13/17/20 UTC).
 - **/ops → Control:** métricas, interruptor «Envío automático», colas (correos listos, LinkedIn por enviar con copiar/«Envié…», buscar contacto con campo para pegar correo/LinkedIn, sin acción, en espera).
+
+## Prioridad A/B/C (regla de Christian, 9-oct)
+La prioridad **ordena** (se revisa y se prepara primero A y sin prioridad, luego B, luego C) y **gradúa la automatización** (B/C nunca son elegibles para el envío automático), pero **no impide** que exista el borrador: un B o C con correo/LinkedIn válidos y oportunidad razonable queda preparado igual. Preparado ≠ enviado: nada se aprueba ni se envía sin Christian (o sin el interruptor, solo para los elegibles).
 
 ## Aprendizaje de redacción
 Antes de redactar, el job lee `style_samples`: correos enviados recientes y **ediciones de Christian** (entradas de `metadata.history` cuyo autor es «Christian via /ops»: versión original vs final, frases quitadas/agregadas, largo medio, cierres). Aprende estilo; los hechos salen solo del prospecto actual.
