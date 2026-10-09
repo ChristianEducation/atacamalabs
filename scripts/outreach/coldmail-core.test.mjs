@@ -198,4 +198,12 @@ ok('tono cercano: presentarse en una frase corta NO cuenta como explicar a Ataca
   assert.ok(cm.coldLint(much, [], EV).warnings.some((w) => w.code === 'explica_atacama'));
 });
 
+ok('un cierre de interés NO se confunde con pedir reunión porque la oración anterior diga «lista para agendar»', () => {
+  const body = 'Hola,\n\nContexto.\n\nSoy Christian, de Atacama Labs. Armamos agentes que pueden hacerse cargo de esa primera parte y dejar cada consulta completa, registrada y lista para agendar o derivar cuando realmente necesita a una persona.\n\n¿Les sirve que les mande un ejemplo aplicado a su clínica?';
+  assert.equal(cm.cmCtaKind(body), 'example');
+  assert.equal(cm.cmCtaKind('Hola.\n\nObservación.\n\n¿Agendamos una llamada de 15 minutos?'), 'meeting');
+  assert.equal(cm.cmCtaKind('Hola.\n\nObservación.\n\n¿Podemos agendar una reunión esta semana?'), 'meeting');
+  assert.equal(cm.cmCtaKind('Hola.\n\nObservación.\n\n¿Quién lleva esto en ventas? Si quieren, les mando un ejemplo.'), 'example');
+});
+
 console.log(n + ' ok');

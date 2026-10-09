@@ -32,7 +32,9 @@ export function cmParts(body) {
 export function cmCtaKind(body) {
   const p = cmParts(body);
   const last = cmNorm(p.sentences.slice(-2).join(' '));
-  if (/(\b\d+\s*(min|minutos)\b|reunion|llamada|videollamada|agendar|agendemos|coordinar|conversemos|conversar (un|unos)|\bcafe\b|demo en vivo|calendario)/.test(last)) return 'meeting';
+  // «pedir reunión» se juzga solo por la ÚLTIMA oración (el cierre): «lista para agendar» en la oración anterior describe al agente, no pide una reunión
+  const closing = cmNorm(p.sentences.slice(-1).join(' '));
+  if (/(\b\d+\s*(min|minutos)\b|reunion|llamada|videollamada|agendemos|conversemos|conversar (un|unos)|\bcafe\b|demo en vivo|calendario|agendar (una|un|la|el|algo)\b|coordinar (una|un|la|el)\b)/.test(closing)) return 'meeting';
   if (/(te mando|te envio|te muestro|te dejo|te comparto|te paso|te cuento|les mando|les envio|les muestro|les dejo|les comparto|les paso|les cuento|puedo mandarte|puedo enviarte|puedo mostrarles|te puedo mostrar|quieres ver|quieren ver|te sirve que|les sirve que|vale la pena que (te|les)|tiene sentido que (te|les)|les parece que)/.test(last)) return 'example';
   if (/(lo ve alguien|quien (ve|lleva|maneja|se encarga)|con quien (hablo|puedo)|es algo que (ve|ven)|corresponde a|le corresponde)/.test(last)) return 'who';
   if (/\?/.test(last)) return 'question';
