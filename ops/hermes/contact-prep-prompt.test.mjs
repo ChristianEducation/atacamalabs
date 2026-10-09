@@ -1,0 +1,19 @@
+// node ops/hermes/contact-prep-prompt.test.mjs — guardas del prompt del job «contact-prep» (Hermes): compuerta, herramientas reales, límites de seguridad
+import fs from 'node:fs';
+let pass = 0, fail = 0;
+const t = (n, c, x = '') => { c ? pass++ : fail++; console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : x); };
+const p = fs.readFileSync(new URL('./contact-prep.prompt.txt', import.meta.url), 'utf8');
+const mcp = fs.readFileSync(new URL('./atacama_ops_mcp.py', import.meta.url), 'utf8');
+const tools = new Set([...mcp.matchAll(/@mcp\.tool\(\)\s*\ndef (\w+)\(/g)].map((m) => m[1]));
+t('obedece la compuerta: skip → [SILENT] sin llamar a nada', /mode=skip/.test(p) && /NO llames a ninguna herramienta/.test(p) && /\[SILENT\]/.test(p));
+t('usa solo herramientas que existen en el MCP', ['style_samples', 'prep_queue', 'save_draft', 'save_linkedin_prep', 'set_prep_state', 'save_contact', 'report_content_job'].every((n) => p.includes(n) && tools.has(n)), [...tools].join(','));
+t('lee el estilo de Christian ANTES de redactar y no copia hechos entre empresas', p.indexOf('style_samples') < p.indexOf('prep_queue') && /NUNCA copies hechos de otra empresa/.test(p));
+t('los correos genéricos NO bloquean la prospección', /genéricos NO bloquean/.test(p));
+t('un borrador NUNCA se aprueba ni se envía; el autoenvío es solo de Christian', /NUNCA lo apruebes ni lo envíes/.test(p) && /no enciendas ni apagues el envío automático/i.test(p));
+t('EN ESPERA / NO CONTACTAR exigen razón comercial y NO basta con que falte el correo', /razón comercial explícita/.test(p) && /NO basta con que falte el correo/.test(p));
+t('sin correo ni LinkedIn: una búsqueda pública acotada y, si no, BUSCAR CONTACTO con el mensaje redactado', /find_contact/.test(p) && /máximo 2 páginas/.test(p) && /Nunca adivines correos/.test(p));
+t('LinkedIn: manual, sin Waalaxy, y «Leads Pro» solo si la fuente lo dice', /MANUAL/.test(p) && /no se usa Waalaxy/.test(p) && /Solo menciona «Leads Pro» si el campo source/.test(p));
+t('reporta la corrida y termina con [SILENT]', /report_content_job\(kind="contact_prep"/.test(p) && /EXACTAMENTE «\[SILENT\]»/.test(p));
+t('sin secretos', !/(pit-[0-9a-f]{8}|eyJ[A-Za-z0-9_-]{20}|sk-[A-Za-z0-9]{20}|Bearer [A-Za-z0-9]{20})/.test(p));
+console.log(`\n${pass} ok ${fail} fallos`);
+process.exit(fail ? 1 : 0);

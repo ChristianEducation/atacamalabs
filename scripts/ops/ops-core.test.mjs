@@ -168,15 +168,24 @@ ok('alertas: solo lo que merece interrumpir (ejecución normal, jobs pausados y 
   assert.ok(oc.evaluateAlerts(base({ pieces: [{ id: 'q', topic: 'No salió', channel: 'instagram', status: 'approved', scheduled_at: iso(2 * H) }] }), []).notify.some((x) => x.key === 'publish_failed:q'));
   assert.ok(oc.evaluateAlerts(base({ hermes: { ...HERMES_OK(), gateway_ok: false } }), []).notify.some((x) => x.key === 'hermes_gateway'));
 });
-ok('compuerta del Radar: corre, se salta por backlog / tope semanal / corrida reciente', () => {
-  const cands = (k) => Array.from({ length: k }, (_, i) => ({ company_name: 'c' + i, status: 'in_ghl', ghl_stage: 'investigado', created_at: iso(2 * D) }));
+ok('compuerta del Radar: hasta 3 corridas por día hábil; la contrapresión mide Investigados válidos SIN próxima acción', () => {
+  const cands = (k, extra) => Array.from({ length: k }, (_, i) => ({ id: 'c' + i, company_name: 'c' + i, status: 'in_ghl', ghl_stage: 'investigado', created_at: iso(2 * D), ...(extra || {}) }));
   const run = (h, mode) => ({ kind: 'prospect_radar', status: 'ok', summary: { mode: mode || 'import' }, created_at: iso(h * H) });
-  let g = oc.radarGate(base({ candidates: cands(14), runs: [run(72)] })); assert.equal(g.mode, 'import'); assert.equal(g.max_imports, 5);
-  g = oc.radarGate(base({ candidates: cands(23) })); assert.equal(g.mode, 'import'); assert.equal(g.max_imports, 2);
-  g = oc.radarGate(base({ candidates: cands(25) })); assert.equal(g.mode, 'skip'); assert.match(g.reason, /Investigado sin decisión/);
-  g = oc.radarGate(base({ candidates: cands(2), runs: [run(5)] })); assert.equal(g.mode, 'skip'); assert.match(g.reason, /ya corrió/);
-  g = oc.radarGate(base({ candidates: cands(2), runs: [run(30), run(80), run(120)] })); assert.equal(g.mode, 'skip'); assert.match(g.reason, /tope semanal/);
-  g = oc.radarGate(base({ candidates: cands(2), runs: [{ kind: 'prospect_radar', status: 'skipped', summary: { mode: 'skip' }, created_at: iso(30 * H) }] })); assert.equal(g.mode, 'import');
+  let g = oc.radarGate(base({ candidates: cands(6), runs: [run(72)] })); assert.equal(g.mode, 'import'); assert.equal(g.max_imports, 4); assert.equal(g.unactioned, 6);
+  g = oc.radarGate(base({ candidates: cands(9) })); assert.equal(g.mode, 'import'); assert.equal(g.max_imports, 1);
+  g = oc.radarGate(base({ candidates: cands(10) })); assert.equal(g.mode, 'skip'); assert.match(g.reason, /sin próxima acción/);
+  // Investigados que YA tienen próxima acción (LinkedIn preparado, buscar contacto, espera explícita) no cuentan como backlog estancado
+  const prepared = cands(25, { channel_state: { li_manual: { status: 'ready' } } });
+  g = oc.radarGate(base({ candidates: prepared })); assert.equal(g.mode, 'import'); assert.equal(g.unactioned, 0); assert.equal(g.pending_review, 25);
+  g = oc.radarGate(base({ candidates: cands(30, { channel_state: { li_manual: { status: 'ready' } } }) })); assert.equal(g.mode, 'skip'); assert.match(g.reason, /esperando tu revisión/);
+  const held = cands(40, { channel_state: { prep: { state: 'hold', reason: 'B: después de los A' } } });
+  g = oc.radarGate(base({ candidates: held })); assert.equal(g.mode, 'import'); assert.equal(g.unactioned, 0);
+  g = oc.radarGate(base({ candidates: cands(2), runs: [run(2)] })); assert.equal(g.mode, 'skip'); assert.match(g.reason, /ya corrió/);
+  g = oc.radarGate(base({ candidates: cands(2), runs: [run(4)] })); assert.equal(g.mode, 'import');
+  g = oc.radarGate(base({ candidates: cands(2), runs: [run(8), run(6), run(4)] })); assert.equal(g.mode, 'skip'); assert.match(g.reason, /3 corridas hoy/);
+  g = oc.radarGate(base({ candidates: cands(2), runs: Array.from({ length: 15 }, (_, i) => run(12 + i * 10)) })); assert.equal(g.mode, 'skip'); assert.match(g.reason, /tope semanal/);
+  g = oc.radarGate(base({ candidates: cands(2), runs: [run(30, 'skip')] })); assert.equal(g.mode, 'import', 'las corridas omitidas no cuentan');
+  g = oc.radarGate({ ...base({ candidates: cands(2) }), now: Date.parse('2026-10-10T15:00:00Z') }); assert.equal(g.mode, 'skip'); assert.match(g.reason, /fin de semana/);
 });
 ok('rendimiento del contenido: sin publicaciones, sin snapshots y con cifras (sin inventar impresiones)', () => {
   assert.match(oc.composePerformance(base({ pieces: [{ id: 'p', topic: 'X', channel: 'linkedin_page', status: 'scheduled', scheduled_at: new Date(NOW + 5 * H).toISOString() }] })).text, /Todavía no hay publicaciones publicadas con métricas\. La próxima: «X»/);
@@ -471,6 +480,21 @@ ok('panel V2: contenido semanal, resumen de outreach (X/5 correo, X/10 LinkedIn)
   assert.equal(pn.outreach.email.sent_today, 1); assert.equal(pn.outreach.email.cap, 5); assert.equal(pn.outreach.email.drafts, 1);
   assert.equal(pn.outreach.linkedin.imported_today, 1); assert.equal(pn.outreach.linkedin.cap, 10); assert.equal(pn.outreach.linkedin.in_campaign, 2);
   assert.equal(pn.approvals.emails, 1); assert.equal(pn.approvals.content, 1);
+});
+
+ok('aviso de preparación: sale de los datos (no del reporte del agente), una vez por tanda, e ignora los prospectos TEST', () => {
+  const m = msg({ direction: 'outbound', kind: 'initial', status: 'draft', company_name: 'Real SpA', created_at: iso(10 * 60000) });
+  const n = oc.prepFreshNotice(base({ messages: [m], candidates: [] }));
+  assert.ok(n && /1 correo nuevo para aprobar/.test(n.text) && /PREPARACIÓN DE CONTACTOS/.test(n.text) && /Abre \/ops/.test(n.text));
+  assert.equal(oc.prepFreshNotice(base({ messages: [{ ...m, company_name: 'TEST algo' }] })), null);
+  assert.equal(oc.prepFreshNotice(base({ messages: [{ ...m, created_at: iso(3 * H) }] })), null, 'un borrador viejo no genera aviso');
+  const li = { id: 'k9', company_name: 'Persona SpA', status: 'in_ghl', ghl_stage: 'investigado', channel_state: { li_manual: { status: 'ready', prepared_at: iso(5 * 60000) } } };
+  const n2 = oc.prepFreshNotice(base({ messages: [], candidates: [li] }));
+  assert.ok(n2 && /1 LinkedIn por enviar/.test(n2.text));
+  const a1 = oc.evaluateAlerts(base({ messages: [m] }), []);
+  assert.ok(a1.notify.some((x) => x.key === n.key && x.meta && x.meta.notice));
+  const a2 = oc.evaluateAlerts(base({ messages: [m] }), [{ alert_key: n.key, status: 'open', event: true, notify_count: 1 }]);
+  assert.ok(!a2.notify.some((x) => x.key === n.key), 'el mismo aviso no se repite');
 });
 
 console.log(n + ' ok');

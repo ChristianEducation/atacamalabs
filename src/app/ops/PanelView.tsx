@@ -6,6 +6,7 @@ import { Freshness } from "./Client";
 import { ApprovalsCenter, ContentApprovalCard, EmailLibrary, LinkedinReadyCard, LinkedinSentRow, type ApprovalFilter } from "./Approvals";
 import { GHL_PLANNER_URL, Preview } from "./Parts";
 import { Shell } from "./Shell";
+import { ControlCenter } from "./Control";
 import { parseView, type ViewId } from "./views";
 
 const STATUS_LABEL: Record<Status, string> = { ok: "Todo OK", atencion: "Atención", fallo: "Fallo" };
@@ -198,6 +199,16 @@ async function Aprobaciones({ panel, fetchedAt, stale, filter, ovP }: { panel: P
         <ApprovalsCenter overview={ov.ok ? ov.overview : null} review={panel.content.in_review} initialFilter={filter} now={Date.parse(panel.generated_at) || fetchedAt} />
         <p className="ops-foot">Tu sesión privada de /ops más el clic en «Aprobar» es la aprobación humana válida. Nada se envía ni se publica desde aquí: aprobar activa el flujo real (envío en su ventana, campaña de Waalaxy, programación en GHL). Los códigos de Hermes siguen funcionando.</p>
       </section>
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ Control */
+function Control({ panel, fetchedAt, stale }: { panel: Panel; fetchedAt: number; stale: boolean }) {
+  return (
+    <>
+      <Head title="Control" sub="De Investigado a contacto preparado: nada válido se queda esperando" fetchedAt={fetchedAt} stale={stale} />
+      {panel.prep ? <ControlCenter prep={panel.prep} /> : <Section id="ops-ctl" title="Control"><Empty>Todavía no hay datos de preparación (el servidor aún no los informa).</Empty></Section>}
     </>
   );
 }
@@ -409,13 +420,14 @@ export async function PanelView({ sp }: { sp: { view?: string | string[]; filter
   }
   const { panel, fetchedAt, stale } = r;
   const ap = panel.approvals;
-  const badges = { aprobaciones: ap ? ap.emails + ap.linkedin + ap.content : 0, contenido: panel.content.weekly && panel.content.weekly.state === "falta" ? 1 : 0 };
+  const badges = { aprobaciones: ap ? ap.emails + ap.linkedin + ap.content : 0, control: panel.prep ? panel.prep.valid_unactioned + panel.prep.counts.linkedin_listo + panel.prep.counts.buscar_contacto : 0, contenido: panel.content.weekly && panel.content.weekly.state === "falta" ? 1 : 0 };
   const filter = (["todas", "correos", "linkedin", "contenido"].includes(one(sp.filter) ?? "") ? one(sp.filter) : "todas") as ApprovalFilter;
   const tab = one(sp.tab) === "linkedin" ? "linkedin" : "email";
   return (
     <Shell view={view} badges={badges}>
       {view === "inicio" ? <Inicio panel={panel} fetchedAt={fetchedAt} stale={stale} />
         : view === "aprobaciones" ? <Aprobaciones panel={panel} fetchedAt={fetchedAt} stale={stale} filter={filter} ovP={ovP} />
+        : view === "control" ? <Control panel={panel} fetchedAt={fetchedAt} stale={stale} />
         : view === "prospeccion" ? <Prospeccion panel={panel} fetchedAt={fetchedAt} stale={stale} />
         : view === "outreach" ? <Outreach panel={panel} fetchedAt={fetchedAt} stale={stale} tab={tab} ovP={ovP} />
         : view === "contenido" ? <Contenido panel={panel} fetchedAt={fetchedAt} stale={stale} />

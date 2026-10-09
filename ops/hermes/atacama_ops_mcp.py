@@ -613,6 +613,67 @@ def report_content_job(kind: str, status: str = "ok", mode: str = "run", reason:
     return json.dumps({k: r.get(k) for k in ("ok", "text", "recorded", "error")}, ensure_ascii=False)
 
 
+
+# ---------------------------------------------------------------- Contacto preparado (9-oct): ningún Investigado válido se queda sin próxima acción
+# Todo entra por el workflow 26 (motor de canales). Estas herramientas NO envían nada, NO aprueban correos y NO encienden el envío automático
+# (ese interruptor es solo de Christian, desde /ops). Aprobar y enviar sigue siendo: /ops → Aprobaciones.
+def _prep(body, timeout=100):
+    try:
+        from atacama_common import post_linkedin
+        r = post_linkedin(body, timeout=timeout)
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "red", "message": "No pude consultar la preparación de contactos de Atacama OS: %s" % type(ex).__name__}, ensure_ascii=False)
+    keep = {k: r.get(k) for k in ("ok", "status", "text", "message", "error", "company", "count", "shown", "by_route", "items", "sent", "edits", "profile", "guidance", "counts", "valid_unactioned",
+                                  "investigated", "sent_today", "replies_7d", "autosend", "li_status", "follow_up_at", "ghl_stage", "channel", "persist_error", "ghl_error", "warning", "options") if k in r}
+    if "lists" in r and isinstance(r.get("lists"), dict):
+        keep["lists"] = {k: [{"company": x.get("company"), "reason": x.get("reason"), "score": x.get("score")} for x in v[:8]] for k, v in r["lists"].items()}
+    return json.dumps(keep, ensure_ascii=False)
+
+
+@mcp.tool()
+def prep_queue(limit: int = 10) -> str:
+    """Cola de trabajo del job contact-prep: los Investigados VÁLIDOS que no tienen próxima acción, con lo ya investigado (hechos, hipótesis, solución, contacto) y la RUTA decidida por Atacama OS (email | linkedin | find_contact). No vuelvas a investigar el negocio: redacta con esa evidencia. Solo lectura."""
+    return _prep({"action": "prep_queue", "limit": max(1, min(int(limit), 30))})
+
+
+@mcp.tool()
+def style_samples(n: int = 8) -> str:
+    """LÉELO ANTES de redactar cada correo o mensaje: correos enviados recientes, ediciones de Christian (versión original vs final, con frases quitadas y agregadas) y un perfil de estilo (largo medio, cierres, frases que suele eliminar). Aprende estilo (largo, tono, apertura, cierre, cuánto se explica Atacama); NUNCA copies hechos de otra empresa. Solo lectura."""
+    return _prep({"action": "style_samples", "n": max(1, min(int(n), 20))})
+
+
+@mcp.tool()
+def prep_summary() -> str:
+    """Resumen de las colas: correos listos, LinkedIn por enviar, buscar contacto, en espera y la métrica crítica INVESTIGADOS VÁLIDOS SIN ACCIÓN (objetivo 0), más enviados de hoy y respuestas. Solo lectura."""
+    return _prep({"action": "prep_summary", "limit": 8})
+
+
+@mcp.tool()
+def set_prep_state(target: str, state: str, reason: str = "", draft_subject: str = "", draft_body: str = "") -> str:
+    """Deja una salida explícita para un Investigado: state = find_contact (sin correo ni LinkedIn: deja REDACTADO el mensaje en draft_subject/draft_body para que Christian solo pegue el contacto) | hold (EN ESPERA) | no_contact (NO CONTACTAR) | clear (libera). hold/no_contact exigen una razón COMERCIAL explícita en reason (p. ej. identidad del decisor sin cerrar, competidor directo, empresa corporativa sin patrocinador); NO basta con que falte el correo (eso es find_contact). No contacta a nadie."""
+    body = {"action": "prep_set", "target": target, "state": state, "reason": reason}
+    if draft_body:
+        body["draft"] = {"subject": draft_subject, "body": draft_body}
+    return _prep(body)
+
+
+@mcp.tool()
+def save_linkedin_prep(target: str, invitation: str, message: str, profile_url: str = "") -> str:
+    """Deja LISTO para envío MANUAL por LinkedIn: invitation (≤300 caracteres, 2 frases, personalizada) y message (2–4 frases, para después de conectar), más el enlace del perfil. Queda en la cola «LinkedIn por enviar» de /ops. NO se usa Waalaxy y NO se envía nada. Un solo canal por prospecto: si ya hay correo aprobado o enviado, lo rechaza."""
+    return _prep({"action": "li_save", "target": target, "invitation": invitation, "message": message, "profile_url": profile_url})
+
+
+@mcp.tool()
+def log_linkedin_manual(target: str, kind: str, text: str = "") -> str:
+    """Cuando Christian te CONFIRMA que envió algo a mano por LinkedIn, regístralo en el acto (Supabase + GHL): kind = invitation | connected | message | reply | closed; text = el mensaje que realmente envió (o lo que respondió la persona; obligatorio en reply). Pasa a Contactado, deja nota con fecha/canal/mensaje y un seguimiento a +3 días hábiles."""
+    return _prep({"action": "li_sent", "target": target, "kind": kind, "text": text})
+
+
+@mcp.tool()
+def save_contact(target: str, email: str = "", linkedin: str = "", source_url: str = "") -> str:
+    """Guarda un contacto PÚBLICO y PROFESIONAL que encontraste para un prospecto sin correo ni LinkedIn (correo publicado por la propia empresa en su sitio, o perfil personal de LinkedIn enlazado por ella). Indica source_url (la página exacta). Nunca adivines correos ni uses datos personales. Con eso el prospecto sale de «buscar contacto» y se prepara en la siguiente corrida."""
+    return _prep({"action": "prep_contact", "target": target, "email": email, "linkedin": linkedin, "reason": source_url})
+
 if __name__ == "__main__":
     mcp.run()
 

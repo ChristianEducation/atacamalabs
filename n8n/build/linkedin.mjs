@@ -12,6 +12,7 @@
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import * as core from '../../scripts/linkedin/linkedin-core.mjs';
+import * as prep from '../../scripts/outreach/prep-core.mjs';
 
 const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 export const N8N_BASE = 'https://n8n.srv1650725.hstgr.cloud';
@@ -34,29 +35,34 @@ const sbApply = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRe
 const waGet = (name, pathExpr, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: pos, credentials: WAALAXY_CRED, continueOnFail: true, alwaysOutputData: true,
   parameters: { method: 'GET', url: `={{ ${pathExpr} ? "${WAALAXY}" + ${pathExpr} : "${NONE}" }}`, authentication: 'predefinedCredentialType', nodeCredentialType: 'waalaxyApi', sendHeaders: true, headerParameters: { parameters: [{ name: 'x-req-integration-origin', value: 'n8n' }] }, options: full(25000) } });
 
-export const LIB = [...new Map(Object.values(core).filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
-export const ACTIONS = ['list', 'status', 'recommend', 'approve', 'event', 'config', 'set_config', 'lists', 'test'];
-const CAND_SELECT = 'id,company_name,domain,website,status,band,priority_score,ghl_contact_id,ghl_opportunity_id,ghl_stage,last_contact_channel,last_contact_at,next_action_at,channel_state,canonical,created_at';
+export const LIB = [...new Map([...Object.values(core), ...Object.values(prep)].filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
+export const PREP_ACTIONS = ['prep_summary', 'prep_queue', 'prep_set', 'prep_contact', 'li_save', 'li_sent', 'style_samples', 'autosweep'];
+export const ACTIONS = ['list', 'status', 'recommend', 'approve', 'event', 'config', 'set_config', 'lists', 'test', ...PREP_ACTIONS];
+const CAND_SELECT = 'id,company_name,domain,website,status,band,priority_score,source_name,ghl_contact_id,ghl_opportunity_id,ghl_stage,last_contact_channel,last_contact_at,next_action_at,channel_state,canonical,created_at';
 
 export const parseCode = `try {
-  const first = $('LI Webhook').first().json || {};
+  let first = {};
+  try { first = $('LI Webhook').first().json || {}; } catch (e) { try { $('Autosweep Tick').first(); first = { body: { action: 'autosweep', by: 'Atacama OS · autoenvío (reloj)' } }; } catch (e2) { first = {}; } }
   const b = first.body || first;
   const action = String(b.action || '').toLowerCase();
   const ACTIONS = ${JSON.stringify(ACTIONS)};
   if (!ACTIONS.includes(action)) throw new Error('action inválida: usa ' + ACTIONS.join(' | '));
-  const needTarget = ['status', 'recommend', 'approve', 'event'].includes(action);
+  const needTarget = ['status', 'recommend', 'approve', 'event', 'prep_set', 'prep_contact', 'li_save', 'li_sent'].includes(action);
+  const prepAct = ${JSON.stringify(PREP_ACTIONS)}.includes(action);
   if (needTarget && !String(b.target || '').trim()) throw new Error('target obligatorio (nombre, dominio, id o URL de LinkedIn del prospecto)');
   const sb = '${SUPABASE}/rest/v1/';
   const u = {
     config: sb + 'outreach_config?id=eq.1&select=*',
     cands: sb + 'prospect_candidates?status=in.(in_ghl,accepted,contacted,discarded)&select=${CAND_SELECT}&order=priority_score.desc&limit=500',
+    pmsgs: prepAct ? sb + 'outreach_messages?direction=eq.outbound&created_at=gte.' + new Date(Date.now() - 120 * 86400000).toISOString() + '&select=id,candidate_id,company_name,direction,kind,status,to_email,subject,body,sent_at,created_at,updated_at,approved_by,approved_at,content_hash,metadata&order=created_at.desc&limit=900' : '${NONE}',
+    inbound: prepAct ? sb + 'outreach_messages?direction=eq.inbound&created_at=gte.' + new Date(Date.now() - 45 * 86400000).toISOString() + '&select=id,candidate_id,direction,classification,created_at&limit=500' : '${NONE}',
     msgs: ['list', 'approve', 'recommend'].includes(action) ? sb + 'outreach_messages?direction=eq.outbound&status=in.(approved,sending,sent)&select=candidate_id,status&limit=500' : '${NONE}',
     sup: ['list', 'approve', 'recommend'].includes(action) ? sb + 'outreach_suppression?select=email&limit=2000' : '${NONE}',
     wa_lists: action === 'lists' ? 'prospectLists/getProspectLists' : '',
     wa_campaigns: action === 'lists' ? 'campaigns/getAll' : '',
     wa_test: action === 'test' ? 'integrations/test' : '',
   };
-  return [{ json: { action, target: String(b.target || '').trim(), by: String(b.by || 'Christian vía Hermes').slice(0, 80), confirmation_code: String(b.confirmation_code || '').trim(), order_text: String(b.order_text || '').slice(0, 400), event: String(b.event || ''), note: String(b.note || b.text || ''), cfg_patch: b.config && typeof b.config === 'object' ? b.config : {}, u } }];
+  return [{ json: { action, target: String(b.target || '').trim(), by: String(b.by || 'Christian vía Hermes').slice(0, 80), confirmation_code: String(b.confirmation_code || '').trim(), order_text: String(b.order_text || '').slice(0, 400), event: String(b.event || ''), note: String(b.note || b.text || ''), prep: { state: String(b.state || ''), reason: String(b.reason || ''), draft: b.draft && typeof b.draft === 'object' ? b.draft : null, email: String(b.email || ''), linkedin: String(b.linkedin || ''), profile_url: String(b.profile_url || ''), invitation: String(b.invitation || ''), message: String(b.message || ''), kind: String(b.kind || ''), text: String(b.text || ''), n: b.n, limit: Math.min(Math.max(parseInt(b.limit, 10) || 0, 0), 200) }, cfg_patch: b.config && typeof b.config === 'object' ? b.config : {}, u } }];
 } catch (e) { return [{ json: { fatal: String((e && e.message) || e) } }]; }`;
 
 export const computeCode = `${LIB}
@@ -68,22 +74,39 @@ const nowMs = Date.now(), nowIso = new Date(nowMs).toISOString();
 const cfg = arr('SB Config')[0] || {};
 const cands = arr('SB Candidates');
 const msgs = arr('SB Messages');
+const pmsgs = arr('SB Prep Messages');
+const inboundRows = arr('SB Inbound');
+const inboundMap = {}; inboundRows.forEach((r) => { if (['reply', 'decline'].includes(r.classification)) inboundMap[r.candidate_id] = true; });
 const sup = arr('SB Suppression').map((r) => String(r.email || '').toLowerCase());
 const A = p.action;
 const day = (ms) => new Date(ms).toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
 const today = day(nowMs);
 const importedToday = cands.filter((c) => { const l = (c.channel_state || {}).linkedin; return l && l.mode_at_import === 'live' && l.imported_at && day(Date.parse(l.imported_at)) === today; }).length;
-const safeCfg = { linkedin_mode: cfg.linkedin_mode || 'off', linkedin_list_id: cfg.linkedin_list_id || null, linkedin_campaign_id: cfg.linkedin_campaign_id || null, linkedin_test_list_id: cfg.linkedin_test_list_id || null, linkedin_daily_cap: cfg.linkedin_daily_cap, linkedin_test_allowlist: cfg.linkedin_test_allowlist || [], email_mode: cfg.mode };
+const safeCfg = { linkedin_mode: cfg.linkedin_mode || 'off', linkedin_list_id: cfg.linkedin_list_id || null, linkedin_campaign_id: cfg.linkedin_campaign_id || null, linkedin_test_list_id: cfg.linkedin_test_list_id || null, linkedin_daily_cap: cfg.linkedin_daily_cap, linkedin_test_allowlist: cfg.linkedin_test_allowlist || [], email_mode: cfg.mode, autosend_enabled: cfg.autosend_enabled === true, autosend_min_score: cfg.autosend_min_score || 80 };
 const out = { writes: [], effects: [], waalaxy: null, audit: null };
 let resp;
 let cand = null;
-if (['status', 'recommend', 'approve', 'event'].includes(A)) {
+if (['status', 'recommend', 'approve', 'event', 'prep_set', 'prep_contact', 'li_save', 'li_sent'].includes(A)) {
   const f = findCandidate(cands, p.target);
   if (f.error) resp = { ok: false, status: 'error', error: f.error, message: f.error === 'ambiguo' ? 'Hay varios prospectos con ese nombre: ' + (f.options || []).join(' · ') + '. Indica el dominio o el id.' : 'No encontré ese prospecto.', options: f.options || [] };
   else cand = f.cand;
 }
 if (!resp) {
   if (A === 'config') resp = { ok: true, status: 'config', config: safeCfg, message: 'Configuración de LinkedIn.' };
+  else if (A === 'prep_summary') { const s = prepSummary(cands, pmsgs.concat(inboundRows), nowMs, 'America/Santiago', { limit: p.prep.limit || 40 }); resp = { ok: true, status: 'prep_summary', autosend: safeCfg.autosend_enabled, ...s, text: 'Preparación: correo listo ' + s.counts.email_listo + ' · LinkedIn por enviar ' + s.counts.linkedin_listo + ' · buscar contacto ' + s.counts.buscar_contacto + ' · en espera ' + (s.counts.en_espera + s.counts.no_contactar) + ' · INVESTIGADOS VÁLIDOS SIN ACCIÓN: ' + s.valid_unactioned + '.' }; }
+  else if (A === 'prep_queue') {
+    const lim = p.prep.limit || 10;
+    const open = cands.filter((c) => ['in_ghl', 'accepted'].includes(c.status) && prepClassify(c, pmsgs, nowMs).state === 'sin_accion').sort((a, b) => (b.priority_score || 0) - (a.priority_score || 0));
+    const items = open.slice(0, lim).map((c) => prepQueueItem(c, { suppressed: sup }));
+    const byRoute = {}; items.forEach((i) => { byRoute[i.route] = (byRoute[i.route] || 0) + 1; });
+    resp = { ok: true, status: 'prep_queue', count: open.length, shown: items.length, by_route: byRoute, items, text: open.length ? open.length + ' Investigado(s) válido(s) sin próxima acción. Para cada uno: ruta email → save_draft; ruta linkedin → save_linkedin_prep; ruta find_contact → set_prep_state(find_contact) con el mensaje ya redactado; si NO conviene contactar → set_prep_state(hold|no_contact) con razón comercial explícita.' : 'No hay Investigados válidos sin acción: todo tiene próxima acción.' };
+  }
+  else if (A === 'style_samples') { const s = prepStyleSamples(pmsgs, p.prep.n || p.prep.limit || 8); resp = { ok: true, status: 'style_samples', ...s }; }
+  else if (A === 'prep_set') { const r = prepPlanSet({ state: p.prep.state, reason: p.prep.reason, draft: p.prep.draft, by: p.by }, { now: nowMs, candidate: cand, messages: pmsgs }); resp = r.response; out.writes = r.writes; out.effects = r.effects; out.audit = { tool: 'prep_set', level: 2 }; }
+  else if (A === 'prep_contact') { const r = prepPlanContact({ email: p.prep.email, linkedin: p.prep.linkedin, source: p.prep.reason, by: p.by }, { now: nowMs, candidate: cand }); resp = r.response; out.writes = r.writes; out.effects = r.effects; out.audit = { tool: 'prep_contact', level: 2 }; }
+  else if (A === 'li_save') { const r = prepPlanLiSave({ profile_url: p.prep.profile_url, invitation: p.prep.invitation, message: p.prep.message, by: p.by }, { now: nowMs, candidate: cand, messages: pmsgs }); resp = r.response; out.writes = r.writes; out.effects = r.effects; out.audit = { tool: 'li_save', level: 2 }; }
+  else if (A === 'li_sent') { const r = prepPlanLiSent({ kind: p.prep.kind, text: p.prep.text }, { now: nowMs, candidate: cand }); resp = r.response; out.writes = r.writes; out.effects = r.effects; out.audit = { tool: 'li_sent', level: 2 }; }
+  else if (A === 'autosweep') { const r = prepPlanAutosweep({ now: nowMs, config: cfg, messages: pmsgs, candidates: cands, suppressed: sup, inbound: inboundMap }); resp = r.response; out.writes = r.writes; if ((r.approved || []).length || (r.reverted || []).length) out.audit = { tool: 'prep_autosweep', level: 3 }; }
   else if (A === 'list') {
     const ov = linkedinOverview(cands, nowMs);
     const open = cands.filter((c) => c.status === 'in_ghl' && c.ghl_stage === 'investigado' && !((c.channel_state || {}).linkedin));
@@ -174,6 +197,9 @@ export function buildLinkedin() {
     sbGet('SB Config', '={{ $("Parse").first().json.u.config }}', [600, 0]),
     sbGet('SB Candidates', '={{ $("Parse").first().json.u.cands }}', [800, 0]),
     sbGet('SB Messages', '={{ $("Parse").first().json.u.msgs }}', [1000, 0]),
+    sbGet('SB Prep Messages', '={{ $("Parse").first().json.u.pmsgs }}', [1100, 0]),
+    sbGet('SB Inbound', '={{ $("Parse").first().json.u.inbound }}', [1150, 0]),
+    { id: uuid(), name: 'Autosweep Tick', type: 'n8n-nodes-base.scheduleTrigger', typeVersion: 1.2, position: [0, 180], parameters: { rule: { interval: [{ field: 'minutes', minutesInterval: 5 }] } } },
     sbGet('SB Suppression', '={{ $("Parse").first().json.u.sup }}', [1200, 0]),
     waGet('Waalaxy Lists', '$("Parse").first().json.u.wa_lists', [1400, 0]),
     waGet('Waalaxy Campaigns', '$("Parse").first().json.u.wa_campaigns', [1600, 0]),
@@ -191,7 +217,7 @@ export function buildLinkedin() {
     code('Respond', respondCode, [3400, 0]),
   ];
   const c = { 'LI Webhook': { main: [to('Parse')] }, 'Parse': { main: [to('Valid?')] }, 'Valid?': { main: [to('SB Config'), to('Respond Error')] },
-    'SB Config': { main: [to('SB Candidates')] }, 'SB Candidates': { main: [to('SB Messages')] }, 'SB Messages': { main: [to('SB Suppression')] }, 'SB Suppression': { main: [to('Waalaxy Lists')] },
+    'SB Config': { main: [to('SB Candidates')] }, 'SB Candidates': { main: [to('SB Messages')] }, 'SB Messages': { main: [to('SB Prep Messages')] }, 'SB Prep Messages': { main: [to('SB Inbound')] }, 'SB Inbound': { main: [to('SB Suppression')] }, 'Autosweep Tick': { main: [to('Parse')] }, 'SB Suppression': { main: [to('Waalaxy Lists')] },
     'Waalaxy Lists': { main: [to('Waalaxy Campaigns')] }, 'Waalaxy Campaigns': { main: [to('Waalaxy Test')] }, 'Waalaxy Test': { main: [to('Compute')] }, 'Compute': { main: [to('Waalaxy Import')] }, 'Waalaxy Import': { main: [to('Finish')] },
     'Finish': { main: [to('Expand Writes')] }, 'Expand Writes': { main: [to('Apply Writes')] }, 'Apply Writes': { main: [to('Expand Gateway')] }, 'Expand Gateway': { main: [to('Gateway Act')] }, 'Gateway Act': { main: [to('Respond')] } };
   return { name: 'Atacama Labs - 26 LinkedIn Engine', nodes, connections: c, settings: { executionOrder: 'v1' } };

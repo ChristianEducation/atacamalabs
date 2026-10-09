@@ -172,3 +172,7 @@ Carga extra en n8n: ~96 consultas/día de alertas (cada una lee unas 10 tablas/e
 - **Visuales:** `request_visual` → `visual_status`; para producir carruseles/slides: `node scripts/media/media-gateway.mjs run` (equipo de Christian). Lo generativo (Higgsfield) está APAGADO.
 - **Recargar Hermes tras desplegar el MCP:** `s6-svc -t /run/service/gateway-default` (y `dashboard`); verificar con `hermes mcp test atacama-os` (54 herramientas). Los prompts de los jobs de cron se guardan EN LÍNEA: tras cambiar un `.prompt.txt` hay que re-aplicarlo con `hermes cron edit <id> --prompt "$(cat archivo)"` ejecutado como el usuario hermes (`bash -c "…\$(cat …)"`), si no el prompt queda vacío.
 - **Pruebas:** `node scripts/run-all-tests.mjs` (35 suites) y `node scripts/ops/ui-tests.mjs`.
+
+
+## 16. Contacto preparado (9-oct-2026)
+Ver [`CONTACTO-PREPARADO.md`](CONTACTO-PREPARADO.md): salidas de cada Investigado, job «Contact Prep», radar a 3 corridas L–V, Control Center en `/ops`, interruptor de envío automático (OFF) y cómo confirmar envíos de LinkedIn.

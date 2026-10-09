@@ -6,13 +6,13 @@ import { spawnSync } from 'node:child_process';
 const SUITES = [
   'scripts/ops/ops-core.test.mjs', 'n8n/build/ops.test.mjs', 'n8n/build/ops-actions.test.mjs', 'scripts/outreach/coldmail-core.test.mjs',
   'scripts/linkedin/linkedin-core.test.mjs', 'n8n/build/linkedin.test.mjs',
-  'scripts/outreach/outreach-core.test.mjs', 'n8n/build/outreach.test.mjs',
+  'scripts/outreach/outreach-core.test.mjs', 'scripts/outreach/prep-core.test.mjs', 'n8n/build/outreach.test.mjs',
   'scripts/prospecting/gateway-core.test.mjs', 'scripts/prospecting/gateway-flow.test.mjs', 'scripts/prospecting/admit-core.test.mjs',
   'n8n/build/prospect-gateway.test.mjs', 'n8n/build/prospect-flow.test.mjs', 'n8n/build/hermes-operator.test.mjs', 'scripts/operator/operator-core.test.mjs',
   'n8n/build/content-engine.test.mjs', 'n8n/build/content-signals.test.mjs', 'n8n/build/content-sync.test.mjs', 'n8n/build/content-metrics.test.mjs',
   'scripts/content/engine-core.test.mjs', 'scripts/content/editorial-core.test.mjs', 'scripts/content/resource-factory-core.test.mjs', 'scripts/media/media-gateway-core.test.mjs', 'n8n/build/media-gateway.test.mjs', 'scripts/media/media-worker.test.mjs', '--conditions=react-server --experimental-strip-types --import ./scripts/ops/swr-test-hooks.mjs scripts/ops/swr.test.mjs', 'scripts/content/schedule-core.test.mjs', 'scripts/content/signal-core.test.mjs', 'scripts/content/metrics-core.test.mjs',
   'n8n/build/content-rss.test.mjs', 'n8n/build/content-growth.test.mjs', 'scripts/content/rss-core.test.mjs', 'scripts/content/growth-core.test.mjs',
-  'n8n/build/won-to-client.test.mjs', 'ops/hermes/radar-prompt.test.mjs', 'ops/hermes/mcp-shape.test.mjs',
+  'n8n/build/won-to-client.test.mjs', 'ops/hermes/radar-prompt.test.mjs', 'ops/hermes/mcp-shape.test.mjs', 'ops/hermes/contact-prep-prompt.test.mjs',
 ];
 
 let failed = 0, total = 0;

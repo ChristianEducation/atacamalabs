@@ -8,6 +8,7 @@ import { linkedinOverview, liLabel } from '../linkedin/linkedin-core.mjs';
 import { edPlan } from '../content/editorial-core.mjs';
 import { growthResourceRank } from '../content/growth-core.mjs';
 import { rfAuthority } from '../content/resource-factory-core.mjs';
+import { prepSummary } from '../outreach/prep-core.mjs';
 
 export function tzParts(ms, tz) {
   const p = new Intl.DateTimeFormat('en-US', { timeZone: tz || 'America/Santiago', hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', weekday: 'short' }).formatToParts(new Date(ms));
@@ -327,19 +328,64 @@ export function composeUrgent(d) {
   return { text: 'URGENTE (' + s.action.length + '):\n' + s.action.map((a) => '• ' + a.text).join('\n'), count: s.action.length };
 }
 
-/** Compuerta de costo/calidad del Prospect Radar: ¿corre y en qué modo? */
+/**
+ * Aviso de preparación: se calcula DESDE LOS DATOS (no depende de que el agente reporte): si en los últimos 40 min se dejaron correos en borrador,
+ * LinkedIn por enviar o contactos por buscar, Christian recibe UN aviso corto (una vez por tanda). Ignora los prospectos de prueba (TEST …).
+ */
+export function prepFreshNotice(d) {
+  const now = d.now, tz = (d.cfg && d.cfg.tz) || 'America/Santiago';
+  const fresh = (iso) => { const t = Date.parse(iso || ''); return Number.isFinite(t) && now - t >= 0 && now - t <= 40 * 60000; };
+  const real = (n) => !/^test\b/i.test(String(n || ''));
+  const mails = (d.messages || []).filter((m) => m.direction === 'outbound' && m.kind === 'initial' && ['draft', 'approved'].includes(m.status) && real(m.company_name) && fresh(m.created_at));
+  const cands = (d.candidates || []).filter((c) => real(c.company_name));
+  const lis = cands.filter((c) => c.channel_state && c.channel_state.li_manual && c.channel_state.li_manual.status === 'ready' && fresh(c.channel_state.li_manual.prepared_at));
+  const finds = cands.filter((c) => c.channel_state && c.channel_state.prep && c.channel_state.prep.state === 'find_contact' && fresh(c.channel_state.prep.at));
+  const n = mails.length + lis.length + finds.length;
+  if (!n) return null;
+  const stamps = mails.map((m) => Date.parse(m.created_at)).concat(lis.map((c) => Date.parse(c.channel_state.li_manual.prepared_at)), finds.map((c) => Date.parse(c.channel_state.prep.at)));
+  const key = 'prep_new:' + Math.floor(Math.max.apply(null, stamps) / (2 * 3600000));
+  const ps = prepSummary(d.candidates || [], d.messages || [], now, tz, { limit: 1 });
+  const bits = [];
+  if (mails.length) bits.push(mails.length + (mails.length === 1 ? ' correo nuevo' : ' correos nuevos') + ' para aprobar');
+  if (lis.length) bits.push(lis.length + ' LinkedIn por enviar');
+  if (finds.length) bits.push(finds.length + ' para buscar contacto');
+  return { key, title: 'Contactos preparados', severity: 'info', text: ['PREPARACIÓN DE CONTACTOS', bits.join(' · '), 'Pendiente en total: ' + ps.counts.email_listo + ' correos · ' + ps.counts.linkedin_listo + ' LinkedIn · ' + ps.counts.buscar_contacto + ' sin contacto. Investigados sin acción: ' + ps.valid_unactioned + '.', 'Abre /ops → Control. Nada se envía sin tu aprobación.'].join('\n') };
+}
+
+/** Compuerta del job «contact-prep» (Hermes): ¿hay Investigados válidos sin próxima acción? Si no hay, el job termina sin gastar un solo token. */
+export function prepGate(d) {
+  const tz = (d.cfg && d.cfg.tz) || 'America/Santiago';
+  const prep = prepSummary(d.candidates || [], d.messages || [], d.now, tz, { limit: 1 });
+  const n = prep.valid_unactioned;
+  if (!n) return { mode: 'skip', count: 0, max_items: 0, reason: 'No hay Investigados válidos sin próxima acción: nada que preparar.', counts: prep.counts };
+  return { mode: 'run', count: n, max_items: Math.min(n, 12), reason: n + ' Investigado(s) válido(s) sin próxima acción: preparar canal y mensaje.', counts: prep.counts };
+}
+
+/**
+ * Compuerta de costo/calidad del Prospect Radar: ¿corre y en qué modo? (9-oct: hasta 3 corridas por día hábil, lun–vie).
+ * La contrapresión ya no mide cuántos hay en Investigado, sino cuántos Investigados VÁLIDOS siguen SIN próxima acción
+ * (sin correo listo, sin LinkedIn preparado, sin búsqueda de contacto asignada y sin motivo explícito de espera) y cuántos borradores esperan revisión.
+ */
 export function radarGate(d) {
-  const now = d.now;
-  const c = summarizeCommercial(d);
-  const runs = (d.runs || []).filter((r) => r.kind === 'prospect_radar' && r.status === 'ok');
+  const now = d.now, tz = (d.cfg && d.cfg.tz) || 'America/Santiago';
+  const prep = prepSummary(d.candidates || [], d.messages || [], now, tz, { limit: 1 });
+  const runs = (d.runs || []).filter((r) => r.kind === 'prospect_radar' && r.status === 'ok' && (r.summary || {}).mode !== 'skip');
   const last = runs[0] ? Date.parse(runs[0].created_at) : null;
-  const week = runs.filter((r) => now - Date.parse(r.created_at) <= 7 * 86400000 && (r.summary || {}).mode !== 'skip').length;
-  const backlog = c.prospects.backlog;
-  const maxBacklog = 25;
-  if (last && now - last < 20 * 3600000) return { mode: 'skip', max_imports: 0, reason: 'ya corrió hace ' + ageText(now - last), backlog, week };
-  if (week >= 3) return { mode: 'skip', max_imports: 0, reason: 'tope semanal de corridas alcanzado (' + week + ' de 3)', backlog, week };
-  if (backlog >= maxBacklog) return { mode: 'skip', max_imports: 0, reason: 'hay ' + backlog + ' prospectos en Investigado sin decisión (tope ' + maxBacklog + '): primero se revisan', backlog, week };
-  return { mode: 'import', max_imports: Math.max(1, Math.min(5, maxBacklog - backlog)), reason: 'ok (' + backlog + ' en Investigado, ' + week + ' corridas esta semana)', backlog, week };
+  const week = runs.filter((r) => now - Date.parse(r.created_at) <= 7 * 86400000).length;
+  const dayOf = (ms) => new Date(ms).toLocaleDateString('en-CA', { timeZone: tz });
+  const today = runs.filter((r) => dayOf(Date.parse(r.created_at)) === dayOf(now)).length;
+  const backlog = prep.valid_unactioned;
+  const pending = prep.counts.email_listo + prep.counts.linkedin_listo;
+  const base = { backlog, unactioned: backlog, pending_review: pending, investigated: prep.investigated, week, today };
+  const wd = new Date(now).toLocaleDateString('en-US', { weekday: 'short', timeZone: tz });
+  const maxUnactioned = 10, maxPending = 30;
+  if (wd === 'Sat' || wd === 'Sun') return { mode: 'skip', max_imports: 0, reason: 'fin de semana: las corridas son de lunes a viernes', ...base };
+  if (last && now - last < 170 * 60000) return { mode: 'skip', max_imports: 0, reason: 'ya corrió hace ' + ageText(now - last) + ' (mínimo 2 h 50 min entre corridas)', ...base };
+  if (today >= 3) return { mode: 'skip', max_imports: 0, reason: 'ya hubo ' + today + ' corridas hoy (tope 3 por día hábil)', ...base };
+  if (week >= 15) return { mode: 'skip', max_imports: 0, reason: 'tope semanal de corridas alcanzado (' + week + ' de 15)', ...base };
+  if (backlog >= maxUnactioned) return { mode: 'skip', max_imports: 0, reason: 'hay ' + backlog + ' Investigados válidos sin próxima acción (tope ' + maxUnactioned + '): primero se preparan', ...base };
+  if (pending >= maxPending) return { mode: 'skip', max_imports: 0, reason: 'hay ' + pending + ' mensajes esperando tu revisión (tope ' + maxPending + '): primero se revisan', ...base };
+  return { mode: 'import', max_imports: Math.max(1, Math.min(5, maxUnactioned - backlog)), reason: 'ok (' + backlog + ' sin acción, ' + pending + ' por revisar, ' + today + ' corridas hoy, ' + week + ' esta semana)', ...base };
 }
 
 /**
@@ -385,6 +431,7 @@ export function evaluateAlerts(d, existing) {
     if (!n) continue;
     add('run:' + r.id, n.severity, n.title, '', true, { notice: n.text });
   }
+  { const pf = prepFreshNotice(d); if (pf) add(pf.key, pf.severity, pf.title, '', true, { notice: pf.text }); }
   // 7) feeds RSS con 3+ fallos seguidos (aviso, no crítico)
   summarizeGrowth(d).rss.failing.forEach((f) => add('rss_feed:' + f.slug, 'high', 'Feed RSS con fallos: ' + f.slug, f.error + ' (' + f.failures + ' veces seguidas)', false));
   // --- dedupe
@@ -762,10 +809,15 @@ export function composePanel(d) {
   const outreach = { email: { mode: c.outreach.mode, sent_today: emailSentToday, cap: Number(d.outreach && d.outreach.daily_cap) || 0, drafts: c.outreach.drafts_initial, approved_waiting: c.outreach.approved_pending },
     linkedin: { mode: (d.outreach && d.outreach.linkedin_mode) || 'off', imported_today: liToday, cap: Number(d.outreach && d.outreach.linkedin_daily_cap) || 0, ready: lo.ready_for_linkedin, pending_approval: lo.counts.pendiente, in_campaign: lo.counts.en_campana + lo.counts.conexion + lo.counts.mensaje + lo.counts.followup, replied: lo.counts.respondio, errors: lo.counts.error } };
   const approvals = { emails: c.outreach.drafts_initial, linkedin: lo.ready_for_linkedin + lo.counts.pendiente, content: inReview.length };
+  const prep = prepSummary(d.candidates || [], d.messages || [], now, tz, { limit: 30 });
+  prep.autosend = { enabled: Boolean(d.outreach && d.outreach.autosend_enabled), min_score: Number(d.outreach && d.outreach.autosend_min_score) || 80, updated_at: (d.outreach && d.outreach.autosend_updated_at) || null };
+  add('prep_unactioned', 'act', 'Investigados válidos sin acción', prep.lists.sin_accion.map((x) => x.company + ' · ' + x.score));
+  add('prep_li_send', 'act', 'LinkedIn por enviar a mano', prep.lists.linkedin_listo.map((x) => x.company));
+  add('prep_find', 'warn', 'Buscar contacto', prep.lists.buscar_contacto.map((x) => x.company));
 
   add('li_pending', 'act', 'Altas a LinkedIn por confirmar', (d.candidates || []).filter((x) => ((x.channel_state || {}).linkedin || {}).state === 'aprobacion_pendiente').map((x) => x.company_name));
   add('li_error', 'act', 'Errores en LinkedIn (Waalaxy)', (d.candidates || []).filter((x) => ((x.channel_state || {}).linkedin || {}).state === 'error').map((x) => x.company_name));
-  return { outreach, approvals, linkedin, generated_at: new Date(now).toISOString(), date_label: fmtDate(now, tz), tz, attention: att, attention_total: att.length, prospecting, content, system, missing: d.missing || [] };
+  return { outreach, approvals, linkedin, prep, generated_at: new Date(now).toISOString(), date_label: fmtDate(now, tz), tz, attention: att, attention_total: att.length, prospecting, content, system, missing: d.missing || [] };
 }
 
 /** Aviso corto de una corrida de radar (ops_runs) para Telegram: sin IDs, rutas ni telemetría. */

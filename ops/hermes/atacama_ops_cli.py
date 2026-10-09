@@ -86,6 +86,7 @@ def alerts():
 
 GATES = {  # tipo → (acción de compuerta, cómo se registra una omisión)
     "radar": ("radar_gate", {"action": "radar_report"}),
+    "prep": ("prep_gate", None),
     "content": ("content_gate", {"action": "content_radar_report"}),
     "rss": ("rss_gate", {"action": "job_report", "kind": "content_rss"}),
     "competitors": ("competitor_gate", {"action": "job_report", "kind": "competitor_intel"}),
@@ -101,7 +102,7 @@ def gate(kind):
         print("COMPUERTA: mode=skip — no pude consultar Atacama OS (%s); no se investiga esta vez." % type(ex).__name__)
         return
     mode, reason = r.get("mode", "skip"), r.get("reason", "")
-    if mode == "skip":
+    if mode == "skip" and rep:
         try:
             body = {"status": "skipped", "mode": "skip", "reason": reason}
             if rep.get("kind"):
@@ -113,6 +114,8 @@ def gate(kind):
     if mode != "skip":
         if kind == "radar":
             extra = " max_imports=%s" % r.get("max_imports")
+        elif kind == "prep":
+            extra = " count=%s max_items=%s" % (r.get("count"), r.get("max_items"))
         elif kind in ("content", "rss"):
             extra = " max_signals=%s" % r.get("max_signals")
         elif kind == "pieces":
@@ -131,7 +134,7 @@ def main():
     elif a[0] == "gate" and len(a) > 1 and a[1] in GATES:
         gate(a[1])
     else:
-        print("uso: atacama_ops_cli.py daily [--force] | alerts | gate radar|content|rss|competitors|pieces")
+        print("uso: atacama_ops_cli.py daily [--force] | alerts | gate radar|prep|content|rss|competitors|pieces")
 
 
 if __name__ == "__main__":

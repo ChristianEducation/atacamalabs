@@ -12,7 +12,7 @@
  */
 
 export function oaActionList() {
-  return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject'];
+  return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject', 'autosend_set', 'autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release', 'prep_contact'];
 }
 
 export function oaIsUuid(v) {
@@ -43,6 +43,30 @@ export function oaValidate(b) {
     req.body = body;
     if (x.to_email != null || x.to != null) return { ok: false, error: 'destinatario_no_editable', message: 'El destinatario no se puede editar desde /ops.' };
   }
+  if (action === 'autosend_set') {
+    if (typeof x.enabled !== 'boolean') return { ok: false, error: 'enabled_invalido', message: 'enabled (true/false) es obligatorio.' };
+    req.enabled = x.enabled;
+    if (x.min_score != null) {
+      const ms = Number(x.min_score);
+      if (!Number.isFinite(ms) || ms < 60 || ms > 100) return { ok: false, error: 'score_invalido', message: 'min_score debe estar entre 60 y 100.' };
+      req.min_score = Math.floor(ms);
+    }
+  }
+  if (action.startsWith('prep_')) {
+    if (!oaIsUuid(x.candidate_id)) return { ok: false, error: 'candidate_id_invalido', message: 'candidate_id (uuid del prospecto) es obligatorio.' };
+    req.candidate_id = String(x.candidate_id).toLowerCase();
+    if (action === 'prep_li_sent') {
+      req.kind = String(x.kind || '').toLowerCase();
+      if (!['invitation', 'connected', 'message', 'reply', 'closed'].includes(req.kind)) return { ok: false, error: 'kind_invalido', message: 'kind: invitation | connected | message | reply | closed.' };
+      req.text = typeof x.text === 'string' ? x.text.trim().slice(0, 1500) : '';
+    }
+    if (action === 'prep_hold' && String(req.reason || '').length < 8) return { ok: false, error: 'falta_razon', message: 'EN ESPERA exige una razón comercial explícita (≥ 8 caracteres).' };
+    if (action === 'prep_contact') {
+      req.email = typeof x.email === 'string' ? x.email.trim().toLowerCase().slice(0, 200) : '';
+      req.linkedin = typeof x.linkedin === 'string' ? x.linkedin.trim().slice(0, 300) : '';
+      if (!req.email && !req.linkedin) return { ok: false, error: 'sin_dato', message: 'Pega un correo o un enlace de LinkedIn.' };
+    }
+  }
   if (action.startsWith('linkedin_')) {
     if (!oaIsUuid(x.candidate_id)) return { ok: false, error: 'candidate_id_invalido', message: 'candidate_id (uuid del prospecto) es obligatorio.' };
     req.candidate_id = String(x.candidate_id).toLowerCase();
@@ -66,7 +90,9 @@ export function oaReads(req, sb) {
     add('config', 'outreach_config?id=eq.1&select=mode,paused,daily_cap,window_start,window_end,tz,linkedin_mode,linkedin_list_id,linkedin_campaign_id,linkedin_daily_cap');
   } else if (req.action.startsWith('email_')) {
     add('message', 'outreach_messages?id=eq.' + req.message_id + '&select=*,cand:prospect_candidates(id,company_name,status)&limit=1');
-  } else if (req.action.startsWith('linkedin_')) {
+  } else if (req.action === 'autosend_set') {
+    add('config', 'outreach_config?id=eq.1&select=autosend_enabled,autosend_min_score');
+  } else if (req.action.startsWith('linkedin_') || req.action.startsWith('prep_')) {
     add('candidate', 'prospect_candidates?id=eq.' + req.candidate_id + '&select=id,company_name,status,channel_state,last_contact_channel,contact:canonical->contact&limit=1');
   } else if (req.action.startsWith('content_')) {
     add('piece', 'content_pieces?id=eq.' + req.piece_id + '&select=id,status,ghl_post_id,ghl_status,channel,format,topic,is_test,scheduled_at&limit=1');
@@ -276,6 +302,52 @@ export function oaStep(req, R, results, nowMs, env) {
     }
   }
 
+  // ---------------------------------------------------------------- envío automático (interruptor): solo Christian, desde /ops
+  if (A === 'autosend_set') {
+    const cur = (R.config || [])[0] || {};
+    const body = { autosend_enabled: req.enabled, autosend_updated_at: nowIso, autosend_updated_by: by, updated_at: nowIso };
+    if (req.min_score != null) body.autosend_min_score = req.min_score;
+    return done({ ok: true, status: req.enabled ? 'autosend_on' : 'autosend_off', enabled: req.enabled, min_score: req.min_score != null ? req.min_score : (Number(cur.autosend_min_score) || 80),
+      message: req.enabled ? 'ENVÍO AUTOMÁTICO: ON. Los borradores elegibles (score ≥ ' + (req.min_score != null ? req.min_score : (Number(cur.autosend_min_score) || 80)) + ', correo directo publicado, no B/C, sin respuesta) se aprobarán solos y saldrán con el tope y la ventana de siempre. Puedes apagarlo cuando quieras.' : 'ENVÍO AUTOMÁTICO: OFF. Todo vuelve a quedar en Aprobaciones; lo que el autoenvío había aprobado y no salió vuelve a borrador.' },
+      [{ method: 'PATCH', path: 'outreach_config?id=eq.1', body, prefer: 'return=representation', check_rows: true, check_message: 'No pude cambiar el interruptor.' }]);
+  }
+  if (A === 'autosend_sweep') {
+    if (n === 0) return ingest('atacama-linkedin', { action: 'autosweep', by: 'Atacama OS · autoenvío (tras el interruptor)' });
+    const b = results[0] && results[0].body;
+    if (b && b.ok) return done({ ok: true, status: b.status, message: b.message, approved: b.approved || [], reverted: b.reverted || [], skipped_count: b.skipped_count || 0 });
+    return done(oaRelay(results[0], 'No pude aplicar el barrido del autoenvío'));
+  }
+
+  // ---------------------------------------------------------------- contacto preparado (LinkedIn manual, espera, buscar contacto)
+  if (A.startsWith('prep_')) {
+    const c = (R.candidate || [])[0];
+    if (!c) return fail('prospecto_no_encontrado', 'No encontré ese prospecto.');
+    if (A === 'prep_li_sent') {
+      if (n === 0) return ingest('atacama-linkedin', { action: 'li_sent', target: c.id, kind: req.kind, text: req.text, by });
+      const bl = results[0] && results[0].body;
+      if (bl && bl.ok) return done({ ok: true, status: bl.status, message: bl.message, follow_up_at: bl.follow_up_at || null, li_status: bl.li_status || null, ghl_stage: bl.ghl_stage || null, ghl_error: bl.ghl_error || null });
+      return done(oaRelay(results[0], 'No pude registrar el envío por LinkedIn'));
+    }
+    if (A === 'prep_hold' || A === 'prep_release') {
+      if (n === 0) return ingest('atacama-linkedin', { action: 'prep_set', target: c.id, state: A === 'prep_hold' ? 'hold' : 'clear', reason: req.reason, by });
+      const b = results[0] && results[0].body;
+      if (b && b.ok) return done({ ok: true, status: b.status, message: b.message });
+      return done(oaRelay(results[0], 'No pude cambiar el estado'));
+    }
+    if (A === 'prep_contact') {
+      if (n === 0) return ingest('atacama-linkedin', { action: 'prep_contact', target: c.id, email: req.email, linkedin: req.linkedin, by });
+      const b0 = results[0] && results[0].body;
+      if (!(b0 && b0.ok)) return done(oaRelay(results[0], 'No pude guardar el contacto'));
+      if (n === 1) {
+        if (b0.channel === 'email' && b0.has_draft_text && b0.draft_text) return ingest('atacama-outreach-engine', { action: 'draft', candidate_id: c.id, kind: 'initial', subject: b0.draft_text.subject || 'una consulta rápida', body: b0.draft_text.body, by, reason: 'Contacto agregado desde /ops (buscar contacto)' });
+        return done({ ok: true, status: 'contact_saved', message: b0.message });
+      }
+      const b1 = results[1] && results[1].body;
+      if (b1 && b1.ok && b1.draft) return done({ ok: true, status: 'contact_saved_draft', message: 'Guardé el contacto y dejé el borrador listo en Aprobaciones (NO enviado).', draft_id: b1.draft.id || null });
+      return done({ ok: true, status: 'contact_saved', message: b0.message + ' El borrador no se pudo crear solo (' + String((b1 && b1.message) || 'sin respuesta').slice(0, 160) + '): se redacta en la próxima corrida.' });
+    }
+  }
+
   // ---------------------------------------------------------------- contenido
   if (A.startsWith('content_')) {
     const p = (R.piece || [])[0];
@@ -324,6 +396,6 @@ export function oaAudit(req, R, final, nowMs) {
   if (req.piece_id) { const p = (R.piece || [])[0]; ent.piece_id = req.piece_id; if (p) { ent.topic = p.topic; ent.channel = p.channel; ent.ghl_post_id = p.ghl_post_id; } }
   const type = req.action.split('_')[0];
   const params = { type, decision: /approve/.test(req.action) ? 'approved' : /reject/.test(req.action) ? 'rejected' : req.action.replace(type + '_', ''), reason: req.reason || null, ...(req.subject ? { subject_len: req.subject.length, body_len: req.body.length } : {}) };
-  return { request_id: req.request_id + (r.ok ? '' : '~' + Math.floor(nowMs / 1000).toString(36)), actor: 'Christian via /ops', tool: 'ops_' + req.action, level: /approve/.test(req.action) ? 3 : 2, entity: ent, params,
+  return { request_id: req.request_id + (r.ok ? '' : '~' + Math.floor(nowMs / 1000).toString(36)), actor: 'Christian via /ops', tool: 'ops_' + req.action, level: /approve|autosend_set/.test(req.action) ? 3 : 2, entity: ent, params,
     status: r.ok ? 'executed' : 'refused', result_summary: String(r.message || '').slice(0, 300), response: { ok: Boolean(r.ok), status: r.status || null, error: r.error || null, message: String(r.message || '').slice(0, 300) } };
 }

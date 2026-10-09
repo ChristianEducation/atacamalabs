@@ -17,10 +17,10 @@ const FIX = (o) => ({ cfg: CFG(), cands: [CAND(), CAND({ id: 'k2', company_name:
 
 async function call(body, fx) {
   const f = fx || FIX();
-  const store = { 'LI Webhook': { body } };
+  const store = body && body.__tick ? { 'Autosweep Tick': {} } : { 'LI Webhook': { body } };
   store.Parse = (await run('Parse', store))[0].json;
   if (store.Parse.fatal) return { fatal: store.Parse.fatal };
-  store['SB Config'] = ok200([f.cfg]); store['SB Candidates'] = ok200(f.cands); store['SB Messages'] = ok200(f.msgs); store['SB Suppression'] = ok200(f.sup);
+  store['SB Config'] = ok200([f.cfg]); store['SB Candidates'] = ok200(f.cands); store['SB Messages'] = ok200(f.msgs); store['SB Prep Messages'] = ok200(f.pmsgs || []); store['SB Inbound'] = ok200(f.inbound || []); store['SB Suppression'] = ok200(f.sup);
   store['Waalaxy Lists'] = f.wa.lists || { statusCode: 0 }; store['Waalaxy Campaigns'] = f.wa.campaigns || { statusCode: 0 }; store['Waalaxy Test'] = f.wa.test || { statusCode: 0 };
   store.Compute = (await run('Compute', store))[0].json;
   const importCalled = Boolean(store.Compute.out.waalaxy && !store.Compute.out.waalaxy.skip);
@@ -40,7 +40,7 @@ t('26: los nodos HTTP toleran fallos (siempre responde)', wf.nodes.filter((n) =>
 const waNodes = wf.nodes.filter((n) => n.credentials && n.credentials.waalaxyApi);
 t('26: Waalaxy solo con la credencial propia; lecturas = GET y el único POST es el import (/prospects/addProspectFromIntegration)', waNodes.length === 4 && waNodes.filter((n) => n.parameters.method === 'POST').length === 1 && /addProspectFromIntegration/.test(waNodes.find((n) => n.parameters.method === 'POST').parameters.url));
 t('26: el import a Waalaxy se omite salvo que el plan lo ordene (URL de descarte por defecto)', /out\.waalaxy && !\$\("Compute"\)\.first\(\)\.json\.out\.waalaxy\.skip \? .*: "https:\/\/localhost\.invalid\//.test(wf.nodes.find((n) => n.name === 'Waalaxy Import').parameters.url));
-t('26: escribe solo en prospect_candidates, outreach_config y operator_audit_log (más el Gateway para GHL)', (() => { const c = code('Compute') + code('Finish'); const paths = [...c.matchAll(/path: '([a-z_]+)/g)].map((m) => m[1]); return paths.length >= 2 && paths.every((p) => ['prospect_candidates', 'outreach_config', 'operator_audit_log'].includes(p)); })());
+t('26: escribe solo en prospect_candidates, outreach_config y operator_audit_log (más el Gateway para GHL)', (() => { const c = code('Compute') + code('Finish'); const paths = [...c.matchAll(/path: '([a-z_]+)/g)].map((m) => m[1]); return paths.length >= 2 && paths.every((p) => ['prospect_candidates', 'outreach_config', 'operator_audit_log', 'outreach_messages'].includes(p)); })());
 let r = await call({ action: 'inventada' }); t('acción inválida → error con la lista', /action inválida/.test(r.fatal) && ACTIONS.every((a) => r.fatal.includes(a)));
 r = await call({ action: 'approve' }); t('target obligatorio para approve/status/recommend/event', /target obligatorio/.test(r.fatal));
 
@@ -105,5 +105,40 @@ t('si Supabase falla al guardar, la respuesta lo informa', /Supabase HTTP 500/.t
 r = await call({ action: 'recommend', target: 'prueba.cl' }, { ...FIX(), writeNet: true });
 t('error de RED al guardar (sin código HTTP) tampoco pasa en silencio: ok=false y persist_error', r.resp.ok === false && /sin respuesta \(red\)/.test(r.resp.persist_error || ''), JSON.stringify(r.resp).slice(0, 200));
 r = await call({ action: 'status', target: 'prueba.cl' }); t('toda respuesta declara que no se envió ningún mensaje', r.resp.safety.messages_sent === 0);
+
+// ---------- Contacto preparado (9-oct): cola, estados, LinkedIn manual y autoenvío
+const PC = (o) => CAND({ id: 'p1', company_name: 'Prep Uno', domain: 'prepuno.cl', priority_score: 90, canonical: { company_name: 'Prep Uno', contact: { name: 'Ana Pérez', role: 'Gerente', email: 'ana@prepuno.cl' }, facts: ['hecho uno suficientemente largo'], source_flags: {} }, ...(o || {}) });
+const PM = (o) => ({ id: 'pm1', candidate_id: 'p1', company_name: 'Prep Uno', direction: 'outbound', kind: 'initial', status: 'draft', to_email: 'ana@prepuno.cl', subject: 'asunto', body: 'cuerpo', metadata: { cold: { score: 88 } }, ...(o || {}) });
+t('26: acciones nuevas registradas', ['prep_summary', 'prep_queue', 'prep_set', 'prep_contact', 'li_save', 'li_sent', 'style_samples', 'autosweep'].every((a) => ACTIONS.includes(a)));
+t('26: hay un reloj de 5 minutos para el barrido del autoenvío', wf.nodes.some((n) => n.name === 'Autosweep Tick' && n.type === 'n8n-nodes-base.scheduleTrigger' && n.parameters.rule.interval[0].minutesInterval === 5) && wf.connections['Autosweep Tick'].main[0][0].node === 'Parse');
+r = await call({ action: 'prep_summary' }, FIX({ cands: [PC(), PC({ id: 'p2', company_name: 'Dos' }), PC({ id: 'p3', company_name: 'Tres', canonical: { contact: {} }, channel_state: { prep: { state: 'find_contact' } } })], pmsgs: [PM()] }));
+t('prep_summary: cuenta correo listo, buscar contacto y la métrica crítica (sin acción)', r.resp.ok && r.resp.counts.email_listo === 1 && r.resp.counts.buscar_contacto === 1 && r.resp.valid_unactioned === 1 && /SIN ACCIÓN: 1/.test(r.resp.text) && r.writes.length === 0 && !r.importCalled, JSON.stringify(r.resp).slice(0, 300));
+r = await call({ action: 'prep_queue', limit: 5 }, FIX({ cands: [PC(), PC({ id: 'p2', company_name: 'Dos', canonical: { contact: { linkedin: 'https://www.linkedin.com/in/dos-persona' } } })], pmsgs: [PM()] }));
+t('prep_queue: entrega solo los sin acción, con ruta decidida y la evidencia', r.resp.ok && r.resp.count === 1 && r.resp.items[0].company === 'Dos' && r.resp.items[0].route === 'linkedin' && r.writes.length === 0, JSON.stringify(r.resp).slice(0, 300));
+r = await call({ action: 'style_samples', n: 3 }, FIX({ pmsgs: [PM({ id: 'a', status: 'sent', sent_at: '2026-10-09T12:00:00Z' })] }));
+t('style_samples: devuelve enviados recientes y la guía de no copiar hechos', r.resp.ok && r.resp.sent.length === 1 && /NO copies hechos/.test(r.resp.guidance) && r.writes.length === 0);
+r = await call({ action: 'prep_set', target: 'prepuno.cl', state: 'hold', reason: 'falta correo' }, FIX({ cands: [PC({ canonical: { contact: {} } })] }));
+t('prep_set: EN ESPERA sin razón comercial se rechaza', r.resp.ok === false && r.resp.error === 'falta_razon' && r.writes.every((w) => w.path === 'operator_audit_log'));
+r = await call({ action: 'prep_set', target: 'prepuno.cl', state: 'hold', reason: 'Prioridad B: se contacta después de avanzar con los A (instrucción de Christian)' }, FIX({ cands: [PC({ canonical: { contact: {} } })] }));
+t('prep_set: EN ESPERA con razón guarda el estado y audita', r.resp.ok && r.writes.some((w) => w.path === 'prospect_candidates?id=eq.p1' && w.body.channel_state.prep.state === 'hold') && r.writes.some((w) => w.path === 'operator_audit_log'));
+r = await call({ action: 'li_save', target: 'prepuno.cl', profile_url: 'https://www.linkedin.com/in/ana-perez', invitation: 'Hola Ana, te vi en Leads Pro y luego estuve mirando tu trabajo. Me gustaría conectar.', message: 'Hola Ana, vi tu enfoque. Imagino que hay trabajo repetitivo en esa parte. ¿Hoy cómo manejan esa parte?' }, FIX({ cands: [PC()] }));
+t('li_save: deja LinkedIn listo (manual) y anota en GHL; no toca Waalaxy', r.resp.ok && r.writes.some((w) => w.body.channel_state && w.body.channel_state.li_manual && w.body.channel_state.li_manual.status === 'ready') && r.gw.length === 1 && r.gw[0].body.act.type === 'add_note' && !r.importCalled, JSON.stringify(r.resp));
+const rdy = PC({ channel_state: { li_manual: { status: 'ready', profile_url: 'https://www.linkedin.com/in/ana-perez', invitation: 'Hola Ana, conectemos.', message: 'Mensaje preparado suficientemente largo.', events: [] } } });
+r = await call({ action: 'li_sent', target: 'prepuno.cl', kind: 'invitation' }, FIX({ cands: [rdy] }));
+t('li_sent: registra Contactado, canal LinkedIn, mensaje enviado y seguimiento +3 días hábiles en Supabase y GHL', r.resp.ok && r.writes.some((w) => w.body.ghl_stage === 'contactado' && w.body.last_contact_channel === 'linkedin' && w.body.channel_state.li_manual.invite_text_sent === 'Hola Ana, conectemos.') && r.gw.length === 1 && r.gw[0].body.act.type === 'mark_contacted' && r.gw[0].body.act.follow_up_days === 3 && /Hola Ana, conectemos/.test(r.gw[0].body.act.note), JSON.stringify(r.resp));
+r = await call({ action: 'prep_contact', target: 'prepuno.cl', email: 'nueva@prepuno.cl' }, FIX({ cands: [PC({ canonical: { contact: {} }, channel_state: { prep: { state: 'find_contact' } } })] }));
+t('prep_contact: guarda el correo encontrado y libera buscar contacto', r.resp.ok && r.writes.some((w) => w.body.canonical && w.body.canonical.contact.email === 'nueva@prepuno.cl' && !w.body.channel_state.prep), JSON.stringify(r.resp));
+const cfgOn = { ...CFG(), autosend_enabled: true, autosend_min_score: 80 };
+r = await call({ action: 'autosweep' }, FIX({ cfg: CFG(), cands: [PC()], pmsgs: [PM()] }));
+t('autosweep con el interruptor OFF: no aprueba nada', r.resp.status === 'autosend_off' && r.writes.length === 0);
+r = await call({ action: 'autosweep' }, FIX({ cfg: cfgOn, cands: [PC(), PC({ id: 'p2', company_name: 'Dos', canonical: { contact: { email: 'info@dos.cl' } } })], pmsgs: [PM(), PM({ id: 'pm2', candidate_id: 'p2', company_name: 'Dos', to_email: 'info@dos.cl' })] }));
+t('autosweep ON: aprueba solo el correo directo con buen score (el genérico queda manual) y audita', r.resp.status === 'autosend_on' && r.resp.approved.length === 1 && r.writes.filter((w) => w.path.startsWith('outreach_messages')).length === 1 && r.writes.some((w) => w.body.approved_by === 'Atacama OS · autoenvío') && r.writes.some((w) => w.path === 'operator_audit_log'), JSON.stringify(r.resp).slice(0, 300));
+r = await call({ action: 'autosweep' }, FIX({ cfg: cfgOn, cands: [PC()], pmsgs: [PM()], inbound: [{ candidate_id: 'p1', classification: 'reply', created_at: '2026-10-09T10:00:00Z' }] }));
+t('autosweep ON: si el prospecto ya respondió no se aprueba nada', r.resp.approved.length === 0 && r.writes.length === 0);
+r = await call({ __tick: true, action: 'autosweep' }, FIX({ cfg: cfgOn, cands: [PC()], pmsgs: [PM()] }));
+t('el reloj dispara el barrido sin webhook (acción autosweep)', r.parsed && r.parsed.action === 'autosweep' && r.resp.status === 'autosend_on' && r.resp.approved.length === 1, JSON.stringify(r.parsed).slice(0, 200));
+r = await call({ action: 'autosweep' }, FIX({ cfg: CFG(), cands: [PC()], pmsgs: [PM({ status: 'approved', approved_by: 'Atacama OS · autoenvío' }), PM({ id: 'pm9', status: 'approved', approved_by: 'Christian via /ops' })] }));
+t('autosweep OFF revierte solo lo que había aprobado el autoenvío (lo aprobado por Christian no se toca)', r.writes.filter((w) => w.path.startsWith('outreach_messages')).length === 1 && r.writes.find((w) => w.path.startsWith('outreach_messages')).path.includes('pm1'), JSON.stringify(r.writes));
+
 console.log(`\n${pass} ok, ${fail} fallos`);
 process.exit(fail ? 1 : 0);

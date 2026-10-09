@@ -39,7 +39,15 @@ const overview = () => ({ ok: true, action: 'overview', generated_at: new Date()
 const preview = (o = {}) => ({ hook: 'Un hook claro', body: 'Cuerpo del post con una idea concreta.', cta: 'Más en atacamalabs.cl', hashtags: ['#automatización'], slides: [], media: [], sources: [{ title: 'Fuente oficial', url: 'https://example.com/f' }], rationale: 'Por qué se eligió', format: 'texto', proposed_at: ISO(30), proposed_label: 'sáb 10 oct 10:00', ghl_post: true, ...o });
 const PIECES = [{ id: UID(401), title: 'API Gateway convierte APIs en herramientas MCP', channel: 'LinkedIn Atacama Labs', status: 'in_review', hook: 'x', format: 'texto', category: 'Noticia', score: 85, at: ISO(30), at_label: 'sáb 10 oct 10:00', preview: preview() },
   { id: UID(402), title: 'Carrusel sobre compactación', channel: 'Instagram Atacama', status: 'in_review', hook: 'y', format: 'carrusel', category: 'Educativo', score: 79, at: ISO(60), at_label: 'lun 12 oct 12:30', preview: preview({ format: 'carrusel', media: ['https://example.com/1.png', 'https://example.com/2.png', 'https://example.com/3.png'] }) }];
-const panel = () => ({ generated_at: new Date().toISOString(), date_label: 'jue 8 oct', tz: 'America/Santiago', missing: [], attention_total: 1, attention: [{ key: 'content_pending', tone: 'act', title: 'Contenido por aprobar', count: 2, items: ['«API Gateway…»'], more: 0 }],
+const PR = (n, o = {}) => ({ id: UID(500 + n), company: 'Prep ' + n, score: 80 - n, band: 'alta', state: 'sin_accion', label: 'Sin acción', reason: '', person: 'Persona ' + n, role: 'Gerente', email: null, email_kind: null, linkedin: null, priority: null, message_id: null, score_mail: null, li: null, find: null, ...o });
+const prepData = () => ({
+  counts: { email_listo: 3, email_aprobado: 1, linkedin_listo: 1, linkedin_en_curso: 0, waalaxy: 0, buscar_contacto: 1, en_espera: 1, no_contactar: 0, sin_accion: 2, contactado: 4, respondio: 0, otro: 0 },
+  lists: {
+    email_listo: [PR(1, { state: 'email_listo', email: 'ana@prep1.cl', email_kind: 'direct', score_mail: 88 })], email_aprobado: [], linkedin_listo: [PR(2, { state: 'linkedin_listo', li: { status: 'ready', profile_url: 'https://www.linkedin.com/in/prep-dos', invitation: 'Hola Prep, te vi en Leads Pro. Me gustaría conectar.', message: 'Mensaje preparado para después de conectar, con una pregunta concreta.', prepared_at: ISO(-1), invite_sent_at: null, message_sent_at: null, follow_up_at: null } })],
+    linkedin_en_curso: [], waalaxy: [], buscar_contacto: [PR(3, { state: 'buscar_contacto', reason: 'Sin correo ni LinkedIn público', find: { draft: { subject: 'una consulta', body: 'Mensaje ya redactado para Prep 3, solo falta el contacto.' }, at: ISO(-2) } })],
+    en_espera: [PR(4, { state: 'en_espera', reason: 'Prioridad B: se contacta después de avanzar con los A', priority: 'B' })], no_contactar: [], sin_accion: [PR(5), PR(6)] },
+  valid_unactioned: 2, investigated: 8, sent_today: 1, replies_7d: 0, followup_drafts: 0, generated_at: new Date().toISOString(), autosend: { enabled: state.autosend === true, min_score: 80, updated_at: null } });
+const panel = () => ({ prep: prepData(), generated_at: new Date().toISOString(), date_label: 'jue 8 oct', tz: 'America/Santiago', missing: [], attention_total: 1, attention: [{ key: 'content_pending', tone: 'act', title: 'Contenido por aprobar', count: 2, items: ['«API Gateway…»'], more: 0 }],
   outreach: { email: { mode: 'live', sent_today: 1, cap: 5, drafts: 3, approved_waiting: 1 }, linkedin: { mode: 'live', imported_today: 1, cap: 10, ready: 1, pending_approval: 0, in_campaign: 1, replied: 0, errors: 0 } },
   approvals: { emails: 3, linkedin: 1, content: 2 },
   prospecting: { backlog: 23, backlog_alta: 13, new_since_run: 2, new_since_run_alta: 1, contacted: 0, overdue_review_tasks: 0, last_run: { at: ISO(-20), label: 'mié 7 oct 10:30', imported: 3, minutes: 6, ago: '20 h' }, latest: [{ company: 'Clínica Ramis SpA', short: 'Clínica Ramis', score: 84, band: 'alta', industry: 'Salud', city: 'Antofagasta', domain: 'clinicaramis.cl', angle: 'Recepción', quote: 'agenda online', source: 'Prospect Radar v2', days: 1, is_new: true }] },
@@ -51,7 +59,7 @@ const panel = () => ({ generated_at: new Date().toISOString(), date_label: 'jue 
   linkedin: { mode: 'live', counts: { pendiente: 0, en_lista: 0, en_campana: 1, conexion: 0, mensaje: 0, followup: 0, respondio: 0, rechazo: 0, error: 0 }, ready: 1, rows: [], note: 'Waalaxy no informa por API si la invitación se envió, si la aceptaron o si respondieron: esos estados los registras tú con Hermes.' } });
 
 // ------------------------------------------------------------------ n8n simulado
-const state = { cards: CARDS, pieces: PIECES, calls: [], opsHits: 0, mode: 'ok' };
+const state = { cards: CARDS, pieces: PIECES, calls: [], opsHits: 0, mode: 'ok', autosend: false };
 const mock = http.createServer((req, res) => {
   let body = '';
   req.on('data', (c) => { body += c; });
@@ -59,7 +67,7 @@ const mock = http.createServer((req, res) => {
     const send = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
     const j = body ? JSON.parse(body) : {};
     if (req.url === '/__calls') return send(200, state.calls);
-    if (req.url === '/__reset') { state.calls = []; state.mode = 'ok'; state.cards = CARDS; return send(200, {}); }
+    if (req.url === '/__reset') { state.calls = []; state.mode = 'ok'; state.cards = CARDS; state.autosend = false; return send(200, {}); }
     if (req.url === '/__mode') { state.mode = j.mode; return send(200, {}); }
     if (req.url === '/webhook/atacama-ops') { state.opsHits++; return req.headers['x-atacama-key'] === INGEST_KEY ? send(200, { ok: true, panel: panel() }) : send(403, {}); }
     if (req.url === '/webhook/atacama-ops-actions') {
@@ -69,6 +77,7 @@ const mock = http.createServer((req, res) => {
       if (state.mode === 'error') return send(200, { ok: false, error: 'rechazado', message: 'El motor rechazó la acción (prueba).' });
       if (state.mode === 'down') return send(500, { message: 'boom' });
       if (j.action === 'content_approve' || j.action === 'content_reject') return send(200, { ok: true, status: j.action === 'content_approve' ? 'scheduled' : 'rejected', message: j.action === 'content_approve' ? 'Aprobada y programada en GHL (prueba).' : 'Rechazada (prueba).' });
+      if (j.action === 'autosend_set') { state.autosend = j.enabled === true; return send(200, { ok: true, status: j.enabled ? 'autosend_on' : 'autosend_off', message: 'Envío automático ' + (j.enabled ? 'ON' : 'OFF') + ' (prueba).' }); }
       if (j.action === 'email_save') return send(200, { ok: true, status: 'saved', message: 'Guardado. NO se envió: aprueba el envío cuando estés listo.', hash: 'hashNEW1' });
       return send(200, { ok: true, status: j.action.replace('email_', '').replace('linkedin_', ''), message: 'Hecho (prueba): ' + j.action });
     }
@@ -85,6 +94,7 @@ async function startApp() {
   child.kill(); throw new Error('next dev no arrancó: ' + log.slice(-500));
 }
 
+const waitCall = async (action) => { for (let i = 0; i < 60; i++) { if ((await calls()).some((c) => c.action === action)) return; await new Promise((r) => setTimeout(r, 250)); } };
 const calls = async () => (await fetch(`http://localhost:${MOCK_PORT}/__calls`)).json();
 const reset = async () => fetch(`http://localhost:${MOCK_PORT}/__reset`, { method: 'POST', body: '{}' });
 const setMode = async (mode) => fetch(`http://localhost:${MOCK_PORT}/__mode`, { method: 'POST', body: JSON.stringify({ mode }) });
@@ -113,7 +123,7 @@ async function main() {
     t('login correcto: entra al cockpit con barra lateral y estado ON', (await page.locator('.ops-side .ops-on').innerText()) === 'ON' && (await page.locator('h1').first().innerText()) === 'Inicio');
 
     // ---------------------------------------------------------------- navegación escritorio
-    const views = [['inicio', 'Inicio'], ['aprobaciones', 'Aprobaciones'], ['prospeccion', 'Prospección'], ['outreach', 'Outreach'], ['contenido', 'Contenido'], ['sistema', 'Sistema']];
+    const views = [['inicio', 'Inicio'], ['aprobaciones', 'Aprobaciones'], ['control', 'Control'], ['prospeccion', 'Prospección'], ['outreach', 'Outreach'], ['contenido', 'Contenido'], ['sistema', 'Sistema']];
     let navOk = true;
     for (const [id, label] of views) {
       await page.locator(`.ops-side a.ops-nav-a`, { hasText: new RegExp('^' + label) }).first().click();
@@ -123,7 +133,7 @@ async function main() {
       const cur = await page.locator('.ops-side a[aria-current="page"]').innerText();
       if (h1 !== label || !cur.startsWith(label)) navOk = false;
     }
-    t('navegación: las 6 secciones cambian de vista, título y marca activa (aria-current)', navOk);
+    t('navegación: las 7 secciones cambian de vista, título y marca activa (aria-current)', navOk);
     await page.goto(APP + '/ops?view=outreach&tab=linkedin');
     await page.reload(); await page.waitForFunction(() => document.querySelector('#ops-main h1') && document.querySelector('#ops-main h1').textContent !== 'Cargando…'); await page.waitForSelector('a.ops-tab-on');
     t('deep link: recargar conserva la vista y la pestaña', (await page.locator('h1').first().innerText()) === 'Outreach' && (await page.locator('a.ops-tab-on').innerText()) === 'LinkedIn');
@@ -141,6 +151,47 @@ async function main() {
     t('Sistema: salud y componentes', /Todo OK/.test(await page.locator('#ops-main').innerText()) && /Gmail Sender/.test(await page.locator('#ops-main').innerText()));
     await page.goto(APP + '/ops?view=prospeccion'); await page.waitForSelector('#ops-main h1');
     t('Prospección: investigados, prioridad alta y el detalle del radar', /Clínica Ramis/.test(await page.locator('#ops-main').innerText()) && /prioridad alta/.test(await page.locator('#ops-main').innerText()));
+
+
+    // ---------------------------------------------------------------- Control Center (9-oct): Investigado → contacto preparado
+    await reset();
+    await page.goto(APP + '/ops?view=control'); await page.waitForSelector('#ops-main h1');
+    await shot(page, 'desktop-control');
+    const ctl = await page.locator('#ops-main').innerText();
+    t('Control: métricas (sin acción, emails listos, LinkedIn por enviar, buscar contacto, enviados hoy, respuestas, follow-ups)', /Investigados válidos SIN ACCIÓN/i.test(ctl) && /Emails listos para aprobación/i.test(ctl) && /LinkedIn por enviar/i.test(ctl) && /Buscar contacto/i.test(ctl) && /Enviados hoy/i.test(ctl) && /Respuestas/i.test(ctl) && /Follow-ups/i.test(ctl), ctl.slice(0, 300));
+    t('Control: el menú muestra el badge de pendientes (2 sin acción + 1 LinkedIn + 1 buscar contacto = 4)', (await page.locator('.ops-side a[href="/ops?view=control"] .ops-badge').innerText()) === '4');
+    t('Control: el envío automático nace en OFF', (await page.getByTestId('autosend-state').innerText()) === 'OFF');
+    await page.getByRole('button', { name: /Encender envío automático/ }).click();
+    t('Control: encender pide confirmación explícita y no llama a nada todavía', (await page.getByRole('button', { name: 'Sí, encender' }).count()) === 1 && (await calls()).filter((c) => c.action === 'autosend_set').length === 0);
+    await page.getByRole('button', { name: 'Sí, encender' }).click();
+    await page.waitForSelector('.ops-toast');
+    await page.waitForFunction(() => document.querySelector('[data-testid="autosend-state"]') && document.querySelector('[data-testid="autosend-state"]').textContent === 'ON', null, { timeout: 15000 }).catch(() => {});
+    const cAuto = await calls();
+    t('Control: al confirmar llama a autosend_set (enabled=true) y luego al barrido; el interruptor queda ON', cAuto.some((c) => c.action === 'autosend_set' && c.enabled === true) && cAuto.some((c) => c.action === 'autosend_sweep') && (await page.getByTestId('autosend-state').innerText()) === 'ON', JSON.stringify(cAuto.map((c) => c.action)));
+    await page.getByRole('button', { name: 'Apagar envío automático' }).click();
+    await page.waitForFunction(() => document.querySelector('[data-testid="autosend-state"]') && document.querySelector('[data-testid="autosend-state"]').textContent === 'OFF', null, { timeout: 15000 }).catch(() => {});
+    t('Control: apagar es un solo toque y vuelve a OFF', (await calls()).filter((c) => c.action === 'autosend_set').slice(-1)[0].enabled === false && (await page.getByTestId('autosend-state').innerText()) === 'OFF');
+    const li1 = page.locator('article[data-kind="linkedin-manual"]').first();
+    t('Control · LinkedIn: perfil con enlace directo, invitación y mensaje listos para copiar', (await li1.locator('a[href^="https://www.linkedin.com/in/prep-dos"]').count()) === 1 && /Me gustaría conectar/.test(await li1.innerText()) && (await li1.getByRole('button', { name: 'Copiar invitación' }).count()) === 1 && (await li1.getByRole('button', { name: 'Copiar mensaje' }).count()) === 1);
+    await li1.getByRole('button', { name: 'Envié la invitación' }).click();
+    await waitCall('prep_li_sent');
+    const cLi = (await calls()).filter((c) => c.action === 'prep_li_sent');
+    t('Control · LinkedIn: «Envié la invitación» registra el envío (kind invitation) sobre ese prospecto', cLi.length === 1 && cLi[0].kind === 'invitation' && cLi[0].candidate_id === UID(502), JSON.stringify(cLi));
+    const fc = page.locator('article[data-kind="find-contact"]').first();
+    await fc.locator('summary').click();
+    t('Control · Buscar contacto: muestra el mensaje ya redactado y pide solo el contacto', /Mensaje ya redactado para Prep 3/.test(await fc.innerText()) && (await fc.locator('input').count()) === 2);
+    const saveBtn = fc.getByRole('button', { name: 'Guardar contacto' });
+    t('Control · Buscar contacto: no se puede guardar vacío', await saveBtn.isDisabled());
+    await fc.locator('input[type="email"]').fill('nueva@prep3.cl');
+    await saveBtn.click();
+    await waitCall('prep_contact');
+    const cCt = (await calls()).filter((c) => c.action === 'prep_contact');
+    t('Control · Buscar contacto: guarda el correo pegado (sin enviar nada)', cCt.length === 1 && cCt[0].email === 'nueva@prep3.cl' && cCt[0].candidate_id === UID(503) && !(await calls()).some((c) => c.action === 'email_approve'));
+    t('Control · En espera: muestra la razón comercial y ofrece liberar', /Prioridad B: se contacta después de avanzar con los A/.test(await page.locator('#ops-main').innerText()) && (await page.getByRole('button', { name: 'Liberar' }).count()) === 1);
+    await page.getByRole('button', { name: 'Liberar' }).click();
+    await waitCall('prep_release');
+    t('Control · En espera: liberar llama a prep_release', (await calls()).some((c) => c.action === 'prep_release' && c.candidate_id === UID(504)));
+    t('Control: ninguna clave llega al navegador', !/test-ops-key|test-ingest-key/.test(await page.content()));
 
     // ---------------------------------------------------------------- biblioteca de borradores (Outreach → Correo)
     await page.goto(APP + '/ops?view=outreach&tab=email');
@@ -346,7 +397,7 @@ async function main() {
       await mp.waitForSelector('.ops-ap');
       await shot(mp, `movil-${w}-aprobaciones`);
       t(`móvil ${w}: sin scroll horizontal en Aprobaciones`, await mp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
-      for (const v of ['inicio', 'outreach', 'contenido', 'sistema', 'prospeccion']) {
+      for (const v of ['inicio', 'control', 'outreach', 'contenido', 'sistema', 'prospeccion']) {
         await mp.goto(`${APP}/ops?view=${v}`);
         await mp.waitForSelector('h1');
         if (!(await mp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1))) { t(`móvil ${w}: sin scroll horizontal en ${v}`, false); break; }

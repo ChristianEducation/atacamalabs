@@ -69,7 +69,22 @@ export type Weekly = {
   runway_days: number; runway_min: number; runway_max: number; runway_ok: boolean; covered: boolean;
 };
 
+/** Contacto preparado (9-oct): cada Investigado válido termina en una salida visible. */
+export type PrepRow = {
+  id: string; company: string; score: number | null; band: string | null; state: string; label: string; reason: string;
+  person: string | null; role: string | null; email: string | null; email_kind: string | null; linkedin: string | null; priority: string | null; message_id: string | null; score_mail: number | null;
+  li: { status: string; profile_url: string | null; invitation: string | null; message: string | null; prepared_at: string | null; invite_sent_at: string | null; message_sent_at: string | null; follow_up_at: string | null } | null;
+  find: { draft: { subject: string; body: string } | null; at: string | null } | null;
+};
+export type Prep = {
+  counts: Record<string, number>;
+  lists: Record<string, PrepRow[]>;
+  valid_unactioned: number; investigated: number; sent_today: number; replies_7d: number; followup_drafts: number; generated_at: string;
+  autosend: { enabled: boolean; min_score: number; updated_at: string | null };
+};
+
 export type Panel = {
+  prep?: Prep;
   outreach?: {
     email: { mode: string; sent_today: number; cap: number; drafts: number; approved_waiting: number };
     linkedin: { mode: string; imported_today: number; cap: number; ready: number; pending_approval: number; in_campaign: number; replied: number; errors: number };
@@ -148,6 +163,6 @@ export type Overview = {
 };
 export type OverviewResult = { ok: true; overview: Overview } | { ok: false; reason: "not_configured" | "unreachable" | "bad_response" };
 
-export type OpsActionName = "email_save" | "email_approve" | "email_reject" | "email_reopen" | "linkedin_approve" | "linkedin_reject" | "content_approve" | "content_reject";
-export type OpsActionInput = { action: OpsActionName; request_id: string; message_id?: string; candidate_id?: string; piece_id?: string; subject?: string; body?: string; expected_hash?: string; reason?: string };
+export type OpsActionName = "email_save" | "email_approve" | "email_reject" | "email_reopen" | "linkedin_approve" | "linkedin_reject" | "content_approve" | "content_reject" | "autosend_set" | "autosend_sweep" | "prep_li_sent" | "prep_hold" | "prep_release" | "prep_contact";
+export type OpsActionInput = { action: OpsActionName; request_id: string; message_id?: string; candidate_id?: string; piece_id?: string; subject?: string; body?: string; expected_hash?: string; reason?: string; enabled?: boolean; min_score?: number; kind?: string; text?: string; email?: string; linkedin?: string };
 export type OpsActionState = { ok: boolean; message: string; status?: string; hash?: string | null; needsGhl?: boolean; replayed?: boolean };

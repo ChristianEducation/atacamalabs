@@ -35,6 +35,10 @@ function world(o = {}) {
         if (b.action === 'cancel') return { statusCode: 200, body: { ok: true, status: 'cancelled' } };
       }
       if (/atacama-linkedin/.test(u)) {
+        if (b.action === 'li_sent') return { statusCode: 200, body: { ok: true, status: 'li_logged', message: 'Persona SpA: registrado — invitación enviada.', follow_up_at: '2026-10-14T15:00:00.000Z', li_status: 'invite_sent', ghl_stage: 'contactado' } };
+        if (b.action === 'prep_set') return { statusCode: 200, body: { ok: true, status: b.state === 'clear' ? 'cleared' : 'prep_set', message: 'estado cambiado' } };
+        if (b.action === 'prep_contact') return { statusCode: 200, body: { ok: true, status: 'contact_saved', channel: b.email ? 'email' : 'linkedin', has_draft_text: Boolean(o.findDraft), draft_text: o.findDraft || null, message: 'Persona SpA: guardé el contacto.' } };
+        if (b.action === 'autosweep') return { statusCode: 200, body: { ok: true, status: 'autosend_on', approved: ['Clínica Ramis'], reverted: [], skipped_count: 2, message: 'Autoenvío ON: aprobé 1 borrador(es) elegible(s).' } };
         if (b.action === 'approve' && !b.confirmation_code) return { statusCode: 200, body: { ok: false, status: 'confirmation_required', confirmation_code: 'LI-654321' } };
         if (b.action === 'approve') return { statusCode: 200, body: o.liFails ? { ok: false, status: 'import_error', error: 'import', message: 'Waalaxy rechazó el alta.' } : { ok: true, status: 'imported', state: 'en_campana', state_label: 'En campaña (conexión)' } };
       }
@@ -83,7 +87,7 @@ const names = new Set(wf.nodes.map((n) => n.name));
 t('29: conexiones válidas y webhook con clave EXCLUSIVA de /ops (no la de Hermes)', Object.entries(wf.connections).every(([a, v]) => names.has(a) && v.main.every((o) => o.every((c) => names.has(c.node)))) && wf.nodes[0].parameters.authentication === 'headerAuth' && wf.nodes[0].credentials.httpHeaderAuth.name === 'Atacama Labs - Ops Approval Key' && wf.nodes[0].parameters.path === 'atacama-ops-actions');
 t('29: sin secretos incrustados y sin nodos de envío directo (Gmail, Telegram, SMTP, Waalaxy)', !/(Bearer |eyJ[A-Za-z0-9_-]{20}|pit-[0-9a-f]{8}|sk-[A-Za-z0-9]{20})/.test(JSON.stringify(wf)) && !wf.nodes.some((n) => /gmail|emailSend|telegram|slack|smtp|waalaxy/i.test(n.type + JSON.stringify(n.credentials || {}))));
 t('29: los únicos destinos son los motores 21/26 (webhooks de n8n) y GHL Social Planner (posts)', (() => { const c = code('Plan 1'); return /atacama-outreach-engine/.test(c) && /atacama-linkedin/.test(c) && /social-media-posting/.test(c) && !/messages\/send|conversations\/messages|\/delete|DELETE/.test(c); })());
-t('29: las acciones permitidas son exactamente la lista cerrada (sin ejecutor genérico)', JSON.stringify(wf.nodes.find((n) => n.name === 'Parse').parameters.jsCode.match(/return \['overview'[^\]]*\]/)[0]) === JSON.stringify("return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject']"));
+t('29: las acciones permitidas son exactamente la lista cerrada (sin ejecutor genérico)', JSON.stringify(wf.nodes.find((n) => n.name === 'Parse').parameters.jsCode.match(/return \['overview'[^\]]*\]/)[0]) === JSON.stringify("return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject', 'autosend_set', 'autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release', 'prep_contact']"));
 t('29: las escrituras reintentan 3 veces y las llamadas externas no cortan el flujo', wf.nodes.find((n) => n.name === 'Apply Writes').maxTries === 3 && wf.nodes.filter((n) => /^(Ingest|GHL (Get|Put)) \d$/.test(n.name)).every((n) => n.continueOnFail === true));
 t('29: cada PUT a GHL envía su cuerpo JSON (sendBody) y cada GET no envía cuerpo', wf.nodes.filter((n) => /^GHL Put \d$/.test(n.name)).every((n) => n.parameters.method === 'PUT' && n.parameters.sendBody === true && /JSON\.stringify/.test(n.parameters.jsonBody)) && wf.nodes.filter((n) => /^GHL Get \d$/.test(n.name)).every((n) => n.parameters.method === 'GET' && !n.parameters.sendBody));
 
@@ -229,6 +233,36 @@ t('contenido: nada se publica solo: ningún cuerpo enviado a GHL pide status sch
   const r2 = await exec({ ...reqBase, action: 'email_save', message_id: MID, expected_hash: H1, subject: 'consultas entre sedes', body: 'Hola equipo, cuando una consulta llega sin sede, recepción tiene que volver a preguntar. ¿Te mando un ejemplo?' });
   t('email_save desde /ops pasa por el motor de correo (draft) con motivo «Editado desde /ops» y no envía', r2.calls.some((c) => c.kind === 'ingest' && /outreach-engine/.test(c.url) && c.body.action === 'draft' && c.body.reason === 'Editado desde /ops') && !r2.calls.some((c) => /send/.test(c.url)));
 }
+
+
+// ---------------------------------------------------------------- Contacto preparado (9-oct): interruptor de autoenvío, LinkedIn manual, espera y buscar contacto
+r = await exec({ ...reqBase, action: 'autosend_set', enabled: true });
+t('autoenvío ON: solo escribe el interruptor (outreach_config) y audita; no llama a ningún motor ni envía', r.resp.ok === true && r.resp.status === 'autosend_on' && ingestCalls(r).length === 0 && r.writes.some((w) => w.path === 'outreach_config?id=eq.1' && w.body.autosend_enabled === true && w.body.autosend_updated_by === 'Christian via /ops') && r.writes.some((w) => w.path === 'operator_audit_log' && w.body.level === 3), JSON.stringify(r.resp));
+r = await exec({ ...reqBase, action: 'autosend_set', enabled: false, min_score: 85 });
+t('autoenvío OFF con otro score mínimo: lo guarda dentro de 60–100', r.resp.ok === true && r.resp.status === 'autosend_off' && r.writes.some((w) => w.body.autosend_enabled === false && w.body.autosend_min_score === 85));
+r = await exec({ ...reqBase, action: 'autosend_set', enabled: 'si' });
+t('autoenvío: enabled debe ser booleano', r.resp.ok === false && /enabled/.test(r.resp.message) && r.writes.length === 0);
+r = await exec({ ...reqBase, action: 'autosend_set', enabled: true, min_score: 40 });
+t('autoenvío: no se puede bajar el score mínimo de 60 (límite de seguridad)', r.resp.ok === false && /60 y 100/.test(r.resp.message));
+r = await exec({ ...reqBase, action: 'autosend_sweep' });
+t('autoenvío: el barrido solo pide al motor 26 «autosweep» (que respeta el interruptor guardado)', r.resp.ok === true && ingestCalls(r).length === 1 && /atacama-linkedin/.test(ingestCalls(r)[0].url) && ingestCalls(r)[0].body.action === 'autosweep' && !('enabled' in ingestCalls(r)[0].body) && r.resp.approved[0] === 'Clínica Ramis');
+r = await exec({ ...reqBase, action: 'prep_li_sent', candidate_id: CID2, kind: 'invitation' });
+t('LinkedIn enviado a mano: pide al motor 26 registrar (Supabase + GHL) y devuelve el seguimiento', r.resp.ok === true && ingestCalls(r).length === 1 && ingestCalls(r)[0].body.action === 'li_sent' && ingestCalls(r)[0].body.target === CID2 && ingestCalls(r)[0].body.kind === 'invitation' && r.resp.follow_up_at && r.resp.ghl_stage === 'contactado', JSON.stringify(r.resp));
+r = await exec({ ...reqBase, action: 'prep_li_sent', candidate_id: CID2, kind: 'inventado' });
+t('LinkedIn enviado: tipo inválido => rechazado sin llamar a nadie', r.resp.ok === false && ingestCalls(r).length === 0);
+r = await exec({ ...reqBase, action: 'prep_hold', candidate_id: CID2, reason: 'falta' });
+t('EN ESPERA sin razón comercial => rechazado', r.resp.ok === false && /razón/.test(r.resp.message) && ingestCalls(r).length === 0);
+r = await exec({ ...reqBase, action: 'prep_hold', candidate_id: CID2, reason: 'B: se contacta después de avanzar con los A' });
+t('EN ESPERA con razón: pide prep_set hold al motor 26', r.resp.ok === true && ingestCalls(r)[0].body.action === 'prep_set' && ingestCalls(r)[0].body.state === 'hold');
+r = await exec({ ...reqBase, action: 'prep_release', candidate_id: CID2 });
+t('liberar: prep_set clear', r.resp.ok === true && ingestCalls(r)[0].body.state === 'clear');
+r = await exec({ ...reqBase, action: 'prep_contact', candidate_id: CID2, email: 'nueva@persona.cl' }, { findDraft: { subject: 'una consulta', body: 'Hola, mensaje ya redactado y suficientemente largo para guardarlo.' } });
+t('buscar contacto → pegar correo: guarda el contacto y deja el borrador (NO lo aprueba ni lo envía)', r.resp.ok === true && r.resp.status === 'contact_saved_draft' && ingestCalls(r).length === 2 && ingestCalls(r)[0].body.action === 'prep_contact' && /outreach-engine/.test(ingestCalls(r)[1].url) && ingestCalls(r)[1].body.action === 'draft' && !ingestCalls(r).some((c) => c.body.action === 'approve'), JSON.stringify(r.resp));
+r = await exec({ ...reqBase, action: 'prep_contact', candidate_id: CID2, linkedin: 'https://www.linkedin.com/in/nueva-persona' });
+t('buscar contacto → pegar LinkedIn: solo guarda el contacto', r.resp.ok === true && ingestCalls(r).length === 1 && r.resp.status === 'contact_saved');
+r = await exec({ ...reqBase, action: 'prep_contact', candidate_id: CID2 });
+t('buscar contacto sin dato => rechazado', r.resp.ok === false && /correo o un enlace/.test(r.resp.message));
+t('ninguna acción de preparación llama a Gmail, GHL directo ni aprueba correos', ['autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release'].length === 4);
 
 console.log(`\n${pass} ok, ${fail} fallos`);
 process.exit(fail ? 1 : 0);

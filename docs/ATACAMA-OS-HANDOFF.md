@@ -3,6 +3,13 @@
 > Léelo primero si empiezas una sesión nueva. Resume qué está vivo, qué quedó pendiente y cómo operar/desplegar sin tener que reconstruir el contexto.
 > Documentos hermanos: `ATACAMA-OS-ARQUITECTURA-FINAL.md` (§11–16 = Ola A, /ops V2 y Ola B), `OPERATIONS.md` (§13–15 = operación diaria), `HERMES-OPERATOR.md`, `n8n/README.md`.
 
+
+## 0. ACTUALIZACIÓN 9-oct (tarde) — LEER ESTO PRIMERO
+- **Máquina comercial funcionando:** los 13 correos aprobados salieron el 9-oct (Sender cada **1 min** —cambiado a mano por Christian—, `daily_cap` **20**, ventana lun–vie 09:00–17:30). Gmail Sync/Followups sin errores; la primera respuesta real aún no llega (detección sin probar en vivo).
+- **Nuevo: «Contacto preparado»** (ver `docs/CONTACTO-PREPARADO.md`): ningún Investigado válido se queda sin próxima acción (EMAIL LISTO / LINKEDIN LISTO / BUSCAR CONTACTO / EN ESPERA con razón). Métrica crítica «Investigados válidos sin acción» = 0 hoy (30 procesados: 11 correos, 5 LinkedIn, 2 buscar contacto, 12 en espera/no contactar). Job Hermes «Contact Prep» (L–V, 3 corridas), Prospect Radar a 3 corridas L–V, **Control Center en `/ops`** (requiere push a `main` para verse en producción), interruptor **ENVÍO AUTOMÁTICO** (OFF por defecto; solo Christian, desde /ops). Aprendizaje de redacción con `style_samples`.
+- **Lista de 20 prospectos de LinkedIn (Leads Pro): ya ingresada** (Investigado en GHL). 6 A aprobados: Héctor (HJ Consultores) como correo en Aprobaciones; Paola, Sergio, María Alejandra, Maritza y Alejandra Quijada por LinkedIn **manual** (sin Waalaxy). Cuando Christian confirme cada envío: botones en Control o `log_linkedin_manual`. Segunda ola: NO preparada (pedido expreso).
+- Hermes: **61 herramientas**; suites: **38** (≈1270 pruebas) + 79 de interfaz.
+
 ## 1. Estado del sistema (todo en `main`, último commit de código: `435abfe`)
 - **Atacama OS está ON.** Correo y LinkedIn en `live` con aprobación humana por código/clic; Hermes (VPS) opera por Telegram y por MCP (**54 herramientas**); n8n orquesta (workflows 12, 20–30); Supabase `uwquwjmiofixzugttals` (compartido con EnBandeja LEGACY: no tocar sus tablas) guarda estado; GHL es la verdad comercial y el Social Planner.
 - **/ops V2** (celular): Inicio, Aprobaciones, Prospección, Outreach, Contenido, Sistema. Aprobar/rechazar/editar correos, LinkedIn y publicaciones. Calidad del correo y «versión anterior» visibles. Velocidad: panel ~4,5 s en frío, ~0,1 s con datos recientes; aprobar actualiza la tarjeta al instante.
@@ -22,7 +29,7 @@ Decisiones que esperan a Christian: (1) instalar Chromium/Playwright dentro del 
 
 **B. Verificar RSS (workflow 28) tras la aceleración.** Corre cada hora en punto UTC; la primera ejecución con el cambio era a las 03:00 UTC del 9-oct. Comprobar en n8n (`executions?workflowId=6wnrHglfnt6l9va0`) que terminó `success` y sin errores HTTP en «Apply Writes».
 
-**C. Lista de 20 prospectos de LinkedIn:** Christian dijo que la pasó, pero **nunca llegó** a la conversación. Pedirla de nuevo (pegada o ruta).
+**C. Lista de 20 prospectos de LinkedIn:** ✅ recibida e ingresada el 9-oct (ver §0).
 
 **D. Auditoría SEO con `Hainrixz/claude-seo-ai`** (plugin de Claude Code, MIT, joven: 73 estrellas, último commit 7-sep-2026). Recomendación dada: instalarlo en una **carpeta vacía separada** (no en el repo ni en `C:\Users\alain`), por el marketplace de plugins desde una sesión interactiva de `claude`, **sin ninguna llave**, usando solo `audit` y `geo` sobre `https://atacamalabs.cl`; NO usar `fix`, NO `npx skills add`. Ofrecí leer antes sus hooks y scripts de red (solo lectura). Pendiente de su decisión.
 

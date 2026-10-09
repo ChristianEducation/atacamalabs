@@ -48,7 +48,7 @@ export async function getOverview(): Promise<OverviewResult> {
   }
 }
 
-const ACTIONS = new Set(["email_save", "email_approve", "email_reject", "email_reopen", "linkedin_approve", "linkedin_reject", "content_approve", "content_reject"]);
+const ACTIONS = new Set(["email_save", "email_approve", "email_reject", "email_reopen", "linkedin_approve", "linkedin_reject", "content_approve", "content_reject", "autosend_set", "autosend_sweep", "prep_li_sent", "prep_hold", "prep_release", "prep_contact"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Valida la solicitud antes de salir del servidor (lista cerrada de acciones; nada genérico). */
@@ -56,7 +56,11 @@ export function checkInput(i: OpsActionInput): string | null {
   if (!ACTIONS.has(i.action)) return "Acción no permitida.";
   if (!/^[A-Za-z0-9_-]{8,64}$/.test(i.request_id ?? "")) return "Falta el identificador de la acción.";
   if (i.action.startsWith("email_") && !UUID.test(i.message_id ?? "")) return "Correo inválido.";
-  if (i.action.startsWith("linkedin_") && !UUID.test(i.candidate_id ?? "")) return "Prospecto inválido.";
+  if ((i.action.startsWith("linkedin_") || i.action.startsWith("prep_")) && !UUID.test(i.candidate_id ?? "")) return "Prospecto inválido.";
+  if (i.action === "autosend_set" && typeof i.enabled !== "boolean") return "Falta indicar si se enciende o se apaga.";
+  if (i.text !== undefined && (typeof i.text !== "string" || i.text.length > 1500)) return "Texto inválido.";
+  if (i.email !== undefined && (typeof i.email !== "string" || i.email.length > 200)) return "Correo inválido.";
+  if (i.linkedin !== undefined && (typeof i.linkedin !== "string" || i.linkedin.length > 300)) return "Enlace inválido.";
   if (i.action.startsWith("content_") && !UUID.test(i.piece_id ?? "")) return "Pieza inválida.";
   if (i.subject !== undefined && (typeof i.subject !== "string" || i.subject.length > 300)) return "Asunto inválido.";
   if (i.body !== undefined && (typeof i.body !== "string" || i.body.length > 10_000)) return "Cuerpo inválido.";

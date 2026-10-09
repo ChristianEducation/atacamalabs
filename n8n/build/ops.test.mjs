@@ -58,7 +58,7 @@ t('25: sin secretos y sin nodos de envío (Gmail/Telegram/WhatsApp/SMTP)', !/(Be
 t('25: los nodos HTTP toleran fallos (siempre responde)', wf.nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest').every((n) => n.continueOnFail === true));
 t('25: lecturas = GET; los únicos POST son la búsqueda de tareas de GHL, gmail_check (solo lectura) y las escrituras a Supabase', wf.nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest' && n.parameters.method === 'POST').every((n) => /GHL Tasks|Gmail Check|Apply Writes/.test(n.name)) && !wf.nodes.some((n) => n.parameters.method === 'DELETE' || n.parameters.method === 'PUT'));
 t('25: GHL y Gmail solo se leen (no hay PUT/DELETE ni llamadas a la API de envío)', !JSON.stringify(wf).includes('messages/send') && !JSON.stringify(wf).includes('/conversations/messages'));
-t('25: escribe únicamente en ops_alerts y ops_runs', (() => { const c = code('Compute'); const paths = [...c.matchAll(/path: '([a-z_]+)/g)].map((m) => m[1]); return paths.length >= 3 && paths.every((p) => ['ops_alerts', 'ops_runs'].includes(p)); })());
+t('25: escribe únicamente en ops_alerts y ops_runs', (() => { const c0 = code('Compute'); const c = c0.slice(c0.indexOf('const CFG = ')); const paths = [...c.matchAll(/path: '([a-z_]+)/g)].map((m) => m[1]); return paths.length >= 3 && paths.every((p) => ['ops_alerts', 'ops_runs'].includes(p)); })());
 let r = await call({ action: 'inventada' }); t('acción inválida → error claro con la lista', /action inválida/.test(r.fatal) && ACTIONS.every((a) => r.fatal.includes(a)));
 
 // ---------- A. daily con datos actuales
@@ -110,9 +110,12 @@ t('alerta de condición que ya se arregló → se resuelve sola, sin mensaje', r
 // ---------- Radar: compuerta e informe
 r = await call({ action: 'radar_gate', now_ms: NOW });
 t('radar_gate: corre en modo import con tope de 5 y deja la razón', r.resp.mode === 'import' && r.resp.max_imports === 5 && /Radar: import/.test(r.resp.text));
-const backlog = FIX({ sb: { ...FIX().sb, 'SB Candidates': ok200(Array.from({ length: 26 }, (_, i) => ({ id: 'x' + i, company_name: 'c' + i, status: 'in_ghl', ghl_stage: 'investigado', created_at: iso(3 * D) }))) } });
+const backlog = FIX({ sb: { ...FIX().sb, 'SB Candidates': ok200(Array.from({ length: 12 }, (_, i) => ({ id: 'x' + i, company_name: 'c' + i, status: 'in_ghl', ghl_stage: 'investigado', created_at: iso(3 * D) }))) } });
 r = await call({ action: 'radar_gate', now_ms: NOW }, backlog);
-t('radar_gate: con 26 prospectos sin decisión → skip (no gasta en investigar más)', r.resp.mode === 'skip' && /sin decisión/.test(r.resp.reason));
+t('radar_gate: con 12 Investigados válidos SIN próxima acción → skip (primero se preparan)', r.resp.mode === 'skip' && /sin próxima acción/.test(r.resp.reason) && r.resp.unactioned === 12, JSON.stringify(r.resp));
+const prepared = FIX({ sb: { ...FIX().sb, 'SB Candidates': ok200(Array.from({ length: 12 }, (_, i) => ({ id: 'y' + i, company_name: 'p' + i, status: 'in_ghl', ghl_stage: 'investigado', created_at: iso(3 * D), channel_state: { prep: { state: 'hold', reason: 'B: se contacta después de los A' } } }))) } });
+r = await call({ action: 'radar_gate', now_ms: NOW }, prepared);
+t('radar_gate: Investigados con motivo explícito de espera NO cuentan como backlog estancado', r.resp.mode === 'import' && r.resp.unactioned === 0, JSON.stringify(r.resp));
 r = await call({ action: 'radar_report', report: { status: 'ok', mode: 'import', searches: 12, pages_opened: 20, candidates: 6, imported: 3, minutes: 5, est_cost_usd: 0.21 } });
 t('radar_report: registra la corrida en ops_runs (solo esa tabla)', r.writes.length === 1 && r.writes[0].path === 'ops_runs' && r.writes[0].body.kind === 'prospect_radar' && r.writes[0].body.est_cost_usd === 0.21 && r.writes[0].body.summary.imported === 3);
 r = await call({ action: 'content_radar_report', report: { status: 'skipped', mode: 'skip', reason: 'hay 3 piezas en revisión' } });
@@ -173,6 +176,18 @@ t('job_report: un error de RSS queda registrado como error', r.writes[0].body.st
   e = await call({ action: 'editorial_plan', now_ms: NOW, params: { signal: { topic: '' } } }, FXE(0, 1));
   t('editorial_plan (workflow): sin tema => no publica y lo dice', e.resp.publish === false && /falta el tema/.test(e.resp.reason));
 }
+
+
+// ---------- Contacto preparado (9-oct): compuerta de preparación y resumen en el panel
+const mkC = (k, cs) => FIX({ sb: { ...FIX().sb, 'SB Candidates': ok200(Array.from({ length: k }, (_, i) => ({ id: 'z' + i, company_name: 'z' + i, status: 'in_ghl', ghl_stage: 'investigado', created_at: iso(3 * D), ...(cs || {}) }))) } });
+r = await call({ action: 'prep_gate', now_ms: NOW }, mkC(3));
+t('prep_gate: con 3 Investigados válidos sin acción → run (el job de Hermes prepara canal y mensaje)', r.resp.mode === 'run' && r.resp.count === 3 && r.resp.max_items === 3 && /Preparación: run/.test(r.resp.text), JSON.stringify(r.resp));
+r = await call({ action: 'prep_gate', now_ms: NOW }, mkC(5, { channel_state: { li_manual: { status: 'ready' } } }));
+t('prep_gate: si todos ya tienen próxima acción → skip (no se gasta un token)', r.resp.mode === 'skip' && r.resp.count === 0);
+r = await call({ action: 'panel', now_ms: NOW, hermes: hermesOk }, mkC(2, { channel_state: { prep: { state: 'hold', reason: 'B: después de los A' } } }));
+t('panel: incluye el resumen de preparación (colas, métrica crítica y autoenvío OFF)', r.resp.panel.prep && r.resp.panel.prep.counts.en_espera === 2 && r.resp.panel.prep.valid_unactioned === 0 && r.resp.panel.prep.autosend.enabled === false, JSON.stringify(Object.keys(r.resp.panel.prep || {})));
+r = await call({ action: 'panel', now_ms: NOW, hermes: hermesOk }, mkC(2));
+t('panel: «Investigados válidos sin acción» aparece como atención', r.resp.panel.attention.some((a) => a.key === 'prep_unactioned' && a.count === 2) && r.resp.panel.prep.valid_unactioned === 2);
 
 console.log(`\n${pass} ok, ${fail} fallos`);
 process.exit(fail ? 1 : 0);

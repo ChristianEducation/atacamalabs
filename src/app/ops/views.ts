@@ -2,6 +2,7 @@
 export const VIEWS = [
   { id: "inicio", label: "Inicio" },
   { id: "aprobaciones", label: "Aprobaciones" },
+  { id: "control", label: "Control" },
   { id: "prospeccion", label: "Prospección" },
   { id: "outreach", label: "Outreach" },
   { id: "contenido", label: "Contenido" },

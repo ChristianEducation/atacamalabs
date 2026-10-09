@@ -206,6 +206,9 @@ html:has(.ops), body:has(.ops) { overflow-x: clip; }
 .ops-copy-s { font-weight: 600; }
 
 /* botones, campos */
+.ops-stat-bad { border-color: var(--danger, #b3261e); }
+.ops-stat-bad strong { color: var(--danger, #b3261e); }
+.ops-hold-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; }
 .ops-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
 .ops-btn { min-height: 44px; padding: 0 18px; border-radius: var(--r-pill); border: 1px solid var(--control-border); background: var(--surface); color: var(--ink); font-weight: 600; font-size: 14.5px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 .ops-btn:hover:not(:disabled) { background: var(--surface-alt); }
