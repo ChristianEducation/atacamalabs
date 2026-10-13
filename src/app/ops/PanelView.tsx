@@ -311,6 +311,31 @@ function Contenido({ panel, fetchedAt, stale }: { panel: Panel; fetchedAt: numbe
         </Section>
       ) : null}
 
+      {ct.ig ? (
+        <Section id="ops-ig" title={`Instagram · semana del ${ct.ig.window.start} al ${ct.ig.window.end}`} aside={<span className={`ops-pill ops-pill-${ct.ig.enabled ? (ct.ig.feed.missing || ct.ig.stories.missing ? "atencion" : "ok") : "fallo"}`}>{ct.ig.enabled ? (ct.ig.feed.missing || ct.ig.stories.missing ? "Falta producir" : "Semana completa") : "Motor apagado"}</span>}>
+          <div className="ops-stats">
+            <Stat n={`${ct.ig.feed.coverage}/${ct.ig.feed.target}`} label="feed de la semana" tone={ct.ig.feed.missing ? "hi" : undefined} />
+            <Stat n={ct.ig.stories.coverage} label={`historias (faltan ${ct.ig.stories.missing})`} tone={ct.ig.stories.missing ? "hi" : undefined} />
+            <Stat n={ct.ig.feed.pending_review + ct.ig.stories.pending_review} label="por aprobar" tone={ct.ig.feed.pending_review + ct.ig.stories.pending_review ? "hi" : undefined} />
+            <Stat n={ct.ig.preparing} label="en preparación" />
+          </div>
+          <ul className="ops-list">
+            {ct.ig.days.map((dy) => (
+              <li key={dy.key}>
+                <span className="ops-row-title">{dy.label}{dy.today ? " · hoy" : ""}</span>
+                <span className="ops-row-sub">
+                  {dy.feed.length ? dy.feed.map((f) => `Feed ${f.at} · ${f.format} · ${f.status} · ${f.title}`).join(" | ") : dy.open_feed ? "Feed: sin pieza aún" : "Feed: —"}
+                  {" — "}
+                  {dy.stories.length ? `Historias: ${dy.stories.map((s) => `${s.at} ${s.template ?? ""} (${s.status})`).join(", ")}` : "Historias: ninguna aún"}
+                  {dy.open_stories.length ? ` · huecos libres: ${dy.open_stories.join(", ")}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="ops-foot">Ritmo: 5 de feed por semana a las 15:00 y 3 historias al día (10:00, 14:00 y 18:00, hora de Chile). Cada pieza nace «por aprobar» en el Planner de GHL; nada se publica sin tu aprobación. El motor produce la semana siguiente cada domingo en la noche.</p>
+        </Section>
+      ) : null}
+
       <Section id="ops-con" title="Contenido" aside={<span className="ops-note">Nada se publica sin tu aprobación</span>}>
         <div className="ops-stats ops-stats-6">
           {ct.queue ? <Stat n={`${ct.queue.pending}/${ct.queue.max}`} label={ct.queue.full ? "cola llena" : "cola de revisión"} tone={ct.queue.full ? "hi" : undefined} /> : null}

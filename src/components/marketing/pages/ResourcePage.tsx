@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { DiagnosticLink } from "@/components/marketing/shell/DiagnosticLink";
 import type { Resource } from "@/content/marketing/resources";
 
@@ -57,7 +56,7 @@ export function ResourcePage({ resource }: { resource: Resource }) {
           </aside>
 
           <p className="mk-lg-updated">
-            Última actualización: {resource.updated}. <Link href="/recursos" className="mk-link">Ver todos los recursos</Link>
+            Última actualización: {resource.updated}.
           </p>
         </article>
       </div>

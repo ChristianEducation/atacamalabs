@@ -3,7 +3,6 @@ import { SITE_URL } from "@/lib/site-url";
 import { INDUSTRY_SLUGS } from "@/content/marketing/industries";
 import { AGENT_ROLES } from "@/content/marketing/agents";
 import { WHATSAPP_CHANNEL } from "@/content/marketing/agent-channels";
-import { RESOURCE_SLUGS } from "@/content/marketing/resources";
 
 /**
  * Rutas públicas indexables — PRODUCTION_READINESS_SPEC_V1 §9.1. `/diagnostico`
@@ -19,7 +18,6 @@ const STATIC_ROUTES = [
   "/precios",
   "/rubros",
   "/conocenos",
-  "/recursos",
   "/privacidad",
   "/terminos",
 ] as const;
@@ -38,10 +36,10 @@ const AGENT_ROUTES = [...AGENT_ROLES.map((role) => `/agentes/${role.id}`), `/age
  * modificación real, y hoy no tenemos fechas de contenido verificables por
  * ruta. Sin `priority`/`changefreq` (§9.3): Google no les da valor.
  */
-const RESOURCE_ROUTES = RESOURCE_SLUGS.map((slug) => `/recursos/${slug}`);
+// Los recursos (/recursos/[slug]) NO van en el sitemap: son «solo con la URL» (decisión de Christian, 13-oct-2026).
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  return [...STATIC_ROUTES, ...INDUSTRY_ROUTES, ...AGENT_ROUTES, ...RESOURCE_ROUTES].map((path) => ({
+  return [...STATIC_ROUTES, ...INDUSTRY_ROUTES, ...AGENT_ROUTES].map((path) => ({
     url: `${SITE_URL}${path === "/" ? "" : path}`,
   }));
 }

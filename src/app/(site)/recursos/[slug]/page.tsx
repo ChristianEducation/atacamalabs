@@ -5,7 +5,11 @@ import { RESOURCE_SLUGS, getResource } from "@/content/marketing/resources";
 import { pageMetadata } from "@/lib/seo-metadata";
 import { breadcrumbJsonLd } from "@/lib/seo-schema";
 
-/** /recursos/[slug] — Resource & Conversation Engine v1. Indexable; el slug coincide con content_resources.slug. */
+/**
+ * /recursos/[slug] — Resource & Conversation Engine v1. «Solo con la URL» (decisión de Christian, 13-oct-2026): no se indexa,
+ * no está en el sitemap y ninguna página del sitio enlaza aquí; la URL la entrega el agente por mensaje directo.
+ * El slug coincide con content_resources.slug.
+ */
 export function generateStaticParams() {
   return RESOURCE_SLUGS.map((slug) => ({ slug }));
 }
@@ -14,7 +18,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const resource = getResource(slug);
   if (!resource) return {};
-  return pageMetadata({ title: resource.seoTitle, description: resource.description, path: `/recursos/${resource.slug}` });
+  return {
+    ...pageMetadata({ title: resource.seoTitle, description: resource.description, path: `/recursos/${resource.slug}`, noindex: true }),
+    robots: { index: false, follow: false },
+  };
 }
 
 export default async function RecursoPage({ params }: { params: Promise<{ slug: string }> }) {

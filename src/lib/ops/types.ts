@@ -62,6 +62,15 @@ export type Signal = { title: string; type: string | null; angle: string | null;
 
 export type LinkedinRow = { company: string; short: string; state: string | null; state_label: string | null; person: string | null; role: string | null; next_action: string | null; last_event_at: string | null; reply: string | null; score: number | null };
 
+export type IgCalendar = {
+  window: { start: string; end: string }; enabled: boolean; preparing: number;
+  feed: { target: number; coverage: number; missing: number; pending_review: number };
+  stories: { coverage: number; missing: number; pending_review: number };
+  days: { key: string; label: string; today: boolean; open_stories: string[]; open_feed: boolean;
+    feed: { id: string; at: string; format: string; title: string; status: string; status_key: string }[];
+    stories: { id: string; at: string; template: string | null; title: string; status: string; status_key: string }[] }[];
+};
+
 export type Weekly = {
   week_start: string; week_end: string; target: number; min: number; max: number;
   done: number; published: number; scheduled: number; in_review: number; coverage: number;
@@ -114,6 +123,7 @@ export type Panel = {
   };
   content: {
     weekly?: Weekly;
+    ig?: IgCalendar;
     signals_count: number;
     signals: Signal[];
     in_review: PieceRow[];
