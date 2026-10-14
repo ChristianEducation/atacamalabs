@@ -48,7 +48,7 @@ export async function getOverview(): Promise<OverviewResult> {
   }
 }
 
-const ACTIONS = new Set(["email_save", "email_approve", "email_reject", "email_reopen", "linkedin_approve", "linkedin_reject", "content_approve", "content_reject", "autosend_set", "autosend_sweep", "prep_li_sent", "prep_hold", "prep_release", "prep_contact", "pause_set", "idea_decide", "idea_mine", "taller_feedback", "taller_approve", "taller_schedule", "taller_discard", "taller_duplicate", "taller_caption"]);
+const ACTIONS = new Set(["email_save", "email_approve", "email_reject", "email_reopen", "linkedin_approve", "linkedin_reject", "content_approve", "content_reject", "autosend_set", "autosend_sweep", "prep_li_sent", "prep_hold", "prep_release", "prep_contact", "pause_set", "idea_decide", "idea_mine", "taller_feedback", "taller_approve", "taller_schedule", "taller_discard", "taller_duplicate", "taller_caption", "mail_config_set", "mail_outcome"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Valida la solicitud antes de salir del servidor (lista cerrada de acciones; nada genérico). */
@@ -75,6 +75,13 @@ export function checkInput(i: OpsActionInput): string | null {
   if (i.subject !== undefined && (typeof i.subject !== "string" || i.subject.length > 300)) return "Asunto inválido.";
   if (i.body !== undefined && (typeof i.body !== "string" || i.body.length > 10_000)) return "Cuerpo inválido.";
   if (i.reason !== undefined && (typeof i.reason !== "string" || i.reason.length > 300)) return "Motivo inválido.";
+  if (i.paste !== undefined && typeof i.paste !== "boolean") return "Solicitud inválida.";
+  if (i.daily_cap !== undefined && (!Number.isInteger(i.daily_cap) || i.daily_cap < 1 || i.daily_cap > 50)) return "El tope diario va de 1 a 50.";
+  if ((i.window_start !== undefined || i.window_end !== undefined) && !(/^\d{2}:\d{2}$/.test(i.window_start ?? "") && /^\d{2}:\d{2}$/.test(i.window_end ?? ""))) return "Ventana inválida (HH:MM).";
+  if (i.followup_days !== undefined && (!Array.isArray(i.followup_days) || i.followup_days.length !== 2 || i.followup_days.some((d) => !Number.isInteger(d) || d < 1 || d > 30))) return "Días de seguimiento inválidos.";
+  if (i.funnel_min_sample !== undefined && (!Number.isInteger(i.funnel_min_sample) || i.funnel_min_sample < 5 || i.funnel_min_sample > 200)) return "Muestra mínima inválida.";
+  if (i.action === "mail_config_set" && [i.daily_cap, i.window_start, i.followup_days, i.funnel_min_sample].every((v) => v === undefined)) return "No indicaste ningún cambio.";
+  if (i.action === "mail_outcome" && (!UUID.test(i.candidate_id ?? "") || !["reunion", "perdido"].includes(i.outcome ?? ""))) return "Resultado inválido.";
   return null;
 }
 

@@ -12,7 +12,7 @@
  */
 
 export function oaActionList() {
-  return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject', 'autosend_set', 'autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release', 'prep_contact', 'pause_set', 'idea_decide', 'idea_mine', 'taller_feedback', 'taller_approve', 'taller_schedule', 'taller_discard', 'taller_duplicate', 'taller_caption', 'taller_add_version'];
+  return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject', 'autosend_set', 'autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release', 'prep_contact', 'pause_set', 'idea_decide', 'idea_mine', 'taller_feedback', 'taller_approve', 'taller_schedule', 'taller_discard', 'taller_duplicate', 'taller_caption', 'taller_add_version', 'mail_config_set', 'mail_outcome'];
 }
 
 export function oaIsUuid(v) {
@@ -41,6 +41,7 @@ export function oaValidate(b) {
     if (body.length < 20 || body.length > 8000) return { ok: false, error: 'cuerpo_invalido', message: 'El cuerpo debe tener entre 20 y 8000 caracteres.' };
     req.subject = subject;
     req.body = body;
+    req.paste = x.paste === true;
     if (x.to_email != null || x.to != null) return { ok: false, error: 'destinatario_no_editable', message: 'El destinatario no se puede editar desde /ops.' };
   }
   if (action === 'autosend_set') {
@@ -51,6 +52,41 @@ export function oaValidate(b) {
       if (!Number.isFinite(ms) || ms < 60 || ms > 100) return { ok: false, error: 'score_invalido', message: 'min_score debe estar entre 60 y 100.' };
       req.min_score = Math.floor(ms);
     }
+  }
+  if (action === 'mail_config_set') {
+    const hm = (v) => typeof v === 'string' && /^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(v.trim()) ? v.trim() : null;
+    const set = {};
+    if (x.daily_cap != null) {
+      const c = Number(x.daily_cap);
+      if (!Number.isInteger(c) || c < 1 || c > 50) return { ok: false, error: 'tope_invalido', message: 'El tope diario va de 1 a 50 correos.' };
+      set.daily_cap = c;
+    }
+    if (x.window_start != null || x.window_end != null) {
+      const ws = hm(x.window_start), we = hm(x.window_end);
+      if (!ws || !we) return { ok: false, error: 'ventana_invalida', message: 'La ventana necesita inicio y fin en formato HH:MM.' };
+      const m = (s) => Number(s.slice(0, 2)) * 60 + Number(s.slice(3));
+      if (m(ws) < 7 * 60 || m(we) > 20 * 60 || m(we) - m(ws) < 60) return { ok: false, error: 'ventana_invalida', message: 'La ventana debe estar entre 07:00 y 20:00 y durar al menos 1 hora.' };
+      set.window_start = ws; set.window_end = we;
+    }
+    if (x.followup_days != null) {
+      const d = Array.isArray(x.followup_days) ? x.followup_days.map(Number) : [];
+      if (d.length !== 2 || !d.every((v) => Number.isInteger(v) && v >= 1 && v <= 30) || d[0] >= d[1]) return { ok: false, error: 'dias_invalidos', message: 'Los seguimientos son 2 números de días hábiles, el segundo mayor (ej.: 3 y 7), entre 1 y 30.' };
+      set.followup_days = d;
+    }
+    if (x.funnel_min_sample != null) {
+      const f = Number(x.funnel_min_sample);
+      if (!Number.isInteger(f) || f < 5 || f > 200) return { ok: false, error: 'muestra_invalida', message: 'La muestra mínima del embudo va de 5 a 200.' };
+      set.funnel_min_sample = f;
+    }
+    if (!Object.keys(set).length) return { ok: false, error: 'sin_cambios', message: 'No indicaste ningún cambio.' };
+    req.set = set;
+  }
+  if (action === 'mail_outcome') {
+    if (!oaIsUuid(x.candidate_id)) return { ok: false, error: 'candidate_id_invalido', message: 'candidate_id (uuid del prospecto) es obligatorio.' };
+    req.candidate_id = String(x.candidate_id).toLowerCase();
+    req.outcome = String(x.outcome || '').toLowerCase();
+    if (!['reunion', 'perdido'].includes(req.outcome)) return { ok: false, error: 'resultado_invalido', message: 'outcome: reunion | perdido. «Ganado» se marca en GHL (crea el cliente).' };
+    req.text = typeof x.text === 'string' ? x.text.trim().slice(0, 500) : '';
   }
   if (action === 'pause_set') {
     if (typeof x.paused !== 'boolean') return { ok: false, error: 'paused_invalido', message: 'paused (true/false) es obligatorio.' };
@@ -133,7 +169,7 @@ export function oaReads(req, sb) {
   const add = (key, path) => reads.push({ key, url: sb + path });
   if (req.request_id) add('audit', 'operator_audit_log?request_id=eq.' + req.request_id + '&select=status,response&limit=1');
   if (req.action === 'overview') {
-    add('messages', 'outreach_messages?direction=eq.outbound&select=id,candidate_id,company_name,kind,to_email,subject,body,status,content_hash,created_at,updated_at,approved_by,approved_at,scheduled_for,sent_at,error,metadata&order=created_at.desc&limit=150');
+    add('messages', 'outreach_messages?direction=eq.outbound&select=id,candidate_id,company_name,kind,to_email,subject,body,status,content_hash,created_at,updated_at,approved_by,approved_at,scheduled_for,sent_at,error,metadata,edited_by_christian_at&order=created_at.desc&limit=150');
     add('candidates', 'prospect_candidates?status=in.(in_ghl,accepted,contacted,discarded)&select=id,company_name,status,band,priority_score,ghl_stage,last_contact_channel,channel_state,domain,contact:canonical->contact,angle:canonical->>outreach_angle,quote:canonical->evidence_quotes->0->>quote&order=priority_score.desc&limit=400');
     add('suppression', 'outreach_suppression?select=email&limit=2000');
     add('config', 'outreach_config?id=eq.1&select=mode,paused,daily_cap,window_start,window_end,tz,linkedin_mode,linkedin_list_id,linkedin_campaign_id,linkedin_daily_cap');
@@ -141,6 +177,10 @@ export function oaReads(req, sb) {
     add('message', 'outreach_messages?id=eq.' + req.message_id + '&select=*,cand:prospect_candidates(id,company_name,status)&limit=1');
   } else if (req.action === 'autosend_set') {
     add('config', 'outreach_config?id=eq.1&select=autosend_enabled,autosend_min_score');
+  } else if (req.action === 'mail_outcome') {
+    add('candidate', 'prospect_candidates?id=eq.' + req.candidate_id + '&select=id,company_name,status,ghl_stage,ghl_opportunity_id,canonical&limit=1');
+  } else if (req.action === 'mail_config_set') {
+    add('config', 'outreach_config?id=eq.1&select=daily_cap,window_start,window_end,followup_days,funnel_min_sample');
   } else if (req.action.startsWith('linkedin_') || req.action.startsWith('prep_')) {
     add('candidate', 'prospect_candidates?id=eq.' + req.candidate_id + '&select=id,company_name,status,channel_state,last_contact_channel,contact:canonical->contact&limit=1');
   } else if (req.action.startsWith('taller_')) {
@@ -201,7 +241,7 @@ export function oaEmailCards(messages, cands, suppression) {
       recommended_channel: ((c.channel_state || {}).recommended || {}).channel || null,
       suppressed: sup.has(String(m.to_email || '').toLowerCase()),
       rejected_reason: (m.metadata && m.metadata.rejected_reason) || null,
-      cold: oaCold(m.metadata), previous: oaPrevious(m.metadata),
+      cold: oaCold(m.metadata), previous: oaPrevious(m.metadata), edited_by_christian_at: m.edited_by_christian_at || null,
     };
   });
 }
@@ -296,7 +336,7 @@ export function oaStep(req, R, results, nowMs, env) {
         if (st !== 'draft') return fail('no_editable', st === 'sending' || st === 'sent' ? 'Ese correo ya se está enviando o se envió: no se puede editar.' : 'Ese correo está en estado «' + st + '» y no se puede editar.', { current_status: st });
         if (m.content_hash !== req.expected_hash) return fail('desactualizado', 'El correo cambió desde que lo abriste. Recarga para ver la versión actual.', { current_hash: m.content_hash });
         if (String(m.subject || '').trim() === req.subject && String(m.body || '').trim() === req.body) return done({ ok: true, status: 'unchanged', message: 'Sin cambios: el texto es el mismo.', hash: m.content_hash });
-        return ingest('atacama-outreach-engine', { action: 'draft', candidate_id: m.candidate_id, kind: m.kind, subject: req.subject, body: req.body, by, reason: 'Editado desde /ops' });
+        return ingest('atacama-outreach-engine', { action: 'draft', candidate_id: m.candidate_id, kind: m.kind, subject: req.subject, body: req.body, by, christian: true, reason: req.paste ? 'Versión pegada por Christian (/ops)' : 'Editado desde /ops' });
       }
       const b = results[0] && results[0].body;
       if (b && b.ok && b.draft) return done({ ok: true, status: 'saved', message: 'Guardado. NO se envió: aprueba el envío cuando estés listo.', hash: b.draft.hash || null, draft: { subject: b.draft.subject, body: b.draft.body, status: b.draft.status } });
@@ -364,6 +404,34 @@ export function oaStep(req, R, results, nowMs, env) {
   }
 
   // ---------------------------------------------------------------- envío automático (interruptor): solo Christian, desde /ops
+  if (A === 'mail_outcome') {
+    const c = (R.candidate || [])[0];
+    if (!c) return fail('prospecto_no_encontrado', 'No encontré ese prospecto.');
+    if (!c.ghl_opportunity_id) return fail('sin_oportunidad', c.company_name + ' no tiene oportunidad en GHL: no hay nada que mover.');
+    const label = req.outcome === 'reunion' ? 'Reunión (Diagnóstico)' : 'Perdida';
+    if (n === 0) {
+      const act = req.outcome === 'reunion' ? { type: 'move_stage', stage: 'diagnostico', note: 'REUNIÓN acordada (marcado desde /ops).' + (req.text ? ' ' + req.text : '') } : { type: 'discard', mark_lost: true, reason: 'Perdida (marcado desde /ops).' + (req.text ? ' ' + req.text : '') };
+      return ingest('atacama-prospect-gateway', { action: 'act', request_id: 'ops-' + req.request_id, source: { type: 'ops', name: 'Atacama OS · /ops', reference: c.id }, act, targets: [c.canonical || { company_name: c.company_name }], options: { by: by } });
+    }
+    const b = results[0] && results[0].body;
+    const g = b && Array.isArray(b.results) ? b.results[0] : null;
+    if (b && b.ok === true && g && g.executed !== false && !g.error && g.ghl && g.ghl.applied && g.ghl.applied.opportunity === 'ok') return done({ ok: true, status: 'outcome_' + req.outcome, message: c.company_name + ': ' + label + '. Movido en GHL.' });
+    if (b && b.ok === true && g) return fail('gateway_no_aplico', 'GHL no confirmó el cambio de ' + c.company_name + (g.error ? ' (' + String(g.error).slice(0, 120) + ')' : '') + '. Revísalo en GHL.');
+    return done(oaRelay(results[0], 'No pude mover la oportunidad en GHL'));
+  }
+  if (A === 'mail_config_set') {
+    const cur = (R.config || [])[0] || {};
+    const s = req.set;
+    const notes = [];
+    if (s.daily_cap != null) notes.push('tope ' + (cur.daily_cap != null ? cur.daily_cap + ' → ' : '') + s.daily_cap + ' correos/día');
+    if (s.window_start) notes.push('ventana ' + s.window_start + '–' + s.window_end);
+    if (s.followup_days) notes.push('seguimientos a +' + s.followup_days[0] + ' y +' + s.followup_days[1] + ' días hábiles');
+    if (s.funnel_min_sample != null) notes.push('muestra mínima del embudo ' + s.funnel_min_sample);
+    const up = s.daily_cap != null && Number(cur.daily_cap) > 0 && s.daily_cap > Number(cur.daily_cap);
+    return done({ ok: true, status: 'mail_config_saved', set: s, previous: { daily_cap: cur.daily_cap != null ? cur.daily_cap : null, window_start: cur.window_start || null, window_end: cur.window_end || null, followup_days: cur.followup_days || null },
+      message: 'Guardado: ' + notes.join(' · ') + '.' + (up ? ' Sube de a poco: revisa rebotes en «Salud».' : '') },
+      [{ method: 'PATCH', path: 'outreach_config?id=eq.1', body: { ...s, config_updated_by: by, updated_at: nowIso }, prefer: 'return=representation', check_rows: true, check_message: 'No pude guardar la configuración del correo.' }]);
+  }
   if (A === 'autosend_set') {
     const cur = (R.config || [])[0] || {};
     const body = { autosend_enabled: req.enabled, autosend_updated_at: nowIso, autosend_updated_by: by, updated_at: nowIso };
@@ -531,10 +599,11 @@ export function oaAudit(req, R, final, nowMs) {
   if (req.candidate_id) { const c = (R.candidate || [])[0]; ent.candidate_id = req.candidate_id; if (c) ent.company = c.company_name; }
   if (req.idea_id) { const i = (R.idea || [])[0]; ent.idea_id = req.idea_id; if (i) { ent.title = i.title; ent.channel = i.channel; ent.week_start = i.week_start; } }
   if (req.action === 'idea_mine') { ent.title = req.title; ent.channel = req.channel; }
+  if (req.action === 'mail_config_set') { const c = (R.config || [])[0] || {}; ent.config = 'outreach_config'; ent.before = { daily_cap: c.daily_cap, window_start: c.window_start, window_end: c.window_end, followup_days: c.followup_days, funnel_min_sample: c.funnel_min_sample }; ent.after = req.set; }
   if (req.piece_id && req.action.startsWith('taller_')) { const p = (R.piece || [])[0]; ent.piece_id = req.piece_id; if (p) { ent.topic = p.topic; ent.channel = p.channel; ent.format = p.format; ent.taller_status = p.taller_status; } }
   else if (req.piece_id) { const p = (R.piece || [])[0]; ent.piece_id = req.piece_id; if (p) { ent.topic = p.topic; ent.channel = p.channel; ent.ghl_post_id = p.ghl_post_id; } }
   const type = req.action.split('_')[0];
-  const params = { type, decision: req.action === 'pause_set' ? (req.paused ? 'paused' : 'resumed') : req.action === 'idea_decide' ? req.decision : req.action === 'idea_mine' ? 'mine' : req.action.startsWith('taller_') ? req.action.replace('taller_', '') : /approve/.test(req.action) ? 'approved' : /reject/.test(req.action) ? 'rejected' : req.action.replace(type + '_', ''), reason: req.reason || null, ...(req.subject ? { subject_len: req.subject.length, body_len: req.body.length } : {}) };
-  return { request_id: req.request_id + (r.ok ? '' : '~' + Math.floor(nowMs / 1000).toString(36)), actor: 'Christian via /ops', tool: 'ops_' + req.action, level: /approve|autosend_set|pause_set|taller_schedule/.test(req.action) ? 3 : 2, entity: ent, params,
+  const params = { type, decision: req.action === 'pause_set' ? (req.paused ? 'paused' : 'resumed') : req.action === 'idea_decide' ? req.decision : req.action === 'idea_mine' ? 'mine' : req.action.startsWith('taller_') ? req.action.replace('taller_', '') : req.action === 'mail_config_set' ? 'config' : req.action === 'mail_outcome' ? req.outcome : req.action === 'email_save' && req.paste ? 'paste' : /approve/.test(req.action) ? 'approved' : /reject/.test(req.action) ? 'rejected' : req.action.replace(type + '_', ''), reason: req.reason || null, ...(req.subject ? { subject_len: req.subject.length, body_len: req.body.length } : {}) };
+  return { request_id: req.request_id + (r.ok ? '' : '~' + Math.floor(nowMs / 1000).toString(36)), actor: 'Christian via /ops', tool: 'ops_' + req.action, level: /approve|autosend_set|pause_set|taller_schedule|mail_config_set/.test(req.action) ? 3 : 2, entity: ent, params,
     status: r.ok ? 'executed' : 'refused', result_summary: String(r.message || '').slice(0, 300), response: { ok: Boolean(r.ok), status: r.status || null, error: r.error || null, message: String(r.message || '').slice(0, 300) } };
 }

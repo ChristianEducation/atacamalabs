@@ -416,4 +416,28 @@ ok('seguimiento: una respuesta, rechazo o detención por LinkedIn también detie
   assert.equal(oc.followupStopReason({ status: 'contacted', channel_state: { linkedin: { state: 'respondio' } } }, 'a@b.cl', [], [], {}), 'linkedin_respondio');
   assert.equal(oc.followupStopReason({ status: 'contacted', channel_state: { linkedin: { state: 'en_campana' } } }, 'a@b.cl', [], [], {}), null);
 });
+ok('S5: lo automático no pisa un correo editado por Christian en las últimas 72 h', () => {
+  const now = Date.parse('2026-10-20T12:00:00Z');
+  const h = [{ kind: 'initial', direction: 'outbound', status: 'draft', edited_by_christian_at: '2026-10-19T12:00:00Z', created_at: '2026-10-18T00:00:00Z' }];
+  assert.equal(oc.outreachHeldReason(h, now, 'initial').code, 'editado_por_christian');
+  assert.equal(oc.outreachHeldReason([{ ...h[0], edited_by_christian_at: '2026-10-16T11:00:00Z' }], now, 'initial'), null);
+});
+ok('S5: un correo devuelto o cancelado por el motor deja al prospecto EN ESPERA para lo automático', () => {
+  const now = Date.parse('2026-10-20T12:00:00Z');
+  assert.equal(oc.outreachHeldReason([{ kind: 'initial', direction: 'outbound', status: 'draft', error: 'Devuelto a borrador por el motor: el texto cambió', updated_at: '2026-10-20T10:00:00Z' }], now, 'initial').code, 'devuelto_por_motor');
+  assert.equal(oc.outreachHeldReason([{ kind: 'initial', direction: 'outbound', status: 'cancelled', error: 'Cancelado por el motor: suprimido', updated_at: '2026-10-20T10:00:00Z' }], now, 'initial').code, 'devuelto_por_motor');
+  assert.equal(oc.outreachHeldReason([{ kind: 'initial', direction: 'outbound', status: 'cancelled', error: 'cancelado por Christian', updated_at: '2026-10-20T10:00:00Z' }], now, 'initial'), null);
+});
+ok('S5: planDraft automático se niega (sin escrituras) y el manual de Christian sí guarda, marca la edición y limpia el aviso del motor', () => {
+  const now = Date.parse('2026-10-20T12:00:00Z');
+  const cand = { id: 'c1', company_name: 'Clínica X', status: 'in_ghl', canonical: { contact: { email: 'contacto@clinicax.cl' } }, drafts: {} };
+  const live = { id: 'm1', candidate_id: 'c1', kind: 'initial', direction: 'outbound', status: 'draft', to_email: 'contacto@clinicax.cl', subject: 'Asunto viejo', body: 'Cuerpo viejo del correo.', content_hash: 'x', error: 'Devuelto a borrador por el motor: el texto cambió', updated_at: '2026-10-20T10:00:00Z', metadata: {} };
+  const auto = oc.planDraft({ kind: 'initial', subject: 'Otro', body: 'Estimado equipo, otro cuerpo distinto.', auto: true }, { now, candidate: cand, history: [live], suppression: [], peers: [] });
+  assert.equal(auto.response.status, 'held'); assert.equal(auto.writes.length, 0);
+  const man = oc.planDraft({ kind: 'initial', subject: 'Consultas entre sedes', body: 'Estimado equipo, cuando una consulta llega sin sede, recepción vuelve a preguntar. ¿Le sirve si le cuento cómo lo ordenan otras clínicas?', christian: true, by: 'Christian via /ops' }, { now, candidate: cand, history: [live], suppression: [], peers: [] });
+  assert.equal(man.response.ok, true, JSON.stringify(man.response));
+  assert.equal(man.writes[0].body.edited_by_christian_at, new Date(now).toISOString());
+  assert.equal(man.writes[0].body.error, null);
+  assert.ok(Array.isArray(man.writes[0].body.metadata.history) && man.writes[0].body.metadata.history.length === 1);
+});
 console.log(n + ' ok');

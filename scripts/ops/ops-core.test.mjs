@@ -607,6 +607,17 @@ ok('S2 · huella: idéntica a la del motor de correos; detecta borradores/aproba
   const a = ev.notify.find((n) => n.key === 'hash_mismatch:x');
   assert.ok(a && a.severity === 'critical' && /Huella no coincide: Alfa/.test(a.title) && /devolverá a borrador/.test(a.detail));
 });
+ok('v3 · Salud del correo §G3: rebote ≥ 5 % con ≥ 20 envíos → crítica; ≥ 3 % → importante; bajo eso, nada', () => {
+  const now = Date.now();
+  const sent = (k) => Array.from({ length: k }, (_, i) => ({ id: 's' + i, direction: 'outbound', status: 'sent', kind: 'initial', sent_at: new Date(now - 3600000 * (i + 1)).toISOString(), created_at: new Date(now - 3600000 * (i + 1)).toISOString() }));
+  const b = (k) => Array.from({ length: k }, (_, i) => ({ id: 'b' + i, direction: 'inbound', classification: 'bounce', created_at: new Date(now - 60000).toISOString() }));
+  const crit = oc.evaluateAlerts(base({ messages: sent(20).concat(b(1)) }), []);
+  assert.ok(crit.notify.some((n) => n.key === 'mail_bounce:critical' && n.severity === 'critical'));
+  const high = oc.evaluateAlerts(base({ messages: sent(30).concat(b(1)) }), []);
+  assert.ok(high.notify.some((n) => n.key === 'mail_bounce:high' && n.severity === 'high'));
+  const none = oc.evaluateAlerts(base({ messages: sent(50).concat(b(1)) }), []);
+  assert.ok(!none.notify.some((n) => /^mail_bounce/.test(n.key)));
+});
 ok('v3 · Taller: pieza en «necesita ayuda» → alerta importante (sin TEST)', () => {
   const ev = oc.evaluateAlerts(base({ pieces: [{ id: 'p1', topic: 'Carrusel X', taller_status: 'necesita_ayuda', is_test: false }, { id: 'p2', topic: 'T', taller_status: 'necesita_ayuda', is_test: true }] }), []);
   assert.ok(ev.notify.some((n) => n.key === 'taller_help:p1' && n.severity === 'high')); assert.ok(!ev.notify.some((n) => n.key === 'taller_help:p2'));

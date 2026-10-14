@@ -6,6 +6,7 @@ import { opsAct } from "./actions";
 import { useOptimistic, useToast, type Opt } from "./Shell";
 import { GHL_PLANNER_URL, Preview, fmtCl } from "./Parts";
 import type { EmailCard, LinkedinReady, LinkedinSent, OpsActionInput, OpsActionState, Overview, PieceRow } from "@/lib/ops/types";
+import { lineDiff, parsePasted } from "@/lib/ops/diff";
 
 const newId = () => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID().replace(/-/g, "") : `r${Date.now()}${Math.random().toString(36).slice(2, 10)}`);
 
@@ -90,6 +91,33 @@ function QualityBlock({ card }: { card: EmailCard }) {
   );
 }
 
+/** «Pega tu versión» (spec v3 §7-2): Christian pega el texto escrito con GPT; se ve la diferencia con la versión actual antes de guardar. Pasa por la única puerta de edición (motor de correo, acción draft). */
+function PasteBox({ card, pending, onSave, onCancel }: { card: EmailCard; pending: boolean; onSave: (subject: string, body: string) => void; onCancel: () => void }) {
+  const [text, setText] = useState("");
+  const p = parsePasted(text, card.subject ?? "");
+  const diff = text.trim() ? lineDiff(card.body ?? "", p.body) : [];
+  const changed = diff.some((d) => d.op !== "same") || p.subject !== (card.subject ?? "").trim();
+  const valid = p.subject.length >= 3 && p.subject.length <= 200 && p.body.length >= 20 && p.body.length <= 8000;
+  return (
+    <div className="ops-edit" data-testid="paste-box">
+      <label className="ops-lab" htmlFor={`p-${card.id}`}>Pega tu versión</label>
+      <textarea id={`p-${card.id}`} className="ops-textarea" rows={10} maxLength={9000} placeholder={"Asunto: (opcional, en la primera línea)\n\nEstimado…"} value={text} onChange={(e) => setText(e.target.value)} />
+      <p className="ops-foot">Si la primera línea dice «Asunto: …», ese será el asunto; si no, se mantiene «{card.subject}». Guardar NO envía nada: recalcula la huella y el score, guarda la versión anterior y queda marcado «editado por Christian».</p>
+      {text.trim() ? (
+        <>
+          {p.subjectFromPaste && p.subject !== (card.subject ?? "").trim() ? <p className="ops-foot"><strong>Asunto:</strong> <span className="ops-diff-del">{card.subject}</span> → <span className="ops-diff-add">{p.subject}</span></p> : null}
+          <h4 className="ops-h4">Diferencias con la versión actual</h4>
+          <pre className="ops-diff" data-testid="paste-diff">{diff.map((d, i) => <span key={i} className={d.op === "add" ? "ops-diff-add" : d.op === "del" ? "ops-diff-del" : "ops-diff-same"}>{(d.op === "add" ? "+ " : d.op === "del" ? "− " : "  ") + d.text + "\n"}</span>)}</pre>
+        </>
+      ) : null}
+      <div className="ops-btns">
+        <button type="button" className="ops-btn ops-btn-primary" disabled={pending || !valid || !changed} onClick={() => onSave(p.subject, p.body)}>{pending ? "Guardando…" : "Guardar mi versión"}</button>
+        <button type="button" className="ops-btn" disabled={pending} onClick={onCancel}>Cancelar</button>
+      </div>
+    </div>
+  );
+}
+
 function ScoreChip({ score, band }: { score: number | null; band?: string | null }) {
   if (score == null) return null;
   return <span className={`ops-score ops-score-${band ?? "neutral"}`} title="Score del prospecto">{score}</span>;
@@ -101,6 +129,7 @@ export function EmailCardView({ card: raw, selectable, selected, onToggle, defau
   const { opt, patchEmail } = useOptimistic();
   const card = effCard(raw, opt);
   const [editing, setEditing] = useState(false);
+  const [pasting, setPasting] = useState(false);
   const [subject, setSubject] = useState(raw.subject ?? "");
   const [body, setBody] = useState(raw.body ?? "");
   const [rejecting, setRejecting] = useState(false);
@@ -112,6 +141,10 @@ export function EmailCardView({ card: raw, selectable, selected, onToggle, defau
   const save = async () => {
     const r = await run({ action: "email_save", message_id: card.id, expected_hash: hash, subject, body });
     if (r?.ok) { patchEmail(raw.id, sigOf(raw), { subject: subject.trim(), body: body.trim(), hash: r.hash ?? card.hash }); setEditing(false); }
+  };
+  const savePaste = async (s: string, b: string) => {
+    const r = await run({ action: "email_save", message_id: card.id, expected_hash: hash, subject: s, body: b, paste: true });
+    if (r?.ok) { patchEmail(raw.id, sigOf(raw), { subject: s, body: b, hash: r.hash ?? card.hash, edited_by_christian_at: new Date().toISOString() }); setPasting(false); }
   };
   const lines = (card.body ?? "").length;
 
@@ -140,12 +173,13 @@ export function EmailCardView({ card: raw, selectable, selected, onToggle, defau
             </dd>
             {card.reason ? (<><dt>Ángulo</dt><dd>{card.reason}</dd></>) : null}
             {card.evidence ? (<><dt>Hecho observado</dt><dd>«{card.evidence}»</dd></>) : null}
-            {card.error ? (<><dt>Error</dt><dd className="ops-err">{card.error}</dd></>) : null}
+            {card.error ? (<><dt>{/^Devuelto a borrador por el motor/.test(card.error) ? "Devuelto por el motor" : "Error"}</dt><dd className="ops-err">{card.error}</dd></>) : null}
+            {card.edited_by_christian_at ? (<><dt>Edición</dt><dd><span className="ops-tag">Editado por Christian</span> {fmtCl(card.edited_by_christian_at)}</dd></>) : null}
             {card.rejected_reason ? (<><dt>Motivo del rechazo</dt><dd>{card.rejected_reason}</dd></>) : null}
             {card.suppressed ? (<><dt>Aviso</dt><dd className="ops-err">Este correo está en la lista de supresión: no se enviará.</dd></>) : null}
           </dl>
 
-          {editing ? (
+          {pasting ? <PasteBox card={card} pending={pending} onSave={savePaste} onCancel={() => setPasting(false)} /> : editing ? (
             <div className="ops-edit">
               <label className="ops-lab" htmlFor={`s-${card.id}`}>Asunto</label>
               <input id={`s-${card.id}`} className="ops-input" value={subject} maxLength={200} onChange={(e) => setSubject(e.target.value)} />
@@ -166,12 +200,13 @@ export function EmailCardView({ card: raw, selectable, selected, onToggle, defau
             </>
           )}
 
-          {!editing ? <QualityBlock card={card} /> : null}
+          {!editing && !pasting ? <QualityBlock card={card} /> : null}
 
-          {!editing ? (
+          {!editing && !pasting ? (
             <div className="ops-btns">
               {card.can_approve ? <button type="button" className="ops-btn ops-btn-primary" disabled={pending || card.suppressed} onClick={async () => { const r = await run({ action: "email_approve", message_id: card.id, expected_hash: hash }); if (r?.ok) patchEmail(raw.id, sigOf(raw), AFTER_APPROVE); }}>{pending ? "Aprobando…" : "Aprobar envío"}</button> : null}
               {card.editable ? <button type="button" className="ops-btn" disabled={pending} onClick={() => setEditing(true)}>Editar</button> : null}
+              {card.editable ? <button type="button" className="ops-btn" disabled={pending} onClick={() => setPasting(true)}>Pega tu versión</button> : null}
               {card.can_reopen ? <button type="button" className="ops-btn" disabled={pending} onClick={async () => { const r = await run({ action: "email_reopen", message_id: card.id }); if (r?.ok) patchEmail(raw.id, sigOf(raw), AFTER_REOPEN); }}>Volver a borrador</button> : null}
               {card.can_reject && !rejecting ? <button type="button" className="ops-btn ops-btn-danger" disabled={pending} onClick={() => setRejecting(true)}>Rechazar</button> : null}
               {locked && !card.can_reopen && !card.can_reject ? <span className="ops-foot">{card.status === "sending" || card.status === "sent" ? "Bloqueado: ya se está enviando o se envió." : "Sin acciones en este estado."}</span> : null}

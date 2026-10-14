@@ -54,7 +54,7 @@ export const parseCode = `try {
   const u = {
     config: sb + 'outreach_config?id=eq.1&select=*',
     cands: sb + 'prospect_candidates?status=in.(in_ghl,accepted,contacted,discarded)&select=${CAND_SELECT}&order=priority_score.desc&limit=500',
-    pmsgs: prepAct ? sb + 'outreach_messages?direction=eq.outbound&created_at=gte.' + new Date(Date.now() - 120 * 86400000).toISOString() + '&select=id,candidate_id,company_name,direction,kind,status,to_email,subject,body,sent_at,created_at,updated_at,approved_by,approved_at,content_hash,metadata&order=created_at.desc&limit=900' : '${NONE}',
+    pmsgs: prepAct ? sb + 'outreach_messages?direction=eq.outbound&created_at=gte.' + new Date(Date.now() - 120 * 86400000).toISOString() + '&select=id,candidate_id,company_name,direction,kind,status,to_email,subject,body,sent_at,created_at,updated_at,approved_by,approved_at,content_hash,metadata,error,edited_by_christian_at&order=created_at.desc&limit=900' : '${NONE}',
     inbound: prepAct ? sb + 'outreach_messages?direction=eq.inbound&created_at=gte.' + new Date(Date.now() - 45 * 86400000).toISOString() + '&select=id,candidate_id,direction,classification,created_at&limit=500' : '${NONE}',
     msgs: ['list', 'approve', 'recommend'].includes(action) ? sb + 'outreach_messages?direction=eq.outbound&status=in.(approved,sending,sent)&select=candidate_id,status&limit=500' : '${NONE}',
     sup: ['list', 'approve', 'recommend'].includes(action) ? sb + 'outreach_suppression?select=email&limit=2000' : '${NONE}',

@@ -200,3 +200,10 @@ Ver [`CONTACTO-PREPARADO.md`](CONTACTO-PREPARADO.md): salidas de cada Investigad
 - **Qué hace:** el job «Taller producción» (`4088328668ec`, mar–vie 10:00 y 14:00 Chile, **PAUSADO**) toma una pieza del carril VPS (en cola o con cambios pedidos), escribe su especificación y llama al productor (`/opt/data/scripts/taller_produce.sh`): arte → recorte → composición → control de calidad (texto exacto con la visión de Hermes, 4:5, logo, cuadrícula) → crítica visual → v(n+1) «para revisar» en el Taller. Lámina de prueba primero; topes 3 intentos/lámina, 30 créditos/pieza, 200/semana → «necesita ayuda» + alerta.
 - **Llaves (todas de Christian):** `update content_config set taller_production_enabled = true where id = 1;` + `hermes cron resume 4088328668ec`. Con eso produce con el **generador simulado** (imágenes existentes, 0 créditos). Para arte nuevo con Higgsfield hace falta además autorizarlo explícitamente (`TALLER_HIGGS=1` en `taller_produce.sh`) — hoy BLOQUEADO.
 - **Receta:** `/opt/data/atacama-media/brand/content/recetas/carrusel-ilustrado/RECETA.md` (repo: `brand/content/recetas/`).
+
+## 20. Atacama OS v3 · Fase 6 (14-oct-2026): Prospección y correo
+- **Dónde:** /ops → Prospección y correo: Hoy · Borradores · Cola · Enviados y respuestas · Seguimientos · Embudo · Radar · Falta contacto · Salud · LinkedIn.
+- **Cambiar tope/ventana/seguimientos:** «Hoy → Controles» (confirmación + historial). Nada se envía desde /ops: el motor sale en su ventana con su tope.
+- **«Pega tu versión»:** en cada borrador. Marca «editado por Christian» → lo automático (Contact Prep) no lo reemplaza por 72 h.
+- **Pares de aprendizaje (S6):** `outreach_messages.learning_pair = true` (12). Un trigger impide borrarlos.
+- **Revertir:** workflows con los respaldos de `backups/2026-10-14/n8n/` (comando impreso al desplegar).

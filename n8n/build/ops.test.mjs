@@ -234,6 +234,17 @@ t('v3 · el panel lee system_state y content_ideas (solo reales)', JSON.stringif
   t('ideas_list: semana siguiente con la idea, su plazo y el contador de descartadas', r.resp.ideas.weeks.length === 1 && r.resp.ideas.weeks[0].discarded_weak === 2 && r.resp.ideas.weeks[0].channels[0].ideas[0].deadline.state === 'alcanza', JSON.stringify(r.resp.ideas).slice(0, 300));
 }
 
+// ---------- v3 · Fase 6: Prospección y correo (solo lectura)
+{
+  const sentAt = iso(2 * H);
+  r = await call({ action: 'mail_view', now_ms: NOW }, FIX({ growth: { mail_cfg: [{ mode: 'live', daily_cap: 40, window_start: '09:00', window_end: '17:30', followup_days: [3, 7], funnel_min_sample: 20 }],
+    mail_msgs: [{ id: 'm1', candidate_id: 'c1', company_name: 'Alfa', direction: 'outbound', kind: 'initial', status: 'sent', sent_at: sentAt, created_at: sentAt }, { id: 'm2', candidate_id: 'c2', company_name: 'Beta', direction: 'outbound', kind: 'initial', status: 'approved', approved_at: sentAt, created_at: sentAt }],
+    mail_supp: [{ email: 'x@y.cl', reason: 'bounce' }], mail_cands: [{ id: 'c1', status: 'contacted', industry: 'Salud' }, { id: 'c2', status: 'in_ghl', industry: 'Salud' }] } }));
+  const mvw = r.resp.mail;
+  t('mail_view: lee mensajes, supresión, configuración y prospectos (sin escribir nada)', r.parsed.growth_reads.filter((g) => /^mail_/.test(g.key)).length === 4 && r.writes.length === 0 && !r.parsed.growth_reads.some((g) => /legal|from_email/.test(g.key)), JSON.stringify(r.parsed.growth_reads.map((g) => g.key)));
+  t('mail_view: arma Hoy, Cola, Respuestas, Seguimientos, Embudo y Salud', mvw && mvw.hoy.cap === 40 && mvw.cola.length === 1 && mvw.embudo.stages[0].count === 2 && mvw.salud.suppression_total === 1 && Array.isArray(mvw.seguimientos.upcoming) && Array.isArray(mvw.respuestas.sent), JSON.stringify(mvw || r.resp).slice(0, 300));
+}
+
 // ---------- v3 · Fase 2: Taller (lectura con URLs firmadas)
 {
   const TP = '11111111-1111-4111-8111-111111111111';

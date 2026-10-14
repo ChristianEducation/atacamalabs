@@ -43,6 +43,7 @@ function world(o = {}) {
         if (b.action === 'approve') return { statusCode: 200, body: o.liFails ? { ok: false, status: 'import_error', error: 'import', message: 'Waalaxy rechazó el alta.' } : { ok: true, status: 'imported', state: 'en_campana', state_label: 'En campaña (conexión)' } };
       }
     }
+    if (c.kind === 'ingest' && /prospect-gateway/.test(c.url)) return { statusCode: 200, body: { ok: true, results: [{ executed: true, error: null, ghl: { applied: { opportunity: o.gwFails ? 'error' : 'ok' } } }] } };
     if (c.kind === 'ingest' && /media-gateway/.test(c.url)) return o.uploadFails ? { statusCode: 200, body: { ok: false, error: 'x', message: 'GHL no aceptó la imagen (prueba).' } } : { statusCode: 200, body: { ok: true, files: c.body.paths.map((p, i) => ({ path: p, url: 'https://assets.cdn/' + i + '.png', type: 'image/png' })) } };
     if (c.kind === 'ghl' && c.method === 'POST') return o.ghlPostFails ? { statusCode: 422, body: { message: 'x' } } : { statusCode: 201, body: { results: { post: { _id: 'newpost1' } } } };
     if (c.kind === 'ghl' && c.method === 'GET' && /newpost1/.test(c.url)) return { statusCode: 200, body: { results: { post: { _id: 'newpost1', ...(o.created || { status: 'in_review', postApprovalDetails: { approvalStatus: 'pending' } }) } } } };
@@ -91,7 +92,7 @@ const names = new Set(wf.nodes.map((n) => n.name));
 t('29: conexiones válidas y webhook con clave EXCLUSIVA de /ops (no la de Hermes)', Object.entries(wf.connections).every(([a, v]) => names.has(a) && v.main.every((o) => o.every((c) => names.has(c.node)))) && wf.nodes[0].parameters.authentication === 'headerAuth' && wf.nodes[0].credentials.httpHeaderAuth.name === 'Atacama Labs - Ops Approval Key' && wf.nodes[0].parameters.path === 'atacama-ops-actions');
 t('29: sin secretos incrustados y sin nodos de envío directo (Gmail, Telegram, SMTP, Waalaxy)', !/(Bearer |eyJ[A-Za-z0-9_-]{20}|pit-[0-9a-f]{8}|sk-[A-Za-z0-9]{20})/.test(JSON.stringify(wf)) && !wf.nodes.some((n) => /gmail|emailSend|telegram|slack|smtp|waalaxy/i.test(n.type + JSON.stringify(n.credentials || {}))));
 t('29: los únicos destinos son los motores 21/26 (webhooks de n8n) y GHL Social Planner (posts)', (() => { const c = code('Plan 1'); return /atacama-outreach-engine/.test(c) && /atacama-linkedin/.test(c) && /social-media-posting/.test(c) && !/messages\/send|conversations\/messages|\/delete|DELETE/.test(c); })());
-t('29: las acciones permitidas son exactamente la lista cerrada (sin ejecutor genérico)', JSON.stringify(wf.nodes.find((n) => n.name === 'Parse').parameters.jsCode.match(/return \['overview'[^\]]*\]/)[0]) === JSON.stringify("return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject', 'autosend_set', 'autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release', 'prep_contact', 'pause_set', 'idea_decide', 'idea_mine', 'taller_feedback', 'taller_approve', 'taller_schedule', 'taller_discard', 'taller_duplicate', 'taller_caption', 'taller_add_version']"));
+t('29: las acciones permitidas son exactamente la lista cerrada (sin ejecutor genérico)', JSON.stringify(wf.nodes.find((n) => n.name === 'Parse').parameters.jsCode.match(/return \['overview'[^\]]*\]/)[0]) === JSON.stringify("return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject', 'autosend_set', 'autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release', 'prep_contact', 'pause_set', 'idea_decide', 'idea_mine', 'taller_feedback', 'taller_approve', 'taller_schedule', 'taller_discard', 'taller_duplicate', 'taller_caption', 'taller_add_version', 'mail_config_set', 'mail_outcome']"));
 t('29: las escrituras reintentan 3 veces y las llamadas externas no cortan el flujo', wf.nodes.find((n) => n.name === 'Apply Writes').maxTries === 3 && wf.nodes.filter((n) => /^(Ingest|GHL (Get|Put)) \d$/.test(n.name)).every((n) => n.continueOnFail === true));
 t('29: cada PUT a GHL envía su cuerpo JSON (sendBody) y cada GET no envía cuerpo', wf.nodes.filter((n) => /^GHL Put \d$/.test(n.name)).every((n) => n.parameters.method === 'PUT' && n.parameters.sendBody === true && /JSON\.stringify/.test(n.parameters.jsonBody)) && wf.nodes.filter((n) => /^GHL Get \d$/.test(n.name)).every((n) => n.parameters.method === 'GET' && !n.parameters.sendBody));
 
@@ -248,6 +249,33 @@ r = await exec({ ...reqBase, action: 'autosend_set', enabled: 'si' });
 t('autoenvío: enabled debe ser booleano', r.resp.ok === false && /enabled/.test(r.resp.message) && r.writes.length === 0);
 r = await exec({ ...reqBase, action: 'autosend_set', enabled: true, min_score: 40 });
 t('autoenvío: no se puede bajar el score mínimo de 60 (límite de seguridad)', r.resp.ok === false && /60 y 100/.test(r.resp.message));
+// ---------------------------------------------------------------- Fase 6 (v3): controles del correo y «Pega tu versión»
+r = await exec({ ...reqBase, action: 'mail_config_set', daily_cap: 12 }, { config: { daily_cap: 5, window_start: '09:00', window_end: '17:30', followup_days: [3, 7] } });
+t('F6 controles: subir el tope guarda solo outreach_config, audita nivel 3 con antes/después y avisa «sube de a poco»', r.resp.ok === true && ingestCalls(r).length === 0 && r.writes.some((w) => w.path === 'outreach_config?id=eq.1' && w.body.daily_cap === 12 && w.body.config_updated_by === 'Christian via /ops') && r.writes.some((w) => w.path === 'operator_audit_log' && w.body.level === 3 && w.body.entity.before.daily_cap === 5 && w.body.entity.after.daily_cap === 12) && /sube de a poco/i.test(r.resp.message), JSON.stringify(r.resp));
+r = await exec({ ...reqBase, action: 'mail_config_set', daily_cap: 3 }, { config: { daily_cap: 5 } });
+t('F6 controles: bajar el tope no muestra el aviso de rebotes', r.resp.ok === true && !/sube de a poco/i.test(r.resp.message));
+for (const bad of [{ daily_cap: 0 }, { daily_cap: 51 }, { daily_cap: 2.5 }, { window_start: '09:00' }, { window_start: '05:00', window_end: '17:30' }, { window_start: '09:00', window_end: '09:30' }, { followup_days: [7, 3] }, { followup_days: [3] }, { funnel_min_sample: 1 }, {}]) {
+  r = await exec({ ...reqBase, action: 'mail_config_set', ...bad });
+  t('F6 controles: rechaza ' + JSON.stringify(bad) + ' sin escribir nada', r.resp.ok === false && r.writes.filter((w) => w.path !== 'operator_audit_log').length === 0, JSON.stringify(r.resp));
+}
+r = await exec({ ...reqBase, action: 'mail_config_set', window_start: '08:30', window_end: '18:00', followup_days: [4, 9] });
+t('F6 controles: ventana y días de seguimiento válidos se guardan juntos', r.resp.ok === true && r.writes.some((w) => w.body.window_start === '08:30' && w.body.window_end === '18:00' && JSON.stringify(w.body.followup_days) === '[4,9]'));
+r = await exec({ ...reqBase, action: 'email_save', message_id: MID, expected_hash: H1, paste: true, subject: 'Asunto pegado', body: 'Estimado equipo, texto escrito por Christian con GPT y pegado en /ops para reemplazar el borrador.' });
+t('F6 «Pega tu versión»: pasa por la única puerta (draft del motor 21) marcada como de Christian, y se audita como «paste»', r.resp.ok === true && ingestCalls(r).length === 1 && ingestCalls(r)[0].body.action === 'draft' && ingestCalls(r)[0].body.christian === true && /pegada por Christian/.test(ingestCalls(r)[0].body.reason) && r.writes.some((w) => w.path === 'operator_audit_log' && w.body.params.decision === 'paste'), JSON.stringify(r.resp));
+r = await exec({ ...reqBase, action: 'email_save', message_id: MID, expected_hash: H1, subject: 'Asunto editado', body: 'Cuerpo editado por Christian desde el celular, más claro.' });
+t('F6: editar desde /ops también marca la edición como de Christian (S5 la protege)', ingestCalls(r)[0].body.christian === true && ingestCalls(r)[0].body.reason === 'Editado desde /ops');
+
+r = await exec({ ...reqBase, action: 'mail_outcome', candidate_id: CID2, outcome: 'reunion' }, { candidate: { ghl_opportunity_id: 'opp1', canonical: { company_name: 'Persona SpA' } } });
+t('F6 resultado: «reunión» mueve la oportunidad por el gateway (move_stage diagnóstico) y no envía nada', r.resp.ok === true && ingestCalls(r).length === 1 && /prospect-gateway/.test(ingestCalls(r)[0].url) && ingestCalls(r)[0].body.act.type === 'move_stage' && ingestCalls(r)[0].body.act.stage === 'diagnostico', JSON.stringify(r.resp));
+r = await exec({ ...reqBase, action: 'mail_outcome', candidate_id: CID2, outcome: 'perdido' }, { candidate: { ghl_opportunity_id: 'opp1' } });
+t('F6 resultado: «perdido» usa discard con mark_lost', ingestCalls(r)[0].body.act.type === 'discard' && ingestCalls(r)[0].body.act.mark_lost === true);
+r = await exec({ ...reqBase, action: 'mail_outcome', candidate_id: CID2, outcome: 'reunion' }, { candidate: { ghl_opportunity_id: 'opp1' }, gwFails: true });
+t('F6 resultado: si GHL no confirma, no hay éxito falso', r.resp.ok === false && /no confirmó/.test(r.resp.message));
+r = await exec({ ...reqBase, action: 'mail_outcome', candidate_id: CID2, outcome: 'ganado' });
+t('F6 resultado: «ganado» no se hace desde /ops (crea el cliente en GHL)', r.resp.ok === false && /GHL/.test(r.resp.message) && ingestCalls(r).length === 0);
+r = await exec({ ...reqBase, action: 'mail_outcome', candidate_id: CID2, outcome: 'reunion' });
+t('F6 resultado: sin oportunidad en GHL no llama a nada', r.resp.ok === false && ingestCalls(r).length === 0);
+
 r = await exec({ ...reqBase, action: 'autosend_sweep' });
 t('autoenvío: el barrido solo pide al motor 26 «autosweep» (que respeta el interruptor guardado)', r.resp.ok === true && ingestCalls(r).length === 1 && /atacama-linkedin/.test(ingestCalls(r)[0].url) && ingestCalls(r)[0].body.action === 'autosweep' && !('enabled' in ingestCalls(r)[0].body) && r.resp.approved[0] === 'Clínica Ramis');
 r = await exec({ ...reqBase, action: 'prep_li_sent', candidate_id: CID2, kind: 'invitation' });

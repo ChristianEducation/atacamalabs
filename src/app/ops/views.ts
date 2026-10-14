@@ -18,12 +18,18 @@ export const VIEWS = [
 export const SECTIONS = [
   { id: "hoy", label: "Hoy", views: [{ id: "hoy", label: "Hoy" }] },
   { id: "redes", label: "Redes", views: [{ id: "ideas", label: "Ideas" }, { id: "taller", label: "Taller" }, { id: "contenido", label: "Publicaciones" }] },
-  { id: "correo", label: "Prospección y correo", views: [{ id: "aprobaciones", label: "Aprobaciones" }, { id: "control", label: "Contacto preparado" }, { id: "prospeccion", label: "Radar" }, { id: "outreach", label: "Envíos" }] },
+  { id: "correo", label: "Prospección y correo", views: [{ id: "correo", label: "Hoy" }, { id: "aprobaciones", label: "Borradores", q: "&filter=correos" }, { id: "cola", label: "Cola" }, { id: "respuestas", label: "Enviados y respuestas" }, { id: "seguimientos", label: "Seguimientos" }, { id: "embudo", label: "Embudo" }, { id: "prospeccion", label: "Radar" }, { id: "control", label: "Falta contacto" }, { id: "salud", label: "Salud" }, { id: "outreach", label: "LinkedIn", q: "&tab=linkedin" }] },
   { id: "resultados", label: "Resultados", views: [{ id: "resultados", label: "Resultados" }] },
   { id: "sistema", label: "Sistema", views: [{ id: "sistema", label: "Salud" }, { id: "controles", label: "Controles" }] },
 ] as const;
 
-export type ViewId = (typeof VIEWS)[number]["id"] | "hoy" | "ideas" | "taller" | "resultados" | "controles";
+export type ViewId = (typeof VIEWS)[number]["id"] | "hoy" | "ideas" | "taller" | "resultados" | "controles" | "correo" | "cola" | "respuestas" | "seguimientos" | "embudo" | "salud";
+type SectionView = { id: string; label: string; q?: string };
+
+/** Enlace de una pestaña de sección (algunas llevan su filtro: Borradores = solo correos, LinkedIn = pestaña LinkedIn). */
+export function viewHref(v: SectionView): string {
+  return `/ops?view=${v.id}${v.q ?? ""}`;
+}
 export type SectionId = (typeof SECTIONS)[number]["id"];
 
 const ALL: readonly string[] = [...VIEWS.map((v) => v.id), ...SECTIONS.flatMap((s) => s.views.map((v) => v.id))];

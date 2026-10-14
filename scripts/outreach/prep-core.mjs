@@ -84,6 +84,8 @@ export function prepClassify(cand, msgs, nowMs) {
   if (li && ['invite_sent', 'connected', 'message_sent'].includes(li.status)) return out('linkedin_en_curso', 'LinkedIn: ' + li.status);
   if (wl && ['en_lista', 'en_campana', 'conexion', 'mensaje', 'followup'].includes(wl.state)) return out('waalaxy', 'Waalaxy: ' + wl.state);
   if (init.some((m) => m.status === 'approved')) return out('email_aprobado', 'Correo aprobado, sale en la próxima ventana');
+  const lastInit = init.slice().sort((a, b) => String(b.updated_at || b.created_at || '').localeCompare(String(a.updated_at || a.created_at || '')))[0];
+  if (lastInit && ((lastInit.status === 'draft' && /^Devuelto a borrador por el motor/.test(String(lastInit.error || ''))) || (lastInit.status === 'cancelled' && /^Cancelado por el motor/.test(String(lastInit.error || ''))))) return out('en_espera', 'EN ESPERA: devuelto por el motor (revísalo y decide)');
   if (init.some((m) => m.status === 'draft')) return out('email_listo', 'Borrador de correo esperando tu aprobación');
   if (li && li.status === 'ready') return out('linkedin_listo', 'Invitación y mensaje preparados para enviar a mano');
   const p = st.prep || null;

@@ -242,6 +242,11 @@ export function planDraft(req, ctx) {
   const history = ctx.history || [];
   const live = history.find((m) => m.kind === kind && ['draft', 'approved', 'sending'].includes(m.status)) || null;
   if (live && live.status === 'sending') return fail('en_envio', 'Ese correo se está enviando ahora mismo.');
+  // S5 (spec v3 §7): lo automático (Contact Prep / Hermes) nunca pisa el trabajo de Christian ni un correo que el motor devolvió.
+  if (req.auto === true) {
+    const held = outreachHeldReason(history, ctx.now, kind);
+    if (held) return { response: { ok: false, status: 'held', error: held.code, message: held.message, safety: { messages_sent: 0 } }, writes: [] };
+  }
   const sentSame = history.find((m) => m.kind === kind && m.direction === 'outbound' && m.status === 'sent');
   if (sentSame) return fail('ya_enviado', 'Ya se envió un correo de tipo «' + kind + '» a este prospecto: un solo envío por tipo (usa seguimiento o respuesta).');
   const initialSent = history.find((m) => m.kind === 'initial' && m.direction === 'outbound' && m.status === 'sent');
@@ -279,7 +284,7 @@ export function planDraft(req, ctx) {
     }
   }
   const hash = contentHash(to, subject, body);
-  const base = { to_email: to, subject: String(subject).trim(), body: String(body).trim(), content_hash: hash, status: 'draft', confirm_code: null, confirm_hash: null, confirm_expires_at: null, approved_by: null, approved_at: null, approval_text: null, scheduled_for: null, updated_at: now };
+  const base = { to_email: to, subject: String(subject).trim(), body: String(body).trim(), content_hash: hash, status: 'draft', confirm_code: null, confirm_hash: null, confirm_expires_at: null, approved_by: null, approved_at: null, approval_text: null, scheduled_for: null, updated_at: now, ...(req.christian === true ? { edited_by_christian_at: now, error: null } : {}) };
   let writes, msg, invalidated = false;
   if (live) {
     invalidated = live.status === 'approved' && live.content_hash !== hash;
@@ -297,6 +302,21 @@ export function planDraft(req, ctx) {
     writes = [{ method: 'POST', path: 'outreach_messages', body: msg, prefer: 'return=minimal' }];
   }
   return { response: { ok: true, status: live ? 'updated' : 'created', message: (live ? 'Actualicé' : 'Guardé') + ' el borrador de ' + cand.company_name + ' (' + kind + ', NO enviado)' + (invalidated ? '. La aprobación anterior quedó anulada: hay que aprobarlo de nuevo.' : '.'), draft: preview(msg), approval_invalidated: invalidated, warnings: lint ? lint.warnings.slice(0, 6).map((w) => w.text) : [], cold: lint ? { score: lint.score, level: lint.level, cta_kind: lint.cta_kind, similarity: lint.similarity } : null, next: 'approve_outreach' }, writes, message: msg };
+}
+
+/**
+ * S5: ¿por qué un borrador automático NO debe crearse/reemplazarse para este prospecto? null = puede.
+ *  · Christian editó un correo del prospecto en las últimas 72 h (edited_by_christian_at).
+ *  · El motor devolvió a borrador (S3) o canceló un correo aprobado del mismo tipo y nadie lo ha resuelto: queda EN ESPERA hasta que Christian decida.
+ */
+export function outreachHeldReason(history, nowMs, kind) {
+  const h = Array.isArray(history) ? history : [];
+  const edited = h.find((m) => m && m.edited_by_christian_at && nowMs - Date.parse(m.edited_by_christian_at) < 72 * 3600000);
+  if (edited) return { code: 'editado_por_christian', message: 'Christian editó un correo de este prospecto hace menos de 72 h: lo automático no lo reemplaza.' };
+  const same = h.filter((m) => m && m.direction !== 'inbound' && (!kind || m.kind === kind)).sort((a, b) => String(b.updated_at || b.created_at || '').localeCompare(String(a.updated_at || a.created_at || '')));
+  const last = same[0];
+  if (last && ((last.status === 'draft' && /^Devuelto a borrador por el motor/.test(String(last.error || ''))) || (last.status === 'cancelled' && /^Cancelado por el motor/.test(String(last.error || ''))))) return { code: 'devuelto_por_motor', message: 'EN ESPERA: devuelto por el motor. Christian decide antes de regenerarlo.' };
+  return null;
 }
 
 /** Solo lectura: explica el score de un correo pendiente (o de un asunto/cuerpo dado) frente a los demás borradores y enviados. */

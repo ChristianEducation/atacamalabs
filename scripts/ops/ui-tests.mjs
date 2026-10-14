@@ -84,7 +84,7 @@ const mock = http.createServer((req, res) => {
     if (req.url === '/__reset') { state.calls = []; state.mode = 'ok'; state.cards = CARDS; state.autosend = false; state.paused = false; state.navV2 = true; state.tpieces = [TPIECE(1), TPIECE(2, { status: 'en_cola', status_label: 'En cola', current_version: null, versions: [], feedback: [], thumb: null, channel: 'linkedin_page', channel_label: 'LinkedIn · página', format: 'texto' })]; state.ideas = [IDEA(1), IDEA(2, { channel: 'linkedin_page', channel_label: 'LinkedIn · página', format: 'texto' }), IDEA(15, { score: 72, title: 'Idea débil plegada' })]; return send(200, {}); }
     if (req.url === '/__nav') { state.navV2 = j.v2 !== false; return send(200, {}); }
     if (req.url === '/__mode') { state.mode = j.mode; return send(200, {}); }
-    if (req.url === '/webhook/atacama-ops') { state.opsHits++; if (req.headers['x-atacama-key'] !== INGEST_KEY) return send(403, {}); return j.action === 'taller_list' ? send(200, { ok: true, taller: tallerView() }) : j.action === 'ideas_list' ? send(200, { ok: true, ideas: ideasView() }) : send(200, { ok: true, panel: panel() }); }
+    if (req.url === '/webhook/atacama-ops') { state.opsHits++; if (req.headers['x-atacama-key'] !== INGEST_KEY) return send(403, {}); return j.action === 'taller_list' ? send(200, { ok: true, taller: tallerView() }) : j.action === 'ideas_list' ? send(200, { ok: true, ideas: ideasView() }) : j.action === 'mail_view' ? send(200, { ok: true, mail: mailView() }) : send(200, { ok: true, panel: panel() }); }
     if (req.url === '/webhook/atacama-ops-actions') {
       if (req.headers['x-ops-approval'] !== OPS_KEY) return send(403, { message: 'Authorization data is wrong!' });
       if (j.action === 'overview') return send(200, overview());
@@ -103,6 +103,18 @@ const mock = http.createServer((req, res) => {
     return send(404, {});
   });
 });
+
+/** Fase 6: vista «Prospección y correo» simulada (forma de n8n 25 · mail_view). */
+function mailView() {
+  const at = new Date().toISOString();
+  return { generated_at: at,
+    hoy: { mode: 'live', paused: false, cap: 40, sent_today: 12, window: { start: '09:00', end: '17:30' }, in_window: true, next_send: 'en la próxima corrida (cada 10 min)', followup_days: [3, 7], autosend: { enabled: false, min_score: 80 }, legal_footer: 'Atacama Labs · atacamalabs.cl', funnel_min_sample: 20, drafts: 3, approved: 2, will_today: 2, will_next: 0, updated_by: null, updated_at: at },
+    cola: [{ id: UID(4), candidate_id: UID(504), company: 'Empresa 4', kind: 'initial', to: 'contacto4@empresa4.cl', subject: 'Asunto 4', status: 'approved', approved_at: at, scheduled_for: at, position: 1, eta: 'hoy' }],
+    respuestas: { replies: [{ id: UID(950), candidate_id: UID(505), company: 'Empresa 5', from: 'gerencia@empresa5.cl', subject: 'Re: idea', snippet: 'Nos interesa conversarlo.', cls: 'reply', cls_label: 'Respuesta', at, reply_draft: false }], sent: [{ id: UID(6), candidate_id: UID(506), company: 'Empresa 6', kind: 'initial', to: 'x@e6.cl', subject: 'S', sent_at: at, answer: null }] },
+    seguimientos: { drafts: [], upcoming: [{ candidate_id: UID(506), company: 'Empresa 6', n: 1, label: 'Seguimiento 1', due: '2026-10-20', overdue: false }] },
+    embudo: { stages: ['Investigado', 'Preparado', 'Aprobado', 'Enviado', 'Respondió', 'Reunión', 'Cliente'].map((s, i) => ({ stage: s, count: 10 - i })), min_sample: 20, by_industry: [{ key: 'Salud', sent: 8, replied: 1, rate_pct: null, enough: false }], by_angle: [] },
+    salud: { sent7: 48, bounces7: 2, unsubs7: 0, complaints7: 0, rate_pct: 4.2, level: 'high', alert: 'Rebote de 4.2 % en 7 días (2 de 48): vigila la calidad de los correos encontrados.', suggestion: { from: 40, to: null, text: 'Aún no conviene subir el tope: hacen falta al menos 50 envíos en 7 días para juzgar (van 48).' }, suppression_total: 1, suppression: [{ email: 'x@y.cl', reason: 'bounce', at }], pace: [{ day: '2026-10-14', sent: 12, cap: 40 }], last_sent_at: at } };
+}
 
 async function startApp() {
   const env = { ...process.env, N8N_BASE_URL: `http://localhost:${MOCK_PORT}`, ATACAMA_INGEST_KEY: INGEST_KEY, OPS_APPROVAL_KEY: OPS_KEY, OPS_NO_CACHE: '1', OPS_PANEL_PASSWORD: PIN, OPS_PANEL_SECRET: 'secreto-de-prueba-largo-1234567890', SUPABASE_URL: 'http://127.0.0.1:9', SUPABASE_SERVICE_ROLE_KEY: 'x', NEXT_TELEMETRY_DISABLED: '1' };
@@ -142,7 +154,7 @@ async function main() {
     t('login correcto: entra al cockpit con barra lateral y estado ON', (await page.locator('.ops-side .ops-on').innerText()) === 'ON' && (await page.locator('h1').first().innerText()) === 'Hoy');
 
     // ---------------------------------------------------------------- navegación escritorio
-    const secs = [['Hoy', 'hoy', 'Hoy'], ['Redes', 'ideas', 'Ideas'], ['Prospección y correo', 'aprobaciones', 'Aprobaciones'], ['Resultados', 'resultados', 'Resultados'], ['Sistema', 'sistema', 'Sistema']];
+    const secs = [['Hoy', 'hoy', 'Hoy'], ['Redes', 'ideas', 'Ideas'], ['Prospección y correo', 'correo', 'Prospección y correo'], ['Resultados', 'resultados', 'Resultados'], ['Sistema', 'sistema', 'Sistema']];
     let navOk = true;
     for (const [label, id, h1want] of secs) {
       await page.locator('.ops-side a.ops-nav-a', { hasText: new RegExp('^' + label) }).first().click();
@@ -161,7 +173,7 @@ async function main() {
     }
     t('v3 · ninguna URL vieja de /ops queda rota: cada vista vieja abre dentro de su sección nueva', oldOk);
     await page.goto(APP + '/ops?view=control'); await page.waitForSelector('.ops-sec-tabs');
-    t('v3 · pestañas de sección: Prospección y correo muestra Aprobaciones, Contacto preparado, Radar y Envíos', (await page.locator('.ops-sec-tabs a').allInnerTexts()).join('|') === 'Aprobaciones|Contacto preparado|Radar|Envíos' && (await page.locator('.ops-sec-tabs a[aria-current="page"]').innerText()) === 'Contacto preparado');
+    t('v3 · pestañas de sección: Prospección y correo muestra sus 9 vistas + LinkedIn', (await page.locator('.ops-sec-tabs a').allInnerTexts()).join('|') === 'Hoy|Borradores|Cola|Enviados y respuestas|Seguimientos|Embudo|Radar|Falta contacto|Salud|LinkedIn' && (await page.locator('.ops-sec-tabs a[aria-current="page"]').innerText()) === 'Falta contacto');
     await fetch(`http://localhost:${MOCK_PORT}/__nav`, { method: 'POST', body: JSON.stringify({ v2: false }) });
     await page.goto(APP + '/ops'); await page.waitForSelector('#ops-main h1');
     t('v3 · interruptor ops_nav_v2=false: vuelve la navegación anterior (7 vistas, portada Inicio)', (await page.locator('.ops-side a.ops-nav-a').count()) === 7 && (await page.locator('#ops-main h1').first().innerText()) === 'Inicio' && (await page.locator('.ops-sec-tabs').count()) === 0);
@@ -170,7 +182,7 @@ async function main() {
     await page.goto(APP + '/ops?view=outreach&tab=linkedin');
     await page.reload(); await page.waitForFunction(() => document.querySelector('#ops-main h1') && document.querySelector('#ops-main h1').textContent !== 'Cargando…'); await page.waitForSelector('a.ops-tab-on');
     t('deep link: recargar conserva la vista y la pestaña', (await page.locator('h1').first().innerText()) === 'Outreach' && (await page.locator('nav[aria-label="Canal"] a.ops-tab-on').innerText()) === 'LinkedIn');
-    t('v3 · badges: Hoy = total de la bandeja (6); Prospección y correo = 3 correos + 1 LinkedIn + 4 de contacto preparado (8)', (await page.locator('.ops-side a[href="/ops?view=hoy"] .ops-badge').innerText()) === '6' && (await page.locator('.ops-side a[href="/ops?view=aprobaciones"] .ops-badge').innerText()) === '8');
+    t('v3 · badges: Hoy = total de la bandeja (6); Prospección y correo = 3 correos + 1 LinkedIn + 4 de contacto preparado (8)', (await page.locator('.ops-side a[href="/ops?view=hoy"] .ops-badge').innerText()) === '6' && (await page.locator('.ops-side a[href="/ops?view=correo"] .ops-badge').innerText()) === '8');
 
     // ---------------------------------------------------------------- paridad de información
     await page.goto(APP + '/ops?view=hoy'); await page.waitForSelector('#ops-main h1');
@@ -192,7 +204,7 @@ async function main() {
     await shot(page, 'desktop-control');
     const ctl = await page.locator('#ops-main').innerText();
     t('Control: métricas (sin acción, emails listos, LinkedIn por enviar, buscar contacto, enviados hoy, respuestas, follow-ups)', /Investigados válidos SIN ACCIÓN/i.test(ctl) && /Emails listos para aprobación/i.test(ctl) && /LinkedIn por enviar/i.test(ctl) && /Buscar contacto/i.test(ctl) && /Enviados hoy/i.test(ctl) && /Respuestas/i.test(ctl) && /Follow-ups/i.test(ctl), ctl.slice(0, 300));
-    t('Control: vive en «Prospección y correo» y su pestaña está activa', (await page.locator('.ops-side a[aria-current="page"]').innerText()).startsWith('Prospección y correo') && (await page.locator('.ops-sec-tabs a[aria-current="page"]').innerText()) === 'Contacto preparado');
+    t('Control: vive en «Prospección y correo» y su pestaña está activa', (await page.locator('.ops-side a[aria-current="page"]').innerText()).startsWith('Prospección y correo') && (await page.locator('.ops-sec-tabs a[aria-current="page"]').innerText()) === 'Falta contacto');
     t('Control: el envío automático nace en OFF', (await page.getByTestId('autosend-state').innerText()) === 'OFF');
     await page.getByRole('button', { name: /Encender envío automático/ }).click();
     t('Control: encender pide confirmación explícita y no llama a nada todavía', (await page.getByRole('button', { name: 'Sí, encender' }).count()) === 1 && (await calls()).filter((c) => c.action === 'autosend_set').length === 0);
@@ -259,6 +271,52 @@ async function main() {
     const cs = await calls();
     t('guardar: una sola llamada email_save con la versión vista (hash), asunto y cuerpo; NINGUNA aprobación', cs.length === 1 && cs[0].action === 'email_save' && cs[0].message_id === UID(1) && cs[0].expected_hash === 'hash0001' && cs[0].subject === 'Asunto nuevo de Christian' && cs[0].body.startsWith('Texto nuevo') && !cs.some((c) => /approve/.test(c.action)) && /^[A-Za-z0-9_-]{8,64}$/.test(cs[0].request_id));
     t('guardar: avisa «NO se envió» con el mensaje real del backend', /NO se envió/.test(await page.locator('.ops-toast').first().innerText()));
+
+    // ---------------------------------------------------------------- Fase 6: «Pega tu versión» (diff antes de guardar; misma puerta email_save)
+    await c1.getByRole('button', { name: 'Pega tu versión' }).click();
+    await c1.locator('[data-testid="paste-box"] textarea').fill('Asunto: Asunto pegado con GPT\n\nEstimado equipo, este es el texto que escribí con GPT y pego aquí.');
+    await c1.locator('[data-testid="paste-diff"]').waitFor();
+    t('F6 pega tu versión: muestra las diferencias (líneas nuevas y quitadas) antes de guardar', (await c1.locator('[data-testid="paste-diff"] .ops-diff-add').count()) >= 1 && (await c1.locator('[data-testid="paste-diff"] .ops-diff-del').count()) >= 1 && /Asunto pegado con GPT/.test(await c1.innerText()));
+    const nBefore = (await calls()).length;
+    await c1.getByRole('button', { name: 'Guardar mi versión' }).click();
+    await waitCall('email_save');
+    for (let i = 0; i < 40 && (await calls()).length === nBefore; i++) await new Promise((r) => setTimeout(r, 250));
+    const pc = (await calls()).slice(nBefore);
+    t('F6 pega tu versión: una sola llamada email_save con paste=true, asunto de la primera línea y cuerpo sin ella; nada se aprueba', pc.length === 1 && pc[0].action === 'email_save' && pc[0].paste === true && pc[0].subject === 'Asunto pegado con GPT' && /^Estimado equipo/.test(pc[0].body) && !pc.some((c) => /approve/.test(c.action)), JSON.stringify(pc));
+
+    // ---------------------------------------------------------------- Fase 6: sección Prospección y correo
+    await page.goto(APP + '/ops?view=correo'); await page.waitForSelector('[data-testid="mail-controls"]');
+    t('F6 Hoy: enviados/tope, ventana, próximo envío y pie legal', /12\/40/.test(await page.locator('#ops-main').innerText()) && /09:00–17:30/.test(await page.locator('#ops-main').innerText()) && /Atacama Labs · atacamalabs\.cl/.test(await page.locator('#ops-main').innerText()));
+    await page.locator('#mc-cap').fill('45');
+    t('F6 tope: subir muestra «sube de a poco» antes de confirmar', /Sube de a poco/.test(await page.locator('[data-testid="mail-controls"]').innerText()));
+    await page.locator('[data-testid="mail-controls"] .ops-ctl-row').first().getByRole('button', { name: 'Cambiar' }).click();
+    await page.waitForSelector('[data-testid="confirm-cap"]');
+    const nb2 = (await calls()).length;
+    await page.locator('[data-testid="confirm-cap"]').getByRole('button', { name: 'Sí, guardar' }).click();
+    await waitCall('mail_config_set');
+    const mc = (await calls()).slice(nb2).filter((c) => c.action === 'mail_config_set');
+    t('F6 tope: con confirmación, una sola llamada mail_config_set con daily_cap 45', mc.length === 1 && mc[0].daily_cap === 45 && mc[0].window_start === undefined, JSON.stringify(mc));
+    await page.locator('#mc-cap').fill('51');
+    t('F6 tope: 51 no se puede guardar (botón desactivado)', await page.locator('[data-testid="mail-controls"] .ops-ctl-row').first().getByRole('button', { name: 'Cambiar' }).isDisabled());
+    let tabsOk = true;
+    for (const [v, h1] of [['cola', 'Cola de envío'], ['respuestas', 'Enviados y respuestas'], ['seguimientos', 'Seguimientos'], ['embudo', 'Embudo'], ['salud', 'Salud del envío']]) {
+      await page.goto(APP + '/ops?view=' + v); await page.waitForSelector('#ops-main h1');
+      if ((await page.locator('#ops-main h1').first().innerText()) !== h1) { tabsOk = false; console.log('  pestaña', v); }
+    }
+    t('F6: las vistas Cola, Enviados y respuestas, Seguimientos, Embudo y Salud abren', tabsOk);
+    t('F6 Salud: rebote, alerta y sugerencia de calentamiento (solo sugiere)', /4\.2 %/.test(await page.locator('#ops-main').innerText()) && /Aún no conviene subir el tope/.test(await page.locator('[data-testid="warmup"]').innerText()));
+    await page.goto(APP + '/ops?view=cola'); await page.waitForSelector('[data-testid="mail-queue"]');
+    t('F6 Cola: cada aprobado ofrece «Volver a borrador» y «Cancelar»', (await page.locator('[data-testid="mail-queue"]').getByRole('button', { name: 'Volver a borrador' }).count()) === 1 && (await page.locator('[data-testid="mail-queue"]').getByRole('button', { name: 'Cancelar' }).count()) === 1);
+    await page.goto(APP + '/ops?view=respuestas'); await page.waitForSelector('[data-testid="mail-replies"]');
+    await page.locator('[data-testid="mail-replies"]').getByRole('button', { name: 'Reunión' }).click();
+    const nb3 = (await calls()).length;
+    await page.locator('[data-testid="mail-replies"]').getByRole('button', { name: 'Sí' }).click();
+    await waitCall('mail_outcome');
+    const oc = (await calls()).slice(nb3).filter((c) => c.action === 'mail_outcome');
+    t('F6 Respuestas: «Reunión» pide confirmación y llama mail_outcome una vez', oc.length === 1 && oc[0].outcome === 'reunion' && oc[0].candidate_id === UID(505), JSON.stringify(oc));
+    await page.goto(APP + '/ops?view=outreach'); await page.waitForSelector('#ops-main h1');
+    t('F6: «outreach» sin pestaña abre LinkedIn (la pestaña de correo sigue en ?tab=email)', (await page.locator('nav[aria-label="Canal"] a.ops-tab-on').innerText()) === 'LinkedIn');
+    await page.goto(APP + '/ops?view=outreach&tab=email'); await page.waitForSelector('.ops-ap');
 
     // ---------------------------------------------------------------- Cold Email v2: calidad y versión anterior
     const cq = page.locator('.ops-ap', { hasText: 'Empresa 3' }).first();
@@ -532,12 +590,13 @@ async function main() {
       t(`móvil ${w}: la X cierra el menú`, (await mp.locator('.ops-drawer-open').count()) === 0);
       await mp.locator('.ops-burger').click();
       await mp.locator('.ops-drawer a', { hasText: /^Prospección y correo/ }).click();
-      await mp.waitForURL(/view=aprobaciones/);
-      t(`móvil ${w}: elegir una sección cierra el menú y navega`, (await mp.locator('.ops-drawer-open').count()) === 0 && (await mp.locator('h1').first().innerText()) === 'Aprobaciones');
+      await mp.waitForURL(/view=correo/);
+      t(`móvil ${w}: elegir una sección cierra el menú y navega`, (await mp.locator('.ops-drawer-open').count()) === 0 && (await mp.locator('h1').first().innerText()) === 'Prospección y correo');
+      await mp.goto(`${APP}/ops?view=aprobaciones`);
       await mp.waitForSelector('.ops-ap');
       await shot(mp, `movil-${w}-aprobaciones`);
       t(`móvil ${w}: sin scroll horizontal en Aprobaciones`, await mp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
-      for (const v of ['hoy', 'inicio', 'ideas', 'taller', 'taller&pieza=' + UID(801), 'resultados', 'controles', 'control', 'outreach', 'contenido', 'sistema', 'prospeccion']) {
+      for (const v of ['hoy', 'inicio', 'ideas', 'taller', 'taller&pieza=' + UID(801), 'resultados', 'controles', 'control', 'outreach', 'contenido', 'sistema', 'prospeccion', 'correo', 'cola', 'respuestas', 'seguimientos', 'embudo', 'salud']) {
         await mp.goto(`${APP}/ops?view=${v}`);
         await mp.waitForSelector('h1');
         if (!(await mp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1))) { t(`móvil ${w}: sin scroll horizontal en ${v}`, false); break; }

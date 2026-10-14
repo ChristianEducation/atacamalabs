@@ -83,7 +83,7 @@ try {
   else { const st = { drafts: 'status=eq.draft', approved: 'status=eq.approved', sent: 'status=eq.sent', failed: 'status=eq.failed' }[filter]; hist = sb + 'outreach_messages?direction=eq.outbound&' + (st ? st + '&' : '') + 'select=${MSG_SELECT}&order=created_at.desc&limit=' + limit; }
   return [{ json: { action, candidate_id: cid || null, kind, subject: b.subject != null ? String(b.subject) : null, body: b.body != null ? String(b.body) : null, to_email: b.to_email ? String(b.to_email) : null, override_to: b.override_to === true,
     confirmation_code: b.confirmation_code ? String(b.confirmation_code) : '', order_text: b.order_text ? String(b.order_text) : '', by: String(b.by || 'Christian vía Hermes').slice(0, 60), filter, limit, now: Date.now(),
-    reason: b.reason ? String(b.reason) : '', auto: b.auto === true, min_score: b.min_score != null ? Number(b.min_score) : null,
+    reason: b.reason ? String(b.reason) : '', auto: b.auto === true, christian: b.christian === true, min_score: b.min_score != null ? Number(b.min_score) : null,
     cold: { evidence: b.evidence, insight: b.insight, friction: b.friction, angle: b.angle, cta_reason: b.cta_reason },
     peers_url: ['draft', 'lint'].includes(action) ? sb + 'outreach_messages?direction=eq.outbound&kind=in.(initial,followup_1,followup_2)&status=in.(draft,approved,sending,sent)&created_at=gte.' + new Date(Date.now() - 75 * 86400000).toISOString() + '&select=id,candidate_id,company_name,kind,status,subject,body&order=created_at.desc&limit=80' : '${NONE}', cand_url: needsCand ? sb + 'prospect_candidates?id=eq.' + cid + '&select=${CAND_SELECT}&limit=1' : '${NONE}', hist_url: hist } }];
 } catch (e) { return [{ json: { fatal: String((e && e.message) || e) } }]; }`;

@@ -20,6 +20,7 @@ import { growthNorm, growthResourceRank } from '../../scripts/content/growth-cor
 import * as v3Core from '../../scripts/ops/v3-core.mjs';
 import * as ideasCore from '../../scripts/content/ideas-core.mjs';
 import * as tallerCore from '../../scripts/content/taller-core.mjs';
+import * as mvCore from '../../scripts/outreach/mail-view-core.mjs';
 
 const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 export const N8N_BASE = 'https://n8n.srv1650725.hstgr.cloud';
@@ -48,10 +49,10 @@ const sbApply = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRe
     headerParameters: { parameters: [{ name: 'Prefer', value: '={{ $json.prefer || "return=minimal" }}' }] }, sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full() } });
 const GH_HEADERS = [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', value: 'application/json' }];
 
-export const LIB = [...new Map([...Object.values(core), ...['linkedinOverview', 'linkedinView', 'liLabel'].map((k) => liCore[k]), ...Object.values(prepCore), ...Object.values(edCore), ...Object.values(rfCore), growthNorm, growthResourceRank, ...Object.values(v3Core), ...Object.values(ideasCore), ...Object.values(tallerCore)].filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
+export const LIB = [...new Map([...Object.values(core), ...['linkedinOverview', 'linkedinView', 'liLabel'].map((k) => liCore[k]), ...Object.values(prepCore), ...Object.values(edCore), ...Object.values(rfCore), growthNorm, growthResourceRank, ...Object.values(v3Core), ...Object.values(ideasCore), ...Object.values(tallerCore), ...Object.values(mvCore)].filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
 const CFG_JSON = JSON.stringify({ tz: OPS_CFG.tz, stages: OPS_CFG.stages, ignore_opps: OPS_CFG.ignore_opps });
 
-export const ACTIONS = ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'radar_report', 'content_radar_report', 'job_report', 'alerts_poll', 'alerts_ack', 'ideas_list', 'ideas_gate', 'ideas_propose', 'ideas_revise', 'taller_list'];
+export const ACTIONS = ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'radar_report', 'content_radar_report', 'job_report', 'alerts_poll', 'alerts_ack', 'ideas_list', 'ideas_gate', 'ideas_propose', 'ideas_revise', 'taller_list', 'mail_view'];
 
 export const parseCode = `try {
   const first = $('Ops Webhook').first().json || {};
@@ -61,7 +62,7 @@ export const parseCode = `try {
   if (!ACTIONS.includes(action)) throw new Error('action inválida: usa ' + ACTIONS.join(' | '));
   const dry = b.dry_run === true;
   // la hora solo se puede simular en consultas de lectura o con dry_run (pruebas); las escrituras siempre usan la hora real
-  const now = Number.isFinite(Number(b.now_ms)) && (dry || ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'ideas_list', 'ideas_gate', 'taller_list'].includes(action)) ? Number(b.now_ms) : Date.now();
+  const now = Number.isFinite(Number(b.now_ms)) && (dry || ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'ideas_list', 'ideas_gate', 'taller_list', 'mail_view'].includes(action)) ? Number(b.now_ms) : Date.now();
   const need = {
     sb: !['alerts_ack'].includes(action) || true,
     ghl: ['daily', 'today', 'urgent', 'stale', 'replies', 'panel'].includes(action),
@@ -69,13 +70,13 @@ export const parseCode = `try {
     deep: (action === 'health' && b.deep === true) || (action === 'alerts_poll' && b.deep_gmail === true) || (action === 'daily' && b.deep === true),
     learn: action === 'content_performance',
     panel: action === 'panel',
-    growth: ['panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'content_performance', 'alerts_poll', 'health', 'ideas_list', 'ideas_gate', 'ideas_propose', 'ideas_revise', 'taller_list'].includes(action),
+    growth: ['panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'content_performance', 'alerts_poll', 'health', 'ideas_list', 'ideas_gate', 'ideas_propose', 'ideas_revise', 'taller_list', 'mail_view'].includes(action),
   };
   const sb = '${SUPABASE}/rest/v1/', none = '${NONE}';
   const iso = (ms) => new Date(ms).toISOString();
   const n8n = '${N8N_BASE}/api/v1/';
   const u = {
-    messages: sb + 'outreach_messages?created_at=gte.' + iso(now - 45 * 86400000) + '&select=id,candidate_id,company_name,kind,direction,status,classification,subject,body,to_email,content_hash,sent_at,created_at,updated_at,metadata&order=created_at.desc&limit=700',
+    messages: sb + 'outreach_messages?created_at=gte.' + iso(now - 45 * 86400000) + '&select=id,candidate_id,company_name,kind,direction,status,classification,subject,body,to_email,content_hash,sent_at,created_at,updated_at,metadata,error,edited_by_christian_at,scheduled_for,approved_at,learning_pair&order=created_at.desc&limit=700',
     cands: sb + 'prospect_candidates?status=in.(in_ghl,accepted,contacted)&select=id,company_name,status,band,priority_score,source_name,created_at,ghl_stage,ghl_opportunity_id,ghl_contact_id,next_action_at,channel_state,industry,location,domain,angle:canonical->>outreach_angle,quote:canonical->evidence_quotes->0->>quote,contact:canonical->contact,sflags:canonical->source_flags,extra_emails:canonical->extra_contacts->emails,more_emails:canonical->emails&order=created_at.desc&limit=400',
     pieces: sb + 'content_pieces?select=id,topic,channel,resource_id,editorial_type:piece->>editorial_type,status,ghl_status,ghl_approval_status,scheduled_at,published_at,is_test,learning,learned_at,created_at,format,category,score,hook:piece->>hook,taller_status,updated_at,motion_language:piece->motion_brief->>language,story_template:piece->story->>template&order=created_at.desc&limit=300',
     metrics: sb + 'content_metrics?captured_at=gte.' + iso(now - 30 * 86400000) + '&select=content_piece_id,metric_window,status,likes,comments,shares,captured_at&order=captured_at.desc&limit=200',
@@ -115,6 +116,11 @@ export const parseCode = `try {
   if (action === 'taller_list') growth_reads.push({ key: 'tpieces', url: sb + 'content_pieces?taller_status=not.is.null&is_test=eq.' + TT + '&select=*&order=updated_at.desc&limit=200' }, { key: 'tversions', url: sb + 'content_versions?is_test=eq.' + TT + '&select=*&order=created_at.desc&limit=400' },
     { key: 'tfeedback', url: sb + 'content_feedback?is_test=eq.' + TT + '&select=*&order=created_at.desc&limit=500' }, { key: 'tideas', url: sb + 'content_ideas?is_test=eq.' + TT + '&piece_id=not.is.null&select=*&limit=300' },
     { key: 'ttaken', url: sb + 'content_pieces?status=in.(scheduled,in_review,approved)&scheduled_at=gte.' + iso(now - 86400000) + '&select=id,channel,format,scheduled_at&limit=300' });
+  // v3 · Fase 6: sección Prospección y correo (solo lectura)
+  if (action === 'mail_view') growth_reads.push({ key: 'mail_msgs', url: sb + 'outreach_messages?created_at=gte.' + iso(now - 120 * 86400000) + '&select=id,candidate_id,company_name,kind,direction,status,classification,subject,body,to_email,from_email,content_hash,sent_at,created_at,updated_at,approved_at,scheduled_for,metadata,error,edited_by_christian_at&order=created_at.desc&limit=1500' },
+    { key: 'mail_supp', url: sb + 'outreach_suppression?select=email,reason,created_at&order=created_at.desc&limit=500' },
+    { key: 'mail_cfg', url: sb + 'outreach_config?id=eq.1&select=mode,paused,daily_cap,window_start,window_end,tz,followup_days,legal_footer,autosend_enabled,autosend_min_score,funnel_min_sample,config_updated_by,updated_at' },
+    { key: 'mail_cands', url: sb + 'prospect_candidates?select=id,company_name,status,industry,ghl_stage&limit=2000' });
   if (action === 'ideas_gate') growth_reads.push({ key: 'sources_verified', url: sb + 'content_sources?verified=eq.true&created_at=gte.' + iso(now - 21 * 86400000) + '&select=id,title,url,kind,signal_type,source_date,created_at&order=created_at.desc&limit=60' });
   if (['ideas_propose', 'ideas_revise'].includes(action)) {
     const evs = (action === 'ideas_propose' ? ((P.proposal || {}).ideas || []) : [P.idea || {}]).flatMap((i) => (i && Array.isArray(i.evidence) ? i.evidence : []));
@@ -209,6 +215,7 @@ else if (A === 'taller_list') {
   else if ($('Sign Prep').first().json.skip === false) missing.push('firmas de Storage');
   out = { taller: tallerListView({ include_test: (p.params || {}).test === true, now: p.now, pieces: G.tpieces || [], versions: G.tversions || [], feedback: G.tfeedback || [], ideas: G.tideas || [], taken: G.ttaken || [], cfg: d.content_cfg || {}, signed }) };
 }
+else if (A === 'mail_view') { if (!G.mail_cfg) missing.push('configuración de correo'); out = { mail: mailView({ now: p.now, tz: CFG.tz, cfg: (G.mail_cfg || [])[0] || {}, msgs: G.mail_msgs || [], supp: G.mail_supp || [], cands: G.mail_cands || [], pause: v3Pause(d.system_state) }) }; }
 else if (A === 'ideas_list') { out = { ideas: ideasListView(G.ideas_rows || [], G.idea_batches || [], p.now, CFG.tz) }; }
 else if (A === 'ideas_gate') { out = ideasGateView({ now: p.now, tz: CFG.tz, content_cfg: d.content_cfg, system_state: d.system_state, ideas_all: G.ideas_all || [], pieces: d.pieces, sources_verified: G.sources_verified || [], resources: d.resources, intel: d.intel }); out.text = 'Ideas: ' + out.mode + ' — ' + out.reason; }
 else if (A === 'ideas_propose' || A === 'ideas_revise') {

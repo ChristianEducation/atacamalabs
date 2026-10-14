@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getPanel } from "@/lib/ops/data";
 import { getOverview } from "@/lib/ops/actions-client";
 import type { InboxItem, Overview, Panel, PieceRow, Prospect, Status } from "@/lib/ops/types";
-import { Freshness } from "./Client";
+import { Empty, Head, Pill, Section, Stat } from "./Blocks";
 import { ApprovalsCenter, ContentApprovalCard, EmailLibrary, LinkedinReadyCard, LinkedinSentRow, type ApprovalFilter } from "./Approvals";
 import { GHL_PLANNER_URL, Preview } from "./Parts";
 import { Shell } from "./Shell";
@@ -10,37 +10,14 @@ import { ControlCenter } from "./Control";
 import { PauseCard } from "./Pause";
 import { IdeasBoard } from "./Ideas";
 import { TallerBoard } from "./Taller";
-import { getIdeas, getTaller } from "@/lib/ops/v3-data";
-import { parseView, sectionOf, type ViewId } from "./views";
+import { getDns, getIdeas, getMail, getTaller } from "@/lib/ops/v3-data";
+import { parseView, sectionOf, viewHref, type ViewId } from "./views";
+import { MailSection, type MailTab } from "./Mail";
+
+const MAIL_TABS: readonly string[] = ["correo", "cola", "respuestas", "seguimientos", "embudo", "salud"];
 
 const STATUS_LABEL: Record<Status, string> = { ok: "Todo OK", atencion: "Atención", fallo: "Fallo" };
 const BAND_LABEL: Record<string, string> = { alta: "Prioridad alta", valida: "Válida", pendiente: "Pendiente" };
-
-function Pill({ status, children }: { status: Status; children: React.ReactNode }) {
-  return <span className={`ops-pill ops-pill-${status}`}>{children}</span>;
-}
-
-function Stat({ n, label, tone, href }: { n: number | string; label: string; tone?: "hi"; href?: string }) {
-  const inner = (<><strong>{n}</strong><span>{label}</span></>);
-  const cls = tone === "hi" ? "ops-stat ops-stat-hi" : "ops-stat";
-  return href ? <Link href={href} scroll={false} className={`${cls} ops-stat-link`}>{inner}</Link> : <div className={cls}>{inner}</div>;
-}
-
-function Section({ id, title, aside, children }: { id: string; title: string; aside?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <section className="ops-card" aria-labelledby={id}>
-      <header className="ops-card-h">
-        <h2 id={id}>{title}</h2>
-        {aside}
-      </header>
-      {children}
-    </section>
-  );
-}
-
-function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="ops-empty">{children}</p>;
-}
 
 function ProspectRow({ p }: { p: Prospect }) {
   const meta = [p.industry, p.city].filter(Boolean).join(" · ");
@@ -96,19 +73,6 @@ function PieceItem({ p, kind }: { p: PieceRow; kind: "scheduled" | "published" }
         </dl>
       </details>
     </li>
-  );
-}
-
-function Head({ title, sub, fetchedAt, stale }: { title: string; sub?: string; fetchedAt: number; stale: boolean }) {
-  return (
-    <div className="ops-top">
-      <div>
-        <p className="ops-eyebrow">Atacama OS</p>
-        <h1>{title}</h1>
-        {sub ? <p className="ops-sub">{sub}</p> : null}
-      </div>
-      <div className="ops-top-r"><Freshness fetchedAt={fetchedAt} stale={stale} /></div>
-    </div>
   );
 }
 
@@ -538,7 +502,7 @@ function SectionTabs({ view }: { view: ViewId }) {
   return (
     <nav className="ops-tabs ops-sec-tabs" aria-label={sec.label}>
       {sec.views.map((v) => (
-        <Link key={v.id} href={`/ops?view=${v.id}`} scroll={false} className={v.id === cur ? "ops-tab ops-tab-on" : "ops-tab"} aria-current={v.id === cur ? "page" : undefined}>{v.label}</Link>
+        <Link key={v.id} href={viewHref(v)} scroll={false} className={v.id === cur ? "ops-tab ops-tab-on" : "ops-tab"} aria-current={v.id === cur ? "page" : undefined}>{v.label}</Link>
       ))}
     </nav>
   );
@@ -551,6 +515,8 @@ export async function PanelView({ sp }: { sp: { view?: string | string[]; filter
   const ovP = asked === "aprobaciones" || asked === "outreach" ? getOverview() : Promise.resolve<Awaited<ReturnType<typeof getOverview>>>({ ok: false, reason: "not_configured" });
   const tlP = asked === "taller" ? getTaller() : Promise.resolve<Awaited<ReturnType<typeof getTaller>>>({ ok: false, reason: "not_configured" });
   const idP = asked === "ideas" ? getIdeas() : Promise.resolve<Awaited<ReturnType<typeof getIdeas>>>({ ok: false, reason: "not_configured" });
+  const mP = asked && MAIL_TABS.includes(asked) ? getMail() : Promise.resolve<Awaited<ReturnType<typeof getMail>>>({ ok: false, reason: "not_configured" });
+  const dnsP = asked === "salud" ? getDns() : Promise.resolve(null);
   const r = await getPanel();
   // Navegación v2 (spec §5) salvo que content_config.ops_nav_v2 = false. Sin vista en la URL: «Hoy» (v2) o «Inicio» (v1).
   const v2 = !(r.ok && r.panel.v3 && r.panel.v3.nav_v2 === false);
@@ -573,7 +539,8 @@ export async function PanelView({ sp }: { sp: { view?: string | string[]; filter
     ? { hoy: inbox?.total ?? 0, redes: nKind("idea") + nKind("pieza") + (ap ? ap.content : 0), correo: (ap ? ap.emails + ap.linkedin : 0) + ctl, sistema: nKind("alerta") }
     : { aprobaciones: ap ? ap.emails + ap.linkedin + ap.content : 0, control: ctl, contenido: panel.content.weekly && panel.content.weekly.state === "falta" ? 1 : 0 };
   const filter = (["todas", "correos", "linkedin", "contenido"].includes(one(sp.filter) ?? "") ? one(sp.filter) : "todas") as ApprovalFilter;
-  const tab = one(sp.tab) === "linkedin" ? "linkedin" : "email";
+  // En la navegación v2 «outreach» es la pestaña LinkedIn; ?tab=email sigue funcionando (ninguna URL vieja queda rota).
+  const tab = one(sp.tab) === "linkedin" || (v2 && one(sp.tab) !== "email") ? "linkedin" : "email";
   return (
     <Shell view={view} badges={badges} v2={v2} paused={panel.v3?.pause.paused === true}>
       {v2 ? <SectionTabs view={view} /> : null}
@@ -588,6 +555,7 @@ export async function PanelView({ sp }: { sp: { view?: string | string[]; filter
         : view === "prospeccion" ? <Prospeccion panel={panel} fetchedAt={fetchedAt} stale={stale} />
         : view === "outreach" ? <Outreach panel={panel} fetchedAt={fetchedAt} stale={stale} tab={tab} ovP={ovP} />
         : view === "contenido" ? <Contenido panel={panel} fetchedAt={fetchedAt} stale={stale} />
+        : MAIL_TABS.includes(view) ? <MailSection tab={view as MailTab} mP={mP} dnsP={dnsP} panel={panel} fetchedAt={fetchedAt} stale={stale} />
         : <Sistema panel={panel} fetchedAt={fetchedAt} stale={stale} />}
     </Shell>
   );

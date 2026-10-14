@@ -206,4 +206,11 @@ ok('prioridad A/B/C: ordena la cola (A primero) pero B y C también quedan prepa
   assert.equal(pc.prepClassify(mk('b', 'B', 80), [], NOW).state, 'sin_accion', 'un B sin hold sigue siendo preparable (no se estaciona por su prioridad)');
 });
 
+ok('S5: un correo devuelto o cancelado por el motor deja al prospecto «EN ESPERA: devuelto por el motor» (Contact Prep no lo rehace)', () => {
+  assert.equal(pc.prepClassify(cand(), [msg({ error: 'Devuelto a borrador por el motor: el texto cambió' })], NOW).state, 'en_espera');
+  assert.equal(pc.prepClassify(cand(), [msg({ status: 'cancelled', error: 'Cancelado por el motor: suprimido' })], NOW).state, 'en_espera');
+  assert.equal(pc.prepClassify(cand(), [msg()], NOW).state, 'email_listo');
+  assert.equal(pc.prepClassify(cand(), [msg({ status: 'cancelled', error: 'cancelado por Christian' })], NOW).state, 'sin_accion');
+});
+
 console.log(n + ' ok');

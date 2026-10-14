@@ -111,6 +111,22 @@ export type TallerPiece = { id: string; title: string; channel: string; channel_
   idea: { id: string; hook: string | null; objective: string | null; primary_metric: string | null; why: string | null; evidence: { type: string; id: string; note: string | null; url: string | null }[]; structure: { title?: string | null; text?: string }[] } | null;
   versions: TallerVersion[]; feedback: { id: string; scope: string; text: string; status: string; created_at: string; version_id: string | null }[]; overdue: boolean };
 export type TallerView = { generated_at: string; labels: Record<string, string>; counts: Record<string, number>; pieces: TallerPiece[]; carousel_direct: boolean };
+/** Fase 6: sección «Prospección y correo» (n8n 25 mail_view, solo lectura). */
+export type MailQueueRow = { id: string; candidate_id: string; company: string; kind: string; to: string | null; subject: string | null; status: string; approved_at: string | null; scheduled_for: string | null; position: number; eta: string };
+export type MailBreakdown = { key: string; sent: number; replied: number; rate_pct: number | null; enough: boolean };
+export type MailView = {
+  generated_at: string;
+  hoy: { mode: string; paused: boolean; cap: number; sent_today: number; window: { start: string; end: string }; in_window: boolean; next_send: string; followup_days: number[]; autosend: { enabled: boolean; min_score: number };
+    legal_footer: string | null; funnel_min_sample: number; drafts: number; approved: number; will_today: number; will_next: number; updated_by: string | null; updated_at: string | null };
+  cola: MailQueueRow[];
+  respuestas: { replies: { id: string; candidate_id: string; company: string; from: string | null; subject: string; snippet: string; cls: string; cls_label: string; at: string; reply_draft: boolean }[];
+    sent: { id: string; candidate_id: string; company: string; kind: string; to: string | null; subject: string | null; sent_at: string; answer: string | null }[] };
+  seguimientos: { drafts: { id: string; candidate_id: string; company: string; kind: string; label: string; status: string; subject: string | null }[]; upcoming: { candidate_id: string; company: string; n: number; label: string; due: string; overdue: boolean }[] };
+  embudo: { stages: { stage: string; count: number }[]; min_sample: number; by_industry: MailBreakdown[]; by_angle: MailBreakdown[] };
+  salud: { sent7: number; bounces7: number; unsubs7: number; complaints7: number; rate_pct: number; level: "ok" | "high" | "critical"; alert: string | null; suggestion: { from: number; to: number | null; text: string };
+    suppression_total: number; suppression: { email: string; reason: string | null; at: string | null }[]; pace: { day: string; sent: number; cap: number }[]; last_sent_at: string | null };
+};
+export type DnsCheck = { domain: string; checked_at: string; spf: boolean | null; dkim: boolean | null; dmarc: boolean | null; detail: string[] };
 export type PanelV3 = { pause: PauseState; nav_v2: boolean; inbox: { items: InboxItem[]; total: number } };
 
 export type Panel = {
@@ -183,7 +199,7 @@ export type EmailCard = {
   status: string; editable: boolean; can_reopen: boolean; can_approve: boolean; can_reject: boolean; hash: string | null;
   created_at: string; updated_at: string | null; approved_at: string | null; approved_by: string | null; scheduled_for: string | null; sent_at: string | null; error: string | null;
   score: number | null; band: string | null; reason: string | null; evidence: string | null; recommended_channel: string | null; suppressed: boolean; rejected_reason: string | null;
-  cold?: ColdQuality | null; previous?: PreviousVersion | null;
+  cold?: ColdQuality | null; previous?: PreviousVersion | null; edited_by_christian_at?: string | null;
 };
 export type ColdQuality = { score: number; level: string | null; warnings: string[]; rewards: string[]; similarity: { max: number; with: string | null } | null; cta_kind: string | null; words: number | null; evidence: string[]; insight: string | null; friction: string | null; angle: string | null; cta_reason: string | null; linted_at: string | null };
 export type PreviousVersion = { subject: string; body: string; score: number | null; at: string | null; by: string | null; reason: string | null; versions: number };
@@ -196,6 +212,6 @@ export type Overview = {
 };
 export type OverviewResult = { ok: true; overview: Overview } | { ok: false; reason: "not_configured" | "unreachable" | "bad_response" };
 
-export type OpsActionName = "email_save" | "email_approve" | "email_reject" | "email_reopen" | "linkedin_approve" | "linkedin_reject" | "content_approve" | "content_reject" | "autosend_set" | "autosend_sweep" | "prep_li_sent" | "prep_hold" | "prep_release" | "prep_contact" | "pause_set" | "idea_decide" | "idea_mine" | "taller_feedback" | "taller_approve" | "taller_schedule" | "taller_discard" | "taller_duplicate" | "taller_caption";
-export type OpsActionInput = { action: OpsActionName; request_id: string; message_id?: string; candidate_id?: string; piece_id?: string; subject?: string; body?: string; expected_hash?: string; reason?: string; enabled?: boolean; min_score?: number; kind?: string; text?: string; email?: string; linkedin?: string; paused?: boolean; resume_at?: string; idea_id?: string; decision?: string; chips?: string[]; title?: string; channel?: string; format?: string; week_start?: string; scope?: string; schedule_at?: string; caption?: string };
+export type OpsActionName = "email_save" | "email_approve" | "email_reject" | "email_reopen" | "linkedin_approve" | "linkedin_reject" | "content_approve" | "content_reject" | "autosend_set" | "autosend_sweep" | "prep_li_sent" | "prep_hold" | "prep_release" | "prep_contact" | "pause_set" | "idea_decide" | "idea_mine" | "taller_feedback" | "taller_approve" | "taller_schedule" | "taller_discard" | "taller_duplicate" | "taller_caption" | "mail_config_set" | "mail_outcome";
+export type OpsActionInput = { paste?: boolean; daily_cap?: number; window_start?: string; window_end?: string; followup_days?: number[]; funnel_min_sample?: number; outcome?: "reunion" | "perdido"; action: OpsActionName; request_id: string; message_id?: string; candidate_id?: string; piece_id?: string; subject?: string; body?: string; expected_hash?: string; reason?: string; enabled?: boolean; min_score?: number; kind?: string; text?: string; email?: string; linkedin?: string; paused?: boolean; resume_at?: string; idea_id?: string; decision?: string; chips?: string[]; title?: string; channel?: string; format?: string; week_start?: string; scope?: string; schedule_at?: string; caption?: string };
 export type OpsActionState = { ok: boolean; message: string; status?: string; hash?: string | null; needsGhl?: boolean; replayed?: boolean; ghlPostId?: string | null };

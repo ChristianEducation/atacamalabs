@@ -9,6 +9,7 @@ import { edPlan } from '../content/editorial-core.mjs';
 import { growthResourceRank } from '../content/growth-core.mjs';
 import { rfAuthority } from '../content/resource-factory-core.mjs';
 import { prepSummary } from '../outreach/prep-core.mjs';
+import { mvHealth } from '../outreach/mail-view-core.mjs';
 
 export function tzParts(ms, tz) {
   const p = new Intl.DateTimeFormat('en-US', { timeZone: tz || 'America/Santiago', hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', weekday: 'short' }).formatToParts(new Date(ms));
@@ -447,6 +448,8 @@ export function evaluateAlerts(d, existing) {
   { const pf = prepFreshNotice(d); if (pf) add(pf.key, pf.severity, pf.title, '', true, { notice: pf.text }); }
   // 6b) S2 (Atacama OS v3): huella que no coincide con el texto en borradores/aprobados → CRÍTICA, antes de que llegue la hora de envío
   for (const m of opsHashMismatches(d.messages || [])) add('hash_mismatch:' + m.id, 'critical', 'Huella no coincide: ' + (m.company_name || 'correo'), (m.status === 'approved' ? 'Un correo APROBADO cambió de texto por fuera del camino normal. Si llega su hora, el envío lo devolverá a borrador (no se cancela). ' : 'El borrador cambió de texto por fuera del camino normal (se volverá a sellar al aprobarlo). ') + 'Revísalo en Prospección y correo antes de aprobar.', false);
+  // 6b-2) Salud del correo (v3 §7-9, anexo §G3): rebote ≥ 5 % con ≥ 20 envíos en 7 días → crítica; ≥ 3 % → importante
+  { const mh = mvHealth(d.messages || [], Number(d.outreach && d.outreach.daily_cap) || 0, now); if (mh.alert) add('mail_bounce:' + (mh.level === 'critical' ? 'critical' : 'high'), mh.level, 'Rebote de correo alto: ' + mh.rate_pct + ' %', mh.alert + ' Ver Prospección y correo → Salud.', false); }
   // 6c) Taller (v3 §6.5): una pieza que la producción automática no pudo terminar → importante (se detuvo sin gastar más)
   for (const p of (d.pieces || []).filter((x) => !x.is_test && x.taller_status === 'necesita_ayuda')) add('taller_help:' + p.id, 'high', 'Pieza del Taller necesita ayuda: ' + String(p.topic || '').slice(0, 60), 'La producción automática se detuvo (topes de intentos o créditos). No se gasta más: decide en Redes → Taller.', false);
   // 7) feeds RSS con 3+ fallos seguidos (aviso, no crítico)
