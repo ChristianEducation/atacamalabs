@@ -44,6 +44,7 @@ async function call(body, fx) {
   const gx = (await run('Expand Growth', store)).map((x) => x.json); store['Expand Growth'] = gx[0];
   const gRes = gx.map((e) => (e.skip ? { statusCode: 0 } : (f.growth && f.growth[e.key] === 'FAIL' ? { statusCode: 500, body: {} } : ok200((f.growth && f.growth[e.key]) || []))));
   store['SB Growth'] = gRes[0];
+  store['Sign Prep'] = (await run('Sign Prep', store, { 'Expand Growth': gx, 'SB Growth': gRes }))[0].json; store['SB Sign'] = f.sign || { statusCode: 0 };
   const comp = (await run('Compute', store, { 'Expand Execs': ex, 'N8N Execs': execRes, 'Expand Growth': gx, 'SB Growth': gRes }))[0].json; store.Compute = comp;
   const w = (await run('Expand Writes', store)).map((x) => x.json);
   store['Apply Writes'] = ok200({});
@@ -56,7 +57,7 @@ const names = new Set(wf.nodes.map((n) => n.name));
 t('25: conexiones válidas, webhook con clave y ruta propia', Object.entries(wf.connections).every(([a, v]) => names.has(a) && v.main.every((o) => o.every((c) => names.has(c.node)))) && wf.nodes[0].parameters.authentication === 'headerAuth' && wf.nodes[0].parameters.path === 'atacama-ops');
 t('25: sin secretos y sin nodos de envío (Gmail/Telegram/WhatsApp/SMTP)', !/(Bearer |eyJ[A-Za-z0-9_-]{20}|pit-[0-9a-f]{8}|ya29\.|sk-[A-Za-z0-9]{20})/.test(JSON.stringify(wf)) && !wf.nodes.some((n) => /gmail|emailSend|whatsapp|telegram|slack|smtp/i.test(n.type)));
 t('25: los nodos HTTP toleran fallos (siempre responde)', wf.nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest').every((n) => n.continueOnFail === true));
-t('25: lecturas = GET; los únicos POST son la búsqueda de tareas de GHL, gmail_check (solo lectura) y las escrituras a Supabase', wf.nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest' && n.parameters.method === 'POST').every((n) => /GHL Tasks|Gmail Check|Apply Writes/.test(n.name)) && !wf.nodes.some((n) => n.parameters.method === 'DELETE' || n.parameters.method === 'PUT'));
+t('25: lecturas = GET; los únicos POST son la búsqueda de tareas de GHL, gmail_check (solo lectura) y las escrituras a Supabase', wf.nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest' && n.parameters.method === 'POST').every((n) => /GHL Tasks|Gmail Check|Apply Writes|SB Sign/.test(n.name)) && !wf.nodes.some((n) => n.parameters.method === 'DELETE' || n.parameters.method === 'PUT'));
 t('25: GHL y Gmail solo se leen (no hay PUT/DELETE ni llamadas a la API de envío)', !JSON.stringify(wf).includes('messages/send') && !JSON.stringify(wf).includes('/conversations/messages'));
 t('25: escribe únicamente en ops_alerts, ops_runs y story_proposals (propuesta diaria de historias, reglas v1.1)', (() => { const c0 = code('Compute'); const c = c0.slice(c0.indexOf('const CFG = ')); const paths = [...c.matchAll(/path: '([a-z_]+)/g)].map((m) => m[1]); return paths.length >= 3 && paths.every((p) => ['ops_alerts', 'ops_runs', 'story_proposals'].includes(p)); })());
 let r = await call({ action: 'inventada' }); t('acción inválida → error claro con la lista', /action inválida/.test(r.fatal) && ACTIONS.every((a) => r.fatal.includes(a)));
@@ -231,6 +232,20 @@ t('v3 · el panel lee system_state y content_ideas (solo reales)', JSON.stringif
   t('ideas_revise: si el candado no encuentra la fila (Christian ya decidió) → ok:false con motivo', r.resp.ok === false && /cambió mientras tanto/.test(r.resp.text), JSON.stringify(r.resp));
   r = await call({ action: 'ideas_list', now_ms: NOW }, FIX({ growth: { ideas_rows: [{ id: 'a', week_start: '2026-10-12', channel: 'instagram', format: 'carrusel', title: 'A', status: 'proposed', score: 88, effort: 'bajo' }], idea_batches: [{ week_start: '2026-10-12', discarded_weak: 2, discarded: [], created_at: iso(H) }] } }));
   t('ideas_list: semana siguiente con la idea, su plazo y el contador de descartadas', r.resp.ideas.weeks.length === 1 && r.resp.ideas.weeks[0].discarded_weak === 2 && r.resp.ideas.weeks[0].channels[0].ideas[0].deadline.state === 'alcanza', JSON.stringify(r.resp.ideas).slice(0, 300));
+}
+
+// ---------- v3 · Fase 2: Taller (lectura con URLs firmadas)
+{
+  const TP = '11111111-1111-4111-8111-111111111111';
+  const fx = FIX({ growth: { tpieces: [{ id: TP, idea_id: 'i1', topic: 'Carrusel X', channel: 'instagram', format: 'carrusel', lane: 'vps', taller_status: 'para_revisar', current_version: 1, credits_spent: 3, needs_by: iso(2 * D), is_test: false }],
+    tversions: [{ id: 'v1', piece_id: TP, version_no: 1, kind: 'carrusel', assets: [{ path: TP + '/v1/01.png' }, { path: TP + '/v1/02.png' }], qa: { images: [TP + '/v1/qa.png'] }, caption: 'c', created_at: iso(H) }],
+    tideas: [{ id: 'i1', week_start: '2026-10-12', keyword: 'PROCESO', piece_id: TP }], content_cfg: [{ id: 1 }] },
+    sign: { statusCode: 200, body: [{ path: TP + '/v1/01.png', signedURL: '/object/sign/taller/' + TP + '/v1/01.png?token=a' }, { path: TP + '/v1/02.png', signedURL: '/object/sign/taller/x2?token=b' }, { path: TP + '/v1/qa.png', error: 'not found' }] } });
+  r = await call({ action: 'taller_list', now_ms: NOW }, fx);
+  const tv = r.resp.taller;
+  t('taller_list: firma en UNA llamada las rutas de las versiones y de sus imágenes de control (1 h)', r.comp && r.parsed && JSON.stringify(r).length > 0 && tv.pieces.length === 1 && tv.pieces[0].thumb === 'https://uwquwjmiofixzugttals.supabase.co/storage/v1/object/sign/taller/' + TP + '/v1/01.png?token=a' && tv.pieces[0].versions[0].assets.length === 2 && tv.pieces[0].keyword === 'PROCESO', JSON.stringify(tv).slice(0, 300));
+  t('taller_list: una imagen sin firma no rompe la vista (queda sin URL)', tv.pieces[0].versions[0].qa.images.length === 0);
+  t('taller_list: marca atrasada la pieza cuyo viernes de cierre ya pasó', tv.pieces[0].overdue === true);
 }
 
 console.log(`\n${pass} ok, ${fail} fallos`);

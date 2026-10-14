@@ -9,7 +9,8 @@ import { Shell } from "./Shell";
 import { ControlCenter } from "./Control";
 import { PauseCard } from "./Pause";
 import { IdeasBoard } from "./Ideas";
-import { getIdeas } from "@/lib/ops/v3-data";
+import { TallerBoard } from "./Taller";
+import { getIdeas, getTaller } from "@/lib/ops/v3-data";
 import { parseView, sectionOf, type ViewId } from "./views";
 
 const STATUS_LABEL: Record<Status, string> = { ok: "Todo OK", atencion: "Atención", fallo: "Fallo" };
@@ -239,6 +240,17 @@ async function Ideas({ fetchedAt, stale, idP }: { fetchedAt: number; stale: bool
     <>
       <Head title="Ideas" sub="La propuesta de la semana siguiente, por red: aprueba, pide cambios o descarta" fetchedAt={fetchedAt} stale={stale} />
       {r.ok ? <IdeasBoard data={r.value} /> : <Section id="ops-ideas" title="Propuesta de la semana"><Empty>{r.reason === "not_configured" ? "Falta configurar la conexión con Atacama OS en el servidor." : "No pude leer las ideas (n8n no responde). Reintenta en un minuto."}</Empty></Section>}
+    </>
+  );
+}
+
+/* --------------------------------------------------------- Redes → Taller (v3 §6.2) */
+async function Taller({ fetchedAt, stale, tlP, pieza }: { fetchedAt: number; stale: boolean; tlP: ReturnType<typeof getTaller>; pieza: string | null }) {
+  const r = await tlP;
+  return (
+    <>
+      <Head title="Taller" sub="Revisa cada pieza, pide cambios y prográmala cuando te guste" fetchedAt={fetchedAt} stale={stale} />
+      {r.ok ? <TallerBoard data={r.value} selected={pieza} /> : <Section id="ops-taller" title="Taller"><Empty>{r.reason === "not_configured" ? "Falta configurar la conexión con Atacama OS en el servidor." : "No pude leer el Taller (n8n no responde). Reintenta en un minuto."}</Empty></Section>}
     </>
   );
 }
@@ -533,10 +545,11 @@ function SectionTabs({ view }: { view: ViewId }) {
 }
 
 /** Marco + vista elegida. `sp` = parámetros de la URL (?view=…&filter=…&tab=…). */
-export async function PanelView({ sp }: { sp: { view?: string | string[]; filter?: string | string[]; tab?: string | string[] } }) {
+export async function PanelView({ sp }: { sp: { view?: string | string[]; filter?: string | string[]; tab?: string | string[]; pieza?: string | string[] } }) {
   const asked = parseView(sp.view);
   // Las aprobaciones se piden EN PARALELO con el panel (antes iban una tras otra) y solo en las vistas que las usan.
   const ovP = asked === "aprobaciones" || asked === "outreach" ? getOverview() : Promise.resolve<Awaited<ReturnType<typeof getOverview>>>({ ok: false, reason: "not_configured" });
+  const tlP = asked === "taller" ? getTaller() : Promise.resolve<Awaited<ReturnType<typeof getTaller>>>({ ok: false, reason: "not_configured" });
   const idP = asked === "ideas" ? getIdeas() : Promise.resolve<Awaited<ReturnType<typeof getIdeas>>>({ ok: false, reason: "not_configured" });
   const r = await getPanel();
   // Navegación v2 (spec §5) salvo que content_config.ops_nav_v2 = false. Sin vista en la URL: «Hoy» (v2) o «Inicio» (v1).
@@ -567,6 +580,7 @@ export async function PanelView({ sp }: { sp: { view?: string | string[]; filter
       {view === "hoy" || (v2 && view === "inicio") ? <Hoy panel={panel} fetchedAt={fetchedAt} stale={stale} />
         : view === "inicio" ? <Inicio panel={panel} fetchedAt={fetchedAt} stale={stale} />
         : view === "ideas" ? <Ideas fetchedAt={fetchedAt} stale={stale} idP={idP} />
+        : view === "taller" ? <Taller fetchedAt={fetchedAt} stale={stale} tlP={tlP} pieza={/^[0-9a-f-]{36}$/i.test(one(sp.pieza) ?? "") ? (one(sp.pieza) as string) : null} />
         : view === "resultados" ? <Resultados fetchedAt={fetchedAt} stale={stale} />
         : view === "controles" ? <Controles panel={panel} fetchedAt={fetchedAt} stale={stale} />
         : view === "aprobaciones" ? <Aprobaciones panel={panel} fetchedAt={fetchedAt} stale={stale} filter={filter} ovP={ovP} />

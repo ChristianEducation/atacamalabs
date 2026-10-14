@@ -103,6 +103,14 @@ export type IdeaCard = { id: string; week_start: string; channel: string; channe
 export type IdeasWeek = { week_start: string; is_next: boolean; counts: { proposed: number; changed: number; approved: number; discarded: number }; discarded_weak: number; weak: { title: string; channel: string | null; reasons: string[] }[]; batch_at: string | null;
   channels: { channel: string; label: string; ideas: IdeaCard[]; folded: IdeaCard[] }[] };
 export type IdeasView = { generated_at: string; next_week: string; weeks: IdeasWeek[] };
+/** Fase 2: Taller (n8n 25 taller_list; URLs firmadas de 1 h). */
+export type TallerVersion = { id: string; version_no: number; kind: string; caption: string | null; created_by: string; created_at: string; cost_credits: number; notes: string | null;
+  qa: { score: number | null; problems: string[]; images: string[] } | null; assets: { url: string | null; video: boolean; label: string | null }[] };
+export type TallerPiece = { id: string; title: string; channel: string; channel_label: string; format: string; lane: "vps" | "pc"; status: string; status_label: string; week_start: string | null; needs_by: string | null;
+  current_version: number | null; credits: number; thumb: string | null; scheduled_at: string | null; ghl_post_id: string | null; proposed_slot: string | null; keyword: string | null; resource_id: string | null;
+  idea: { id: string; hook: string | null; objective: string | null; primary_metric: string | null; why: string | null; evidence: { type: string; id: string; note: string | null; url: string | null }[]; structure: { title?: string | null; text?: string }[] } | null;
+  versions: TallerVersion[]; feedback: { id: string; scope: string; text: string; status: string; created_at: string; version_id: string | null }[]; overdue: boolean };
+export type TallerView = { generated_at: string; labels: Record<string, string>; counts: Record<string, number>; pieces: TallerPiece[]; carousel_direct: boolean };
 export type PanelV3 = { pause: PauseState; nav_v2: boolean; inbox: { items: InboxItem[]; total: number } };
 
 export type Panel = {
@@ -188,6 +196,6 @@ export type Overview = {
 };
 export type OverviewResult = { ok: true; overview: Overview } | { ok: false; reason: "not_configured" | "unreachable" | "bad_response" };
 
-export type OpsActionName = "email_save" | "email_approve" | "email_reject" | "email_reopen" | "linkedin_approve" | "linkedin_reject" | "content_approve" | "content_reject" | "autosend_set" | "autosend_sweep" | "prep_li_sent" | "prep_hold" | "prep_release" | "prep_contact" | "pause_set" | "idea_decide" | "idea_mine";
-export type OpsActionInput = { action: OpsActionName; request_id: string; message_id?: string; candidate_id?: string; piece_id?: string; subject?: string; body?: string; expected_hash?: string; reason?: string; enabled?: boolean; min_score?: number; kind?: string; text?: string; email?: string; linkedin?: string; paused?: boolean; resume_at?: string; idea_id?: string; decision?: string; chips?: string[]; title?: string; channel?: string; format?: string; week_start?: string };
-export type OpsActionState = { ok: boolean; message: string; status?: string; hash?: string | null; needsGhl?: boolean; replayed?: boolean };
+export type OpsActionName = "email_save" | "email_approve" | "email_reject" | "email_reopen" | "linkedin_approve" | "linkedin_reject" | "content_approve" | "content_reject" | "autosend_set" | "autosend_sweep" | "prep_li_sent" | "prep_hold" | "prep_release" | "prep_contact" | "pause_set" | "idea_decide" | "idea_mine" | "taller_feedback" | "taller_approve" | "taller_schedule" | "taller_discard" | "taller_duplicate" | "taller_caption";
+export type OpsActionInput = { action: OpsActionName; request_id: string; message_id?: string; candidate_id?: string; piece_id?: string; subject?: string; body?: string; expected_hash?: string; reason?: string; enabled?: boolean; min_score?: number; kind?: string; text?: string; email?: string; linkedin?: string; paused?: boolean; resume_at?: string; idea_id?: string; decision?: string; chips?: string[]; title?: string; channel?: string; format?: string; week_start?: string; scope?: string; schedule_at?: string; caption?: string };
+export type OpsActionState = { ok: boolean; message: string; status?: string; hash?: string | null; needsGhl?: boolean; replayed?: boolean; ghlPostId?: string | null };

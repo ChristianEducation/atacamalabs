@@ -15,11 +15,13 @@ import * as li from '../../scripts/linkedin/linkedin-core.mjs';
 import * as oa from '../../scripts/ops/ops-actions-core.mjs';
 import * as v3 from '../../scripts/ops/v3-core.mjs';
 import * as ideas from '../../scripts/content/ideas-core.mjs';
+import * as taller from '../../scripts/content/taller-core.mjs';
 
 const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 export const N8N_BASE = 'https://n8n.srv1650725.hstgr.cloud';
 export const GHL_LOCATION = 'pxHuOsiz2i3lM6BtC9IM';
 export const APPROVER = 'OjkAjHMdUjnblO7W1kBZ';
+export const PACK_ID = '0ba54785-bff0-4a2d-a397-64e697d34e38';
 const NONE = 'https://localhost.invalid/';
 const SUPABASE_CRED = { supabaseApi: { id: 'XOmXUuyLVSazDIh5', name: 'Atacama Labs - Supabase' } };
 const INGEST_CRED = { httpHeaderAuth: { id: 'lUGhlXVaQBEiEh5S', name: 'Atacama Labs - Ingest Key' } };
@@ -33,7 +35,7 @@ const ifNode = (name, expr, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.i
   parameters: { conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'loose' }, combinator: 'and', conditions: [{ leftValue: `={{ (${expr}) ? "yes" : "no" }}`, rightValue: 'yes', operator: { type: 'string', operation: 'equals' } }] }, options: {} } });
 
 const fnsOf = (mod) => Object.values(mod).filter((f) => typeof f === 'function');
-export const LIB = [...new Map([...fnsOf(li), ...fnsOf(oa), ...fnsOf(v3), ...fnsOf(ideas)].map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
+export const LIB = [...new Map([...fnsOf(li), ...fnsOf(oa), ...fnsOf(v3), ...fnsOf(ideas), ...fnsOf(taller)].map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
 
 export const PARSE = `${LIB}
 
@@ -44,7 +46,7 @@ try {
   if (!v.ok) throw new Error(v.message);
   const req = v.req;
   const reads = oaReads(req, '${SUPABASE}/rest/v1/');
-  return [{ json: { req, reads, env: { n8n: '${N8N_BASE}', ghl_loc: '${GHL_LOCATION}', approver: '${APPROVER}' } } }];
+  return [{ json: { req, reads, env: { n8n: '${N8N_BASE}', ghl_loc: '${GHL_LOCATION}', approver: '${APPROVER}', pack_id: '${PACK_ID}' } } }];
 } catch (e) { return [{ json: { fatal: String((e && e.message) || e) } }]; }`;
 
 export const EXPAND_READS = `const p = $('Parse').first().json;
@@ -69,7 +71,7 @@ return [{ json: { ...step, results: [] } }];` : `
 const prev = $('Plan ${k - 1}').first().json;
 if (prev.final) return [{ json: { final: prev.final, replayed: prev.replayed || false, results: prev.results || [] } }];
 const slot = ${k - 1};
-const last = $((prev.call.kind === 'ghl' ? (prev.call.method === 'PUT' ? 'GHL Put ' : 'GHL Get ') : 'Ingest ') + slot).first().json || {};
+const last = $((prev.call.kind === 'ghl' ? (prev.call.method === 'PUT' ? 'GHL Put ' : prev.call.method === 'POST' ? 'GHL Post ' : 'GHL Get ') : 'Ingest ') + slot).first().json || {};
 const results = (prev.results || []).concat([{ statusCode: last.statusCode, body: last.body, error: last.error ? true : false }]);
 const step = oaStep(req, R, results, nowMs, env);
 return [{ json: { ...step, results } }];`}`;
@@ -109,10 +111,10 @@ const ingestNode = (k, pos) => ({ id: uuid(), name: 'Ingest ' + k, type: 'n8n-no
   parameters: { method: 'POST', url: `={{ ($("Plan ${k}").first().json.call && $("Plan ${k}").first().json.call.kind === "ingest") ? $("Plan ${k}").first().json.call.url : "${NONE}" }}`, authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth',
     sendBody: true, specifyBody: 'json', jsonBody: `={{ JSON.stringify(($("Plan ${k}").first().json.call && $("Plan ${k}").first().json.call.body) || {}) }}`, options: full(120000) } });
 const ghlNode = (k, verb, pos) => ({ id: uuid(), name: 'GHL ' + verb + ' ' + k, type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: pos, credentials: GHL_CRED, continueOnFail: true, alwaysOutputData: true,
-  parameters: { method: verb === 'Put' ? 'PUT' : 'GET',
-    url: `={{ ($("Plan ${k}").first().json.call && $("Plan ${k}").first().json.call.kind === "ghl" && $("Plan ${k}").first().json.call.method === "${verb === 'Put' ? 'PUT' : 'GET'}") ? $("Plan ${k}").first().json.call.url : "${NONE}" }}`, authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth',
+  parameters: { method: verb.toUpperCase(),
+    url: `={{ ($("Plan ${k}").first().json.call && $("Plan ${k}").first().json.call.kind === "ghl" && $("Plan ${k}").first().json.call.method === "${verb.toUpperCase()}") ? $("Plan ${k}").first().json.call.url : "${NONE}" }}`, authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth',
     sendHeaders: true, headerParameters: { parameters: [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', value: 'application/json' }] },
-    ...(verb === 'Put' ? { sendBody: true, specifyBody: 'json', jsonBody: `={{ JSON.stringify(($("Plan ${k}").first().json.call && $("Plan ${k}").first().json.call.body) || {}) }}` } : {}), options: full(30000) } });
+    ...(verb !== 'Get' ? { sendBody: true, specifyBody: 'json', jsonBody: `={{ JSON.stringify(($("Plan ${k}").first().json.call && $("Plan ${k}").first().json.call.body) || {}) }}` } : {}), options: full(30000) } });
 
 export function buildOpsActions() {
   const nodes = [
@@ -123,9 +125,9 @@ export function buildOpsActions() {
     code('Expand Reads', EXPAND_READS, [600, 0]),
     { id: uuid(), name: 'Read', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [800, 0], credentials: SUPABASE_CRED, continueOnFail: true, alwaysOutputData: true,
       parameters: { method: 'GET', url: '={{ $json.url }}', authentication: 'predefinedCredentialType', nodeCredentialType: 'supabaseApi', options: full() } },
-    code('Plan 1', planCode(1), [1000, 0]), ingestNode(1, [1200, -80]), ghlNode(1, 'Get', [1200, 80]), ghlNode(1, 'Put', [1200, 200]),
-    code('Plan 2', planCode(2), [1400, 0]), ingestNode(2, [1600, -80]), ghlNode(2, 'Get', [1600, 80]), ghlNode(2, 'Put', [1600, 200]),
-    code('Plan 3', planCode(3), [1800, 0]), ingestNode(3, [2000, -80]), ghlNode(3, 'Get', [2000, 80]), ghlNode(3, 'Put', [2000, 200]),
+    code('Plan 1', planCode(1), [1000, 0]), ingestNode(1, [1200, -80]), ghlNode(1, 'Get', [1200, 80]), ghlNode(1, 'Put', [1200, 200]), ghlNode(1, 'Post', [1200, 320]),
+    code('Plan 2', planCode(2), [1400, 0]), ingestNode(2, [1600, -80]), ghlNode(2, 'Get', [1600, 80]), ghlNode(2, 'Put', [1600, 200]), ghlNode(2, 'Post', [1600, 320]),
+    code('Plan 3', planCode(3), [1800, 0]), ingestNode(3, [2000, -80]), ghlNode(3, 'Get', [2000, 80]), ghlNode(3, 'Put', [2000, 200]), ghlNode(3, 'Post', [2000, 320]),
     code('Plan 4', planCode(4), [2200, 0]),
     code('Finish', FINISH, [2400, 0]),
     code('Expand Writes', EXPAND_WRITES, [2600, 0]),
@@ -136,9 +138,9 @@ export function buildOpsActions() {
   ];
   const c = {
     'Actions Webhook': { main: [to('Parse')] }, 'Parse': { main: [to('Valid?')] }, 'Valid?': { main: [to('Expand Reads'), to('Respond Error')] }, 'Expand Reads': { main: [to('Read')] }, 'Read': { main: [to('Plan 1')] },
-    'Plan 1': { main: [to('Ingest 1')] }, 'Ingest 1': { main: [to('GHL Get 1')] }, 'GHL Get 1': { main: [to('GHL Put 1')] }, 'GHL Put 1': { main: [to('Plan 2')] },
-    'Plan 2': { main: [to('Ingest 2')] }, 'Ingest 2': { main: [to('GHL Get 2')] }, 'GHL Get 2': { main: [to('GHL Put 2')] }, 'GHL Put 2': { main: [to('Plan 3')] },
-    'Plan 3': { main: [to('Ingest 3')] }, 'Ingest 3': { main: [to('GHL Get 3')] }, 'GHL Get 3': { main: [to('GHL Put 3')] }, 'GHL Put 3': { main: [to('Plan 4')] },
+    'Plan 1': { main: [to('Ingest 1')] }, 'Ingest 1': { main: [to('GHL Get 1')] }, 'GHL Get 1': { main: [to('GHL Put 1')] }, 'GHL Put 1': { main: [to('GHL Post 1')] }, 'GHL Post 1': { main: [to('Plan 2')] },
+    'Plan 2': { main: [to('Ingest 2')] }, 'Ingest 2': { main: [to('GHL Get 2')] }, 'GHL Get 2': { main: [to('GHL Put 2')] }, 'GHL Put 2': { main: [to('GHL Post 2')] }, 'GHL Post 2': { main: [to('Plan 3')] },
+    'Plan 3': { main: [to('Ingest 3')] }, 'Ingest 3': { main: [to('GHL Get 3')] }, 'GHL Get 3': { main: [to('GHL Put 3')] }, 'GHL Put 3': { main: [to('GHL Post 3')] }, 'GHL Post 3': { main: [to('Plan 4')] },
     'Plan 4': { main: [to('Finish')] }, 'Finish': { main: [to('Expand Writes')] }, 'Expand Writes': { main: [to('Apply Writes')] }, 'Apply Writes': { main: [to('Respond')] },
   };
   return { name: 'Atacama Labs - 29 Ops Actions', nodes, connections: c, settings: { executionOrder: 'v1' } };

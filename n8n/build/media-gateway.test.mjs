@@ -22,10 +22,19 @@ const PID = '11111111-1111-4111-8111-111111111111';
 const PIECE = { id: PID, status: 'drafted', format: 'carrusel', channel: 'instagram', is_test: false, piece: { format: 'carrusel', channel: 'instagram', slides: [{ layout: 'cover', title: 'Conversar no es trabajar' }, { layout: 'content', title: 'Herramientas' }, { layout: 'cta', title: 'Escríbenos' }] } };
 const BRIEF = 'Carrusel que explique qué necesita un agente para trabajar de verdad';
 
-t('estructura: 7 acciones y 14 nodos; solo toca media_assets (+ lee content_config y content_pieces)', ACTIONS.length === 7 && wf.nodes.length === 14);
+t('estructura: 8 acciones y 19 nodos (v3: subida desde Storage); solo toca media_assets (+ lee content_config y content_pieces)', ACTIONS.length === 8 && wf.nodes.length === 19);
 t('sin secretos incrustados y los nodos HTTP toleran fallos', !/(Bearer |eyJ[A-Za-z0-9_-]{20}|pit-[0-9a-f]{8}|sk-[A-Za-z0-9]{20})/.test(JSON.stringify(wf)) && wf.nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest').every((n) => n.continueOnFail === true));
 const httpUrls = wf.nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest').map((n) => n.parameters.url);
-t('seguridad: la ÚNICA llamada a GHL es subir una imagen a la biblioteca de medios (nada de Social Planner, Gmail ni proveedores generativos); no hay estados de publicación', !/social-media-posting|gmail|googleapis/i.test(JSON.stringify(wf)) && (JSON.stringify(wf).match(/leadconnectorhq\.com\/[a-z\/-]+/g) || []).every((u) => u === 'leadconnectorhq.com/medias/upload-file') && httpUrls.filter((u) => /leadconnectorhq/.test(u)).length === 1 && !/https?:[^\s"']*higgsfield/i.test(JSON.stringify(wf)) && !/status['"]?\s*[:=]\s*['"](scheduled|published)|approvalStatus/.test(codeOf('Compute')));
+t('seguridad: la ÚNICA llamada a GHL es subir una imagen a la biblioteca de medios (nada de Social Planner, Gmail ni proveedores generativos); no hay estados de publicación', !/social-media-posting|gmail|googleapis/i.test(JSON.stringify(wf)) && (JSON.stringify(wf).match(/leadconnectorhq\.com\/[a-z\/-]+/g) || []).every((u) => u === 'leadconnectorhq.com/medias/upload-file') && httpUrls.filter((u) => /leadconnectorhq/.test(u)).length === 2 && httpUrls.filter((u) => /leadconnectorhq/.test(u)).every((u) => /medias\/upload-file$/.test(u)) && !/https?:[^\s"']*higgsfield/i.test(JSON.stringify(wf)) && !/status['"]?\s*[:=]\s*['"](scheduled|published)|approvalStatus/.test(codeOf('Compute')));
+{
+  const PCE = '11111111-1111-4111-8111-111111111111';
+  t('v3 · storage_upload: valida rutas del bucket taller (1–10, formato <pieza>/v<n>/<archivo>, de esa pieza)', /ruta inválida/.test(exec({ action: 'storage_upload', paths: ['../x.png'] }).fatal) && /1 a 10/.test(exec({ action: 'storage_upload', paths: [] }).fatal) && /no son de esa pieza/.test(exec({ action: 'storage_upload', piece_id: '22222222-2222-4222-8222-222222222222', paths: [PCE + '/v1/01.png'] }).fatal));
+  const sp = parse({ action: 'storage_upload', piece_id: PCE, paths: [PCE + '/v1/01.png', PCE + '/v1/r.mp4'] });
+  const items = runNode('Storage Items', { Parse: sp }).map((x) => x.json);
+  t('v3 · storage_upload: una descarga por archivo desde el bucket privado (URL de storage, no pública)', items.length === 2 && items[0].url === 'https://uwquwjmiofixzugttals.supabase.co/storage/v1/object/taller/' + PCE + '/v1/01.png');
+  const resp = runNode('Respond Storage', { 'Storage Items': items, 'GHL Upload Storage': [{ statusCode: 201, body: { url: 'https://a/1.png', fileId: 'f1' } }, { statusCode: 413, body: {} }] })[0].json;
+  t('v3 · storage_upload: devuelve las URLs en orden y avisa qué archivo falló (sin éxito falso); nunca publica', resp.ok === false && resp.files[0].url === 'https://a/1.png' && resp.files[1].type === 'video/mp4' && /HTTP 413/.test(resp.message) && resp.safety.published === 0);
+}
 t('Parse: action inválida / piece_id inválido / status sin id => fatal', /action inválida/.test(exec({ action: 'borrar' }).fatal) && /piece_id inválido/.test(exec({ action: 'request', need: 'carousel', brief: BRIEF, piece_id: 'x;drop' }).fatal) && /status necesita id o piece_id/.test(exec({ action: 'status' }).fatal));
 
 // ---- request: renderer

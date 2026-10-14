@@ -19,6 +19,7 @@ import * as rfCore from '../../scripts/content/resource-factory-core.mjs';
 import { growthNorm, growthResourceRank } from '../../scripts/content/growth-core.mjs';
 import * as v3Core from '../../scripts/ops/v3-core.mjs';
 import * as ideasCore from '../../scripts/content/ideas-core.mjs';
+import * as tallerCore from '../../scripts/content/taller-core.mjs';
 
 const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 export const N8N_BASE = 'https://n8n.srv1650725.hstgr.cloud';
@@ -47,10 +48,10 @@ const sbApply = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRe
     headerParameters: { parameters: [{ name: 'Prefer', value: '={{ $json.prefer || "return=minimal" }}' }] }, sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full() } });
 const GH_HEADERS = [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', value: 'application/json' }];
 
-export const LIB = [...new Map([...Object.values(core), ...['linkedinOverview', 'linkedinView', 'liLabel'].map((k) => liCore[k]), ...Object.values(prepCore), ...Object.values(edCore), ...Object.values(rfCore), growthNorm, growthResourceRank, ...Object.values(v3Core), ...Object.values(ideasCore)].filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
+export const LIB = [...new Map([...Object.values(core), ...['linkedinOverview', 'linkedinView', 'liLabel'].map((k) => liCore[k]), ...Object.values(prepCore), ...Object.values(edCore), ...Object.values(rfCore), growthNorm, growthResourceRank, ...Object.values(v3Core), ...Object.values(ideasCore), ...Object.values(tallerCore)].filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
 const CFG_JSON = JSON.stringify({ tz: OPS_CFG.tz, stages: OPS_CFG.stages, ignore_opps: OPS_CFG.ignore_opps });
 
-export const ACTIONS = ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'radar_report', 'content_radar_report', 'job_report', 'alerts_poll', 'alerts_ack', 'ideas_list', 'ideas_gate', 'ideas_propose', 'ideas_revise'];
+export const ACTIONS = ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'radar_report', 'content_radar_report', 'job_report', 'alerts_poll', 'alerts_ack', 'ideas_list', 'ideas_gate', 'ideas_propose', 'ideas_revise', 'taller_list'];
 
 export const parseCode = `try {
   const first = $('Ops Webhook').first().json || {};
@@ -60,7 +61,7 @@ export const parseCode = `try {
   if (!ACTIONS.includes(action)) throw new Error('action inválida: usa ' + ACTIONS.join(' | '));
   const dry = b.dry_run === true;
   // la hora solo se puede simular en consultas de lectura o con dry_run (pruebas); las escrituras siempre usan la hora real
-  const now = Number.isFinite(Number(b.now_ms)) && (dry || ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'ideas_list', 'ideas_gate'].includes(action)) ? Number(b.now_ms) : Date.now();
+  const now = Number.isFinite(Number(b.now_ms)) && (dry || ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'ideas_list', 'ideas_gate', 'taller_list'].includes(action)) ? Number(b.now_ms) : Date.now();
   const need = {
     sb: !['alerts_ack'].includes(action) || true,
     ghl: ['daily', 'today', 'urgent', 'stale', 'replies', 'panel'].includes(action),
@@ -68,7 +69,7 @@ export const parseCode = `try {
     deep: (action === 'health' && b.deep === true) || (action === 'alerts_poll' && b.deep_gmail === true) || (action === 'daily' && b.deep === true),
     learn: action === 'content_performance',
     panel: action === 'panel',
-    growth: ['panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'content_performance', 'alerts_poll', 'health', 'ideas_list', 'ideas_gate', 'ideas_propose', 'ideas_revise'].includes(action),
+    growth: ['panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'content_performance', 'alerts_poll', 'health', 'ideas_list', 'ideas_gate', 'ideas_propose', 'ideas_revise', 'taller_list'].includes(action),
   };
   const sb = '${SUPABASE}/rest/v1/', none = '${NONE}';
   const iso = (ms) => new Date(ms).toISOString();
@@ -109,6 +110,11 @@ export const parseCode = `try {
   const day = (ms) => new Date(ms).toISOString().slice(0, 10);
   if (action === 'ideas_list') growth_reads.push({ key: 'ideas_rows', url: sb + 'content_ideas?is_test=eq.false&week_start=gte.' + day(now - 7 * 86400000) + '&select=*&order=created_at.desc&limit=300' }, { key: 'idea_batches', url: sb + 'content_idea_batches?is_test=eq.false&select=*&order=created_at.desc&limit=12' });
   if (['ideas_gate', 'ideas_propose', 'ideas_revise'].includes(action)) growth_reads.push({ key: 'ideas_all', url: sb + 'content_ideas?week_start=gte.' + day(now - 42 * 86400000) + '&select=id,title,hook,status,channel,format,week_start,origin,ficha_complete,change_request,core_message,evidence,source_ids,is_test,history&limit=500' }, { key: 'intel_ids', url: sb + 'content_intel_reports?select=id,created_at&order=created_at.desc&limit=10' });
+  // taller_list con params.test=true (solo con la llave interna; /ops nunca lo pide) muestra SOLO las piezas TEST: sirve para verificar en vivo sin datos reales.
+  const TT = P.test === true ? 'true' : 'false';
+  if (action === 'taller_list') growth_reads.push({ key: 'tpieces', url: sb + 'content_pieces?taller_status=not.is.null&is_test=eq.' + TT + '&select=*&order=updated_at.desc&limit=200' }, { key: 'tversions', url: sb + 'content_versions?is_test=eq.' + TT + '&select=*&order=created_at.desc&limit=400' },
+    { key: 'tfeedback', url: sb + 'content_feedback?is_test=eq.' + TT + '&select=*&order=created_at.desc&limit=500' }, { key: 'tideas', url: sb + 'content_ideas?is_test=eq.' + TT + '&piece_id=not.is.null&select=*&limit=300' },
+    { key: 'ttaken', url: sb + 'content_pieces?status=in.(scheduled,in_review,approved)&scheduled_at=gte.' + iso(now - 86400000) + '&select=id,channel,format,scheduled_at&limit=300' });
   if (action === 'ideas_gate') growth_reads.push({ key: 'sources_verified', url: sb + 'content_sources?verified=eq.true&created_at=gte.' + iso(now - 21 * 86400000) + '&select=id,title,url,kind,signal_type,source_date,created_at&order=created_at.desc&limit=60' });
   if (['ideas_propose', 'ideas_revise'].includes(action)) {
     const evs = (action === 'ideas_propose' ? ((P.proposal || {}).ideas || []) : [P.idea || {}]).flatMap((i) => (i && Array.isArray(i.evidence) ? i.evidence : []));
@@ -129,6 +135,17 @@ return monitoredWorkflows().map((w) => ({ json: { skip: false, wf_id: w.id, url:
 export const expandGrowthCode = `const p = $('Parse').first().json;
 if (!p.growth_reads || !p.growth_reads.length) return [{ json: { skip: true, key: null, url: '${NONE}' } }];
 return p.growth_reads.map((r) => ({ json: { skip: false, key: r.key, url: r.url } }));`;
+
+/** v3 · Taller: junta las rutas de las versiones (y de sus imágenes de control) para firmarlas en UNA llamada a Storage (URLs de 1 h). */
+export const signPrepCode = `const p = $('Parse').first().json;
+if (p.action !== 'taller_list') return [{ json: { skip: true } }];
+const gi = $('Expand Growth').all().map((i) => i.json); const gr = $('SB Growth').all().map((i) => i.json || {});
+const k = gi.findIndex((e) => e.key === 'tversions');
+const rows = k >= 0 && Array.isArray((gr[k] || {}).body) ? gr[k].body : [];
+const paths = [];
+rows.forEach((v) => { (v.assets || []).forEach((a) => { if (a && a.path) paths.push(a.path); }); ((v.qa || {}).images || []).forEach((x) => { if (typeof x === 'string') paths.push(x); }); });
+const uniq = [...new Set(paths)].slice(0, 500);
+return [{ json: { skip: uniq.length === 0, body: { expiresIn: 3600, paths: uniq } } }];`;
 
 export const computeCode = `${LIB}
 
@@ -184,6 +201,13 @@ else if (A === 'story_proposal_save') {
   const v = storyProposalNorm((p.params || {}).proposal);
   if (!v.ok) out = { ok: false, error: 'propuesta_invalida', errors: v.errors, text: 'La propuesta no es válida: ' + v.errors.join(', ') };
   else { writes.push({ method: 'POST', path: 'story_proposals?on_conflict=for_date', body: v.value, prefer: 'resolution=merge-duplicates,return=minimal' }); out = { ok: true, saved: v.value.for_date, story_count: v.value.story_count, manual_notes: v.value.manual_notes, text: storyProposalText(v.value) }; }
+}
+else if (A === 'taller_list') {
+  const sg = node('SB Sign');
+  const signed = {};
+  if ((sg.statusCode || 0) < 300 && Array.isArray(sg.body)) sg.body.forEach((x) => { if (x && x.path && x.signedURL && !x.error) signed[x.path] = '${SUPABASE}/storage/v1' + x.signedURL; });
+  else if ($('Sign Prep').first().json.skip === false) missing.push('firmas de Storage');
+  out = { taller: tallerListView({ include_test: (p.params || {}).test === true, now: p.now, pieces: G.tpieces || [], versions: G.tversions || [], feedback: G.tfeedback || [], ideas: G.tideas || [], taken: G.ttaken || [], cfg: d.content_cfg || {}, signed }) };
 }
 else if (A === 'ideas_list') { out = { ideas: ideasListView(G.ideas_rows || [], G.idea_batches || [], p.now, CFG.tz) }; }
 else if (A === 'ideas_gate') { out = ideasGateView({ now: p.now, tz: CFG.tz, content_cfg: d.content_cfg, system_state: d.system_state, ideas_all: G.ideas_all || [], pieces: d.pieces, sources_verified: G.sources_verified || [], resources: d.resources, intel: d.intel }); out.text = 'Ideas: ' + out.mode + ' — ' + out.reason; }
@@ -284,6 +308,9 @@ export function buildOps() {
     code('Expand Growth', expandGrowthCode, [3900, 0]),
     { id: uuid(), name: 'SB Growth', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [3950, 0], credentials: SUPABASE_CRED, continueOnFail: true, alwaysOutputData: true,
       parameters: { method: 'GET', url: '={{ $json.skip ? "' + NONE + '" : $json.url }}', authentication: 'predefinedCredentialType', nodeCredentialType: 'supabaseApi', options: full() } },
+    code('Sign Prep', signPrepCode, [3960, 160]),
+    { id: uuid(), name: 'SB Sign', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [3980, 160], credentials: SUPABASE_CRED, continueOnFail: true, alwaysOutputData: true,
+      parameters: { method: 'POST', url: '={{ $json.skip ? "' + NONE + '" : "' + SUPABASE + '/storage/v1/object/sign/taller" }}', authentication: 'predefinedCredentialType', nodeCredentialType: 'supabaseApi', sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full() } },
     code('Compute', computeCode, [4000, 0]),
     code('Expand Writes', `const w = $('Compute').first().json.writes || [];\nif (!w.length) return [{ json: { skip: true } }];\nreturn w.map((x) => ({ json: { skip: false, ...x } }));`, [4200, 0]),
     sbApply('Apply Writes', [4400, 0]),
@@ -294,7 +321,7 @@ export function buildOps() {
     'SB Messages': { main: [to('SB Candidates')] }, 'SB Candidates': { main: [to('SB Pieces')] }, 'SB Pieces': { main: [to('SB Metrics')] }, 'SB Metrics': { main: [to('SB Signals')] }, 'SB Signals': { main: [to('SB Review Pieces')] }, 'SB Review Pieces': { main: [to('SB Alerts')] },
     'SB Alerts': { main: [to('SB Runs')] }, 'SB Runs': { main: [to('SB Config')] }, 'SB Config': { main: [to('GHL Opps')] }, 'GHL Opps': { main: [to('GHL Tasks')] }, 'GHL Tasks': { main: [to('N8N Workflows')] },
     'N8N Workflows': { main: [to('N8N Errors')] }, 'N8N Errors': { main: [to('Expand Execs')] }, 'Expand Execs': { main: [to('N8N Execs')] }, 'N8N Execs': { main: [to('Gmail Check 22')] },
-    'Gmail Check 22': { main: [to('Gmail Check 23')] }, 'Gmail Check 23': { main: [to('Learnings')] }, 'Learnings': { main: [to('Expand Growth')] }, 'Expand Growth': { main: [to('SB Growth')] }, 'SB Growth': { main: [to('Compute')] }, 'Compute': { main: [to('Expand Writes')] }, 'Expand Writes': { main: [to('Apply Writes')] }, 'Apply Writes': { main: [to('Respond')] } };
+    'Gmail Check 22': { main: [to('Gmail Check 23')] }, 'Gmail Check 23': { main: [to('Learnings')] }, 'Learnings': { main: [to('Expand Growth')] }, 'Expand Growth': { main: [to('SB Growth')] }, 'SB Growth': { main: [to('Sign Prep')] }, 'Sign Prep': { main: [to('SB Sign')] }, 'SB Sign': { main: [to('Compute')] }, 'Compute': { main: [to('Expand Writes')] }, 'Expand Writes': { main: [to('Apply Writes')] }, 'Apply Writes': { main: [to('Respond')] } };
   return { name: 'Atacama Labs - 25 Atacama Ops', nodes, connections: c, settings: { executionOrder: 'v1' } };
 }
 

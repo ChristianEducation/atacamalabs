@@ -57,5 +57,15 @@ t('Compute: edición humana emite parche con ghl_edited', out.length === 1 && ou
 let trunc = null;
 try { run(pend2, ok(Array.from({ length: 100 }, (_, i) => ({ _id: 'x' + i, status: 'scheduled', summary: 's', scheduleDate: '2026-10-13T13:00:00.000Z', postApprovalDetails: { approvalStatus: 'approved' } })))); } catch (e) { trunc = e; }
 t('Compute: lista de 100 posts (truncada) NO marca nada como borrado: falla con aviso', trunc && /truncada/.test(trunc.message));
-console.log(pass, 'ok', fail, 'fallos');
+// v3 · Taller: post «hijo» al publicar y estado del Taller
+{
+  const pend = [{ id: 'pz', ghl_post_id: 'PARENT1', status: 'in_review', ghl_status: 'in_review', ghl_approval_status: 'pending', taller_status: 'programada_pendiente_de_clic' }];
+  const out = run(pend, { statusCode: 200, body: { results: { posts: [{ _id: 'CHILD1', parentPostId: 'PARENT1', status: 'published', publishedAt: '2026-10-28T18:01:00Z', scheduleDate: '2026-10-28T18:00:00Z', postApprovalDetails: { approvalStatus: 'approved' } }] } } });
+  t('v3 · sync: el post publicado «hijo» (parentPostId) se reconoce: la pieza queda publicada, NO borrada', out.length === 1 && out[0].json.patch.status === 'published' && out[0].json.patch.taller_status === 'publicada', JSON.stringify(out));
+  const out2 = run(pend, { statusCode: 200, body: { results: { posts: [{ _id: 'PARENT1', status: 'scheduled', scheduleDate: '2026-10-28T18:00:00Z', postApprovalDetails: { approvalStatus: 'approved' } }] } } });
+  t('v3 · sync: Christian dio el último clic en GHL → la pieza pasa a «programada»', out2.length === 1 && out2[0].json.patch.taller_status === 'programada');
+}
+
+console.log(`
+${pass} ok ${fail} fallos`);
 process.exit(fail ? 1 : 0);

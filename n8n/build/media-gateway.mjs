@@ -33,7 +33,7 @@ const sbApply = (name, pos) => ({ id: randomUUID(), name, type: 'n8n-nodes-base.
   parameters: { method: '={{ $json.skip ? "GET" : ($json.method || "POST") }}', url: `={{ $json.skip ? "${SUPABASE}/rest/v1/content_config?select=id&limit=1" : "${SUPABASE}/rest/v1/" + $json.path }}`, authentication: 'predefinedCredentialType', nodeCredentialType: 'supabaseApi', sendHeaders: true,
     headerParameters: { parameters: [{ name: 'Prefer', value: '={{ $json.prefer || "return=minimal" }}' }] }, sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full() } });
 
-export const ACTIONS = ['request', 'status', 'list', 'complete', 'cancel', 'claim', 'upload'];
+export const ACTIONS = ['request', 'status', 'list', 'complete', 'cancel', 'claim', 'upload', 'storage_upload'];
 export const LIB = Object.values(mg).filter((f) => typeof f === 'function').map((f) => f.toString()).join('\n\n');
 
 export const PARSE = `${LIB}
@@ -45,6 +45,14 @@ try {
   const ACTIONS = ${JSON.stringify(ACTIONS)};
   if (!ACTIONS.includes(action)) throw new Error('action inválida: usa ' + ACTIONS.join(' | '));
   const isUuid = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v || ''));
+  if (action === 'storage_upload') {
+    // Atacama OS v3 · Taller: sube a la biblioteca de GHL la versión elegida, desde el bucket privado «taller» (<piece_id>/v<n>/<archivo>). No publica nada.
+    const paths = Array.isArray(b.paths) ? b.paths.map(String) : [];
+    if (!paths.length || paths.length > 10) throw new Error('paths: de 1 a 10 rutas del bucket taller');
+    if (!paths.every((x) => /^[0-9a-f-]{36}\\/v[0-9]{1,3}\\/[A-Za-z0-9._-]{1,80}$/.test(x))) throw new Error('ruta inválida (formato <piece_id>/v<n>/<archivo>)');
+    if (b.piece_id && !paths.every((x) => x.startsWith(String(b.piece_id) + '/'))) throw new Error('las rutas no son de esa pieza');
+    return [{ json: { action, storage: { paths }, reads: [] } }];
+  }
   const sb = '${SUPABASE}/rest/v1/';
   const reads = [];
   const add = (key, path) => reads.push({ key, url: sb + path });
@@ -208,6 +216,16 @@ const safety = { published: 0, scheduled: 0, approved: 0, generated_with_cost: 0
 if (!g.statusCode || g.statusCode >= 300 || !body.url) return [{ json: { ok: false, action: 'upload', asset_id: c.asset_id, error: 'subida_ghl_fallida', message: 'GHL no aceptó la imagen: ' + (g.statusCode ? 'HTTP ' + g.statusCode : 'sin respuesta (red)') + ' ' + JSON.stringify(body).slice(0, 160), safety } }];
 return [{ json: { ok: true, action: 'upload', asset_id: c.asset_id, url: body.url, type: ($('Prep Upload').first().json || {}).mime || 'image/png', fileId: body.fileId || null, safety } }];`;
 
+export const STORAGE_ITEMS = `const p = $('Parse').first().json;
+return p.storage.paths.map((path, i) => ({ json: { path, i, url: '${SUPABASE}/storage/v1/object/taller/' + path.split('/').map(encodeURIComponent).join('/') } }));`;
+
+export const RESPOND_STORAGE = `const items = $('Storage Items').all().map((i) => i.json);
+const ups = $('GHL Upload Storage').all().map((i) => i.json || {});
+const files = items.map((it, k) => { const g = ups[k] || {}; const body = g.body && typeof g.body === 'object' ? g.body : {}; const err = (!g.statusCode || g.statusCode >= 300 || !body.url) ? ('HTTP ' + (g.statusCode || 'sin respuesta')) : null;
+  return { path: it.path, url: body.url || null, fileId: body.fileId || null, type: /\\.mp4$/i.test(it.path) ? 'video/mp4' : /\\.jpe?g$/i.test(it.path) ? 'image/jpeg' : 'image/png', error: err }; });
+const bad = files.filter((f) => f.error);
+return [{ json: { ok: bad.length === 0, action: 'storage_upload', files, message: bad.length ? 'GHL no aceptó ' + bad.length + ' archivo(s): ' + bad.map((f) => f.path + ' (' + f.error + ')').join(', ') : files.length + ' archivo(s) subidos a la biblioteca de GHL.', safety: { published: 0, scheduled: 0, approved: 0, generated_with_cost: 0, note: 'Solo sube archivos a la biblioteca de medios de GHL; no publica ni programa nada.' } } }];`;
+
 export const RESPOND = `const c = $('Compute').first().json;
 const planned = c.writes || [];
 const applied = $('Apply Writes').all().map((i) => i.json).slice(0, planned.length);
@@ -222,6 +240,15 @@ export function buildMediaGateway() {
     code('Parse', PARSE, [220, 0]),
     ifNode('Valid?', '!$json.fatal', [400, 0]),
     code('Respond Error', "return [{ json: { ok: false, error: $json.fatal, safety: { published: 0, scheduled: 0, approved: 0, generated_with_cost: 0 } } }];", [620, -180]),
+    ifNode('Storage?', '$json.action === "storage_upload"', [520, 0]),
+    code('Storage Items', STORAGE_ITEMS, [620, -420]),
+    { id: randomUUID(), name: 'Storage Download', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [840, -420], credentials: SUPABASE_CRED, continueOnFail: true, alwaysOutputData: true,
+      parameters: { method: 'GET', url: '={{ $json.url }}', authentication: 'predefinedCredentialType', nodeCredentialType: 'supabaseApi', options: { response: { response: { responseFormat: 'file', outputPropertyName: 'data' } }, timeout: 60000 } } },
+    { id: randomUUID(), name: 'GHL Upload Storage', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [1060, -420], credentials: GHL_CRED, continueOnFail: true, alwaysOutputData: true,
+      parameters: { method: 'POST', url: 'https://services.leadconnectorhq.com/medias/upload-file', authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth',
+        sendHeaders: true, headerParameters: { parameters: [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', value: 'application/json' }] },
+        sendBody: true, contentType: 'multipart-form-data', bodyParameters: { parameters: [{ parameterType: 'formBinaryData', name: 'file', inputDataFieldName: 'data' }, { name: 'hosted', value: 'false' }] }, options: full(90000) } },
+    code('Respond Storage', RESPOND_STORAGE, [1280, -420]),
     code('Expand Reads', EXPAND_READS, [620, 0]),
     { id: randomUUID(), name: 'Read', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [840, 0], credentials: SUPABASE_CRED, continueOnFail: true, alwaysOutputData: true,
       parameters: { method: 'GET', url: '={{ $json.url }}', authentication: 'predefinedCredentialType', nodeCredentialType: 'supabaseApi', options: full() } },
@@ -237,7 +264,7 @@ export function buildMediaGateway() {
     sbApply('Apply Writes', [1720, 0]),
     code('Respond', RESPOND, [1940, 0]),
   ];
-  const c = { 'Media Webhook': { main: [to('Parse')] }, 'Parse': { main: [to('Valid?')] }, 'Valid?': { main: [to('Expand Reads'), to('Respond Error')] }, 'Expand Reads': { main: [to('Read')] }, 'Read': { main: [to('Compute')] }, 'Compute': { main: [to('Upload?')] }, 'Upload?': { main: [to('Prep Upload'), to('Expand Writes')] }, 'Prep Upload': { main: [to('GHL Upload')] }, 'GHL Upload': { main: [to('Respond Upload')] }, 'Expand Writes': { main: [to('Apply Writes')] }, 'Apply Writes': { main: [to('Respond')] } };
+  const c = { 'Media Webhook': { main: [to('Parse')] }, 'Parse': { main: [to('Valid?')] }, 'Valid?': { main: [to('Storage?'), to('Respond Error')] }, 'Storage?': { main: [to('Storage Items'), to('Expand Reads')] }, 'Storage Items': { main: [to('Storage Download')] }, 'Storage Download': { main: [to('GHL Upload Storage')] }, 'GHL Upload Storage': { main: [to('Respond Storage')] }, 'Expand Reads': { main: [to('Read')] }, 'Read': { main: [to('Compute')] }, 'Compute': { main: [to('Upload?')] }, 'Upload?': { main: [to('Prep Upload'), to('Expand Writes')] }, 'Prep Upload': { main: [to('GHL Upload')] }, 'GHL Upload': { main: [to('Respond Upload')] }, 'Expand Writes': { main: [to('Apply Writes')] }, 'Apply Writes': { main: [to('Respond')] } };
   return { name: 'Atacama Labs - 30 Media Gateway', nodes, connections: c, settings: { executionOrder: 'v1' } };
 }
 

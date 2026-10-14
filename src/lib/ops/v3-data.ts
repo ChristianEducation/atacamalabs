@@ -1,5 +1,5 @@
 import "server-only";
-import type { IdeasView } from "./types";
+import type { IdeasView, TallerView } from "./types";
 import { swr } from "./swr";
 
 /**
@@ -34,6 +34,11 @@ const ideasCache = swr<IdeasView>(() => read("ideas_list", (j) => {
   return v && Array.isArray(v.weeks) ? v : null;
 }), { freshMs: 20_000, maxStaleMs: 10 * 60_000 });
 
+const tallerCache = swr<TallerView>(() => read("taller_list", (j) => {
+  const v = j.taller as TallerView | undefined;
+  return v && Array.isArray(v.pieces) ? v : null;
+}), { freshMs: 20_000, maxStaleMs: 10 * 60_000 });
+
 export type V3Result<T> = { ok: true; value: T } | { ok: false; reason: "not_configured" | "unreachable" };
 
 export async function getIdeas(): Promise<V3Result<IdeasView>> {
@@ -41,7 +46,13 @@ export async function getIdeas(): Promise<V3Result<IdeasView>> {
   try { return { ok: true, value: (await ideasCache.get()).value }; } catch { return { ok: false, reason: "unreachable" }; }
 }
 
+export async function getTaller(): Promise<V3Result<TallerView>> {
+  if (!config()) return { ok: false, reason: "not_configured" };
+  try { return { ok: true, value: (await tallerCache.get()).value }; } catch { return { ok: false, reason: "unreachable" }; }
+}
+
 /** Tras cualquier acción de /ops: lo siguiente que se lea es el estado real. */
 export function invalidateV3(): void {
   ideasCache.drop();
+  tallerCache.drop();
 }

@@ -9,7 +9,7 @@ import { PanelSkeleton, PanelView } from "./PanelView";
  */
 export const dynamic = "force-dynamic";
 
-export default async function OpsPage({ searchParams }: { searchParams: Promise<{ view?: string | string[]; filter?: string | string[]; tab?: string | string[] }> }) {
+export default async function OpsPage({ searchParams }: { searchParams: Promise<{ view?: string | string[]; filter?: string | string[]; tab?: string | string[]; pieza?: string | string[] }> }) {
   if (!(await hasSession())) {
     return (
       <main className="ops-wrap ops-wrap-narrow ops-login-page">

@@ -12,7 +12,7 @@
  */
 
 export function oaActionList() {
-  return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject', 'autosend_set', 'autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release', 'prep_contact', 'pause_set', 'idea_decide', 'idea_mine'];
+  return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject', 'autosend_set', 'autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release', 'prep_contact', 'pause_set', 'idea_decide', 'idea_mine', 'taller_feedback', 'taller_approve', 'taller_schedule', 'taller_discard', 'taller_duplicate', 'taller_caption', 'taller_add_version'];
 }
 
 export function oaIsUuid(v) {
@@ -80,6 +80,27 @@ export function oaValidate(b) {
     req.week_start = typeof x.week_start === 'string' ? x.week_start.trim().slice(0, 10) : '';
     if (req.title.length < 5) return { ok: false, error: 'falta_titulo', message: 'Escribe tu idea en una frase (mínimo 5 caracteres).' };
   }
+  if (action.startsWith('taller_')) {
+    if (!oaIsUuid(x.piece_id)) return { ok: false, error: 'piece_id_invalido', message: 'piece_id (uuid de la pieza) es obligatorio.' };
+    req.piece_id = String(x.piece_id).toLowerCase();
+    req.test = x.test === true;
+    req.text = typeof x.text === 'string' ? x.text.trim().slice(0, 2000) : '';
+    req.scope = typeof x.scope === 'string' && /^(global|lamina [0-9]{1,2})$/.test(x.scope) ? x.scope : 'global';
+    req.channel = typeof x.channel === 'string' ? x.channel : '';
+    req.schedule_at = typeof x.schedule_at === 'string' ? x.schedule_at.slice(0, 40) : '';
+    if (typeof x.caption === 'string') req.caption = x.caption.slice(0, 3000);
+    if (action === 'taller_schedule' && !Number.isFinite(Date.parse(req.schedule_at))) return { ok: false, error: 'falta_fecha', message: 'schedule_at (fecha y hora ISO) es obligatorio.' };
+    if (action === 'taller_add_version') {
+      if (!Array.isArray(x.assets) || x.assets.length > 10) return { ok: false, error: 'assets_invalidos', message: 'assets: lista de 0 a 10 archivos {path, w, h}.' };
+      req.assets = x.assets.map((a) => ({ path: String((a && a.path) || '').slice(0, 200), w: Number(a && a.w) || null, h: Number(a && a.h) || null, label: typeof (a && a.label) === 'string' ? a.label.slice(0, 80) : null }));
+      req.qa = x.qa && typeof x.qa === 'object' ? x.qa : {};
+      req.cost_credits = Number(x.cost_credits) || 0;
+      req.created_by = typeof x.created_by === 'string' ? x.created_by.slice(0, 60) : 'Claude';
+      req.notes = typeof x.notes === 'string' ? x.notes.slice(0, 1000) : null;
+      req.version_no = Number(x.version_no) || null;
+      req.attempts = Number(x.attempts) || 0;
+    }
+  }
   if (action.startsWith('prep_')) {
     if (!oaIsUuid(x.candidate_id)) return { ok: false, error: 'candidate_id_invalido', message: 'candidate_id (uuid del prospecto) es obligatorio.' };
     req.candidate_id = String(x.candidate_id).toLowerCase();
@@ -122,6 +143,14 @@ export function oaReads(req, sb) {
     add('config', 'outreach_config?id=eq.1&select=autosend_enabled,autosend_min_score');
   } else if (req.action.startsWith('linkedin_') || req.action.startsWith('prep_')) {
     add('candidate', 'prospect_candidates?id=eq.' + req.candidate_id + '&select=id,company_name,status,channel_state,last_contact_channel,contact:canonical->contact&limit=1');
+  } else if (req.action.startsWith('taller_')) {
+    add('piece', 'content_pieces?id=eq.' + req.piece_id + '&select=*,idea:content_ideas!content_pieces_idea_id_fkey(*)&limit=1');
+    add('versions', 'content_versions?piece_id=eq.' + req.piece_id + '&select=*&order=version_no.desc&limit=2');
+    add('feedback', 'content_feedback?piece_id=eq.' + req.piece_id + '&select=id,status&limit=50');
+    if (req.action === 'taller_schedule') {
+      add('taken', 'content_pieces?status=in.(scheduled,in_review,approved)&scheduled_at=gte.' + new Date(Date.now() - 86400000).toISOString() + '&select=id,channel,format,scheduled_at&limit=300');
+      add('tcfg', 'content_config?id=eq.1&select=taller_carousel_direct_schedule,ig_feed_slot,ig_story_slots');
+    }
   } else if (req.action === 'idea_decide') {
     add('idea', 'content_ideas?id=eq.' + req.idea_id + '&select=*&limit=1');
   } else if (req.action === 'pause_set') {
@@ -382,7 +411,9 @@ export function oaStep(req, R, results, nowMs, env) {
 
   // ---------------------------------------------------------------- Ideas de la semana (spec §6.1): Christian decide; nada se produce ni publica solo
   if (A === 'idea_decide') {
-    const plan = ideasDecidePlan(req, (R.idea || [])[0] || null, { now: nowMs, by, allow_test: req.test === true });
+    const idea0 = (R.idea || [])[0] || null;
+    // Con el Taller vivo (Fase 2), aprobar una idea crea su pieza (carril vps → en cola · pc → en el PC con Claude).
+    const plan = req.decision === 'approve' && idea0 && idea0.status === 'proposed' ? tallerApproveIdeaPlan(idea0, { now: nowMs, by, allow_test: req.test === true, piece_id: tallerNewId(), pack_id: env.pack_id }) : ideasDecidePlan(req, idea0, { now: nowMs, by, allow_test: req.test === true });
     if (plan.error) return fail(plan.error, plan.message);
     return done(plan.resp, plan.writes);
   }
@@ -390,6 +421,60 @@ export function oaStep(req, R, results, nowMs, env) {
     const plan = ideasMinePlan(req, { now: nowMs, by, id: ideasNewId(), is_test: req.test === true });
     if (plan.error) return fail(plan.error, plan.message);
     return done(plan.resp, plan.writes);
+  }
+
+  // ---------------------------------------------------------------- Taller (spec §6.2–§6.3): revisar, pedir cambios, programar
+  if (A.startsWith('taller_')) {
+    const row = (R.piece || [])[0] || null;
+    if (!row) return fail('pieza_no_encontrada', 'No encontré esa pieza.');
+    if (row.is_test && req.test !== true) return fail('pieza_test', 'Esa pieza es de prueba.');
+    const idea = row.idea || null;
+    const piece = { ...row }; delete piece.idea;
+    const vs = R.versions || [];
+    const cur = vs.find((v) => v.version_no === piece.current_version) || vs[0] || null;
+    const ctx = { now: nowMs, by, id: tallerNewId(), version_id: cur ? cur.id : null, week_start: idea ? idea.week_start : null };
+    const simple = (plan) => (plan.error ? fail(plan.error, plan.message) : done(plan.resp, plan.writes));
+    if (A === 'taller_feedback') return simple(tallerFeedbackPlan(piece, { text: req.text, scope: req.scope }, ctx));
+    if (A === 'taller_approve') return simple(tallerApprovePlan(piece, ctx));
+    if (A === 'taller_duplicate') return simple(tallerDuplicatePlan(piece, idea, { channel: req.channel }, ctx));
+    if (A === 'taller_caption') return simple(tallerCaptionPlan(piece, cur, req.caption, ctx));
+    if (A === 'taller_add_version') return simple(tallerAddVersionPlan(piece, { assets: req.assets, caption: req.caption, qa: req.qa, cost_credits: req.cost_credits, created_by: req.created_by, notes: req.notes, version_no: req.version_no, attempts: req.attempts }, ctx));
+    if (A === 'taller_discard') {
+      if (!piece.ghl_post_id || !['programada', 'programada_pendiente_de_clic'].includes(piece.taller_status)) return simple(tallerDiscardPlan(piece, { reason: req.reason || req.text }, ctx));
+      // Ya estaba en GHL: retirar = rechazo reversible (no se borra por API), y recién entonces se descarta.
+      if (n === 0) return ghl('GET', '/posts/' + piece.ghl_post_id, null);
+      const g0 = results[0] && results[0].body && results[0].body.results && results[0].body.results.post;
+      if (!g0 || !g0._id) return done(oaRelay(results[0], 'No pude leer el post en GHL'));
+      if (String(g0.status) === 'published') return fail('ya_publicada', 'Ese post ya se publicó: no se puede retirar desde aquí.');
+      const ap = (g0.postApprovalDetails || {}).approver || env.approver;
+      if (n === 1) return ghl('PUT', '/posts/' + piece.ghl_post_id, { accountIds: g0.accountIds, summary: g0.summary, type: g0.type || 'post', status: 'in_review', userId: env.approver, media: g0.media || [], scheduleDate: g0.scheduleDate, postApprovalDetails: { approver: ap, approvalStatus: 'rejected' } });
+      if (n === 2) { if (!(results[1] && results[1].statusCode && results[1].statusCode < 300)) return done(oaRelay(results[1], 'GHL no aceptó el retiro')); return ghl('GET', '/posts/' + piece.ghl_post_id, null); }
+      const g2 = results[2] && results[2].body && results[2].body.results && results[2].body.results.post;
+      if (!g2 || (g2.postApprovalDetails || {}).approvalStatus !== 'rejected') return fail('ghl_no_confirmo', 'GHL no confirmó el retiro. Revísalo en GHL; la pieza sigue como estaba.');
+      const pl = tallerDiscardPlan(piece, { reason: req.reason || req.text }, ctx);
+      if (pl.error) return fail(pl.error, pl.message);
+      pl.writes[0].body.ghl_status = g2.status; pl.writes[0].body.ghl_approval_status = 'rejected'; pl.writes[0].body.status = 'discarded';
+      return done({ ...pl.resp, message: 'Retirada de GHL (rechazo reversible) y descartada.' }, pl.writes);
+    }
+    if (A === 'taller_schedule') {
+      const pre = tallerSchedulePrecheck({ piece, version: cur, idea, schedule_at: req.schedule_at, taken: R.taken || [], cfg: (R.tcfg || [])[0] || {}, now: nowMs });
+      if (pre.error) return fail(pre.error, pre.message);
+      let k = 0, media = [];
+      if (pre.needsUpload) {
+        if (n === 0) return ingest('atacama-media-gateway', { action: 'storage_upload', paths: pre.paths, piece_id: piece.id });
+        const up = results[0] && results[0].body;
+        if (!(up && up.ok && Array.isArray(up.files) && up.files.length === pre.paths.length && up.files.every((f) => f && /^https:\/\//.test(String(f.url || ''))))) return done(oaRelay(results[0], 'No pude subir los archivos a GHL'));
+        media = up.files; k = 1;
+      }
+      if (n === k) return { call: { kind: 'ghl', method: 'POST', url: 'https://services.leadconnectorhq.com/social-media-posting/' + env.ghl_loc + '/posts', body: tallerGhlBody(pre, media, env.approver) } };
+      const created = results[k] && results[k].body;
+      const cp = created && ((created.results && created.results.post) || created.post);
+      if (n === k + 1) { if (!(results[k].statusCode && results[k].statusCode < 300 && cp && cp._id)) return done(oaRelay(results[k], 'GHL no aceptó el post')); return ghl('GET', '/posts/' + cp._id, null); }
+      const post = results[k + 1] && results[k + 1].body && results[k + 1].body.results && results[k + 1].body.results.post;
+      const fin = tallerScheduleFinal({ piece, pre, post, media, now: nowMs, had_feedback: (R.feedback || []).length > 0 });
+      if (fin.error) return fail(fin.error, fin.message, { ghl_post_id: (post && post._id) || (cp && cp._id) || null });
+      return done(fin.resp, fin.writes);
+    }
   }
 
   // ---------------------------------------------------------------- pausa general (spec §8.8): system_state + reflejo en outreach_config.paused
@@ -446,9 +531,10 @@ export function oaAudit(req, R, final, nowMs) {
   if (req.candidate_id) { const c = (R.candidate || [])[0]; ent.candidate_id = req.candidate_id; if (c) ent.company = c.company_name; }
   if (req.idea_id) { const i = (R.idea || [])[0]; ent.idea_id = req.idea_id; if (i) { ent.title = i.title; ent.channel = i.channel; ent.week_start = i.week_start; } }
   if (req.action === 'idea_mine') { ent.title = req.title; ent.channel = req.channel; }
-  if (req.piece_id) { const p = (R.piece || [])[0]; ent.piece_id = req.piece_id; if (p) { ent.topic = p.topic; ent.channel = p.channel; ent.ghl_post_id = p.ghl_post_id; } }
+  if (req.piece_id && req.action.startsWith('taller_')) { const p = (R.piece || [])[0]; ent.piece_id = req.piece_id; if (p) { ent.topic = p.topic; ent.channel = p.channel; ent.format = p.format; ent.taller_status = p.taller_status; } }
+  else if (req.piece_id) { const p = (R.piece || [])[0]; ent.piece_id = req.piece_id; if (p) { ent.topic = p.topic; ent.channel = p.channel; ent.ghl_post_id = p.ghl_post_id; } }
   const type = req.action.split('_')[0];
-  const params = { type, decision: req.action === 'pause_set' ? (req.paused ? 'paused' : 'resumed') : req.action === 'idea_decide' ? req.decision : req.action === 'idea_mine' ? 'mine' : /approve/.test(req.action) ? 'approved' : /reject/.test(req.action) ? 'rejected' : req.action.replace(type + '_', ''), reason: req.reason || null, ...(req.subject ? { subject_len: req.subject.length, body_len: req.body.length } : {}) };
-  return { request_id: req.request_id + (r.ok ? '' : '~' + Math.floor(nowMs / 1000).toString(36)), actor: 'Christian via /ops', tool: 'ops_' + req.action, level: /approve|autosend_set|pause_set/.test(req.action) ? 3 : 2, entity: ent, params,
+  const params = { type, decision: req.action === 'pause_set' ? (req.paused ? 'paused' : 'resumed') : req.action === 'idea_decide' ? req.decision : req.action === 'idea_mine' ? 'mine' : req.action.startsWith('taller_') ? req.action.replace('taller_', '') : /approve/.test(req.action) ? 'approved' : /reject/.test(req.action) ? 'rejected' : req.action.replace(type + '_', ''), reason: req.reason || null, ...(req.subject ? { subject_len: req.subject.length, body_len: req.body.length } : {}) };
+  return { request_id: req.request_id + (r.ok ? '' : '~' + Math.floor(nowMs / 1000).toString(36)), actor: 'Christian via /ops', tool: 'ops_' + req.action, level: /approve|autosend_set|pause_set|taller_schedule/.test(req.action) ? 3 : 2, entity: ent, params,
     status: r.ok ? 'executed' : 'refused', result_summary: String(r.message || '').slice(0, 300), response: { ok: Boolean(r.ok), status: r.status || null, error: r.error || null, message: String(r.message || '').slice(0, 300) } };
 }

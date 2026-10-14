@@ -292,3 +292,21 @@ html:has(.ops), body:has(.ops) { overflow-x: clip; }
 .ops-form { display: grid; gap: 10px; }
 .ops-form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
 @media (max-width: 520px) { .ops-ficha-row { grid-template-columns: 1fr; gap: 0; } .ops-idea-pills { max-width: 40%; } }
+
+/* ---- Atacama OS v3 · Fase 2: Taller ---- */
+.ops-tl-group + .ops-tl-group { margin-top: 6px; }
+.ops-tl-cards { display: grid; gap: 8px; margin: 0; }
+.ops-tl-card { display: flex; gap: 12px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: var(--r-6); background: var(--paper); color: inherit; text-decoration: none; min-height: 72px; }
+.ops-tl-card:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.ops-tl-card img, .ops-tl-ph { width: 52px; height: 65px; object-fit: cover; border-radius: 4px; flex-shrink: 0; background: var(--blue-soft); }
+.ops-tl-ph { display: grid; place-items: center; font-weight: 700; color: var(--blue-text); }
+.ops-tl-slides { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 8px 0; padding-bottom: 6px; }
+.ops-tl-slides > li { position: relative; flex: 0 0 min(72%, 300px); scroll-snap-align: start; }
+.ops-tl-one > li { flex-basis: min(100%, 360px); }
+.ops-tl-slides img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: var(--r-6); border: 1px solid var(--line); display: block; }
+.ops-tl-n { position: absolute; top: 6px; left: 6px; background: rgba(0,0,0,.6); color: #fff; font-size: 12px; font-weight: 700; border-radius: var(--r-pill); padding: 1px 8px; }
+.ops-tl-miss { display: grid; place-items: center; aspect-ratio: 4 / 5; background: var(--paper); border-radius: var(--r-6); color: var(--subtle); font-size: 13px; }
+.ops-tl-video { width: 100%; max-width: 360px; aspect-ratio: 9 / 16; background: #000; border-radius: var(--r-6); display: block; margin: 8px 0; }
+.ops-tl-cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ops-tl-cmp .ops-tl-slides > li { flex-basis: 85%; }
+@media (max-width: 520px) { .ops-tl-cmp { grid-template-columns: 1fr; } }

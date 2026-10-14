@@ -13,6 +13,7 @@
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import { summaryHash } from '../../scripts/content/metrics-core.mjs';
+import { tallerSyncStatus } from '../../scripts/content/taller-core.mjs';
 
 const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 const PACK_ID = '0ba54785-bff0-4a2d-a397-64e697d34e38';
@@ -64,6 +65,8 @@ export const COMPUTE = `${summaryHash.toString()}
 
 ${mapGhlToPiece.toString()}
 
+${tallerSyncStatus.toString()}
+
 const pending = ($('Fetch Pending').first().json || {}).body;
 const res = $json || {};
 const posts = res.body && res.body.results && Array.isArray(res.body.results.posts) ? res.body.results.posts : null;
@@ -73,16 +76,22 @@ if (!posts || (res.statusCode || 0) >= 300) throw new Error('GHL posts/list fall
 if (posts.length >= 100) throw new Error('GHL posts/list devolvió 100 posts (lista truncada): no se marca ninguna pieza como borrada.');
 const byId = {};
 posts.forEach((p) => { byId[p._id] = p; });
+// Al publicar, GHL crea un post «hijo» por red con otro _id y parentPostId = el post que creamos (visto el 13-oct con el carrusel de Flows):
+// sin esto, la pieza parecía borrada.
+const byParent = {};
+posts.forEach((p) => { if (p.parentPostId && !byParent[p.parentPostId]) byParent[p.parentPostId] = p; });
 const now = Date.now();
 const out = [];
 pending.forEach((piece) => {
-  const post = byId[piece.ghl_post_id] || null;
+  const post = byId[piece.ghl_post_id] || byParent[piece.ghl_post_id] || null;
   const m = mapGhlToPiece(post, now, piece);
   if (m.status === null) return;
   const patch = { ...m, synced_at: new Date(now).toISOString(), updated_at: new Date(now).toISOString() };
+  const ts = tallerSyncStatus(piece, m);
+  if (ts && ts !== piece.taller_status) patch.taller_status = ts;
   const same = (a, b) => (a || null) === (b || null);
   const changed = m.status !== piece.status || !same(m.ghl_status, piece.ghl_status) || !same(m.ghl_approval_status, piece.ghl_approval_status)
-    || (m.scheduled_at && Date.parse(m.scheduled_at) !== Date.parse(piece.scheduled_at || 0)) || Boolean(m.approved_seen_at) || Boolean(m.approved_at) || m.ghl_edited === true;
+    || (m.scheduled_at && Date.parse(m.scheduled_at) !== Date.parse(piece.scheduled_at || 0)) || Boolean(m.approved_seen_at) || Boolean(m.approved_at) || m.ghl_edited === true || Boolean(patch.taller_status);
   if (changed) out.push({ json: { id: piece.id, from: piece.status, to: m.status, patch } });
 });
 return out;`;
@@ -91,7 +100,7 @@ export function buildContentSync() {
   const nodes = [
     { id: randomUUID(), name: 'Every 30 Minutes', type: 'n8n-nodes-base.scheduleTrigger', typeVersion: 1.2, position: [0, 0], parameters: { rule: { interval: [{ field: 'minutes', minutesInterval: 30 }] } } },
     { id: randomUUID(), name: 'Fetch Pending', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [240, 0], credentials: SUPABASE_CRED,
-      parameters: { method: 'GET', url: `${SUPABASE}/rest/v1/content_pieces?icp_pack_id=eq.${PACK_ID}&ghl_post_id=not.is.null&status=in.(drafted,in_review,approved,scheduled)&select=id,ghl_post_id,status,ghl_status,ghl_approval_status,scheduled_at,approved_at,approved_seen_at,ghl_summary_hash,ghl_edited&limit=100`,
+      parameters: { method: 'GET', url: `${SUPABASE}/rest/v1/content_pieces?icp_pack_id=eq.${PACK_ID}&ghl_post_id=not.is.null&status=in.(drafted,in_review,approved,scheduled)&select=id,ghl_post_id,status,ghl_status,ghl_approval_status,scheduled_at,approved_at,approved_seen_at,ghl_summary_hash,ghl_edited,taller_status&limit=100`,
         authentication: 'predefinedCredentialType', nodeCredentialType: 'supabaseApi', options: full() } },
     { id: randomUUID(), name: 'Any Pending?', type: 'n8n-nodes-base.if', typeVersion: 2.2, position: [360, 0], parameters: { conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'loose' }, combinator: 'and', conditions: [{ leftValue: '={{ (Array.isArray($json.body) && $json.body.length > 0) ? "yes" : "no" }}', rightValue: 'yes', operator: { type: 'string', operation: 'equals' } }] } } },
     { id: randomUUID(), name: 'List GHL Posts', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [600, 0], credentials: GHL_CRED, alwaysOutputData: true,

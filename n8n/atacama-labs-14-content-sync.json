@@ -2,7 +2,7 @@
   "name": "Atacama Labs - 14 Content Sync (GHL → Supabase)",
   "nodes": [
     {
-      "id": "9ed99d33-7cec-41e3-be44-cee3ca986bfd",
+      "id": "182cf175-f224-4573-9677-c53fded8dabe",
       "name": "Every 30 Minutes",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -22,7 +22,7 @@
       }
     },
     {
-      "id": "507b0b41-e769-4f93-aafb-8c81c8123a89",
+      "id": "92e6d5bd-d50b-401c-a7a0-f3d84348224d",
       "name": "Fetch Pending",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -38,7 +38,7 @@
       },
       "parameters": {
         "method": "GET",
-        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/content_pieces?icp_pack_id=eq.0ba54785-bff0-4a2d-a397-64e697d34e38&ghl_post_id=not.is.null&status=in.(drafted,in_review,approved,scheduled)&select=id,ghl_post_id,status,ghl_status,ghl_approval_status,scheduled_at,approved_at,approved_seen_at,ghl_summary_hash,ghl_edited&limit=100",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/content_pieces?icp_pack_id=eq.0ba54785-bff0-4a2d-a397-64e697d34e38&ghl_post_id=not.is.null&status=in.(drafted,in_review,approved,scheduled)&select=id,ghl_post_id,status,ghl_status,ghl_approval_status,scheduled_at,approved_at,approved_seen_at,ghl_summary_hash,ghl_edited,taller_status&limit=100",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "supabaseApi",
         "options": {
@@ -54,7 +54,7 @@
       }
     },
     {
-      "id": "1f54342f-ff15-4bb5-8c47-50a45744bd69",
+      "id": "c6babf65-4c87-4c72-97ce-8f83ea142146",
       "name": "Any Pending?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -84,7 +84,7 @@
       }
     },
     {
-      "id": "18598384-78dd-4211-9baf-bc978f7e258e",
+      "id": "100f46a5-c06f-400b-828d-4c613737d739",
       "name": "List GHL Posts",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -133,7 +133,7 @@
       }
     },
     {
-      "id": "a5879989-0847-4514-8469-a436666b6b7b",
+      "id": "2f3e2ca1-da24-4648-9671-7a44ac001bed",
       "name": "Compute",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -142,11 +142,11 @@
         0
       ],
       "parameters": {
-        "jsCode": "function summaryHash(text) {\r\n  const n = String(text == null ? '' : text).replace(/\\r\\n?/g, '\\n').replace(/[ \\t]+/g, ' ').replace(/ *\\n */g, '\\n').replace(/\\n{3,}/g, '\\n\\n').trim();\r\n  let h = 0x811c9dc5;\r\n  for (let i = 0; i < n.length; i++) { h ^= n.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }\r\n  return h.toString(16).padStart(8, '0');\r\n}\n\nfunction mapGhlToPiece(post, now, piece) {\r\n  const cur = piece || {};\r\n  if (!post) return { status: 'discarded', ghl_status: 'deleted', ghl_approval_status: null };\r\n  const det = post.postApprovalDetails || {};\r\n  const approval = det.approvalStatus ? String(det.approvalStatus) : null;\r\n  const st = String(post.status || '').toLowerCase();\r\n  const out = { ghl_status: st, ghl_approval_status: approval };\r\n  if (post.scheduleDate) out.scheduled_at = new Date(post.scheduleDate).toISOString();\r\n  if (st === 'published') { out.status = 'published'; out.published_at = new Date(post.publishedAt || post.updatedAt || now).toISOString(); }\r\n  else if (st === 'scheduled' || st === 'in_progress' || st === 'publishing') out.status = 'scheduled';\r\n  else if (st === 'failed' || st === 'error') out.status = approval === 'rejected' ? 'discarded' : 'failed';   // rechazar desde /ops o GHL deja el post en «failed» con aprobación rechazada: es un descarte, no una falla de publicación\r\n  else if (st === 'draft') out.status = approval === 'rejected' ? 'discarded' : 'drafted';\r\n  else if (st === 'in_review') out.status = approval === 'rejected' ? 'discarded' : approval === 'approved' ? 'approved' : 'in_review';\r\n  else if (st === 'deleted') out.status = 'discarded';\r\n  else out.status = null; // estado desconocido: no se toca la pieza\r\n  if (out.status === null) return out;\r\n  // Fecha de aprobación: GHL la entrega como `post.approvalActionAt` (verificado el 6-oct-2026 al aprobar los dos posts reales; el mismo campo se llena al rechazar, por eso solo cuenta si la aprobación figura approved).\r\n  // Si no viniera, se registra cuándo se VIO aprobado (aproximada, por la frecuencia de sincronización).\r\n  const exact = (approval === 'approved' && post.approvalActionAt) || det.approvedAt || det.approvalDate || det.approvedOn || null;\r\n  if (exact && !cur.approved_at && Number.isFinite(Date.parse(exact))) out.approved_at = new Date(exact).toISOString();\r\n  const approvedNow = approval === 'approved' || out.status === 'scheduled' || out.status === 'published';\r\n  if (approvedNow && !cur.approved_seen_at && (cur.status === 'in_review' || cur.status === 'approved' || cur.status === 'drafted' || approval === 'approved')) out.approved_seen_at = new Date(now).toISOString();\r\n  // Edición humana: el texto del post ya no coincide con el que envió Atacama OS.\r\n  if (cur.ghl_summary_hash && typeof post.summary === 'string' && summaryHash(post.summary) !== cur.ghl_summary_hash && cur.ghl_edited !== true) { out.ghl_edited = true; out.ghl_edited_seen_at = new Date(now).toISOString(); }\r\n  return out;\r\n}\n\nconst pending = ($('Fetch Pending').first().json || {}).body;\nconst res = $json || {};\nconst posts = res.body && res.body.results && Array.isArray(res.body.results.posts) ? res.body.results.posts : null;\nif (!Array.isArray(pending) || !pending.length) return [];\nif (!posts || (res.statusCode || 0) >= 300) throw new Error('GHL posts/list fallo (HTTP ' + res.statusCode + '): ' + JSON.stringify(res.body || {}).slice(0, 300));\n// GHL entrega como máximo 100 posts por página: si llegan 100 la lista pudo quedar truncada y un post ausente NO significa borrado (así se marcó «descartado» un reel publicado el 12-oct-2026).\nif (posts.length >= 100) throw new Error('GHL posts/list devolvió 100 posts (lista truncada): no se marca ninguna pieza como borrada.');\nconst byId = {};\nposts.forEach((p) => { byId[p._id] = p; });\nconst now = Date.now();\nconst out = [];\npending.forEach((piece) => {\n  const post = byId[piece.ghl_post_id] || null;\n  const m = mapGhlToPiece(post, now, piece);\n  if (m.status === null) return;\n  const patch = { ...m, synced_at: new Date(now).toISOString(), updated_at: new Date(now).toISOString() };\n  const same = (a, b) => (a || null) === (b || null);\n  const changed = m.status !== piece.status || !same(m.ghl_status, piece.ghl_status) || !same(m.ghl_approval_status, piece.ghl_approval_status)\n    || (m.scheduled_at && Date.parse(m.scheduled_at) !== Date.parse(piece.scheduled_at || 0)) || Boolean(m.approved_seen_at) || Boolean(m.approved_at) || m.ghl_edited === true;\n  if (changed) out.push({ json: { id: piece.id, from: piece.status, to: m.status, patch } });\n});\nreturn out;"
+        "jsCode": "function summaryHash(text) {\r\n  const n = String(text == null ? '' : text).replace(/\\r\\n?/g, '\\n').replace(/[ \\t]+/g, ' ').replace(/ *\\n */g, '\\n').replace(/\\n{3,}/g, '\\n\\n').trim();\r\n  let h = 0x811c9dc5;\r\n  for (let i = 0; i < n.length; i++) { h ^= n.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }\r\n  return h.toString(16).padStart(8, '0');\r\n}\n\nfunction mapGhlToPiece(post, now, piece) {\r\n  const cur = piece || {};\r\n  if (!post) return { status: 'discarded', ghl_status: 'deleted', ghl_approval_status: null };\r\n  const det = post.postApprovalDetails || {};\r\n  const approval = det.approvalStatus ? String(det.approvalStatus) : null;\r\n  const st = String(post.status || '').toLowerCase();\r\n  const out = { ghl_status: st, ghl_approval_status: approval };\r\n  if (post.scheduleDate) out.scheduled_at = new Date(post.scheduleDate).toISOString();\r\n  if (st === 'published') { out.status = 'published'; out.published_at = new Date(post.publishedAt || post.updatedAt || now).toISOString(); }\r\n  else if (st === 'scheduled' || st === 'in_progress' || st === 'publishing') out.status = 'scheduled';\r\n  else if (st === 'failed' || st === 'error') out.status = approval === 'rejected' ? 'discarded' : 'failed';   // rechazar desde /ops o GHL deja el post en «failed» con aprobación rechazada: es un descarte, no una falla de publicación\r\n  else if (st === 'draft') out.status = approval === 'rejected' ? 'discarded' : 'drafted';\r\n  else if (st === 'in_review') out.status = approval === 'rejected' ? 'discarded' : approval === 'approved' ? 'approved' : 'in_review';\r\n  else if (st === 'deleted') out.status = 'discarded';\r\n  else out.status = null; // estado desconocido: no se toca la pieza\r\n  if (out.status === null) return out;\r\n  // Fecha de aprobación: GHL la entrega como `post.approvalActionAt` (verificado el 6-oct-2026 al aprobar los dos posts reales; el mismo campo se llena al rechazar, por eso solo cuenta si la aprobación figura approved).\r\n  // Si no viniera, se registra cuándo se VIO aprobado (aproximada, por la frecuencia de sincronización).\r\n  const exact = (approval === 'approved' && post.approvalActionAt) || det.approvedAt || det.approvalDate || det.approvedOn || null;\r\n  if (exact && !cur.approved_at && Number.isFinite(Date.parse(exact))) out.approved_at = new Date(exact).toISOString();\r\n  const approvedNow = approval === 'approved' || out.status === 'scheduled' || out.status === 'published';\r\n  if (approvedNow && !cur.approved_seen_at && (cur.status === 'in_review' || cur.status === 'approved' || cur.status === 'drafted' || approval === 'approved')) out.approved_seen_at = new Date(now).toISOString();\r\n  // Edición humana: el texto del post ya no coincide con el que envió Atacama OS.\r\n  if (cur.ghl_summary_hash && typeof post.summary === 'string' && summaryHash(post.summary) !== cur.ghl_summary_hash && cur.ghl_edited !== true) { out.ghl_edited = true; out.ghl_edited_seen_at = new Date(now).toISOString(); }\r\n  return out;\r\n}\n\nfunction tallerSyncStatus(piece, mapped) {\n  const cur = piece && piece.taller_status;\n  if (!cur || !['programada', 'programada_pendiente_de_clic'].includes(cur)) return null;\n  if (mapped.status === 'published') return 'publicada';\n  if (mapped.status === 'discarded') return 'descartada';\n  if (mapped.status === 'scheduled' && cur === 'programada_pendiente_de_clic') return 'programada';\n  if (mapped.status === 'approved' && cur === 'programada_pendiente_de_clic') return 'programada';\n  return null;\n}\n\nconst pending = ($('Fetch Pending').first().json || {}).body;\nconst res = $json || {};\nconst posts = res.body && res.body.results && Array.isArray(res.body.results.posts) ? res.body.results.posts : null;\nif (!Array.isArray(pending) || !pending.length) return [];\nif (!posts || (res.statusCode || 0) >= 300) throw new Error('GHL posts/list fallo (HTTP ' + res.statusCode + '): ' + JSON.stringify(res.body || {}).slice(0, 300));\n// GHL entrega como máximo 100 posts por página: si llegan 100 la lista pudo quedar truncada y un post ausente NO significa borrado (así se marcó «descartado» un reel publicado el 12-oct-2026).\nif (posts.length >= 100) throw new Error('GHL posts/list devolvió 100 posts (lista truncada): no se marca ninguna pieza como borrada.');\nconst byId = {};\nposts.forEach((p) => { byId[p._id] = p; });\n// Al publicar, GHL crea un post «hijo» por red con otro _id y parentPostId = el post que creamos (visto el 13-oct con el carrusel de Flows):\n// sin esto, la pieza parecía borrada.\nconst byParent = {};\nposts.forEach((p) => { if (p.parentPostId && !byParent[p.parentPostId]) byParent[p.parentPostId] = p; });\nconst now = Date.now();\nconst out = [];\npending.forEach((piece) => {\n  const post = byId[piece.ghl_post_id] || byParent[piece.ghl_post_id] || null;\n  const m = mapGhlToPiece(post, now, piece);\n  if (m.status === null) return;\n  const patch = { ...m, synced_at: new Date(now).toISOString(), updated_at: new Date(now).toISOString() };\n  const ts = tallerSyncStatus(piece, m);\n  if (ts && ts !== piece.taller_status) patch.taller_status = ts;\n  const same = (a, b) => (a || null) === (b || null);\n  const changed = m.status !== piece.status || !same(m.ghl_status, piece.ghl_status) || !same(m.ghl_approval_status, piece.ghl_approval_status)\n    || (m.scheduled_at && Date.parse(m.scheduled_at) !== Date.parse(piece.scheduled_at || 0)) || Boolean(m.approved_seen_at) || Boolean(m.approved_at) || m.ghl_edited === true || Boolean(patch.taller_status);\n  if (changed) out.push({ json: { id: piece.id, from: piece.status, to: m.status, patch } });\n});\nreturn out;"
       }
     },
     {
-      "id": "0fd7f0e8-3fd8-432c-a1f5-0ba1e31af4bd",
+      "id": "a0e8ad77-b64a-4a3e-a089-2ab898fb543f",
       "name": "Patch Piece",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,

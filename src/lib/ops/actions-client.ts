@@ -48,7 +48,7 @@ export async function getOverview(): Promise<OverviewResult> {
   }
 }
 
-const ACTIONS = new Set(["email_save", "email_approve", "email_reject", "email_reopen", "linkedin_approve", "linkedin_reject", "content_approve", "content_reject", "autosend_set", "autosend_sweep", "prep_li_sent", "prep_hold", "prep_release", "prep_contact", "pause_set", "idea_decide", "idea_mine"]);
+const ACTIONS = new Set(["email_save", "email_approve", "email_reject", "email_reopen", "linkedin_approve", "linkedin_reject", "content_approve", "content_reject", "autosend_set", "autosend_sweep", "prep_li_sent", "prep_hold", "prep_release", "prep_contact", "pause_set", "idea_decide", "idea_mine", "taller_feedback", "taller_approve", "taller_schedule", "taller_discard", "taller_duplicate", "taller_caption"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Valida la solicitud antes de salir del servidor (lista cerrada de acciones; nada genérico). */
@@ -63,8 +63,12 @@ export function checkInput(i: OpsActionInput): string | null {
   if (i.action === "idea_mine" && (typeof i.title !== "string" || i.title.trim().length < 5 || i.title.length > 200)) return "Escribe tu idea en una frase.";
   if (i.chips !== undefined && (!Array.isArray(i.chips) || i.chips.length > 6 || i.chips.some((c) => typeof c !== "string" || c.length > 40))) return "Motivos inválidos.";
   if (i.week_start !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(i.week_start)) return "Semana inválida.";
+  if (i.action.startsWith("taller_") && !UUID.test(i.piece_id ?? "")) return "Pieza inválida.";
+  if (i.action === "taller_schedule" && !Number.isFinite(Date.parse(i.schedule_at ?? ""))) return "Elige fecha y hora.";
+  if (i.scope !== undefined && !/^(global|lamina [0-9]{1,2})$/.test(i.scope)) return "Lámina inválida.";
+  if (i.caption !== undefined && (typeof i.caption !== "string" || i.caption.length > 3000)) return "Texto inválido.";
   if (i.resume_at !== undefined && (typeof i.resume_at !== "string" || !Number.isFinite(Date.parse(i.resume_at)))) return "Fecha inválida.";
-  if (i.text !== undefined && (typeof i.text !== "string" || i.text.length > 1500)) return "Texto inválido.";
+  if (i.text !== undefined && (typeof i.text !== "string" || i.text.length > 2000)) return "Texto inválido.";
   if (i.email !== undefined && (typeof i.email !== "string" || i.email.length > 200)) return "Correo inválido.";
   if (i.linkedin !== undefined && (typeof i.linkedin !== "string" || i.linkedin.length > 300)) return "Enlace inválido.";
   if (i.action.startsWith("content_") && !UUID.test(i.piece_id ?? "")) return "Pieza inválida.";
@@ -93,6 +97,7 @@ export async function runAction(input: OpsActionInput): Promise<OpsActionState> 
       hash: typeof j.hash === "string" ? j.hash : null,
       needsGhl: j.needs_ghl === true,
       replayed: j.replayed === true,
+      ghlPostId: typeof j.ghl_post_id === "string" ? j.ghl_post_id : null,
     };
   } catch {
     return { ok: false, message: "No pude contactar al sistema de aprobaciones. No se hizo nada; revisa e inténtalo de nuevo." };

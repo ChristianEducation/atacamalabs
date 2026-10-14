@@ -17,13 +17,13 @@ export const VIEWS = [
  */
 export const SECTIONS = [
   { id: "hoy", label: "Hoy", views: [{ id: "hoy", label: "Hoy" }] },
-  { id: "redes", label: "Redes", views: [{ id: "ideas", label: "Ideas" }, { id: "contenido", label: "Publicaciones" }] },
+  { id: "redes", label: "Redes", views: [{ id: "ideas", label: "Ideas" }, { id: "taller", label: "Taller" }, { id: "contenido", label: "Publicaciones" }] },
   { id: "correo", label: "Prospección y correo", views: [{ id: "aprobaciones", label: "Aprobaciones" }, { id: "control", label: "Contacto preparado" }, { id: "prospeccion", label: "Radar" }, { id: "outreach", label: "Envíos" }] },
   { id: "resultados", label: "Resultados", views: [{ id: "resultados", label: "Resultados" }] },
   { id: "sistema", label: "Sistema", views: [{ id: "sistema", label: "Salud" }, { id: "controles", label: "Controles" }] },
 ] as const;
 
-export type ViewId = (typeof VIEWS)[number]["id"] | "hoy" | "ideas" | "resultados" | "controles";
+export type ViewId = (typeof VIEWS)[number]["id"] | "hoy" | "ideas" | "taller" | "resultados" | "controles";
 export type SectionId = (typeof SECTIONS)[number]["id"];
 
 const ALL: readonly string[] = [...VIEWS.map((v) => v.id), ...SECTIONS.flatMap((s) => s.views.map((v) => v.id))];
