@@ -4,7 +4,7 @@
  *
  * POST /webhook/atacama-ops  (X-Atacama-Key)  { action, params?, hermes? }
  *   daily | panel | today | urgent | health | stale | followups | replies | radar_new | content_status | content_performance |
- *   radar_gate | radar_report | content_radar_report | alerts_poll | alerts_ack
+ *   radar_gate | radar_report | content_radar_report | alerts_poll | alerts_ack | ideas_list | ideas_gate | ideas_propose | ideas_revise (v3 · Fase 4)
  *
  * Es el ÚNICO lugar que calcula el estado del negocio: lee GHL, Supabase, la API de n8n y los datos de Hermes que le entrega su job, y devuelve texto + decisiones.
  * Solo escribe en sus propias tablas (ops_alerts, ops_runs). NO envía mensajes, NO publica, NO toca GHL/Gmail (salvo las lecturas gmail_check). Hermes (cron + Telegram) programa y entrega.
@@ -18,6 +18,7 @@ import * as edCore from '../../scripts/content/editorial-core.mjs';
 import * as rfCore from '../../scripts/content/resource-factory-core.mjs';
 import { growthNorm, growthResourceRank } from '../../scripts/content/growth-core.mjs';
 import * as v3Core from '../../scripts/ops/v3-core.mjs';
+import * as ideasCore from '../../scripts/content/ideas-core.mjs';
 
 const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 export const N8N_BASE = 'https://n8n.srv1650725.hstgr.cloud';
@@ -46,10 +47,10 @@ const sbApply = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRe
     headerParameters: { parameters: [{ name: 'Prefer', value: '={{ $json.prefer || "return=minimal" }}' }] }, sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full() } });
 const GH_HEADERS = [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', value: 'application/json' }];
 
-export const LIB = [...new Map([...Object.values(core), ...['linkedinOverview', 'linkedinView', 'liLabel'].map((k) => liCore[k]), ...Object.values(prepCore), ...Object.values(edCore), ...Object.values(rfCore), growthNorm, growthResourceRank, ...Object.values(v3Core)].filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
+export const LIB = [...new Map([...Object.values(core), ...['linkedinOverview', 'linkedinView', 'liLabel'].map((k) => liCore[k]), ...Object.values(prepCore), ...Object.values(edCore), ...Object.values(rfCore), growthNorm, growthResourceRank, ...Object.values(v3Core), ...Object.values(ideasCore)].filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
 const CFG_JSON = JSON.stringify({ tz: OPS_CFG.tz, stages: OPS_CFG.stages, ignore_opps: OPS_CFG.ignore_opps });
 
-export const ACTIONS = ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'radar_report', 'content_radar_report', 'job_report', 'alerts_poll', 'alerts_ack'];
+export const ACTIONS = ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'radar_report', 'content_radar_report', 'job_report', 'alerts_poll', 'alerts_ack', 'ideas_list', 'ideas_gate', 'ideas_propose', 'ideas_revise'];
 
 export const parseCode = `try {
   const first = $('Ops Webhook').first().json || {};
@@ -59,7 +60,7 @@ export const parseCode = `try {
   if (!ACTIONS.includes(action)) throw new Error('action inválida: usa ' + ACTIONS.join(' | '));
   const dry = b.dry_run === true;
   // la hora solo se puede simular en consultas de lectura o con dry_run (pruebas); las escrituras siempre usan la hora real
-  const now = Number.isFinite(Number(b.now_ms)) && (dry || ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan'].includes(action)) ? Number(b.now_ms) : Date.now();
+  const now = Number.isFinite(Number(b.now_ms)) && (dry || ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'ideas_list', 'ideas_gate'].includes(action)) ? Number(b.now_ms) : Date.now();
   const need = {
     sb: !['alerts_ack'].includes(action) || true,
     ghl: ['daily', 'today', 'urgent', 'stale', 'replies', 'panel'].includes(action),
@@ -67,7 +68,7 @@ export const parseCode = `try {
     deep: (action === 'health' && b.deep === true) || (action === 'alerts_poll' && b.deep_gmail === true) || (action === 'daily' && b.deep === true),
     learn: action === 'content_performance',
     panel: action === 'panel',
-    growth: ['panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'content_performance', 'alerts_poll', 'health'].includes(action),
+    growth: ['panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'content_performance', 'alerts_poll', 'health', 'ideas_list', 'ideas_gate', 'ideas_propose', 'ideas_revise'].includes(action),
   };
   const sb = '${SUPABASE}/rest/v1/', none = '${NONE}';
   const iso = (ms) => new Date(ms).toISOString();
@@ -94,7 +95,7 @@ export const parseCode = `try {
     { key: 'content_cfg', url: sb + 'content_config?id=eq.1&select=*' },
     { key: 'feeds', url: sb + 'content_feeds?select=slug,name,enabled,last_checked_at,last_status,last_error,consecutive_failures&limit=100' },
     { key: 'feed_new', url: sb + 'content_feed_items?status=eq.new&select=relevance&limit=500' },
-    { key: 'intel', url: sb + 'content_intel_reports?select=created_at,competitors_scanned,report&order=created_at.desc&limit=1' },
+    { key: 'intel', url: sb + 'content_intel_reports?select=id,created_at,competitors_scanned,report&order=created_at.desc&limit=1' },
     { key: 'resources', url: sb + 'content_resources?select=id,slug,name,type,topic,audience,problem,cta_mode,url,status&limit=100' },
     { key: 'resource_use', url: sb + 'content_pieces?resource_id=not.is.null&is_test=eq.false&select=resource_id&limit=500' },
     { key: 'interviews', url: sb + 'founder_interviews?is_test=eq.false&select=status,question,asked_at&order=asked_at.desc&limit=10' },
@@ -102,6 +103,20 @@ export const parseCode = `try {
     { key: 'sys_state', url: sb + 'system_state?id=eq.1&select=*' },
     { key: 'ideas', url: sb + 'content_ideas?is_test=eq.false&status=in.(proposed,approved,changed)&select=id,title,status,channel,week_start,created_at,is_test&order=created_at.desc&limit=200' },
   ]) : [];
+  // v3 · Fase 4 (Ideas): lecturas propias de cada acción
+  const P = b.params && typeof b.params === 'object' ? b.params : {};
+  const UU = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const day = (ms) => new Date(ms).toISOString().slice(0, 10);
+  if (action === 'ideas_list') growth_reads.push({ key: 'ideas_rows', url: sb + 'content_ideas?is_test=eq.false&week_start=gte.' + day(now - 7 * 86400000) + '&select=*&order=created_at.desc&limit=300' }, { key: 'idea_batches', url: sb + 'content_idea_batches?is_test=eq.false&select=*&order=created_at.desc&limit=12' });
+  if (['ideas_gate', 'ideas_propose', 'ideas_revise'].includes(action)) growth_reads.push({ key: 'ideas_all', url: sb + 'content_ideas?week_start=gte.' + day(now - 42 * 86400000) + '&select=id,title,hook,status,channel,format,week_start,origin,ficha_complete,change_request,core_message,evidence,source_ids,is_test,history&limit=500' }, { key: 'intel_ids', url: sb + 'content_intel_reports?select=id,created_at&order=created_at.desc&limit=10' });
+  if (action === 'ideas_gate') growth_reads.push({ key: 'sources_verified', url: sb + 'content_sources?verified=eq.true&created_at=gte.' + iso(now - 21 * 86400000) + '&select=id,title,url,kind,signal_type,source_date,created_at&order=created_at.desc&limit=60' });
+  if (['ideas_propose', 'ideas_revise'].includes(action)) {
+    const evs = (action === 'ideas_propose' ? ((P.proposal || {}).ideas || []) : [P.idea || {}]).flatMap((i) => (i && Array.isArray(i.evidence) ? i.evidence : []));
+    const ids = (t) => [...new Set(evs.filter((e) => e && e.type === t && UU.test(String(e.id || ''))).map((e) => String(e.id).toLowerCase()))].slice(0, 60);
+    const zero = '00000000-0000-0000-0000-000000000000';
+    growth_reads.push({ key: 'ev_sources', url: sb + 'content_sources?id=in.(' + (ids('source').concat([zero])).join(',') + ')&select=id,verified' }, { key: 'ev_pieces', url: sb + 'content_pieces?id=in.(' + (ids('metric').concat([zero])).join(',') + ')&select=id,published_at' });
+    if (action === 'ideas_revise') growth_reads.push({ key: 'idea_one', url: sb + 'content_ideas?id=eq.' + (UU.test(String(P.idea_id || '')) ? String(P.idea_id).toLowerCase() : zero) + '&select=*&limit=1' });
+  }
   return [{ json: { growth_reads, action, params: b.params && typeof b.params === 'object' ? b.params : {}, hermes: b.hermes && typeof b.hermes === 'object' ? b.hermes : null, keys: Array.isArray(b.keys) ? b.keys.map(String).slice(0, 50) : [], report: b.report && typeof b.report === 'object' ? b.report : {}, dry, now, need, u } }];
 } catch (e) { return [{ json: { fatal: String((e && e.message) || e) } }]; }`;
 
@@ -170,13 +185,34 @@ else if (A === 'story_proposal_save') {
   if (!v.ok) out = { ok: false, error: 'propuesta_invalida', errors: v.errors, text: 'La propuesta no es válida: ' + v.errors.join(', ') };
   else { writes.push({ method: 'POST', path: 'story_proposals?on_conflict=for_date', body: v.value, prefer: 'resolution=merge-duplicates,return=minimal' }); out = { ok: true, saved: v.value.for_date, story_count: v.value.story_count, manual_notes: v.value.manual_notes, text: storyProposalText(v.value) }; }
 }
+else if (A === 'ideas_list') { out = { ideas: ideasListView(G.ideas_rows || [], G.idea_batches || [], p.now, CFG.tz) }; }
+else if (A === 'ideas_gate') { out = ideasGateView({ now: p.now, tz: CFG.tz, content_cfg: d.content_cfg, system_state: d.system_state, ideas_all: G.ideas_all || [], pieces: d.pieces, sources_verified: G.sources_verified || [], resources: d.resources, intel: d.intel }); out.text = 'Ideas: ' + out.mode + ' — ' + out.reason; }
+else if (A === 'ideas_propose' || A === 'ideas_revise') {
+  const test = (p.params || {}).test === true;
+  const known = { sources: Object.fromEntries((G.ev_sources || []).map((x) => [String(x.id).toLowerCase(), x.verified === true])), intel: (G.intel_ids || []).map((x) => x.id), metrics: (G.ev_pieces || []).filter((x) => x.published_at).map((x) => x.id), resources: (d.resources || []).filter((x) => x.status === 'active').map((x) => x.id) };
+  const blocked = d.system_state && d.system_state.global_pause === true ? 'Pausa general activa: no se guardan ideas.' : (!test && !(d.content_cfg && d.content_cfg.ideas_enabled === true)) ? 'El job de ideas está apagado (content_config.ideas_enabled = false): solo se aceptan pruebas (test=true).' : null;
+  let plan;
+  if (blocked) plan = { error: 'bloqueado', message: blocked };
+  else if (A === 'ideas_propose') {
+    const pr = (p.params || {}).proposal || {};
+    const wk = /^\\d{4}-\\d{2}-\\d{2}$/.test(String(pr.week_start || '')) ? pr.week_start : ideasMonday(p.now + 7 * 86400000, CFG.tz);
+    const since = ideasAddDays(wk, -28);
+    const recent = (G.ideas_all || []).filter((i) => !i.is_test && i.week_start >= since && i.status !== 'discarded').map((i) => ({ title: i.title, hook: i.hook })).concat((d.pieces || []).filter((x) => !x.is_test && Date.parse(x.created_at) >= p.now - 28 * 86400000).map((x) => ({ title: x.topic, hook: x.hook || null })));
+    plan = ideasProposePlan(pr, { now: p.now, known, recent, batch_id: ideasNewId(), is_test: test });
+  } else {
+    const one = (G.idea_one || [])[0] || null;
+    plan = one && one.is_test !== test ? { error: 'idea_no_encontrada', message: 'No encontré esa idea' + (one.is_test ? ' (es de prueba: usa test=true).' : '.') } : ideasRevisePlan((p.params || {}).idea || {}, one, { now: p.now, known });
+  }
+  if (plan.error) out = { ok: false, error: plan.error, text: plan.message };
+  else { plan.writes.forEach((w) => writes.push(w)); out = { ...plan.resp, text: plan.resp.text || plan.resp.message }; }
+}
 else if (A === 'igweek_gate') { out = igWeekGate(d); out.text = 'Instagram semanal: ' + out.mode + ' — ' + out.reason; }
 else if (A === 'ig_week_status') { out = igWeekly(d); out.text = 'Instagram semana ' + out.window.start + ' … ' + out.window.end + ': feed ' + out.feed.coverage + '/' + out.feed.target + ' (faltan ' + out.feed.missing + '), historias ' + out.stories.coverage + ' (faltan ' + out.stories.missing + ').'; }
 else if (A === 'editorial_plan') { out = editorialDecision(d, p.params); }
 else if (A === 'job_report') {
   const r = p.report || {};
-  const kind = ['content_rss', 'competitor_intel', 'content_pieces', 'contact_prep', 'ig_week', 'story_day'].includes(r.kind) ? r.kind : null;
-  if (!kind) out = { ok: false, error: 'report.kind debe ser content_rss | competitor_intel | content_pieces | contact_prep | ig_week | story_day', text: 'Tipo de corrida no válido.' };
+  const kind = ['content_rss', 'competitor_intel', 'content_pieces', 'contact_prep', 'ig_week', 'story_day', 'ideas_week'].includes(r.kind) ? r.kind : null;
+  if (!kind) out = { ok: false, error: 'report.kind debe ser content_rss | competitor_intel | content_pieces | contact_prep | ig_week | story_day | ideas_week', text: 'Tipo de corrida no válido.' };
   else {
   const n0 = (v) => Math.max(0, Math.min(1000, Number(v) || 0));
   writes.push({ method: 'POST', path: 'ops_runs', body: { kind, status: ['ok', 'skipped', 'error'].includes(r.status) ? r.status : 'ok', summary: { mode: String(r.mode || ''), reason: String(r.reason || '').slice(0, 300), minutes: n0(r.minutes), items_reviewed: n0(r.items_reviewed), signals: n0(r.signals), created: n0(r.created), blocked: n0(r.blocked), held: n0(r.held), competitors: n0(r.competitors), searches: n0(r.searches), pages_opened: n0(r.pages_opened) }, est_cost_usd: Number.isFinite(Number(r.est_cost_usd)) ? Math.max(0, Math.min(50, Number(r.est_cost_usd))) : null }, prefer: 'return=minimal' });
@@ -211,9 +247,11 @@ export const respondCode = `const c = $('Compute').first().json;
 const nW = ($('Compute').first().json.writes || []).length;
 const bad = $('Apply Writes').all().map((i) => i.json).slice(0, nW).filter((j) => !j.statusCode || j.statusCode >= 300);
 const r = { ...c.out };
+const planned = c.writes || [], applied = $('Apply Writes').all().map((i) => i.json).slice(0, planned.length);
+planned.forEach((w, i) => { const a = applied[i] || {}; if (w.check_rows && (a.statusCode || 0) < 300 && !(Array.isArray(a.body) && a.body.length)) { r.ok = false; r.error = 'sin_cambios'; r.text = w.check_message || 'No se aplicó el cambio.'; } });
 if (bad.length) { r.ok = false; r.persist_error = 'Supabase ' + (bad[0].statusCode ? 'HTTP ' + bad[0].statusCode : 'sin respuesta (red)') + ': ' + JSON.stringify(bad[0].body || {}).slice(0, 160); }
 if (c.dry) r.dry_run = true;
-r.safety = { messages_sent: 0, writes: 'solo ops_alerts/ops_runs' };
+r.safety = { messages_sent: 0, writes: 'solo ops_alerts/ops_runs/story_proposals/content_ideas (ideas: nunca aprueba, produce ni publica)' };
 return [{ json: r }];`;
 
 export function buildOps() {

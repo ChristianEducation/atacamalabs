@@ -2,6 +2,7 @@ import "server-only";
 import type { Panel, PanelResult } from "./types";
 import { swr } from "./swr";
 import { dropOverview } from "./actions-client";
+import { invalidateV3 } from "./v3-data";
 
 /**
  * Lee el estado de Atacama OS desde n8n («25 Atacama Ops», acción `panel`, solo lectura).
@@ -47,4 +48,5 @@ export async function getPanel(): Promise<PanelResult> {
 export function invalidatePanel(): void {
   panelCache.drop();
   dropOverview();
+  invalidateV3();
 }

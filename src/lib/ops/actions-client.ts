@@ -48,7 +48,7 @@ export async function getOverview(): Promise<OverviewResult> {
   }
 }
 
-const ACTIONS = new Set(["email_save", "email_approve", "email_reject", "email_reopen", "linkedin_approve", "linkedin_reject", "content_approve", "content_reject", "autosend_set", "autosend_sweep", "prep_li_sent", "prep_hold", "prep_release", "prep_contact", "pause_set"]);
+const ACTIONS = new Set(["email_save", "email_approve", "email_reject", "email_reopen", "linkedin_approve", "linkedin_reject", "content_approve", "content_reject", "autosend_set", "autosend_sweep", "prep_li_sent", "prep_hold", "prep_release", "prep_contact", "pause_set", "idea_decide", "idea_mine"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Valida la solicitud antes de salir del servidor (lista cerrada de acciones; nada genérico). */
@@ -59,6 +59,10 @@ export function checkInput(i: OpsActionInput): string | null {
   if ((i.action.startsWith("linkedin_") || i.action.startsWith("prep_")) && !UUID.test(i.candidate_id ?? "")) return "Prospecto inválido.";
   if (i.action === "autosend_set" && typeof i.enabled !== "boolean") return "Falta indicar si se enciende o se apaga.";
   if (i.action === "pause_set" && typeof i.paused !== "boolean") return "Falta indicar si se pausa o se reanuda.";
+  if (i.action === "idea_decide" && (!UUID.test(i.idea_id ?? "") || !["approve", "change", "discard", "move"].includes(i.decision ?? ""))) return "Idea o decisión inválida.";
+  if (i.action === "idea_mine" && (typeof i.title !== "string" || i.title.trim().length < 5 || i.title.length > 200)) return "Escribe tu idea en una frase.";
+  if (i.chips !== undefined && (!Array.isArray(i.chips) || i.chips.length > 6 || i.chips.some((c) => typeof c !== "string" || c.length > 40))) return "Motivos inválidos.";
+  if (i.week_start !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(i.week_start)) return "Semana inválida.";
   if (i.resume_at !== undefined && (typeof i.resume_at !== "string" || !Number.isFinite(Date.parse(i.resume_at)))) return "Fecha inválida.";
   if (i.text !== undefined && (typeof i.text !== "string" || i.text.length > 1500)) return "Texto inválido.";
   if (i.email !== undefined && (typeof i.email !== "string" || i.email.length > 200)) return "Correo inválido.";

@@ -425,7 +425,7 @@ export function evaluateAlerts(d, existing) {
   if (d.hermes && d.hermes.gateway_ok === false) add('hermes_gateway', 'critical', 'Hermes: el gateway de mensajería no responde', 'Telegram puede no estar entregando mensajes.', false);
   if (d.hermes && Number(d.hermes.disk_pct) >= 90) add('disk_full', 'high', 'Servidor de Hermes con el disco al ' + d.hermes.disk_pct + '%', 'Se puede quedar sin espacio.', false);
   // 6) avisos de corrida de los radares: una vez por corrida, en formato corto (no son fallas)
-  for (const r of (d.runs || []).filter((x) => ['prospect_radar', 'content_radar', 'content_rss', 'competitor_intel', 'content_pieces'].includes(x.kind) && x.id && now - Date.parse(x.created_at) <= 24 * 3600000)) {
+  for (const r of (d.runs || []).filter((x) => ['prospect_radar', 'content_radar', 'content_rss', 'competitor_intel', 'content_pieces', 'ideas_week'].includes(x.kind) && x.id && now - Date.parse(x.created_at) <= 24 * 3600000)) {
     if (r.status === 'skipped' || (r.summary || {}).mode === 'skip') continue;
     const n = runNotice(d, r);
     if (!n) continue;
@@ -997,6 +997,12 @@ export function composePanel(d) {
 export function runNotice(d, run) {
   const tz = (d.cfg && d.cfg.tz) || 'America/Santiago';
   const sm = run.summary || {};
+  if (run.kind === 'ideas_week') {
+    if (run.status === 'error') return { title: 'Ideas de la semana falló', text: 'IDEAS DE LA SEMANA\nLa corrida falló' + (sm.reason ? ' (' + clip(sm.reason, 100) + ')' : '') + '. Quedó registrada.', severity: 'high' };
+    const n = Number(sm.created) || 0;
+    if (!n) return null;
+    return { title: 'Ideas de la semana', text: ['IDEAS DE LA SEMANA', n + (n === 1 ? ' idea lista' : ' ideas listas') + ' para decidir' + (sm.week_start ? ' (semana del ' + sm.week_start + ')' : '') + '.', 'Apruébalas, cámbialas o descártalas en /ops → Redes → Ideas.'].join('\n'), severity: 'info' };
+  }
   if (run.kind === 'content_rss') return run.status === 'error' ? { title: 'Content RSS falló', text: 'CONTENT RSS\nLa corrida falló' + (sm.reason ? ' (' + clip(sm.reason, 100) + ')' : '') + '. Quedó registrada.', severity: 'high' } : null;
   if (run.kind === 'competitor_intel') {
     if (run.status === 'error') return { title: 'Inteligencia orgánica falló', text: 'INTELIGENCIA ORGÁNICA\nLa corrida falló' + (sm.reason ? ' (' + clip(sm.reason, 100) + ')' : '') + '. Quedó registrada.', severity: 'high' };

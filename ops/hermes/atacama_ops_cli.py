@@ -94,6 +94,7 @@ GATES = {  # tipo → (acción de compuerta, cómo se registra una omisión)
     "pieces": ("pieces_gate", {"action": "job_report", "kind": "content_pieces"}),
     "igweek": ("igweek_gate", {"action": "job_report", "kind": "ig_week"}),
     "storyday": ("storyday_gate", {"action": "job_report", "kind": "story_day"}),
+    "ideas": ("ideas_gate", {"action": "job_report", "kind": "ideas_week"}),
 }
 
 
@@ -126,6 +127,9 @@ def gate(kind):
         if kind in ("content", "pieces", "rss"):
             extra += " pieces_allowed=%s pending_review=%s/%s" % (str(r.get("pieces_allowed", True)).lower(), r.get("pending_review"), r.get("max_pending_in_review"))
     print("COMPUERTA DEL %s (calculada por Atacama OS antes de esta corrida): mode=%s%s — %s" % (kind.upper(), mode, extra, reason))
+    if kind == "ideas" and mode != "skip":
+        print("SEMANA_A_PROPONER: %s · topes por red %s (máx. %s, puntaje mínimo %s) · ya propuestas esa semana: %s · cambios pedidos: %s · «Mi idea» sin ficha: %s" % (r.get("week_start"), json.dumps(r.get("caps"), ensure_ascii=False), r.get("max_total"), r.get("min_score"), r.get("already"), len(r.get("changes") or []), len(r.get("mine") or [])))
+        print("Usa la herramienta ideas_context para ver fuentes verificadas, recursos, competencia, lo reciente que no se repite y los pedidos de cambio.")
     if kind == "storyday" and mode != "skip":
         print("FECHA_PROPUESTA: %s (hora de Chile; desfase UTC ese día: %s → schedule_suggestion = %sTHH:MM:00%s)" % (r.get("date"), r.get("utc_offset"), r.get("date"), r.get("utc_offset")))
         feed = r.get("feed_today") or []
@@ -152,7 +156,7 @@ def main():
     elif a[0] == "gate" and len(a) > 1 and a[1] in GATES:
         gate(a[1])
     else:
-        print("uso: atacama_ops_cli.py daily [--force] | alerts | gate radar|prep|content|rss|competitors|pieces|igweek|storyday")
+        print("uso: atacama_ops_cli.py daily [--force] | alerts | gate radar|prep|content|rss|competitors|pieces|igweek|storyday|ideas")
 
 
 if __name__ == "__main__":

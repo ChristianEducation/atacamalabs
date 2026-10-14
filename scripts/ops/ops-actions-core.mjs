@@ -12,7 +12,7 @@
  */
 
 export function oaActionList() {
-  return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject', 'autosend_set', 'autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release', 'prep_contact', 'pause_set'];
+  return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject', 'autosend_set', 'autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release', 'prep_contact', 'pause_set', 'idea_decide', 'idea_mine'];
 }
 
 export function oaIsUuid(v) {
@@ -61,6 +61,25 @@ export function oaValidate(b) {
       req.resume_at = new Date(ra).toISOString();
     }
   }
+  if (action === 'idea_decide') {
+    if (!oaIsUuid(x.idea_id)) return { ok: false, error: 'idea_id_invalido', message: 'idea_id (uuid de la idea) es obligatorio.' };
+    req.idea_id = String(x.idea_id).toLowerCase();
+    req.decision = String(x.decision || '').toLowerCase();
+    if (!['approve', 'change', 'discard', 'move'].includes(req.decision)) return { ok: false, error: 'decision_invalida', message: 'decision: approve | change | discard | move.' };
+    req.text = typeof x.text === 'string' ? x.text.trim().slice(0, 1000) : '';
+    req.chips = Array.isArray(x.chips) ? x.chips.filter((c) => typeof c === 'string').map((c) => c.trim().slice(0, 40)).filter(Boolean).slice(0, 6) : [];
+    req.test = x.test === true;
+    req.week_start = typeof x.week_start === 'string' ? x.week_start.trim().slice(0, 10) : '';
+  }
+  if (action === 'idea_mine') {
+    req.title = typeof x.title === 'string' ? x.title.trim().slice(0, 200) : '';
+    req.channel = String(x.channel || '');
+    req.format = String(x.format || '');
+    req.test = x.test === true;
+    req.text = typeof x.text === 'string' ? x.text.trim().slice(0, 400) : '';
+    req.week_start = typeof x.week_start === 'string' ? x.week_start.trim().slice(0, 10) : '';
+    if (req.title.length < 5) return { ok: false, error: 'falta_titulo', message: 'Escribe tu idea en una frase (mínimo 5 caracteres).' };
+  }
   if (action.startsWith('prep_')) {
     if (!oaIsUuid(x.candidate_id)) return { ok: false, error: 'candidate_id_invalido', message: 'candidate_id (uuid del prospecto) es obligatorio.' };
     req.candidate_id = String(x.candidate_id).toLowerCase();
@@ -103,6 +122,8 @@ export function oaReads(req, sb) {
     add('config', 'outreach_config?id=eq.1&select=autosend_enabled,autosend_min_score');
   } else if (req.action.startsWith('linkedin_') || req.action.startsWith('prep_')) {
     add('candidate', 'prospect_candidates?id=eq.' + req.candidate_id + '&select=id,company_name,status,channel_state,last_contact_channel,contact:canonical->contact&limit=1');
+  } else if (req.action === 'idea_decide') {
+    add('idea', 'content_ideas?id=eq.' + req.idea_id + '&select=*&limit=1');
   } else if (req.action === 'pause_set') {
     add('state', 'system_state?id=eq.1&select=*&limit=1');
   } else if (req.action.startsWith('content_')) {
@@ -359,6 +380,18 @@ export function oaStep(req, R, results, nowMs, env) {
     }
   }
 
+  // ---------------------------------------------------------------- Ideas de la semana (spec §6.1): Christian decide; nada se produce ni publica solo
+  if (A === 'idea_decide') {
+    const plan = ideasDecidePlan(req, (R.idea || [])[0] || null, { now: nowMs, by, allow_test: req.test === true });
+    if (plan.error) return fail(plan.error, plan.message);
+    return done(plan.resp, plan.writes);
+  }
+  if (A === 'idea_mine') {
+    const plan = ideasMinePlan(req, { now: nowMs, by, id: ideasNewId(), is_test: req.test === true });
+    if (plan.error) return fail(plan.error, plan.message);
+    return done(plan.resp, plan.writes);
+  }
+
   // ---------------------------------------------------------------- pausa general (spec §8.8): system_state + reflejo en outreach_config.paused
   if (A === 'pause_set') {
     const plan = v3PausePlan(req, (R.state || [])[0] || null, (R.config || [])[0] || null, nowMs, by);
@@ -411,9 +444,11 @@ export function oaAudit(req, R, final, nowMs) {
   const ent = {};
   if (req.message_id) { const m = (R.message || [])[0]; ent.message_id = req.message_id; if (m) { ent.company = m.company_name; ent.kind = m.kind; ent.to = m.to_email; } }
   if (req.candidate_id) { const c = (R.candidate || [])[0]; ent.candidate_id = req.candidate_id; if (c) ent.company = c.company_name; }
+  if (req.idea_id) { const i = (R.idea || [])[0]; ent.idea_id = req.idea_id; if (i) { ent.title = i.title; ent.channel = i.channel; ent.week_start = i.week_start; } }
+  if (req.action === 'idea_mine') { ent.title = req.title; ent.channel = req.channel; }
   if (req.piece_id) { const p = (R.piece || [])[0]; ent.piece_id = req.piece_id; if (p) { ent.topic = p.topic; ent.channel = p.channel; ent.ghl_post_id = p.ghl_post_id; } }
   const type = req.action.split('_')[0];
-  const params = { type, decision: req.action === 'pause_set' ? (req.paused ? 'paused' : 'resumed') : /approve/.test(req.action) ? 'approved' : /reject/.test(req.action) ? 'rejected' : req.action.replace(type + '_', ''), reason: req.reason || null, ...(req.subject ? { subject_len: req.subject.length, body_len: req.body.length } : {}) };
+  const params = { type, decision: req.action === 'pause_set' ? (req.paused ? 'paused' : 'resumed') : req.action === 'idea_decide' ? req.decision : req.action === 'idea_mine' ? 'mine' : /approve/.test(req.action) ? 'approved' : /reject/.test(req.action) ? 'rejected' : req.action.replace(type + '_', ''), reason: req.reason || null, ...(req.subject ? { subject_len: req.subject.length, body_len: req.body.length } : {}) };
   return { request_id: req.request_id + (r.ok ? '' : '~' + Math.floor(nowMs / 1000).toString(36)), actor: 'Christian via /ops', tool: 'ops_' + req.action, level: /approve|autosend_set|pause_set/.test(req.action) ? 3 : 2, entity: ent, params,
     status: r.ok ? 'executed' : 'refused', result_summary: String(r.message || '').slice(0, 300), response: { ok: Boolean(r.ok), status: r.status || null, error: r.error || null, message: String(r.message || '').slice(0, 300) } };
 }

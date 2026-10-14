@@ -8,6 +8,8 @@ import { GHL_PLANNER_URL, Preview } from "./Parts";
 import { Shell } from "./Shell";
 import { ControlCenter } from "./Control";
 import { PauseCard } from "./Pause";
+import { IdeasBoard } from "./Ideas";
+import { getIdeas } from "@/lib/ops/v3-data";
 import { parseView, sectionOf, type ViewId } from "./views";
 
 const STATUS_LABEL: Record<Status, string> = { ok: "Todo OK", atencion: "Atención", fallo: "Fallo" };
@@ -231,13 +233,12 @@ function Hoy({ panel, fetchedAt, stale }: { panel: Panel; fetchedAt: number; sta
 }
 
 /* --------------------------------------------------------- Redes → Ideas (v3 §6.1) */
-function Ideas({ fetchedAt, stale }: { fetchedAt: number; stale: boolean }) {
+async function Ideas({ fetchedAt, stale, idP }: { fetchedAt: number; stale: boolean; idP: ReturnType<typeof getIdeas> }) {
+  const r = await idP;
   return (
     <>
-      <Head title="Ideas" sub="La propuesta de la semana siguiente, por red" fetchedAt={fetchedAt} stale={stale} />
-      <Section id="ops-ideas" title="Propuesta de la semana">
-        <Empty>Todavía no hay propuesta. Hermes la entrega los lunes a las 07:30 con su ficha completa; aquí podrás aprobar, pedir cambios o descartar cada idea.</Empty>
-      </Section>
+      <Head title="Ideas" sub="La propuesta de la semana siguiente, por red: aprueba, pide cambios o descarta" fetchedAt={fetchedAt} stale={stale} />
+      {r.ok ? <IdeasBoard data={r.value} /> : <Section id="ops-ideas" title="Propuesta de la semana"><Empty>{r.reason === "not_configured" ? "Falta configurar la conexión con Atacama OS en el servidor." : "No pude leer las ideas (n8n no responde). Reintenta en un minuto."}</Empty></Section>}
     </>
   );
 }
@@ -536,6 +537,7 @@ export async function PanelView({ sp }: { sp: { view?: string | string[]; filter
   const asked = parseView(sp.view);
   // Las aprobaciones se piden EN PARALELO con el panel (antes iban una tras otra) y solo en las vistas que las usan.
   const ovP = asked === "aprobaciones" || asked === "outreach" ? getOverview() : Promise.resolve<Awaited<ReturnType<typeof getOverview>>>({ ok: false, reason: "not_configured" });
+  const idP = asked === "ideas" ? getIdeas() : Promise.resolve<Awaited<ReturnType<typeof getIdeas>>>({ ok: false, reason: "not_configured" });
   const r = await getPanel();
   // Navegación v2 (spec §5) salvo que content_config.ops_nav_v2 = false. Sin vista en la URL: «Hoy» (v2) o «Inicio» (v1).
   const v2 = !(r.ok && r.panel.v3 && r.panel.v3.nav_v2 === false);
@@ -564,7 +566,7 @@ export async function PanelView({ sp }: { sp: { view?: string | string[]; filter
       {v2 ? <SectionTabs view={view} /> : null}
       {view === "hoy" || (v2 && view === "inicio") ? <Hoy panel={panel} fetchedAt={fetchedAt} stale={stale} />
         : view === "inicio" ? <Inicio panel={panel} fetchedAt={fetchedAt} stale={stale} />
-        : view === "ideas" ? <Ideas fetchedAt={fetchedAt} stale={stale} />
+        : view === "ideas" ? <Ideas fetchedAt={fetchedAt} stale={stale} idP={idP} />
         : view === "resultados" ? <Resultados fetchedAt={fetchedAt} stale={stale} />
         : view === "controles" ? <Controles panel={panel} fetchedAt={fetchedAt} stale={stale} />
         : view === "aprobaciones" ? <Aprobaciones panel={panel} fetchedAt={fetchedAt} stale={stale} filter={filter} ovP={ovP} />

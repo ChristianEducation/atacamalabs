@@ -697,6 +697,58 @@ def save_contact(target: str, email: str = "", linkedin: str = "", source_url: s
     """Guarda un contacto PÚBLICO y PROFESIONAL que encontraste para un prospecto sin correo ni LinkedIn (correo publicado por la propia empresa en su sitio, o perfil personal de LinkedIn enlazado por ella). Indica source_url (la página exacta). Nunca adivines correos ni uses datos personales. Con eso el prospecto sale de «buscar contacto» y se prepara en la siguiente corrida."""
     return _prep({"action": "prep_contact", "target": target, "email": email, "linkedin": linkedin, "reason": source_url})
 
+# ---------------------------------------------------------------- Ideas de la semana (Atacama OS v3 · Fase 4)
+@mcp.tool()
+def ideas_context() -> str:
+    """IDEAS DE LA SEMANA — contexto para proponer (solo lectura): semana a proponer, topes por red (Instagram 7 · LinkedIn página 4 · LinkedIn personal 3; máx. 12),
+    puntaje mínimo, títulos recientes que NO se repiten (4 semanas), fuentes VERIFICADAS (content_sources) con su id, recursos activos, ángulos/huecos de la competencia,
+    pedidos de «Cambiar» de Christian y «Mi idea» sin ficha. mode=skip si la pausa general está activa o el job está apagado: entonces NO propongas nada."""
+    try:
+        from atacama_common import post_ops
+        r = post_ops({"action": "ideas_gate"}, timeout=90)
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "red", "message": "No pude consultar Atacama OS: %s" % type(ex).__name__}, ensure_ascii=False)
+    return json.dumps({k: r.get(k) for k in ("ok", "mode", "reason", "week_start", "caps", "max_total", "min_score", "already", "recent", "changes", "mine", "sources", "resources", "intel", "rules") if k in r}, ensure_ascii=False)
+
+
+@mcp.tool()
+def propose_ideas(proposal_json: str = "", proposal_path: str = "", test: bool = False) -> str:
+    """IDEAS DE LA SEMANA — guarda la propuesta (NO aprueba, NO produce, NO publica). proposal = {"week_start":"AAAA-MM-DD (lunes)","notes":"...","ideas":[{
+    "channel":"instagram|linkedin_page|linkedin_profile","format":"texto|imagen|carrusel|demo|reel|historia","title":"...","hook":"gancho que detiene el scroll",
+    "objective":"alcance|autoridad|conversaciones|leads|recurso|servicio|educar","audience_insight":"para quién y qué problema reconocible","core_message":"una frase",
+    "structure":["escena/lámina 1","..."],"cta":"(si corresponde)","production":{"tools":["..."],"how":"cómo se produce","material":"..."},"resource_id":"(si corresponde)","keyword":"(si lleva recurso)",
+    "effort":"bajo|medio|alto","cost_note":"créditos/edición si hay","risks":"qué puede salir mal","primary_metric":"reach|watch_time|saves|profile_visits|intent_comments|dms|leads",
+    "why":"por qué ahora (respaldo)","competitor_ref":"(patrón que se aprovecha, sin copiar)","evidence":[{"type":"source|intel|resource|metric","id":"...","note":"...","url":"..."}],
+    "score_breakdown":{"evidence":0-30,"relevance":0-25,"differentiation":0-20,"freshness":0-15,"feasibility":0-10}}]}.
+    El servidor descarta por su cuenta las ideas sin ficha completa, sin fuente verificada, con puntaje < 70 o parecidas a las de las últimas 4 semanas, y aplica los topes.
+    test=true guarda como prueba (is_test). Devuelve cuántas quedaron y por qué se descartaron las demás."""
+    proposal, err = _json_arg(proposal_json, proposal_path, "proposal")
+    if err:
+        return err
+    try:
+        from atacama_common import post_ops
+        r = post_ops({"action": "ideas_propose", "params": {"proposal": proposal, "test": bool(test)}}, timeout=120)
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "red", "message": "No pude guardar la propuesta: %s" % type(ex).__name__}, ensure_ascii=False)
+    return json.dumps({k: r.get(k) for k in ("ok", "text", "week_start", "proposed", "discarded_weak", "by_channel", "weak", "error") if k in r}, ensure_ascii=False)
+
+
+@mcp.tool()
+def revise_idea(idea_id: str, idea_json: str = "", idea_path: str = "", test: bool = False) -> str:
+    """IDEAS DE LA SEMANA — reescribe UNA idea: (a) cuando Christian pidió «Cambiar» (status changed): aplica SOLO lo pedido y vuelve a «por decidir»;
+    (b) completa la ficha de «Mi idea» de Christian (sigue aprobada). idea_json = mismos campos que en propose_ideas (ficha completa de 12 campos).
+    No aprueba ni publica nada."""
+    idea, err = _json_arg(idea_json, idea_path, "idea")
+    if err:
+        return err
+    try:
+        from atacama_common import post_ops
+        r = post_ops({"action": "ideas_revise", "params": {"idea_id": idea_id, "idea": idea, "test": bool(test)}}, timeout=90)
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "red", "message": "No pude guardar la idea: %s" % type(ex).__name__}, ensure_ascii=False)
+    return json.dumps({k: r.get(k) for k in ("ok", "text", "status", "error") if k in r}, ensure_ascii=False)
+
+
 if __name__ == "__main__":
     mcp.run()
 

@@ -47,6 +47,10 @@ const prepData = () => ({
     linkedin_en_curso: [], waalaxy: [], buscar_contacto: [PR(3, { state: 'buscar_contacto', reason: 'Sin correo ni LinkedIn público', find: { draft: { subject: 'una consulta', body: 'Mensaje ya redactado para Prep 3, solo falta el contacto.' }, at: ISO(-2) } })],
     en_espera: [PR(4, { state: 'en_espera', reason: 'Prioridad B: se contacta después de avanzar con los A', priority: 'B' })], no_contactar: [], sin_accion: [PR(5), PR(6)] },
   valid_unactioned: 2, investigated: 8, sent_today: 1, replies_7d: 0, followup_drafts: 0, generated_at: new Date().toISOString(), autosend: { enabled: state.autosend === true, min_score: 80, updated_at: null } });
+const FICHA = { audience_insight: 'Dueños de clínicas', core_message: 'Empieza por lo repetitivo', structure: [{ text: 'Portada' }, { text: 'Tres señales' }, { text: 'Cierre' }], cta: 'Comenta PROCESO', production: { tools: ['composer'], how: 'Carrusel en la VPS', lane: 'vps' }, resource_id: null, keyword: 'PROCESO', cost_note: null, risks: 'Que suene genérico', why: 'Encuesta reciente', evidence: [{ type: 'source', id: 's1', note: 'Encuesta', url: 'https://example.com/e' }], competitor_ref: null, angle: null };
+const IDEA = (n, o = {}) => ({ id: UID(700 + n), week_start: '2026-10-26', channel: 'instagram', channel_label: 'Instagram', format: 'carrusel', title: 'Idea de prueba ' + n, hook: 'Gancho ' + n, objective: 'educar', effort: 'medio', primary_metric: 'saves', score: 88 - n, status: 'proposed', origin: 'hermes', ficha_complete: true, deadline: { state: 'alcanza', label: 'Alcanza', left: 5, need: 2, closing: '2026-10-23' }, change_request: null, decision_reason: null, lane: 'vps', piece_id: null, ficha: FICHA, ...o });
+const ideasView = () => ({ generated_at: new Date().toISOString(), next_week: '2026-10-26', weeks: [{ week_start: '2026-10-26', is_next: true, counts: { proposed: 2, changed: 0, approved: 0, discarded: 0 }, discarded_weak: 3, weak: [{ title: 'Débil', channel: 'instagram', reasons: ['sin fuente verificada'] }], batch_at: ISO(-2),
+  channels: [{ channel: 'instagram', label: 'Instagram', ideas: state.ideas.filter((i) => i.channel === 'instagram' && i.score >= 75), folded: state.ideas.filter((i) => i.channel === 'instagram' && i.score < 75) }, { channel: 'linkedin_page', label: 'LinkedIn · página', ideas: state.ideas.filter((i) => i.channel === 'linkedin_page'), folded: [] }, { channel: 'linkedin_profile', label: 'LinkedIn · personal', ideas: [], folded: [] }] }] });
 const v3 = () => ({ pause: { paused: state.paused, reason: state.paused ? 'Viaje' : null, since: state.paused ? ISO(-1) : null, by: state.paused ? 'Christian via /ops' : null, resume_at: null }, nav_v2: state.navV2,
   inbox: { total: 3 + 1 + 2, items: [{ kind: 'correo', prio: 1, count: 3, title: '3 correos por aprobar', from: 'Prospección y correo', age: 'hace 3 d', tone: 'old', href: '/ops?view=aprobaciones&filter=correos', examples: ['Empresa 1', 'Empresa 2'] },
     { kind: 'idea', prio: 2, count: 1, title: '1 idea por decidir', from: 'Redes → Ideas', age: 'hace 2 h', tone: 'fresh', href: '/ops?view=ideas', examples: ['Idea de prueba'] },
@@ -63,7 +67,7 @@ const panel = () => ({ v3: v3(), prep: prepData(), generated_at: new Date().toIS
   linkedin: { mode: 'live', counts: { pendiente: 0, en_lista: 0, en_campana: 1, conexion: 0, mensaje: 0, followup: 0, respondio: 0, rechazo: 0, error: 0 }, ready: 1, rows: [], note: 'Waalaxy no informa por API si la invitación se envió, si la aceptaron o si respondieron: esos estados los registras tú con Hermes.' } });
 
 // ------------------------------------------------------------------ n8n simulado
-const state = { cards: CARDS, pieces: PIECES, calls: [], opsHits: 0, mode: 'ok', autosend: false, paused: false, navV2: true };
+const state = { cards: CARDS, pieces: PIECES, calls: [], opsHits: 0, mode: 'ok', autosend: false, paused: false, navV2: true, ideas: [IDEA(1), IDEA(2, { channel: 'linkedin_page', channel_label: 'LinkedIn · página', format: 'texto' }), IDEA(15, { score: 72, title: 'Idea débil plegada' })] };
 const mock = http.createServer((req, res) => {
   let body = '';
   req.on('data', (c) => { body += c; });
@@ -71,10 +75,10 @@ const mock = http.createServer((req, res) => {
     const send = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
     const j = body ? JSON.parse(body) : {};
     if (req.url === '/__calls') return send(200, state.calls);
-    if (req.url === '/__reset') { state.calls = []; state.mode = 'ok'; state.cards = CARDS; state.autosend = false; state.paused = false; state.navV2 = true; return send(200, {}); }
+    if (req.url === '/__reset') { state.calls = []; state.mode = 'ok'; state.cards = CARDS; state.autosend = false; state.paused = false; state.navV2 = true; state.ideas = [IDEA(1), IDEA(2, { channel: 'linkedin_page', channel_label: 'LinkedIn · página', format: 'texto' }), IDEA(15, { score: 72, title: 'Idea débil plegada' })]; return send(200, {}); }
     if (req.url === '/__nav') { state.navV2 = j.v2 !== false; return send(200, {}); }
     if (req.url === '/__mode') { state.mode = j.mode; return send(200, {}); }
-    if (req.url === '/webhook/atacama-ops') { state.opsHits++; return req.headers['x-atacama-key'] === INGEST_KEY ? send(200, { ok: true, panel: panel() }) : send(403, {}); }
+    if (req.url === '/webhook/atacama-ops') { state.opsHits++; if (req.headers['x-atacama-key'] !== INGEST_KEY) return send(403, {}); return j.action === 'ideas_list' ? send(200, { ok: true, ideas: ideasView() }) : send(200, { ok: true, panel: panel() }); }
     if (req.url === '/webhook/atacama-ops-actions') {
       if (req.headers['x-ops-approval'] !== OPS_KEY) return send(403, { message: 'Authorization data is wrong!' });
       if (j.action === 'overview') return send(200, overview());
@@ -82,6 +86,8 @@ const mock = http.createServer((req, res) => {
       if (state.mode === 'error') return send(200, { ok: false, error: 'rechazado', message: 'El motor rechazó la acción (prueba).' });
       if (state.mode === 'down') return send(500, { message: 'boom' });
       if (j.action === 'content_approve' || j.action === 'content_reject') return send(200, { ok: true, status: j.action === 'content_approve' ? 'scheduled' : 'rejected', message: j.action === 'content_approve' ? 'Aprobada y programada en GHL (prueba).' : 'Rechazada (prueba).' });
+      if (j.action === 'idea_decide') { const it = state.ideas.find((i) => i.id === j.idea_id); if (it) { if (j.decision === 'approve') it.status = 'approved'; if (j.decision === 'change') { it.status = 'changed'; it.change_request = j.text; } if (j.decision === 'discard') state.ideas = state.ideas.filter((i) => i !== it); if (j.decision === 'move') it.week_start = j.week_start; } return send(200, { ok: true, status: j.decision, message: 'Idea: ' + j.decision + ' (prueba).' }); }
+      if (j.action === 'idea_mine') { state.ideas.push(IDEA(30, { title: j.title, status: 'approved', origin: 'christian', ficha_complete: false, channel: j.channel, format: j.format })); return send(200, { ok: true, status: 'approved', message: 'Tu idea quedó aprobada (prueba).' }); }
       if (j.action === 'pause_set') { state.paused = j.paused === true; return send(200, { ok: true, status: j.paused ? 'paused' : 'resumed', message: j.paused ? 'PAUSA GENERAL activa (prueba).' : 'Sistema reanudado (prueba).' }); }
       if (j.action === 'autosend_set') { state.autosend = j.enabled === true; return send(200, { ok: true, status: j.enabled ? 'autosend_on' : 'autosend_off', message: 'Envío automático ' + (j.enabled ? 'ON' : 'OFF') + ' (prueba).' }); }
       if (j.action === 'email_save') return send(200, { ok: true, status: 'saved', message: 'Guardado. NO se envió: aprueba el envío cuando estés listo.', hash: 'hashNEW1' });
@@ -383,6 +389,45 @@ async function main() {
     // ---------------------------------------------------------------- seguridad del HTML
     await login(page, PIN);
     await page.waitForSelector('.ops-side');
+    // ---------------------------------------------------------------- v3 · Fase 4: Ideas
+    await reset();
+    await page.goto(APP + '/ops?view=ideas'); await page.waitForSelector('[data-testid^="idea-"]');
+    const iv = await page.locator('#ops-main').innerText();
+    t('Ideas: semana próxima por red, con estado, plazo «Alcanza», objetivo, gancho y métrica', /Semana del 26 oct/.test(iv) && /Instagram/.test(iv) && /LinkedIn · página/.test(iv) && /Por decidir/.test(iv) && /Alcanza/.test(iv) && /Objetivo:/.test(iv) && /Gancho 1/.test(iv) && /mide: Guardados/.test(iv), iv.slice(0, 400));
+    t('Ideas: las débiles van plegadas y el contador «3 ideas descartadas por débiles» se puede abrir', (await page.locator('details', { hasText: 'idea más débil' }).count()) === 1 && /3 ideas descartadas por débiles/.test(await page.getByTestId('weak').innerText()));
+    const card1 = page.getByTestId('idea-' + UID(701));
+    await card1.locator('summary', { hasText: 'Ver ficha completa' }).click();
+    const fi = await card1.locator('.ops-ficha').innerText();
+    t('Ideas: «Ver ficha completa» muestra los 12 campos numerados y las fuentes', ['1. Objetivo', '2. Público / insight', '3. Gancho', '4. Idea central', '5. Formato', '6. Estructura / escenas', '7. CTA', '8. Cómo se produce', '9. Recurso asociado', '10. Costo / esfuerzo', '11. Riesgos', '12. Métrica principal'].every((k) => fi.toLowerCase().includes(k.toLowerCase())) && /fuentes/i.test(fi), fi.slice(0, 300));
+    await card1.getByRole('button', { name: 'Aprobar' }).click();
+    await waitCall('idea_decide');
+    let ic = (await calls()).filter((c) => c.action === 'idea_decide');
+    t('Ideas: «Aprobar» llama UNA vez a idea_decide (approve) con la idea; el aviso es el del sistema', ic.length === 1 && ic[0].decision === 'approve' && ic[0].idea_id === UID(701) && /Idea: approve/.test(await page.locator('.ops-toast').first().innerText()));
+    await page.waitForSelector('[data-testid="idea-' + UID(701) + '"][data-status="approved"]', { timeout: 20000 });
+    t('Ideas: tras aprobar, la tarjeta queda «Aprobada» y ya no ofrece Aprobar', (await card1.getByRole('button', { name: 'Aprobar' }).count()) === 0 && /Aprobada/.test(await card1.innerText()));
+    const card2 = page.getByTestId('idea-' + UID(702));
+    await card2.getByRole('button', { name: 'Cambiar' }).click();
+    t('Ideas: «Cambiar» exige escribir qué cambiar (botón deshabilitado vacío)', await card2.getByRole('button', { name: 'Pedir el cambio' }).isDisabled());
+    await card2.locator('textarea').fill('Otro ángulo, más de costos');
+    await card2.getByRole('button', { name: 'Pedir el cambio' }).click();
+    for (let k = 0; k < 40 && !(await calls()).some((c) => c.action === 'idea_decide' && c.decision === 'change'); k++) await page.waitForTimeout(250);
+    ic = (await calls()).filter((c) => c.action === 'idea_decide' && c.decision === 'change');
+    t('Ideas: el cambio se manda con el texto', ic.length === 1 && ic[0].text === 'Otro ángulo, más de costos' && ic[0].idea_id === UID(702));
+    await page.waitForSelector('[data-testid="idea-' + UID(702) + '"][data-status="changed"]', { timeout: 20000 });
+    await card2.getByRole('button', { name: 'Descartar' }).click();
+    await card2.getByRole('button', { name: 'Muy genérica' }).click();
+    await card2.getByRole('button', { name: 'Sí, descartar' }).click();
+    for (let k = 0; k < 40 && !(await calls()).some((c) => c.action === 'idea_decide' && c.decision === 'discard'); k++) await page.waitForTimeout(250);
+    ic = (await calls()).filter((c) => c.action === 'idea_decide' && c.decision === 'discard');
+    t('Ideas: descartar manda los motivos elegidos', ic.length === 1 && ic[0].chips.join() === 'Muy genérica');
+    await page.locator('#ops-mine').scrollIntoViewIfNeeded();
+    await page.getByLabel('Tu idea en una frase').fill('Antes y después de una agenda por WhatsApp');
+    await page.getByLabel('Formato').selectOption('reel');
+    await page.getByRole('button', { name: 'Guardar mi idea' }).click();
+    await waitCall('idea_mine');
+    ic = (await calls()).filter((c) => c.action === 'idea_mine');
+    t('Mi idea: se guarda con título, red, formato y semana (nace aprobada en el backend)', ic.length === 1 && ic[0].title === 'Antes y después de una agenda por WhatsApp' && ic[0].channel === 'instagram' && ic[0].format === 'reel' && ic[0].week_start === '2026-10-26');
+    await reset();
     // ---------------------------------------------------------------- v3 · «Hoy» y pausa general
     await reset();
     await page.goto(APP + '/ops?view=hoy'); await page.waitForSelector('[data-testid="inbox"]');

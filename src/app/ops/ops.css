@@ -277,3 +277,18 @@ html:has(.ops), body:has(.ops) { overflow-x: clip; }
 .ops-inbox-go { font-size: 13px; font-weight: 700; color: var(--blue-text); white-space: nowrap; }
 .ops-paused { border-color: var(--danger); background: var(--danger-bg); }
 .ops-on-paused { background: var(--danger-bg); color: var(--danger); }
+
+/* ---- Atacama OS v3 · Fase 4: Ideas ---- */
+.ops-idea-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 12px; }
+.ops-idea-pills { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; flex-shrink: 0; max-width: 45%; }
+.ops-idea-line { margin: 0 0 6px; font-size: 15px; overflow-wrap: anywhere; }
+.ops-idea-ch + .ops-idea-ch { margin-top: 8px; }
+.ops-ficha .ops-detail { display: grid; gap: 6px; }
+.ops-ficha-row { display: grid; grid-template-columns: minmax(120px, 34%) 1fr; gap: 8px; }
+.ops-ficha-row dt { font-weight: 700; font-size: 13px; color: var(--subtle); }
+.ops-ficha-row dd { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
+.ops-ficha-ol { margin: 0; padding-left: 18px; }
+.ops-ficha-miss { color: var(--danger); font-weight: 700; }
+.ops-form { display: grid; gap: 10px; }
+.ops-form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+@media (max-width: 520px) { .ops-ficha-row { grid-template-columns: 1fr; gap: 0; } .ops-idea-pills { max-width: 40%; } }

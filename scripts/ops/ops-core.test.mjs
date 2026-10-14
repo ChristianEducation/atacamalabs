@@ -596,4 +596,13 @@ ok('propuesta del día: valida tipos y horas, exige decisión editorial, y convi
   assert.ok(none.ok); assert.match(oc.storyProposalText(none.value), /ninguna/);
 });
 
+ok('v3 · aviso «ideas listas»: una vez por corrida real con ideas; nada si no hubo ideas', () => {
+  const d = base();
+  const n1 = oc.runNotice(d, { kind: 'ideas_week', status: 'ok', created_at: iso(H), summary: { created: 7, week_start: '2026-10-26' } });
+  assert.match(n1.text, /IDEAS DE LA SEMANA/); assert.match(n1.text, /7 ideas listas/); assert.match(n1.text, /Redes → Ideas/);
+  assert.equal(oc.runNotice(d, { kind: 'ideas_week', status: 'ok', created_at: iso(H), summary: { created: 0 } }), null);
+  const ev = oc.evaluateAlerts({ ...d, runs: [{ id: 'r9', kind: 'ideas_week', status: 'ok', created_at: iso(H), summary: { created: 3, week_start: '2026-10-26' } }] }, []);
+  assert.ok(ev.notify.some((x) => x.key === 'run:r9' && /3 ideas listas/.test(x.meta.notice)));
+});
+
 console.log(n + ' ok');

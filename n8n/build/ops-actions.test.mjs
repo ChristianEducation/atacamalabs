@@ -60,7 +60,7 @@ async function exec(body, o = {}) {
   if (parsed.fatal) { const r = (await run('Respond Error', { ...store }, {})).length ? { ok: false, error: 'solicitud_invalida', message: parsed.fatal } : null; return { resp: r, calls: [], writes: [] }; }
   const reads = (await run('Expand Reads', store)).map((x) => x.json);
   const dbForKey = (key) => key === 'audit' ? w.db.audit : key === 'message' ? [{ ...w.db.message, cand: { id: CID, company_name: 'Clínica Ramis', status: 'in_ghl' } }] : key === 'candidate' ? [w.db.candidate] : key === 'piece' ? [w.db.piece]
-    : key === 'messages' ? (o.messages || [w.db.message]) : key === 'candidates' ? (o.candidates || [w.db.candidate]) : key === 'suppression' ? [] : key === 'state' ? (o.state === null ? [] : [o.state || { id: 1, global_pause: false, meta: {} }]) : key === 'config' ? [o.config || { mode: 'live', paused: false, daily_cap: 5, window_start: '09:00', window_end: '17:30', tz: 'America/Santiago', linkedin_mode: 'live', linkedin_list_id: 'L1', linkedin_campaign_id: 'C1', linkedin_daily_cap: 10 }] : [];
+    : key === 'messages' ? (o.messages || [w.db.message]) : key === 'candidates' ? (o.candidates || [w.db.candidate]) : key === 'suppression' ? [] : key === 'state' ? (o.state === null ? [] : [o.state || { id: 1, global_pause: false, meta: {} }]) : key === 'idea' ? (o.idea === null ? [] : [o.idea || { id: UID(9), status: 'proposed', week_start: '2026-10-26', title: 'Idea X', channel: 'instagram', format: 'carrusel', history: [], is_test: false }]) : key === 'config' ? [o.config || { mode: 'live', paused: false, daily_cap: 5, window_start: '09:00', window_end: '17:30', tz: 'America/Santiago', linkedin_mode: 'live', linkedin_list_id: 'L1', linkedin_campaign_id: 'C1', linkedin_daily_cap: 10 }] : [];
   const readRes = reads.map((r) => (o.readFails === r.key ? { statusCode: 500, body: {} } : { statusCode: 200, body: dbForKey(r.key) }));
   store.Read = readRes[0]; const lists = { Read: readRes };
   const slotResult = {};
@@ -72,7 +72,7 @@ async function exec(body, o = {}) {
     store['GHL Get ' + k] = plan.call && plan.call.kind === 'ghl' && plan.call.method === 'GET' ? res : { statusCode: 0 };
     store['GHL Put ' + k] = plan.call && plan.call.kind === 'ghl' && plan.call.method === 'PUT' ? res : { statusCode: 0 };
   }
-  const fin = (await run('Finish', store))[0].json; store.Finish = fin;
+  const fin = (await run('Finish', store, lists))[0].json; store.Finish = fin;
   const writes = (await run('Expand Writes', store)).map((x) => x.json).filter((x) => !x.skip);
   const applied = writes.map((x) => (o.writeFails ? { statusCode: 500, body: { message: 'x' } } : (x.check_rows ? { statusCode: 200, body: o.rowsChanged === false ? [] : [{ id: MID }] } : { statusCode: 201, body: {} })));
   store['Apply Writes'] = applied[0] || {};
@@ -87,7 +87,7 @@ const names = new Set(wf.nodes.map((n) => n.name));
 t('29: conexiones válidas y webhook con clave EXCLUSIVA de /ops (no la de Hermes)', Object.entries(wf.connections).every(([a, v]) => names.has(a) && v.main.every((o) => o.every((c) => names.has(c.node)))) && wf.nodes[0].parameters.authentication === 'headerAuth' && wf.nodes[0].credentials.httpHeaderAuth.name === 'Atacama Labs - Ops Approval Key' && wf.nodes[0].parameters.path === 'atacama-ops-actions');
 t('29: sin secretos incrustados y sin nodos de envío directo (Gmail, Telegram, SMTP, Waalaxy)', !/(Bearer |eyJ[A-Za-z0-9_-]{20}|pit-[0-9a-f]{8}|sk-[A-Za-z0-9]{20})/.test(JSON.stringify(wf)) && !wf.nodes.some((n) => /gmail|emailSend|telegram|slack|smtp|waalaxy/i.test(n.type + JSON.stringify(n.credentials || {}))));
 t('29: los únicos destinos son los motores 21/26 (webhooks de n8n) y GHL Social Planner (posts)', (() => { const c = code('Plan 1'); return /atacama-outreach-engine/.test(c) && /atacama-linkedin/.test(c) && /social-media-posting/.test(c) && !/messages\/send|conversations\/messages|\/delete|DELETE/.test(c); })());
-t('29: las acciones permitidas son exactamente la lista cerrada (sin ejecutor genérico)', JSON.stringify(wf.nodes.find((n) => n.name === 'Parse').parameters.jsCode.match(/return \['overview'[^\]]*\]/)[0]) === JSON.stringify("return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject', 'autosend_set', 'autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release', 'prep_contact', 'pause_set']"));
+t('29: las acciones permitidas son exactamente la lista cerrada (sin ejecutor genérico)', JSON.stringify(wf.nodes.find((n) => n.name === 'Parse').parameters.jsCode.match(/return \['overview'[^\]]*\]/)[0]) === JSON.stringify("return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject', 'autosend_set', 'autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release', 'prep_contact', 'pause_set', 'idea_decide', 'idea_mine']"));
 t('29: las escrituras reintentan 3 veces y las llamadas externas no cortan el flujo', wf.nodes.find((n) => n.name === 'Apply Writes').maxTries === 3 && wf.nodes.filter((n) => /^(Ingest|GHL (Get|Put)) \d$/.test(n.name)).every((n) => n.continueOnFail === true));
 t('29: cada PUT a GHL envía su cuerpo JSON (sendBody) y cada GET no envía cuerpo', wf.nodes.filter((n) => /^GHL Put \d$/.test(n.name)).every((n) => n.parameters.method === 'PUT' && n.parameters.sendBody === true && /JSON\.stringify/.test(n.parameters.jsonBody)) && wf.nodes.filter((n) => /^GHL Get \d$/.test(n.name)).every((n) => n.parameters.method === 'GET' && !n.parameters.sendBody));
 
@@ -277,6 +277,20 @@ r = await exec({ ...reqBase, action: 'pause_set', paused: true }, { state: { id:
 t('pausa: si ya estaba en pausa no escribe nada (solo auditoría)', r.resp.status === 'already_paused' && r.writes.filter((w) => !w.audit).length === 0);
 r = await exec({ ...reqBase, action: 'pause_set', paused: true }, { rowsChanged: false });
 t('pausa: si el candado no encuentra la fila (alguien cambió el estado) => error claro, sin éxito falso', r.resp.ok === false && /Recarga/.test(r.resp.message));
+
+// ---------------------------------------------------------------- v3 · Ideas (§6.1)
+r = await exec({ ...reqBase, action: 'idea_decide', idea_id: UID(9), decision: 'approve' });
+t('idea aprobar: una escritura con candado de estado, sin llamadas a motores ni a GHL; auditoría con la idea', r.resp.ok === true && r.resp.status === 'approved' && r.calls.length === 0 && r.writes.some((w) => /^content_ideas\?id=eq\./.test(w.path) && w.body.status === 'approved') && r.writes.some((w) => w.audit && w.body.tool === 'ops_idea_decide' && w.body.entity.title === 'Idea X' && w.body.params.decision === 'approve'), JSON.stringify(r.resp));
+r = await exec({ ...reqBase, action: 'idea_decide', idea_id: UID(9), decision: 'change', text: 'hazla más corta y con un dato' });
+t('idea cambiar: guarda el pedido para que Hermes la reescriba', r.resp.ok === true && r.writes.some((w) => w.body.status === 'changed' && /más corta/.test(w.body.change_request)));
+r = await exec({ ...reqBase, action: 'idea_decide', idea_id: UID(9), decision: 'discard', chips: ['Muy genérica'], reason: 'ya lo hicimos' });
+t('idea descartar: guarda razón y crea el evento de aprendizaje', r.resp.ok === true && r.writes.some((w) => w.path === 'learning_events' && w.body.type === 'idea_discard'));
+r = await exec({ ...reqBase, action: 'idea_decide', idea_id: UID(9), decision: 'publicar' });
+t('idea: decisión fuera de la lista => rechazada', r.resp.ok === false && /approve \| change/.test(r.resp.message));
+r = await exec({ ...reqBase, action: 'idea_decide', idea_id: UID(9), decision: 'approve' }, { idea: null });
+t('idea inexistente => error claro', r.resp.ok === false && /No encontré/.test(r.resp.message));
+r = await exec({ ...reqBase, action: 'idea_mine', title: 'Antes y después de una agenda por WhatsApp', channel: 'instagram', format: 'reel' });
+t('Mi idea: nace aprobada (origin christian), ficha por completar, carril PC', r.resp.ok === true && r.writes.some((w) => w.path === 'content_ideas' && w.body.status === 'approved' && w.body.origin === 'christian' && w.body.ficha_complete === false && w.body.production.lane === 'pc'));
 
 console.log(`\n${pass} ok, ${fail} fallos`);
 process.exit(fail ? 1 : 0);

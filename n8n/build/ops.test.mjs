@@ -47,7 +47,7 @@ async function call(body, fx) {
   const comp = (await run('Compute', store, { 'Expand Execs': ex, 'N8N Execs': execRes, 'Expand Growth': gx, 'SB Growth': gRes }))[0].json; store.Compute = comp;
   const w = (await run('Expand Writes', store)).map((x) => x.json);
   store['Apply Writes'] = ok200({});
-  const resp = (await run('Respond', store, { 'Apply Writes': w.map(() => ({ statusCode: f.writeNet ? undefined : (f.writeStatus || 201), body: {} })) }))[0].json;
+  const resp = (await run('Respond', store, { 'Apply Writes': w.map((x) => ({ statusCode: f.writeNet ? undefined : (f.writeStatus || 201), body: x.check_rows ? (f.noRows ? [] : [{ id: 'fila' }]) : {} })) }))[0].json;
   return { parsed, comp, writes: w.filter((x) => !x.skip), resp, ex };
 }
 
@@ -206,6 +206,32 @@ t('v3 · panel trae pausa, navegación nueva y bandeja «Hoy» (correo antes que
 r = await call({ action: 'panel', now_ms: NOW, hermes: hermesOk }, FIX({ growth: { content_cfg: [{ id: 1, ops_nav_v2: false }] } }));
 t('v3 · el interruptor ops_nav_v2=false vuelve a la navegación anterior', r.resp.panel.v3.nav_v2 === false);
 t('v3 · el panel lee system_state y content_ideas (solo reales)', JSON.stringify(wf).includes('system_state?id=eq.1') && JSON.stringify(wf).includes('content_ideas?is_test=eq.false'));
+
+// ---------- Atacama OS v3 · Fase 4: Ideas (gate, propose, revise, list)
+{
+  const SRC = '11111111-1111-4111-8111-111111111111';
+  const idea = (o) => ({ channel: 'instagram', format: 'carrusel', title: 'Qué proceso automatizar primero en una clínica', hook: '¿Tu recepción responde lo mismo 40 veces al día?', objective: 'educar', audience_insight: 'Dueños de clínicas', core_message: 'Empieza por lo repetitivo',
+    structure: ['Portada', 'Tres señales', 'Cierre'], production: { tools: ['composer'], how: 'Carrusel en la VPS' }, effort: 'medio', risks: 'Genérico', evidence: [{ type: 'source', id: SRC }], score_breakdown: { evidence: 28, relevance: 22, differentiation: 15, freshness: 10, feasibility: 8 }, ...(o || {}) });
+  r = await call({ action: 'ideas_gate', now_ms: NOW }, FIX({ growth: { content_cfg: [{ id: 1, ideas_enabled: true }], sys_state: [{ id: 1, global_pause: false }], sources_verified: [{ id: SRC, title: 'Fuente', url: 'https://x.cl' }] } }));
+  t('ideas_gate: con el job encendido → run para la semana siguiente, con fuentes verificadas y reglas', r.resp.mode === 'run' && r.resp.week_start === '2026-10-12' && r.resp.sources.length === 1 && r.resp.rules.length >= 4 && /Ideas: run/.test(r.resp.text), JSON.stringify(r.resp).slice(0, 200));
+  r = await call({ action: 'ideas_gate', now_ms: NOW }, FIX());
+  t('ideas_gate: con ideas_enabled apagado (por defecto) → skip', r.resp.mode === 'skip' && /apagado/.test(r.resp.reason));
+  r = await call({ action: 'ideas_propose', params: { proposal: { week_start: '2026-10-12', ideas: [idea()] } } }, FIX({ growth: { ev_sources: [{ id: SRC, verified: true }] } }));
+  t('ideas_propose real con el job apagado → bloqueado, sin escrituras', r.resp.ok === false && /apagado/.test(r.resp.text) && r.writes.length === 0);
+  r = await call({ action: 'ideas_propose', params: { test: true, proposal: { week_start: '2026-10-12', ideas: [idea(), idea({ title: 'Otra sin fuente', hook: 'otro gancho distinto', evidence: [] })] } } }, FIX({ growth: { ev_sources: [{ id: SRC, verified: true }] } }));
+  const ib = r.writes.filter((w) => /^content_idea/.test(w.path));
+  t('ideas_propose TEST: guarda 1 lote + 1 idea (is_test), descarta la que no tiene fuente, NO registra corrida real', r.resp.ok === true && r.resp.proposed === 1 && r.resp.discarded_weak === 1 && ib.length === 2 && ib.every((w) => w.body.is_test === true) && !r.writes.some((w) => w.path === 'ops_runs'), JSON.stringify(r.resp).slice(0, 300));
+  t('ideas_propose: la lectura de evidencia pide exactamente las fuentes citadas', r.parsed.growth_reads.some((g) => g.key === 'ev_sources' && g.url.includes(SRC)));
+  r = await call({ action: 'ideas_propose', params: { test: true, proposal: { ideas: [idea()] } } }, FIX({ growth: { sys_state: [{ id: 1, global_pause: true }], ev_sources: [{ id: SRC, verified: true }] } }));
+  t('ideas_propose con pausa general → bloqueado', r.resp.ok === false && /Pausa general/.test(r.resp.text) && r.writes.length === 0);
+  const ONE = { id: '22222222-2222-4222-8222-222222222222', status: 'changed', origin: 'hermes', channel: 'instagram', format: 'carrusel', title: 'Viejo', change_request: 'otro ángulo', evidence: [{ type: 'source', id: SRC }], history: [], is_test: true };
+  r = await call({ action: 'ideas_revise', params: { test: true, idea_id: ONE.id, idea: idea({ title: 'Ángulo de costos' }) } }, FIX({ growth: { idea_one: [ONE], ev_sources: [{ id: SRC, verified: true }] } }));
+  t('ideas_revise TEST: reescribe con candado de estado y vuelve a «por decidir»', r.resp.ok === true && r.writes.length === 1 && /status=eq\.changed/.test(r.writes[0].path) && r.writes[0].body.status === 'proposed', JSON.stringify(r.resp));
+  r = await call({ action: 'ideas_revise', params: { test: true, idea_id: ONE.id, idea: idea() } }, FIX({ growth: { idea_one: [ONE], ev_sources: [{ id: SRC, verified: true }] }, noRows: true }));
+  t('ideas_revise: si el candado no encuentra la fila (Christian ya decidió) → ok:false con motivo', r.resp.ok === false && /cambió mientras tanto/.test(r.resp.text), JSON.stringify(r.resp));
+  r = await call({ action: 'ideas_list', now_ms: NOW }, FIX({ growth: { ideas_rows: [{ id: 'a', week_start: '2026-10-12', channel: 'instagram', format: 'carrusel', title: 'A', status: 'proposed', score: 88, effort: 'bajo' }], idea_batches: [{ week_start: '2026-10-12', discarded_weak: 2, discarded: [], created_at: iso(H) }] } }));
+  t('ideas_list: semana siguiente con la idea, su plazo y el contador de descartadas', r.resp.ideas.weeks.length === 1 && r.resp.ideas.weeks[0].discarded_weak === 2 && r.resp.ideas.weeks[0].channels[0].ideas[0].deadline.state === 'alcanza', JSON.stringify(r.resp.ideas).slice(0, 300));
+}
 
 console.log(`\n${pass} ok, ${fail} fallos`);
 process.exit(fail ? 1 : 0);

@@ -95,6 +95,14 @@ export type Prep = {
 /** Atacama OS v3 · Fase 1: bandeja «Hoy» y pausa general (n8n 25 → panel.v3). */
 export type InboxItem = { kind: string; prio: number; count: number; title: string; from: string; age: string; tone: "fresh" | "warn" | "old"; href: string; examples: string[] };
 export type PauseState = { paused: boolean; reason: string | null; since: string | null; by: string | null; resume_at: string | null };
+/** Fase 4: Ideas de la semana (n8n 25 ideas_list). */
+export type IdeaDeadline = { state: "alcanza" | "justo" | "no_alcanza"; label: string; left: number; need: number; closing: string };
+export type IdeaCard = { id: string; week_start: string; channel: string; channel_label: string; format: string; title: string; hook: string | null; objective: string | null; effort: string | null; primary_metric: string | null;
+  score: number | null; status: string; origin: string; ficha_complete: boolean; deadline: IdeaDeadline | null; change_request: string | null; decision_reason: string | null; lane: "vps" | "pc"; piece_id: string | null;
+  ficha: { audience_insight: string | null; core_message: string | null; structure: { title?: string | null; text?: string }[]; cta: string | null; production: { tools?: string[]; how?: string; material?: string | null; lane?: string }; resource_id: string | null; keyword: string | null; cost_note: string | null; risks: string | null; why: string | null; evidence: { type: string; id: string; note: string | null; url: string | null }[]; competitor_ref: string | null; angle: string | null } };
+export type IdeasWeek = { week_start: string; is_next: boolean; counts: { proposed: number; changed: number; approved: number; discarded: number }; discarded_weak: number; weak: { title: string; channel: string | null; reasons: string[] }[]; batch_at: string | null;
+  channels: { channel: string; label: string; ideas: IdeaCard[]; folded: IdeaCard[] }[] };
+export type IdeasView = { generated_at: string; next_week: string; weeks: IdeasWeek[] };
 export type PanelV3 = { pause: PauseState; nav_v2: boolean; inbox: { items: InboxItem[]; total: number } };
 
 export type Panel = {
@@ -180,6 +188,6 @@ export type Overview = {
 };
 export type OverviewResult = { ok: true; overview: Overview } | { ok: false; reason: "not_configured" | "unreachable" | "bad_response" };
 
-export type OpsActionName = "email_save" | "email_approve" | "email_reject" | "email_reopen" | "linkedin_approve" | "linkedin_reject" | "content_approve" | "content_reject" | "autosend_set" | "autosend_sweep" | "prep_li_sent" | "prep_hold" | "prep_release" | "prep_contact" | "pause_set";
-export type OpsActionInput = { action: OpsActionName; request_id: string; message_id?: string; candidate_id?: string; piece_id?: string; subject?: string; body?: string; expected_hash?: string; reason?: string; enabled?: boolean; min_score?: number; kind?: string; text?: string; email?: string; linkedin?: string; paused?: boolean; resume_at?: string };
+export type OpsActionName = "email_save" | "email_approve" | "email_reject" | "email_reopen" | "linkedin_approve" | "linkedin_reject" | "content_approve" | "content_reject" | "autosend_set" | "autosend_sweep" | "prep_li_sent" | "prep_hold" | "prep_release" | "prep_contact" | "pause_set" | "idea_decide" | "idea_mine";
+export type OpsActionInput = { action: OpsActionName; request_id: string; message_id?: string; candidate_id?: string; piece_id?: string; subject?: string; body?: string; expected_hash?: string; reason?: string; enabled?: boolean; min_score?: number; kind?: string; text?: string; email?: string; linkedin?: string; paused?: boolean; resume_at?: string; idea_id?: string; decision?: string; chips?: string[]; title?: string; channel?: string; format?: string; week_start?: string };
 export type OpsActionState = { ok: boolean; message: string; status?: string; hash?: string | null; needsGhl?: boolean; replayed?: boolean };

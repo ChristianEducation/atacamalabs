@@ -32,7 +32,11 @@ case "$dst" in
   *.json) check="/opt/hermes/.venv/bin/python -c \"import json,sys;json.load(open(sys.argv[1]))\" $dst.new" ;;
   *) check="true" ;;
 esac
-b64="$(base64 -w0 "$src")"
+# En Windows (git core.autocrlf=true) la copia de trabajo tiene CRLF: un .sh con CRLF no corre en la VPS. Los archivos de texto se suben con LF.
+case "$dst" in
+  *.sh|*.py|*.txt|*.json|*.md|*.mjs|*.js|*.yaml|*.yml) b64="$(tr -d '\r' < "$src" | base64 -w0)" ;;
+  *) b64="$(base64 -w0 "$src")" ;;
+esac
 [ -n "$b64" ] || { echo "ABORTA: base64 vacío"; exit 2; }
 
 out="$(RA "bash -c 'set -e; echo $b64 | base64 -d > $dst.new; test -s $dst.new || { echo VACIO; rm -f $dst.new; exit 3; }; $check || { echo SINTAXIS_INVALIDA; rm -f $dst.new; exit 4; }; if [ -f $dst ]; then old=\$(wc -c < $dst); new=\$(wc -c < $dst.new); if [ \$new -lt \$((old*40/100)) ]; then echo TAMANO_SOSPECHOSO_\$new_vs_\$old; rm -f $dst.new; exit 5; fi; cp -p $dst $dst.bak-$ts; fi; chmod --reference=$dst $dst.new 2>/dev/null || true; mv $dst.new $dst; echo DEPLOY_OK'")"
