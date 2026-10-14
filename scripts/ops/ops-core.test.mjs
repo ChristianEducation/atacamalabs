@@ -607,6 +607,10 @@ ok('S2 · huella: idéntica a la del motor de correos; detecta borradores/aproba
   const a = ev.notify.find((n) => n.key === 'hash_mismatch:x');
   assert.ok(a && a.severity === 'critical' && /Huella no coincide: Alfa/.test(a.title) && /devolverá a borrador/.test(a.detail));
 });
+ok('v3 · Taller: pieza en «necesita ayuda» → alerta importante (sin TEST)', () => {
+  const ev = oc.evaluateAlerts(base({ pieces: [{ id: 'p1', topic: 'Carrusel X', taller_status: 'necesita_ayuda', is_test: false }, { id: 'p2', topic: 'T', taller_status: 'necesita_ayuda', is_test: true }] }), []);
+  assert.ok(ev.notify.some((n) => n.key === 'taller_help:p1' && n.severity === 'high')); assert.ok(!ev.notify.some((n) => n.key === 'taller_help:p2'));
+});
 ok('v3 · aviso «ideas listas»: una vez por corrida real con ideas; nada si no hubo ideas', () => {
   const d = base();
   const n1 = oc.runNotice(d, { kind: 'ideas_week', status: 'ok', created_at: iso(H), summary: { created: 7, week_start: '2026-10-26' } });

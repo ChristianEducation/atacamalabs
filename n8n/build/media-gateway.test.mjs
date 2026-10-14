@@ -22,7 +22,7 @@ const PID = '11111111-1111-4111-8111-111111111111';
 const PIECE = { id: PID, status: 'drafted', format: 'carrusel', channel: 'instagram', is_test: false, piece: { format: 'carrusel', channel: 'instagram', slides: [{ layout: 'cover', title: 'Conversar no es trabajar' }, { layout: 'content', title: 'Herramientas' }, { layout: 'cta', title: 'Escríbenos' }] } };
 const BRIEF = 'Carrusel que explique qué necesita un agente para trabajar de verdad';
 
-t('estructura: 8 acciones y 19 nodos (v3: subida desde Storage); solo toca media_assets (+ lee content_config y content_pieces)', ACTIONS.length === 8 && wf.nodes.length === 19);
+t('estructura: 12 acciones y 23 nodos (v3: subida desde Storage y producción del Taller); toca media_assets y, en el Taller, solo content_pieces/versions/feedback', ACTIONS.length === 12 && wf.nodes.length === 23);
 t('sin secretos incrustados y los nodos HTTP toleran fallos', !/(Bearer |eyJ[A-Za-z0-9_-]{20}|pit-[0-9a-f]{8}|sk-[A-Za-z0-9]{20})/.test(JSON.stringify(wf)) && wf.nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest').every((n) => n.continueOnFail === true));
 const httpUrls = wf.nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest').map((n) => n.parameters.url);
 t('seguridad: la ÚNICA llamada a GHL es subir una imagen a la biblioteca de medios (nada de Social Planner, Gmail ni proveedores generativos); no hay estados de publicación', !/social-media-posting|gmail|googleapis/i.test(JSON.stringify(wf)) && (JSON.stringify(wf).match(/leadconnectorhq\.com\/[a-z\/-]+/g) || []).every((u) => u === 'leadconnectorhq.com/medias/upload-file') && httpUrls.filter((u) => /leadconnectorhq/.test(u)).length === 2 && httpUrls.filter((u) => /leadconnectorhq/.test(u)).every((u) => /medias\/upload-file$/.test(u)) && !/https?:[^\s"']*higgsfield/i.test(JSON.stringify(wf)) && !/status['"]?\s*[:=]\s*['"](scheduled|published)|approvalStatus/.test(codeOf('Compute')));
@@ -34,6 +34,24 @@ t('seguridad: la ÚNICA llamada a GHL es subir una imagen a la biblioteca de med
   t('v3 · storage_upload: una descarga por archivo desde el bucket privado (URL de storage, no pública)', items.length === 2 && items[0].url === 'https://uwquwjmiofixzugttals.supabase.co/storage/v1/object/taller/' + PCE + '/v1/01.png');
   const resp = runNode('Respond Storage', { 'Storage Items': items, 'GHL Upload Storage': [{ statusCode: 201, body: { url: 'https://a/1.png', fileId: 'f1' } }, { statusCode: 413, body: {} }] })[0].json;
   t('v3 · storage_upload: devuelve las URLs en orden y avisa qué archivo falló (sin éxito falso); nunca publica', resp.ok === false && resp.files[0].url === 'https://a/1.png' && resp.files[1].type === 'video/mp4' && /HTTP 413/.test(resp.message) && resp.safety.published === 0);
+}
+{
+  const PC = '33333333-3333-4333-8333-333333333333';
+  const row = (o) => ({ id: PC, lane: 'vps', taller_status: 'en_cola', format: 'carrusel', topic: 'Carrusel X', is_test: false, current_version: 0, needs_by: '2026-10-23', idea: { id: 'i', keyword: 'PROCESO' }, feedback: [{ id: 'f', status: 'open', text: 'más cerca' }, { id: 'g', status: 'done' }], versions: [], ...(o || {}) });
+  let o = exec({ action: 'taller_claim' }, { tpieces: [row()], tcfg: [{ taller_production_enabled: false }], sys: [{}] });
+  t('v3 · taller_claim: con la producción APAGADA no toma nada', o.resp.claimed === false && /apagada/.test(o.resp.message) && (o.writes || []).length === 0);
+  o = exec({ action: 'taller_claim' }, { tpieces: [row()], tcfg: [{ taller_production_enabled: true }], sys: [{ global_pause: true }] });
+  t('v3 · taller_claim: con pausa general no toma nada', o.resp.claimed === false && /Pausa general/.test(o.resp.message));
+  o = exec({ action: 'taller_claim' }, { tpieces: [row()], tcfg: [{ taller_production_enabled: true }], sys: [{}] });
+  t('v3 · taller_claim: toma la pieza con candado (en_cola → en_produccion) y entrega el brief (idea, feedback abierto, topes, versión siguiente)', o.resp.claimed === true && o.writes[0].body.taller_status === 'en_produccion' && /taller_status=eq\.en_cola/.test(o.writes[0].path) && o.writes[0].check_rows === true && o.resp.feedback.length === 1 && o.resp.next_version === 1 && o.resp.caps.attempts_per_slide === 3 && o.resp.idea.keyword === 'PROCESO');
+  o = exec({ action: 'taller_claim', test: true, piece_id: PC }, { tpieces: [row({ is_test: true, taller_status: 'en_produccion' })], tcfg: [{}], sys: [{}] });
+  t('v3 · taller_claim TEST de una pieza ya en producción: la retoma sin volver a escribir', o.resp.claimed === true && o.resp.resumed === true && (o.writes || []).length === 0);
+  o = exec({ action: 'taller_version', piece_id: PC, assets: [{ path: PC + '/v1/01.png', w: 1080, h: 1350 }, { path: PC + '/v1/02.png', w: 1080, h: 1350 }], caption: 'Texto PROCESO', cost_credits: 0, qa: { problems: [] } }, { tpiece: [row({ taller_status: 'en_produccion' })] });
+  t('v3 · taller_version: registra v1 y deja la pieza «para revisar»', o.resp.ok === true && o.resp.version_no === 1 && o.writes.some((w) => w.path === 'content_versions') && o.writes.some((w) => w.body && w.body.taller_status === 'para_revisar'));
+  o = exec({ action: 'taller_help', piece_id: PC, reason: 'Se agotaron los 3 intentos de la lámina 1' }, { tpiece: [row({ taller_status: 'en_produccion' })] });
+  t('v3 · taller_help: detiene la pieza en «necesita ayuda» con el motivo (sin más gasto)', o.resp.status === 'necesita_ayuda' && o.writes[0].body.taller_status === 'necesita_ayuda' && /3 intentos/.test(o.writes[0].body.piece.help.reason));
+  const fp = parse({ action: 'taller_file', piece_id: PC, version_no: 2, name: '01.png', mime: 'image/png', b64: 'iVBORw0KGgo' + 'A'.repeat(200) });
+  t('v3 · taller_file: valida y arma la ruta del bucket privado <pieza>/v<n>/<archivo>', fp.file && fp.file.path === PC + '/v2/01.png' && /name inválido/.test(exec({ action: 'taller_file', piece_id: PC, version_no: 1, name: '../x.png', b64: 'A'.repeat(200) }).fatal));
 }
 t('Parse: action inválida / piece_id inválido / status sin id => fatal', /action inválida/.test(exec({ action: 'borrar' }).fatal) && /piece_id inválido/.test(exec({ action: 'request', need: 'carousel', brief: BRIEF, piece_id: 'x;drop' }).fatal) && /status necesita id o piece_id/.test(exec({ action: 'status' }).fatal));
 

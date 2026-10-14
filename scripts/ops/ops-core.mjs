@@ -447,6 +447,8 @@ export function evaluateAlerts(d, existing) {
   { const pf = prepFreshNotice(d); if (pf) add(pf.key, pf.severity, pf.title, '', true, { notice: pf.text }); }
   // 6b) S2 (Atacama OS v3): huella que no coincide con el texto en borradores/aprobados → CRÍTICA, antes de que llegue la hora de envío
   for (const m of opsHashMismatches(d.messages || [])) add('hash_mismatch:' + m.id, 'critical', 'Huella no coincide: ' + (m.company_name || 'correo'), (m.status === 'approved' ? 'Un correo APROBADO cambió de texto por fuera del camino normal. Si llega su hora, el envío lo devolverá a borrador (no se cancela). ' : 'El borrador cambió de texto por fuera del camino normal (se volverá a sellar al aprobarlo). ') + 'Revísalo en Prospección y correo antes de aprobar.', false);
+  // 6c) Taller (v3 §6.5): una pieza que la producción automática no pudo terminar → importante (se detuvo sin gastar más)
+  for (const p of (d.pieces || []).filter((x) => !x.is_test && x.taller_status === 'necesita_ayuda')) add('taller_help:' + p.id, 'high', 'Pieza del Taller necesita ayuda: ' + String(p.topic || '').slice(0, 60), 'La producción automática se detuvo (topes de intentos o créditos). No se gasta más: decide en Redes → Taller.', false);
   // 7) feeds RSS con 3+ fallos seguidos (aviso, no crítico)
   summarizeGrowth(d).rss.failing.forEach((f) => add('rss_feed:' + f.slug, 'high', 'Feed RSS con fallos: ' + f.slug, f.error + ' (' + f.failures + ' veces seguidas)', false));
   // --- dedupe

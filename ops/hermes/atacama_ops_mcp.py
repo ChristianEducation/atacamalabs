@@ -749,6 +749,57 @@ def revise_idea(idea_id: str, idea_json: str = "", idea_path: str = "", test: bo
     return json.dumps({k: r.get(k) for k in ("ok", "text", "status", "error") if k in r}, ensure_ascii=False)
 
 
+# ---------------------------------------------------------------- Taller · producción en la VPS (Atacama OS v3 · Fase 3)
+@mcp.tool()
+def taller_next(test: bool = False, piece_id: str = "") -> str:
+    """TALLER — toma la siguiente pieza del carril VPS (en cola o con cambios pedidos) y devuelve su brief: la pieza, su IDEA con la ficha,
+    el feedback abierto de Christian (lo que hay que cambiar), la última versión y los topes. Si la producción está apagada o en pausa, no toma nada.
+    Después escribe la especificación (receta: /opt/data/atacama-media/brand/content/recetas/carrusel-ilustrado/RECETA.md) y llama a taller_produce.
+    No programa ni publica nada."""
+    body = {"action": "taller_claim", "test": bool(test)}
+    if piece_id:
+        body["piece_id"] = piece_id
+    return _media(body, timeout=90)
+
+
+@mcp.tool()
+def taller_produce(piece_id: str, spec_json: str = "", spec_path: str = "", generator: str = "sim", test: bool = False) -> str:
+    """TALLER — produce UNA versión de la pieza: genera el arte (generator="sim" usa imágenes que ya existen, sin costo; "higgs" está BLOQUEADO
+    salvo autorización de Christian), recorta el fondo, compone las láminas, revisa el texto exacto con visión y la crítica visual, y la sube al
+    Taller «para revisar». Lámina de prueba primero; topes 3 intentos/lámina, 30 créditos/pieza, 200/semana: si se agotan, la pieza queda
+    «necesita ayuda». spec = {"caption": "...", "slides": [{"layout": "portada|arte_texto|pasos|texto|cierre", "title": "...", "emph": "...",
+    "pill": "...", "body": "...", "steps": [...], "art": {"scene": "en inglés, fondo liso", "texts": [...], "cutout": true}}]}.
+    Devuelve una línea JSON con el resultado. No programa ni publica nada."""
+    spec, err = _json_arg(spec_json, spec_path, "spec")
+    if err:
+        return err
+    if not re.match(r"^[0-9a-f-]{36}$", piece_id or ""):
+        return json.dumps({"ok": False, "error": "piece_id_invalido", "message": "piece_id debe ser el uuid de la pieza."}, ensure_ascii=False)
+    if generator not in ("sim", "higgs"):
+        return json.dumps({"ok": False, "error": "generador_invalido", "message": "generator: sim | higgs"}, ensure_ascii=False)
+    import subprocess
+    os.makedirs("/opt/data/state/taller", exist_ok=True)
+    path = "/opt/data/state/taller/spec-%s.json" % piece_id
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(spec, fh, ensure_ascii=False)
+    args = ["/opt/data/scripts/taller_produce.sh", "--spec", path, "--piece", piece_id, "--generator", generator]
+    if test:
+        args.append("--test")
+    try:
+        r = subprocess.run(args, capture_output=True, text=True, timeout=1600)
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "no_corrio", "message": "El productor no terminó: %s" % type(ex).__name__}, ensure_ascii=False)
+    lines = [l for l in (r.stdout or "").splitlines() if l.strip().startswith("{")]
+    return lines[-1] if lines else json.dumps({"ok": False, "error": "sin_salida", "message": (r.stderr or "")[-300:]}, ensure_ascii=False)
+
+
+@mcp.tool()
+def taller_help(piece_id: str, reason: str, test: bool = False) -> str:
+    """TALLER — detiene una pieza en «necesita ayuda» con el motivo (por ejemplo, no logras una especificación que pase el control de calidad).
+    No se gasta más; Christian decide en el Taller."""
+    return _media({"action": "taller_help", "piece_id": piece_id, "reason": reason, "test": bool(test)}, timeout=60)
+
+
 if __name__ == "__main__":
     mcp.run()
 

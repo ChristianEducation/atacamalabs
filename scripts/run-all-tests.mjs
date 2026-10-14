@@ -12,7 +12,7 @@ const SUITES = [
   'n8n/build/content-engine.test.mjs', 'n8n/build/content-signals.test.mjs', 'n8n/build/content-sync.test.mjs', 'n8n/build/content-metrics.test.mjs',
   'scripts/content/engine-core.test.mjs', 'scripts/content/editorial-core.test.mjs', 'scripts/content/resource-factory-core.test.mjs', 'scripts/media/media-gateway-core.test.mjs', 'n8n/build/media-gateway.test.mjs', 'scripts/media/media-worker.test.mjs', 'scripts/media/vps-worker.test.mjs', 'scripts/media/higgs-guard.test.mjs', 'scripts/content/story-templates.test.mjs', 'scripts/content/visual-hybrid.test.mjs', 'scripts/motion/motion-new.test.mjs', '--conditions=react-server --experimental-strip-types --import ./scripts/ops/swr-test-hooks.mjs scripts/ops/swr.test.mjs', 'scripts/content/schedule-core.test.mjs', 'scripts/content/signal-core.test.mjs', 'scripts/content/metrics-core.test.mjs',
   'n8n/build/content-rss.test.mjs', 'n8n/build/content-growth.test.mjs', 'scripts/content/rss-core.test.mjs', 'scripts/content/growth-core.test.mjs',
-  'n8n/build/won-to-client.test.mjs', 'ops/hermes/radar-prompt.test.mjs', 'ops/hermes/mcp-shape.test.mjs', 'ops/hermes/contact-prep-prompt.test.mjs', 'ops/hermes/ideas-prompt.test.mjs', 'scripts/content/ideas-core.test.mjs', 'scripts/content/taller-core.test.mjs',
+  'n8n/build/won-to-client.test.mjs', 'ops/hermes/radar-prompt.test.mjs', 'ops/hermes/mcp-shape.test.mjs', 'ops/hermes/contact-prep-prompt.test.mjs', 'ops/hermes/ideas-prompt.test.mjs', 'scripts/content/ideas-core.test.mjs', 'scripts/content/taller-core.test.mjs', 'scripts/content/taller-producer-core.test.mjs', 'scripts/media/taller-producer.test.mjs', 'ops/hermes/taller-prompt.test.mjs',
 ];
 
 let failed = 0, total = 0;

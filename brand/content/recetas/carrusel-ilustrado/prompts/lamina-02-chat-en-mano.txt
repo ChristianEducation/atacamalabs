@@ -1,0 +1,13 @@
+Photorealistic vertical 4:5 product photo, shot on a modern smartphone camera look, soft diffused studio light, natural skin texture, crisp glass reflections.
+Subject: a person's hand (no face, no other body parts, neutral skin tone, short clean nails) holding a modern smartphone upright, screen facing the viewer, very slightly tilted. The phone is large in frame, filling about 65% of the canvas width, held from the lower part so most of the phone is visible; the hand and the lower edge of the phone may be cropped by the bottom of the canvas.
+Background: a perfectly flat, uniform, seamless very light grey-white (#F3F6FB), no pattern, no grid, no objects, no table, soft contact-free lighting so the phone and hand can be cut out cleanly. Leave the top 16% of the canvas empty.
+The phone screen shows a realistic messaging chat screen in light mode in the style of a popular green messaging app, without any logo: a top bar with a small round avatar, the contact name "Clínica Dental Sonrisa" and the word "en línea"; a pale beige chat wallpaper; exactly EIGHT short message bubbles stacked from top to bottom, each with a tiny time stamp at its bottom right. The four customer messages are white bubbles aligned to the left. The four business replies are light green bubbles aligned to the right, each with two small blue read-check marks next to the time. Bubble text must be large and perfectly legible and written EXACTLY, in Spanish, in this order:
+1) customer: "Hola, quiero hora" — 10:02
+2) business: "¿Para qué servicio?" — 10:02
+3) customer: "Limpieza dental" — 10:03
+4) business: "¿Qué día te acomoda?" — 10:03
+5) customer: "El martes" — 10:04
+6) business: "¿Mañana o tarde?" — 10:04
+7) customer: "Mañana" — 10:05
+8) business: "¿Tu nombre y RUT?" — 10:05
+No other text anywhere. No app logo, no brand logos, no watermark.

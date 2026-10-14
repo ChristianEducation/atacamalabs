@@ -18,6 +18,8 @@
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import * as mg from '../../scripts/media/media-gateway-core.mjs';
+import * as tallerCore from '../../scripts/content/taller-core.mjs';
+import * as producerCore from '../../scripts/content/taller-producer-core.mjs';
 
 const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 const NONE = 'https://localhost.invalid/';
@@ -33,8 +35,9 @@ const sbApply = (name, pos) => ({ id: randomUUID(), name, type: 'n8n-nodes-base.
   parameters: { method: '={{ $json.skip ? "GET" : ($json.method || "POST") }}', url: `={{ $json.skip ? "${SUPABASE}/rest/v1/content_config?select=id&limit=1" : "${SUPABASE}/rest/v1/" + $json.path }}`, authentication: 'predefinedCredentialType', nodeCredentialType: 'supabaseApi', sendHeaders: true,
     headerParameters: { parameters: [{ name: 'Prefer', value: '={{ $json.prefer || "return=minimal" }}' }] }, sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full() } });
 
-export const ACTIONS = ['request', 'status', 'list', 'complete', 'cancel', 'claim', 'upload', 'storage_upload'];
-export const LIB = Object.values(mg).filter((f) => typeof f === 'function').map((f) => f.toString()).join('\n\n');
+export const ACTIONS = ['request', 'status', 'list', 'complete', 'cancel', 'claim', 'upload', 'storage_upload', 'taller_claim', 'taller_file', 'taller_version', 'taller_help'];
+// Del Taller se incrusta SOLO lo que este workflow usa (reclamar, validar y registrar versiones): nada de programar ni publicar.
+export const LIB = [...Object.values(mg), tallerCore.tallerTransitions, tallerCore.tallerCan, tallerCore.tallerValidateAssets, tallerCore.tallerAddVersionPlan, producerCore.tpCaps, producerCore.tpPickClaim].filter((f) => typeof f === 'function').map((f) => f.toString()).join('\n\n');
 
 export const PARSE = `${LIB}
 
@@ -52,6 +55,18 @@ try {
     if (!paths.every((x) => /^[0-9a-f-]{36}\\/v[0-9]{1,3}\\/[A-Za-z0-9._-]{1,80}$/.test(x))) throw new Error('ruta inválida (formato <piece_id>/v<n>/<archivo>)');
     if (b.piece_id && !paths.every((x) => x.startsWith(String(b.piece_id) + '/'))) throw new Error('las rutas no son de esa pieza');
     return [{ json: { action, storage: { paths }, reads: [] } }];
+  }
+  if (action === 'taller_file') {
+    // v3 · Fase 3: el productor de la VPS (sin llave de Supabase) sube cada archivo de una versión al bucket privado «taller».
+    if (!isUuid(b.piece_id)) throw new Error('piece_id (uuid) obligatorio');
+    const vn = parseInt(b.version_no, 10);
+    if (!(vn >= 1 && vn <= 99)) throw new Error('version_no de 1 a 99');
+    const name = String(b.name || '');
+    if (!/^[A-Za-z0-9._-]{1,80}$/.test(name)) throw new Error('name inválido');
+    const mime = ['image/png', 'image/jpeg', 'video/mp4'].includes(b.mime) ? b.mime : 'image/png';
+    const data = String(b.b64 || '');
+    if (data.length < 100 || data.length > 14000000 || !/^[A-Za-z0-9+/]+={0,2}$/.test(data)) throw new Error('b64 inválido (máx. ~10 MB)');
+    return [{ json: { action, file: { path: String(b.piece_id).toLowerCase() + '/v' + vn + '/' + name, mime, b64: data }, reads: [] } }];
   }
   const sb = '${SUPABASE}/rest/v1/';
   const reads = [];
@@ -73,6 +88,15 @@ try {
   } else if (action === 'list') {
     const st = String(b.status || '').split(',').filter((x) => ['requested', 'queued', 'generating', 'ready', 'failed', 'unavailable', 'cancelled'].includes(x));
     add('assets', 'media_assets?' + (st.length ? 'status=in.(' + st.join(',') + ')&' : '') + 'is_test=eq.' + (b.test === true ? 'true' : 'false') + '&select=' + SEL + '&order=created_at.desc&limit=' + Math.min(Math.max(parseInt(b.limit, 10) || 25, 1), 100));
+  } else if (action === 'taller_claim') {
+    const test = b.test === true ? 'true' : 'false';
+    if (b.piece_id && !isUuid(b.piece_id)) throw new Error('piece_id inválido');
+    add('tcfg', 'content_config?id=eq.1&select=taller_production_enabled,taller_max_attempts_per_slide,taller_max_credits_per_piece,taller_weekly_credit_cap');
+    add('sys', 'system_state?id=eq.1&select=global_pause,reason');
+    add('tpieces', 'content_pieces?lane=eq.vps&taller_status=in.(en_cola,cambios_pedidos,en_produccion)&is_test=eq.' + test + '&select=*,idea:content_ideas!content_pieces_idea_id_fkey(*),feedback:content_feedback(id,scope,text,status,created_at),versions:content_versions(version_no,assets,caption,created_at)&order=needs_by.asc&limit=20');
+  } else if (action === 'taller_version' || action === 'taller_help') {
+    if (!isUuid(b.piece_id)) throw new Error('piece_id (uuid) obligatorio');
+    add('tpiece', 'content_pieces?id=eq.' + String(b.piece_id).toLowerCase() + '&select=*&limit=1');
   } else if (action === 'claim') {
     const test = b.test === true ? 'true' : 'false';
     const emb = ',content_pieces(id,status,origin,interview_id,is_test,piece)';
@@ -183,6 +207,40 @@ if (A === 'request') {
     writes.push({ method: 'PATCH', path: 'media_assets?id=eq.' + a.id + '&status=in.(queued,generating)', body: { status: 'generating', error: null, attempts: pick.attempts, updated_at: nowIso } });
     resp = { ok: true, action: A, claimed: true, asset: view({ ...a, status: 'generating', attempts: pick.attempts }), row: a.content_pieces || null, message: 'Asset reclamado: se marcó «generating» (candado). Cierra con complete.' };
   }
+} else if (A === 'taller_claim') {
+  const tcfg = (R.tcfg || [])[0] || {};
+  const rows = R.tpieces || [];
+  const want = b.piece_id ? String(b.piece_id).toLowerCase() : null;
+  const resume = want ? rows.find((x) => x.id === want && x.taller_status === 'en_produccion') : null;
+  const pick = resume ? { action: 'claim', piece: resume } : tpPickClaim(rows, tcfg, (R.sys || [])[0] || {}, { test: b.test === true, piece_id: want });
+  if (pick.action !== 'claim') resp = { ok: true, action: A, claimed: false, message: pick.reason };
+  else {
+    const pc = pick.piece;
+    if (!resume) writes.push({ method: 'PATCH', path: 'content_pieces?id=eq.' + pc.id + '&taller_status=eq.' + pc.taller_status, body: { taller_status: 'en_produccion', updated_at: nowIso }, prefer: 'return=representation', check_rows: true, check_message: 'Otro proceso tomó esta pieza: no se produce dos veces.' });
+    const vs = (pc.versions || []).slice().sort((x, y) => y.version_no - x.version_no);
+    const piece = { ...pc }; delete piece.idea; delete piece.feedback; delete piece.versions;
+    resp = { ok: true, action: A, claimed: true, resumed: Boolean(resume), piece: { ...piece, taller_status: 'en_produccion' }, idea: pc.idea || null, feedback: (pc.feedback || []).filter((f) => f.status === 'open'), last_version: vs[0] || null,
+      next_version: (Number(pc.current_version) || 0) + 1, caps: tpCaps(tcfg), message: (resume ? 'Retomo' : 'Tomé') + ' la pieza «' + pc.topic + '» (' + pc.format + ').' };
+  }
+} else if (A === 'taller_version') {
+  const pc = (R.tpiece || [])[0] || null;
+  if (pc && pc.is_test !== (b.test === true)) fail('pieza_test', 'La marca test no coincide con la pieza.');
+  else {
+    const plan = tallerAddVersionPlan(pc, { assets: b.assets, caption: b.caption, qa: b.qa, cost_credits: b.cost_credits, created_by: b.created_by || 'Hermes (VPS)', notes: b.notes, version_no: b.version_no, attempts: b.attempts }, { now: Date.now(), id: uuid() });
+    if (plan.error) fail(plan.error, plan.message);
+    else { plan.writes.forEach((w) => writes.push(w)); resp = { ok: true, action: A, ...plan.resp }; }
+  }
+} else if (A === 'taller_help') {
+  const pc = (R.tpiece || [])[0] || null;
+  const reason = String(b.reason || '').trim().slice(0, 400);
+  if (!pc) fail('pieza_no_encontrada', 'No encontré esa pieza.');
+  else if (pc.is_test !== (b.test === true)) fail('pieza_test', 'La marca test no coincide con la pieza.');
+  else if (!tallerCan(pc.taller_status, 'necesita_ayuda')) fail('estado_invalido', 'Solo una pieza en producción puede pedir ayuda (estado: ' + pc.taller_status + ').');
+  else if (reason.length < 5) fail('falta_motivo', 'Explica por qué se detuvo.');
+  else {
+    writes.push({ method: 'PATCH', path: 'content_pieces?id=eq.' + pc.id + '&taller_status=eq.en_produccion', body: { taller_status: 'necesita_ayuda', piece: { ...(pc.piece || {}), help: { reason, at: nowIso } }, updated_at: nowIso }, prefer: 'return=representation', check_rows: true, check_message: 'La pieza cambió mientras tanto.' });
+    resp = { ok: true, action: A, status: 'necesita_ayuda', message: 'Pieza detenida: «' + reason + '». No se gasta más; Christian decide en el Taller.' };
+  }
 } else if (A === 'upload') {
   const a = (R.asset || [])[0];
   if (!a) fail('asset_no_encontrado', 'No existe ese asset.');
@@ -226,11 +284,21 @@ const files = items.map((it, k) => { const g = ups[k] || {}; const body = g.body
 const bad = files.filter((f) => f.error);
 return [{ json: { ok: bad.length === 0, action: 'storage_upload', files, message: bad.length ? 'GHL no aceptó ' + bad.length + ' archivo(s): ' + bad.map((f) => f.path + ' (' + f.error + ')').join(', ') : files.length + ' archivo(s) subidos a la biblioteca de GHL.', safety: { published: 0, scheduled: 0, approved: 0, generated_with_cost: 0, note: 'Solo sube archivos a la biblioteca de medios de GHL; no publica ni programa nada.' } } }];`;
 
+export const FILE_PREP = `const f = $('Parse').first().json.file;
+const bin = await this.helpers.prepareBinaryData(Buffer.from(f.b64, 'base64'), f.path.split('/').pop(), f.mime);
+return [{ json: { url: '${SUPABASE}/storage/v1/object/taller/' + f.path.split('/').map(encodeURIComponent).join('/'), path: f.path, mime: f.mime }, binary: { data: bin } }];`;
+
+export const RESPOND_FILE = `const s = $('Storage Put').first().json || {};
+const f = $('File Prep').first().json;
+const ok = (s.statusCode || 0) >= 200 && (s.statusCode || 0) < 300;
+return [{ json: { ok, action: 'taller_file', path: f.path, message: ok ? 'Archivo guardado en el Taller.' : 'Storage no aceptó el archivo (' + (s.statusCode ? 'HTTP ' + s.statusCode : 'sin respuesta') + '): ' + JSON.stringify(s.body || {}).slice(0, 160), safety: { published: 0, scheduled: 0, approved: 0, generated_with_cost: 0 } } }];`;
+
 export const RESPOND = `const c = $('Compute').first().json;
 const planned = c.writes || [];
 const applied = $('Apply Writes').all().map((i) => i.json).slice(0, planned.length);
 const bad = applied.filter((j) => !j.statusCode || j.statusCode >= 300);
 const r = { ...c.resp };
+planned.forEach((w, i) => { const a = applied[i] || {}; if (w.check_rows && (a.statusCode || 0) < 300 && !(Array.isArray(a.body) && a.body.length)) { r.ok = false; r.error = 'sin_cambios'; r.message = w.check_message || 'No se aplicó el cambio.'; r.claimed = false; } });
 if (bad.length) { r.ok = false; r.persist_error = 'Supabase ' + (bad[0].statusCode ? 'HTTP ' + bad[0].statusCode : 'sin respuesta (red)') + ': ' + JSON.stringify(bad[0].body || {}).slice(0, 160); }
 return [{ json: r }];`;
 
@@ -249,6 +317,11 @@ export function buildMediaGateway() {
         sendHeaders: true, headerParameters: { parameters: [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', value: 'application/json' }] },
         sendBody: true, contentType: 'multipart-form-data', bodyParameters: { parameters: [{ parameterType: 'formBinaryData', name: 'file', inputDataFieldName: 'data' }, { name: 'hosted', value: 'false' }] }, options: full(90000) } },
     code('Respond Storage', RESPOND_STORAGE, [1280, -420]),
+    ifNode('File?', '$json.action === "taller_file"', [560, 180]),
+    code('File Prep', FILE_PREP, [700, 320]),
+    { id: randomUUID(), name: 'Storage Put', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [900, 320], credentials: SUPABASE_CRED, continueOnFail: true, alwaysOutputData: true,
+      parameters: { method: 'POST', url: '={{ $json.url }}', authentication: 'predefinedCredentialType', nodeCredentialType: 'supabaseApi', sendHeaders: true, headerParameters: { parameters: [{ name: 'x-upsert', value: 'true' }, { name: 'Content-Type', value: '={{ $json.mime }}' }] }, sendBody: true, contentType: 'binaryData', inputDataFieldName: 'data', options: full(90000) } },
+    code('Respond File', RESPOND_FILE, [1100, 320]),
     code('Expand Reads', EXPAND_READS, [620, 0]),
     { id: randomUUID(), name: 'Read', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [840, 0], credentials: SUPABASE_CRED, continueOnFail: true, alwaysOutputData: true,
       parameters: { method: 'GET', url: '={{ $json.url }}', authentication: 'predefinedCredentialType', nodeCredentialType: 'supabaseApi', options: full() } },
@@ -264,7 +337,7 @@ export function buildMediaGateway() {
     sbApply('Apply Writes', [1720, 0]),
     code('Respond', RESPOND, [1940, 0]),
   ];
-  const c = { 'Media Webhook': { main: [to('Parse')] }, 'Parse': { main: [to('Valid?')] }, 'Valid?': { main: [to('Storage?'), to('Respond Error')] }, 'Storage?': { main: [to('Storage Items'), to('Expand Reads')] }, 'Storage Items': { main: [to('Storage Download')] }, 'Storage Download': { main: [to('GHL Upload Storage')] }, 'GHL Upload Storage': { main: [to('Respond Storage')] }, 'Expand Reads': { main: [to('Read')] }, 'Read': { main: [to('Compute')] }, 'Compute': { main: [to('Upload?')] }, 'Upload?': { main: [to('Prep Upload'), to('Expand Writes')] }, 'Prep Upload': { main: [to('GHL Upload')] }, 'GHL Upload': { main: [to('Respond Upload')] }, 'Expand Writes': { main: [to('Apply Writes')] }, 'Apply Writes': { main: [to('Respond')] } };
+  const c = { 'Media Webhook': { main: [to('Parse')] }, 'Parse': { main: [to('Valid?')] }, 'Valid?': { main: [to('Storage?'), to('Respond Error')] }, 'Storage?': { main: [to('Storage Items'), to('File?')] }, 'File?': { main: [to('File Prep'), to('Expand Reads')] }, 'File Prep': { main: [to('Storage Put')] }, 'Storage Put': { main: [to('Respond File')] }, 'Storage Items': { main: [to('Storage Download')] }, 'Storage Download': { main: [to('GHL Upload Storage')] }, 'GHL Upload Storage': { main: [to('Respond Storage')] }, 'Expand Reads': { main: [to('Read')] }, 'Read': { main: [to('Compute')] }, 'Compute': { main: [to('Upload?')] }, 'Upload?': { main: [to('Prep Upload'), to('Expand Writes')] }, 'Prep Upload': { main: [to('GHL Upload')] }, 'GHL Upload': { main: [to('Respond Upload')] }, 'Expand Writes': { main: [to('Apply Writes')] }, 'Apply Writes': { main: [to('Respond')] } };
   return { name: 'Atacama Labs - 30 Media Gateway', nodes, connections: c, settings: { executionOrder: 'v1' } };
 }
 
