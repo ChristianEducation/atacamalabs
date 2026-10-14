@@ -26,7 +26,7 @@ export function edProfiles() {
   const channels = {
     linkedin_profile: { label: 'LinkedIn Christian', role: 'Founder / constructor / operador', tone: 'personal, directo, reflexivo, humano; primera persona; sin tono corporativo ni de gurú de IA; sin inventar experiencias; sin vender en cada post', formats: ['texto', 'imagen'], chars: [500, 2200], visual_default: 'none', cta_default: 'none' },
     linkedin_page: { label: 'LinkedIn Atacama Labs', role: 'Autoridad de empresa', tone: 'claro, técnico-operativo y útil; voz de empresa (nosotros / impersonal); demuestra criterio, no promete', formats: ['texto', 'imagen', 'carrusel', 'demo'], chars: [600, 2200], visual_default: 'diagram', cta_default: 'none' },
-    instagram: { label: 'Instagram Atacama Labs', role: 'Descubrimiento + claridad visual + marca', tone: 'entender primero, leer después: ideas complejas en formatos que se entienden rápido; copy breve', formats: ['carrusel', 'imagen', 'reel', 'demo'], chars: [80, 600], visual_default: 'carousel', cta_default: 'dm' },
+    instagram: { label: 'Instagram Atacama Labs', role: 'Descubrimiento + claridad visual + marca', tone: 'entender primero, leer después: ideas complejas en formatos que se entienden rápido; copy breve', formats: ['carrusel', 'imagen', 'reel', 'demo', 'historia'], chars: [80, 600], visual_default: 'carousel', cta_default: 'dm' },
   };
   const t = (ch, min, max, formats, cta, vNeed, vOptions) => ({ channels: ch, chars: [min, max], formats, cta, visual: { need: vNeed, options: vOptions } });
   const types = {
@@ -87,7 +87,7 @@ export function edEvaluate(piece, ctx) {
 
   // tipo ↔ canal
   if (tp && ch && !tp.channels.includes(p.channel)) { warnings.push('tipo_no_recomendado_para_el_canal:' + type + '@' + p.channel); penalties += 3; }
-  if (tp && ch && !tp.formats.includes(p.format) && p.format) warnings.push('formato_poco_habitual_para_el_tipo:' + type + '/' + p.format);
+  if (tp && ch && !tp.formats.includes(p.format) && p.format && p.format !== 'historia' && p.format !== 'reel') warnings.push('formato_poco_habitual_para_el_tipo:' + type + '/' + p.format);
 
   // largo por canal (el tipo afina el rango en LinkedIn)
   if (ch) {
@@ -117,7 +117,7 @@ export function edEvaluate(piece, ctx) {
   if (v && !needs.includes(need)) { errors.push('visual_need_invalido:' + need.slice(0, 30)); need = ''; }
   if (!need) {
     vInferred = true;
-    need = p.format === 'texto' ? 'none' : p.format === 'carrusel' ? 'carousel' : p.format === 'reel' || p.format === 'demo' ? 'short_video' : (tp ? tp.visual.options.find((o) => o !== 'none') : '') || 'editorial_image';
+    need = p.format === 'texto' ? 'none' : p.format === 'carrusel' ? 'carousel' : p.format === 'reel' || p.format === 'demo' ? 'short_video' : p.format === 'historia' ? 'typographic' : (tp ? tp.visual.options.find((o) => o !== 'none') : '') || 'editorial_image';
     warnings.push('visual_sin_decision_explicita_declara_visual.need');
   }
   const IMG = ['editorial_image', 'conceptual_image', 'diagram', 'process_flow', 'architecture', 'comparison', 'before_after', 'framework', 'checklist', 'chart', 'annotated_screenshot', 'resource_visual', 'typographic'];
@@ -126,7 +126,8 @@ export function edEvaluate(piece, ctx) {
     if (need !== 'none' && p.format === 'texto') errors.push('formato_texto_con_visual_declarado:' + need + '_usa_imagen_o_carrusel_o_visual_none');
     if (need === 'carousel' && p.format !== 'carrusel') errors.push('visual_carousel_requiere_formato_carrusel');
     if (need === 'short_video' && !['reel', 'demo'].includes(p.format)) errors.push('visual_short_video_requiere_formato_reel_o_demo');
-    if (IMG.includes(need) && !['imagen', 'carrusel'].includes(p.format)) errors.push('visual_' + need + '_requiere_formato_imagen_o_carrusel');
+    if (IMG.includes(need) && !['imagen', 'carrusel', 'historia'].includes(p.format)) errors.push('visual_' + need + '_requiere_formato_imagen_o_carrusel');
+    if (p.format === 'historia' && !['typographic', 'editorial_image', 'conceptual_image'].includes(need)) errors.push('historia_requiere_visual_typographic_o_editorial_image');
     if (tp && tp.visual.need === 'required' && need === 'none') warnings.push('este_tipo_suele_necesitar_visual:' + type);
     if (v && !str(v.rationale) && need !== 'none') warnings.push('visual_sin_justificacion');
     if (v && need === 'none' && !str(v.rationale)) warnings.push('visual_none_sin_justificacion');

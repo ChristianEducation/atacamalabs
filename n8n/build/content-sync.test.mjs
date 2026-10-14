@@ -54,5 +54,8 @@ t('Compute: reprogramar la fecha en GHL se detecta', run(pend2, ok([{ _id: 'p1',
 t('Compute: sin cambios no emite nada (no escribe de más)', run(pend2, ok([{ _id: 'p1', status: 'in_review', summary: 'Original', scheduleDate: '2026-10-13T13:00:00.000Z', postApprovalDetails: { approvalStatus: 'pending' } }])).length === 0);
 out = run(pend2, ok([{ _id: 'p1', status: 'in_review', summary: 'Original editado', scheduleDate: '2026-10-13T13:00:00.000Z', postApprovalDetails: { approvalStatus: 'pending' } }]));
 t('Compute: edición humana emite parche con ghl_edited', out.length === 1 && out[0].json.patch.ghl_edited === true);
+let trunc = null;
+try { run(pend2, ok(Array.from({ length: 100 }, (_, i) => ({ _id: 'x' + i, status: 'scheduled', summary: 's', scheduleDate: '2026-10-13T13:00:00.000Z', postApprovalDetails: { approvalStatus: 'approved' } })))); } catch (e) { trunc = e; }
+t('Compute: lista de 100 posts (truncada) NO marca nada como borrado: falla con aviso', trunc && /truncada/.test(trunc.message));
 console.log(pass, 'ok', fail, 'fallos');
 process.exit(fail ? 1 : 0);

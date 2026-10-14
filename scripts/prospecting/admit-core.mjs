@@ -117,15 +117,24 @@ export function lintDraft(subject, message, ctx) {
     [/revolucion|disrupt|transforma(r|mos) (tu|su) (negocio|empresa)|el mejor|garantizamos|100 ?%|sin riesgo|inigualable/i, 'exageracion'],
     [/chatbot/i, 'dice_chatbot'],
     [/como (conversamos|hablamos|acordamos)|seguimiento (de|a) (nuestra|mi) (conversaci[oó]n|llamada)|de nuevo|nuevamente/i, 'finge_relacion_previa'],
-    [/estimad[oa]/i, 'tono_formal_distante'],
+    // Playbook de correos outbound v1.0: la investigación es invisible y el primer correo no ofrece demo/ejemplo/reunión.
+    [/\bvi que\b|\bveo que\b|estuve (mirando|revisando)|revisando (su|tu) (sitio|web|p[aá]gina)|\bnot[eé] que\b|me fij[eé] que|en (su|tu) (sitio|p[aá]gina|web)\b|https?:|www\./i, 'evidencia_expuesta'],
+    [/\b\d+\s*(min|minutos)\b|\breuni[oó]n\b|videollamada|\bdemo\b|\bpropuesta\b|auditor[ií]a|\b(te|les) (mando|muestro|env[ií]o|comparto|dejo|paso)\b/i, 'ofrece_demo_o_reunion'],
   ];
   const probs = [];
   const text = String(message || '').trim();
   const words = text.split(/\s+/).filter(Boolean).length;
-  if (words < 25) probs.push('muy_corto');
+  if (words < 40) probs.push('muy_corto');
   if (words > 140) probs.push('muy_largo');
+  if (!/^estimad[oa]s? /i.test(text)) probs.push('saludo_no_estimado');
+  else if (/^estimad[oa]s? (contacto|cliente|se(ñ|n)ores?|sres?)\b/i.test(text)) probs.push('saludo_generico');
   if (!String(subject || '').trim() || String(subject).length > 90) probs.push('asunto_invalido');
-  FORBIDDEN.forEach(([re, tag]) => { if (re.test(text) || re.test(String(subject || ''))) probs.push(tag); });
+  const co = String((ctx && ctx.company) || '').trim();
+  let t2 = text; // el nombre de la empresa (p. ej. «Empresa Demo») no cuenta como oferta de demo
+  co.split(/\s+/).filter((w) => w.length >= 3).forEach((w) => { t2 = t2.split(w).join(' '); });
+  let s2 = String(subject || '');
+  co.split(/\s+/).filter((w) => w.length >= 3).forEach((w) => { s2 = s2.split(w).join(' '); });
+  FORBIDDEN.forEach(([re, tag]) => { const plain = tag === 'evidencia_expuesta' || tag === 'ofrece_demo_o_reunion'; if (re.test(plain ? t2 : text) || re.test(plain ? s2 : String(subject || ''))) probs.push(tag); });
   if (!/\?/.test(text)) probs.push('sin_pregunta_final');
   const name = String((ctx && ctx.company) || '').toLowerCase().split(/\s+/)[0];
   if (name && name.length > 2 && !text.toLowerCase().includes(name) && !String(subject || '').toLowerCase().includes(name)) probs.push('no_menciona_a_la_empresa');
@@ -147,18 +156,14 @@ export function buildDraft(row, adm) {
   const hBody = String(h.draft || '').trim();
   const hProbs = hBody ? lintDraft(hSubject, hBody, ctx) : ['sin_borrador_de_hermes'];
   if (!hProbs.length) return { subject: hSubject, message: hBody, source: 'hermes', lint: [] };
-  const first = String(c.name || '').trim().split(/\s+/)[0];
-  const greet = first ? 'Hola ' + first + ',' : 'Hola, equipo de ' + company + ',';
-  const ev = adm && adm.best_evidence;
-  const quote = ev && ev.quote ? String(ev.quote).replace(/\s+/g, ' ').trim().slice(0, 160) : '';
-  const offer = String(h.offer || '').trim().replace(/[.\s]+$/, '').replace(/^./, (x) => x.toLowerCase()).slice(0, 180);
-  const named = Boolean(first);
-  const lines = [greet, ''];
-  if (quote) lines.push('En ' + host(ev.url) + ' leí: «' + quote + '».', '');
-  lines.push('Mi hipótesis, sin haberlo visto por dentro, es que eso hoy se resuelve a mano. En Atacama Labs armamos agentes y automatizaciones conectadas a las herramientas que ya usan, para que una persona del equipo intervenga solo cuando haga falta.' + (offer ? ' Una posibilidad concreta: ' + offer + '.' : ''), '');
-  lines.push(named ? '¿Te sirve que te muestre en 10 minutos cómo se vería para ' + company + '?' : '¿Les sirve que les muestre en 10 minutos cómo se vería para ' + company + '?', '', 'Christian Wevar · Atacama Labs · atacamalabs.cl');
+  // Playbook de correos outbound v1.0: saludo «Estimado equipo de…» (no hay certeza de género/nombre confiable en esta plantilla), investigación invisible (sin citar la web ni la cita verificada),
+  // un solo problema planteado con prudencia, el agente trabaja dentro del proceso y cierre conversacional sin ofrecer demo/ejemplo/reunión. Es solo una base: contact-prep la reescribe con criterio.
+  const lines = ['Estimado equipo de ' + company + ',', ''];
+  lines.push('En operaciones como la de ' + company + ', suele haber bastante trabajo previo en reunir información, completar lo que falta y ordenar cada solicitud antes de que una persona pueda continuar.', '');
+  lines.push('Soy Christian, de Atacama Labs. Armamos agentes que pueden hacerse cargo de esa primera parte, dejar cada solicitud registrada y lista para que el equipo continúe, y derivarla a una persona cuando realmente hace falta.', '');
+  lines.push('¿Les haría sentido conversar sobre cómo automatizar esta primera etapa u otro proceso que hoy les esté quitando tiempo?', '', 'Christian Wevar · Atacama Labs · atacamalabs.cl');
   const message = lines.join('\n');
-  const subject = ('Una idea para ' + company).slice(0, 80);
+  const subject = 'la etapa previa a cada solicitud';
   return { subject, message, source: 'plantilla', lint: lintDraft(subject, message, ctx), hermes_lint: hProbs };
 }
 

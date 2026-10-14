@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "channel": "instagram",
+  "format": "historia",
+  "category": "Educativo",
+  "topic": "Historia: cotización enviada y sin respuesta",
+  "angle": "Cotización enviada que quedó en visto: el seguimiento que nadie hace",
+  "editorial_type": "customer_problem",
+  "visual": {
+    "need": "editorial_image",
+    "rationale": "La escena del chat con la cotización en visto se entiende en un segundo",
+    "composition": "historia-ilustrada-chat"
+  },
+  "audience": "Dueños y gerentes de pymes que reciben consultas por WhatsApp e Instagram",
+  "sources": [
+    {
+      "kind": "evergreen",
+      "title": "Criterios de atención de Atacama Labs",
+      "url": "https://atacamalabs.cl",
+      "verified": true,
+      "evidence": []
+    }
+  ],
+  "claims": [],
+  "factors": {
+    "relevance": {
+      "value": 9,
+      "note": "Es el primer paso de cualquier proyecto de automatización de Atacama."
+    },
+    "audience_fit": {
+      "value": 8,
+      "note": "La duda típica de un dueño de pyme."
+    },
+    "novelty": {
+      "value": 5,
+      "note": "Tema recurrente; el valor está en la claridad."
+    },
+    "evidence": {
+      "value": 6,
+      "note": "Método propio, sin cifras externas."
+    },
+    "utility": {
+      "value": 8,
+      "note": "Tres preguntas aplicables hoy."
+    },
+    "clarity": {
+      "value": 9,
+      "note": "Una idea por slide."
+    },
+    "conversation": {
+      "value": 6,
+      "note": "Invita a mapear un proceso."
+    },
+    "differentiation": {
+      "value": 6,
+      "note": "Enfoca el freno antes del acelerador."
+    },
+    "non_repetition": {
+      "value": 10,
+      "note": "Primera pieza de este ángulo."
+    }
+  },
+  "rationale": "Historia de dolor reutilizable por rubro, sin cifras ni casos inventados.",
+  "hook": "Mandaste la cotización. ¿Y después?",
+  "body": "Historia ilustrada: chat con cotización enviada y sin respuesta.",
+  "story": {
+    "template": "ilustrada",
+    "kind": "ORIGINAL_STORY",
+    "title": "Mandaste la cotización.\n*¿Y después?*",
+    "pill": "Seguimiento hasta tener respuesta",
+    "body": "Un agente **retoma la conversación** hasta tener respuesta y avisa a una persona cuando hay interés.",
+    "art": {
+      "scene": "In the center, occupying about 44% of the canvas height: a realistic modern smartphone, front view, with a messaging app in a white and light-blue palette. Chat header: small round avatar and the name Cliente · Faena with en línea. A white incoming bubble, then an outgoing light-blue bubble containing a photorealistic photo of a silver double-cab pickup truck on a desert road, a PDF attachment row with a red PDF icon, and a short reply text, with two blue double-check marks and the time. No reply from the customer.",
+      "texts": [
+        "9:41",
+        "Cliente · Faena",
+        "en línea",
+        "Hace 15 días",
+        "Hola, gracias por la visita. ¿Me mandas la info de lo que conversamos?",
+        "Cotización_Camioneta.pdf",
+        "1 página · 46 KB",
+        "Claro, acá te dejo el detalle con las opciones de financiamiento."
+      ],
+      "character": null
+    }
+  },
+  "cta": {
+    "type": "none",
+    "text": ""
+  },
+  "hashtags": [],
+  "evidence_urls": [
+    "https://atacamalabs.cl"
+  ],
+  "visual_direction": "Método visual obligatorio: ilustración GPT Image 2.5 del teléfono con el chat + titular, pastilla, panel, logo e isotipo de marca encima.",
+  "schedule_suggestion": null,
+  "media": []
+}

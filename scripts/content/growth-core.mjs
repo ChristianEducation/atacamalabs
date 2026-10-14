@@ -106,7 +106,7 @@ export function growthNormIntel(report) {
   if (!comps.length) errors.push('sin_competidores');
   const saturated = arr(x.saturated_topics, 10);
   const gaps = arr(x.gaps, 10);
-  const angles = (Array.isArray(x.own_angles) ? x.own_angles : []).map((a) => ({ angle: str(a && a.angle, 300), why: str(a && a.why, 300), channel_suggestion: ['instagram', 'linkedin_page', 'linkedin_profile'].includes(a && a.channel_suggestion) ? a.channel_suggestion : null })).filter((a) => a.angle).slice(0, 8);
+  const angles = (Array.isArray(x.own_angles) ? x.own_angles : []).map((a) => ({ angle: str(a && a.angle, 300), why: str(a && a.why, 300), channel_suggestion: ['instagram', 'linkedin_page', 'linkedin_profile'].includes(a && a.channel_suggestion) ? a.channel_suggestion : null, format_suggestion: ['reel', 'carrusel', 'imagen', 'historia', 'texto'].includes(a && a.format_suggestion) ? a.format_suggestion : null, rubro: str(a && a.rubro, 60) || null })).filter((a) => a.angle).slice(0, 14);
   if (!gaps.length && !angles.length) errors.push('sin_huecos_ni_angulos_propios');
   if (angles.some((a) => !a.why)) errors.push('angulo_propio_sin_porque');
   return { ok: errors.length === 0, errors, value: { run_id: runId, competitors: comps, saturated_topics: saturated, gaps, own_angles: angles, notes: str(x.notes, 600) } };

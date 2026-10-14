@@ -95,5 +95,25 @@ t('mezclar estructuras en una slide => rechazo', evaluatePiece(mix).errors.inclu
 const atk = clone(base); atk.body += '\n\nOtras herramientas no sirve y somos mejores.';
 t('atacar o prometer de más penaliza', evaluatePiece(atk).lint_hits.includes('ataque_o_promesa_exagerada'));
 
+// 5. Motor de Instagram (Frente C): historias y reels
+const hist = JSON.parse(fs.readFileSync(new URL('./examples/instagram-historia.piece.json', import.meta.url), 'utf8'));
+const reel = JSON.parse(fs.readFileSync(new URL('./examples/instagram-reel.piece.json', import.meta.url), 'utf8'));
+t('historia de ejemplo: candidata sin errores', evaluatePiece(hist).decision === 'candidate' && evaluatePiece(hist).ok, JSON.stringify(evaluatePiece(hist).errors));
+t('reel de ejemplo: candidato sin errores', evaluatePiece(reel).decision === 'candidate' && evaluatePiece(reel).ok, JSON.stringify(evaluatePiece(reel).errors));
+const hErr = (mut) => { const x = clone(hist); mut(x); return evaluatePiece(x).errors; };
+t('historia: solo Instagram', hErr((x) => { x.channel = 'linkedin_page'; }).includes('historia_solo_instagram'));
+t('historia: exige story y plantilla válida', hErr((x) => { delete x.story; }).includes('historia_requiere_story') && hErr((x) => { x.story.template = 'otra'; }).includes('story_template_invalida'));
+t('historia: título obligatorio y con largo según la plantilla (embudo ≤ 46, chat ≤ 60, dolor ≤ 72)', hErr((x) => { x.story.title = ''; }).includes('story_sin_titulo') && hErr((x) => { x.story.title = 'x'.repeat(61); }).includes('story_titulo_largo_para_chat_max_60') && hErr((x) => { x.story.template = 'embudo'; x.story.stages = ['a', 'b', 'c']; x.story.title = 'x'.repeat(47); }).includes('story_titulo_largo_para_embudo_max_46') && hErr((x) => { x.story.template = 'dolor'; x.story.title = 'x'.repeat(73); }).includes('story_titulo_largo_para_dolor_max_72'));
+t('historia «pregunta»: el título se parte con | en dos mitades cortas', hErr((x) => { x.story.template = 'pregunta'; x.story.title = '¿Quién contesta cuando tú no puedes?'; }).some((e) => e.startsWith('story_pregunta_parte_el_titulo')) && !hErr((x) => { x.story.template = 'pregunta'; x.story.title = '¿Quién contesta | cuando tú no puedes?'; }).some((e) => e.startsWith('story_pregunta')));
+t('historia: nada recortado con puntos suspensivos (pill, título, cuerpo, chat)', hErr((x) => { x.story.pill = 'Automatizar no significa quitar sup...'; }).includes('story_pill_termina_en_puntos_suspensivos_reescribelo_mas_corto') && hErr((x) => { x.story.body = 'Texto cortado…'; }).includes('story_body_termina_en_puntos_suspensivos_reescribelo_mas_corto') && hErr((x) => { x.story.chat[0].text = 'Hola, ¿me puedes...'; }).includes('story_chat_termina_en_puntos_suspensivos'));
+t('historia chat: 2 a 6 mensajes y cada uno con from/text', hErr((x) => { x.story.chat = [x.story.chat[0]]; }).includes('story_chat_2_a_6_mensajes') && hErr((x) => { x.story.chat[0].from = 'yo'; }).includes('story_chat_mensaje_invalido'));
+t('historia embudo/recurso/dato exigen sus campos', hErr((x) => { x.story.template = 'embudo'; }).includes('story_embudo_3_etapas_cortas') && hErr((x) => { x.story.template = 'recurso'; }).includes('story_recurso_requiere_palabra_clave') && hErr((x) => { x.story.template = 'dato'; }).includes('story_dato_requiere_cifra'));
+t('historia: visual debe ser typographic y no admite slides como contenido', hErr((x) => { x.visual.need = 'carousel'; }).some((e) => /historia_requiere_visual_typographic|visual_carousel_requiere_formato_carrusel/.test(e)));
+t('historia: una cifra en la historia necesita respaldo (claim)', hErr((x) => { x.story.body = 'Ahorra un 40% del tiempo.'; }).some((e) => e.startsWith('cifra_sin_respaldo')));
+const rErr = (mut) => { const x = clone(reel); mut(x); return evaluatePiece(x).errors; };
+t('reel: exige motion_brief con lenguaje, 1–6 frases cortas y 5–30 s', rErr((x) => { delete x.motion_brief; }).includes('reel_requiere_motion_brief') && rErr((x) => { x.motion_brief.language = 'caos'; }).includes('motion_language_invalido') && rErr((x) => { x.motion_brief.phrases = []; }).includes('motion_frases_1_a_6_cortas') && rErr((x) => { x.motion_brief.duration_s = 60; }).includes('motion_duracion_5_a_30_s'));
+t('reel: lenguaje «propuesta» es válido (queda para aprobación) y el visual debe ser short_video', rErr((x) => { x.motion_brief.language = 'propuesta'; }).length === 0 && rErr((x) => { x.visual.need = 'typographic'; }).length > 0);
+t('formatos viejos intactos: story/motion_brief en otros formatos solo advierten', evaluatePiece({ ...clone(base), story: { template: 'dolor', title: 'x' } }).warnings.includes('story_solo_aplica_a_historia'));
+
 console.log(pass, 'ok', fail, 'fallos');
 process.exit(fail ? 1 : 0);

@@ -35,7 +35,10 @@ export function schedDayKey(ms, tz) {
 }
 
 /**
- * o = { now (ms), channel, category, suggestion (ISO|null), justification (texto|null), taken: [{ account, at (ms) }], account, tz? }
+ * o = { now (ms), channel, category, suggestion (ISO|null), justification (texto|null), taken: [{ account, at (ms), kind? }], account, tz?,
+ *        kind? ('feed' por defecto | 'story'), slots? (['HH:mm', …] sobrescribe los huecos de la cuenta), minLeadH? (sobrescribe la anticipación mínima) }
+ * Carriles de Instagram (Frente C): FEED = una publicación por cuenta y día; HISTORIA = un hueco por hora fija (p. ej. 10:00/14:00/18:00), sin tope de 1 al día, y
+ * las historias no ocupan el día del feed ni al revés (taken[].kind === 'story' las distingue).
  * Devuelve { iso, ms, label, tier, hours_ahead, within_target, target_hours, source: 'suggestion'|'slot', warnings[] }.
  */
 export function proposeSlot(o) {
@@ -43,12 +46,19 @@ export function proposeSlot(o) {
   const now = Number(o.now);
   const SLOTS = { instagram: ['12:30', '19:00'], linkedin_page: ['10:00', '15:00'], linkedin_profile: ['09:00', '16:00'] };
   const cat = String(o.category || '');
-  const tier = cat === 'Noticia' ? { name: 'noticia', minLeadH: 3, targetH: 24 } : cat === 'Evergreen' ? { name: 'evergreen', minLeadH: 12, targetH: 72 } : { name: 'normal', minLeadH: 12, targetH: 48 };
+  const lane = o.kind === 'story' ? 'story' : 'feed';
+  const tier = lane === 'story' ? { name: 'historia', minLeadH: 3, targetH: 24 * 8 } : cat === 'Noticia' ? { name: 'noticia', minLeadH: 3, targetH: 24 } : cat === 'Evergreen' ? { name: 'evergreen', minLeadH: 12, targetH: 72 } : { name: 'normal', minLeadH: 12, targetH: 48 };
+  if (Number.isFinite(Number(o.minLeadH))) tier.minLeadH = Number(o.minLeadH);
   const minMs = now + tier.minLeadH * 3600000;
   const warnings = [];
   const takenDays = {};
-  (o.taken || []).forEach((t) => { if (t && Number.isFinite(Number(t.at)) && (!t.account || t.account === o.account)) takenDays[schedDayKey(Number(t.at), tz)] = true; });
-  const free = (ms) => !takenDays[schedDayKey(ms, tz)];
+  const hm = (ms) => new Date(ms).toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
+  (o.taken || []).forEach((t) => {
+    if (!t || !Number.isFinite(Number(t.at)) || (t.account && t.account !== o.account)) return;
+    if ((t.kind === 'story') !== (lane === 'story')) return;
+    takenDays[lane === 'story' ? schedDayKey(Number(t.at), tz) + '|' + hm(Number(t.at)) : schedDayKey(Number(t.at), tz)] = true;
+  });
+  const free = (ms) => !takenDays[lane === 'story' ? schedDayKey(ms, tz) + '|' + hm(ms) : schedDayKey(ms, tz)];
   const label = (ms) => new Date(ms).toLocaleString('es-CL', { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
   const done = (ms, source) => ({ iso: new Date(ms).toISOString(), ms, label: label(ms), tier: tier.name, hours_ahead: Math.round((ms - now) / 360000) / 10, target_hours: tier.targetH, within_target: ms - now <= tier.targetH * 3600000, source, warnings });
   // 1) fecha sugerida por Hermes: solo si es válida, está libre y cumple el plazo (o viene justificada)
@@ -61,7 +71,7 @@ export function proposeSlot(o) {
     else return done(sug, 'suggestion');
   }
   // 2) siguiente hueco libre de la cuenta, día por día (hora local de Chile)
-  const slots = SLOTS[o.channel] || SLOTS.linkedin_page;
+  const slots = Array.isArray(o.slots) && o.slots.length ? o.slots : (SLOTS[o.channel] || SLOTS.linkedin_page);
   const [y, m, d] = schedDayKey(now, tz).split('-').map(Number);
   for (let k = 0; k <= 21; k++) {
     const day = new Date(Date.UTC(y, m - 1, d + k));

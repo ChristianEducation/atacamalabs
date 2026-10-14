@@ -497,4 +497,103 @@ ok('aviso de preparación: sale de los datos (no del reporte del agente), una ve
   assert.ok(!a2.notify.some((x) => x.key === n.key), 'el mismo aviso no se repite');
 });
 
+
+// ---------- Motor semanal de Instagram (Frente C): carril propio, hueco por hueco
+const IGCFG = { weekly_target: 5, weekly_min: 4, weekly_max: 6, ig_feed_weekly_target: 5, ig_story_per_day: 3, ig_story_slots: '10:00,14:00,18:00', ig_feed_slot: '15:00', ig_feed_max_pending: 10, ig_story_max_pending: 28, ig_engine_enabled: true };
+const SUN = Date.parse('2026-10-11T23:00:00Z');                       // domingo 11-oct 20:00 Chile → mira la semana 12–18 oct
+const igp = (i, format, status, atIso, extra) => ({ id: 'ig' + i, topic: 'IG' + i, channel: 'instagram', format, status, ghl_status: status, is_test: false, created_at: new Date(SUN - 2 * D).toISOString(), scheduled_at: atIso, ...(extra || {}) });
+ok('IG semanal: el domingo en la noche mira la semana siguiente y pide 5 de feed y NO impone cuota de historias (reglas v1.1: las decide el job diario)', () => {
+  const w = oc.igWeekly({ now: SUN, cfg: CFG, content_cfg: IGCFG, pieces: [] });
+  assert.equal(w.window.start, '2026-10-12'); assert.equal(w.window.end, '2026-10-18');
+  assert.equal(w.feed.missing, 3); assert.deepEqual(w.feed.missing_by_format, { carrusel: 2, imagen: 1 }); assert.equal(w.feed.reels_for_christian, 2); assert.equal(w.feed.open_days.length, 5);
+  assert.equal(w.stories.missing, 0); assert.equal(w.stories.open_slots.length, 0); assert.equal(w.stories.suggested_slots.length, 21); assert.equal(w.stories.suggested_slots[0].date + ' ' + w.stories.suggested_slots[0].slot, '2026-10-12 10:00'); assert.equal(w.stories.suggested_slots[0].iso, '2026-10-12T13:00:00.000Z');
+});
+ok('IG semanal: los reels ya programados (lun–mié 15:00) cuentan; faltan 2 de feed (el reel que sobra de la mezcla se reparte) y no se pisan los días ocupados', () => {
+  const reels = ['2026-10-12T18:00:00Z', '2026-10-13T18:00:00Z', '2026-10-14T18:00:00Z'].map((a, i) => igp(i, 'reel', 'in_review', a));
+  const w = oc.igWeekly({ now: SUN, cfg: CFG, content_cfg: IGCFG, pieces: reels });
+  assert.equal(w.feed.coverage, 3); assert.equal(w.feed.missing, 2); assert.deepEqual(w.feed.open_days, ['2026-10-15', '2026-10-16']);
+  assert.deepEqual(w.feed.missing_by_format, { carrusel: 2 }); assert.equal(w.feed.reels_for_christian, 0);
+});
+ok('IG semanal: historias ocupan sus huecos exactos (día+hora Chile) y las piezas en preparación (drafted) cuentan para no duplicar', () => {
+  const st = [igp(10, 'historia', 'in_review', '2026-10-12T13:00:00Z'), igp(11, 'historia', 'in_review', '2026-10-12T17:00:00Z'), igp(12, 'historia', 'drafted', null)];
+  const w = oc.igWeekly({ now: SUN, cfg: CFG, content_cfg: IGCFG, pieces: st });
+  assert.equal(w.stories.suggested_slots.length, 19); assert.equal(w.stories.missing, 0); assert.equal(w.stories.coverage, 3); assert.ok(!w.stories.suggested_slots.some((s) => s.date === '2026-10-12' && ['10:00', '14:00'].includes(s.slot)));
+});
+ok('IG semanal: un lunes 09:00 solo quedan huecos con ≥ 3 h de anticipación (hoy 14:00 y 18:00 + resto de la semana = 20)', () => {
+  const MON9 = Date.parse('2026-10-12T12:00:00Z');
+  const w = oc.igWeekly({ now: MON9, cfg: CFG, content_cfg: IGCFG, pieces: [] });
+  assert.equal(w.window.start, '2026-10-12'); assert.equal(w.stories.missing, 0); assert.equal(w.stories.suggested_slots.length, 20); assert.equal(w.stories.suggested_slots[0].slot, '14:00');
+  assert.equal(w.feed.open_days.includes('2026-10-12'), true, 'el 15:00 de hoy está a 6 h ≥ 3 h → abierto');
+});
+ok('IG semanal: las piezas de LinkedIn y de prueba no cuentan, y el ritmo de LinkedIn ignora Instagram', () => {
+  const li = { id: 'l1', topic: 'L', channel: 'linkedin_page', format: 'texto', status: 'in_review', ghl_status: 'in_review', is_test: false, created_at: new Date(SUN).toISOString(), scheduled_at: '2026-10-13T13:00:00Z' };
+  const test = igp(20, 'reel', 'in_review', '2026-10-12T18:00:00Z', { is_test: true });
+  const w = oc.igWeekly({ now: SUN, cfg: CFG, content_cfg: IGCFG, pieces: [li, test] });
+  assert.equal(w.feed.coverage, 0);
+  const many = Array.from({ length: 8 }, (_, i) => igp(30 + i, 'historia', 'in_review', new Date(Date.parse('2026-10-08T15:00:00Z') + i * 3600000).toISOString()));
+  assert.equal(oc.weeklyContent(base({ pieces: many })).coverage, 0, '21 historias de Instagram NO hacen creer que la semana de LinkedIn está cubierta');
+});
+ok('compuerta IG: corre con faltantes y trae mezcla, días y huecos; se salta si está cubierta, apagada, ya corrió o las colas están llenas', () => {
+  const g = oc.igWeekGate({ now: SUN, cfg: CFG, content_cfg: IGCFG, pieces: [], runs: [] });
+  assert.equal(g.mode, 'run'); assert.equal(g.feed_missing, 3); assert.equal(g.stories_missing, 0); assert.equal(g.story_slots_open.length, 0); assert.deepEqual(g.feed_open_days.length, 5);
+  assert.equal(oc.igWeekGate({ now: SUN, cfg: CFG, content_cfg: { ...IGCFG, ig_engine_enabled: false }, pieces: [] }).mode, 'skip');
+  assert.equal(oc.igWeekGate({ now: SUN, cfg: CFG, content_cfg: IGCFG, pieces: [], runs: [{ kind: 'ig_week', status: 'ok', created_at: new Date(SUN - H).toISOString() }] }).mode, 'skip');
+  const full = [];
+  ['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16'].forEach((k, i) => full.push(igp(40 + i, i < 2 ? 'reel' : i < 4 ? 'carrusel' : 'imagen', 'in_review', k + 'T18:00:00Z')));
+  let j = 0; ['2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17', '2026-10-18'].forEach((k) => ['13:00', '17:00', '21:00'].forEach((h) => full.push(igp(60 + j++, 'historia', 'in_review', k + 'T' + h + ':00Z'))));
+  const covered = oc.igWeekGate({ now: SUN, cfg: CFG, content_cfg: IGCFG, pieces: full });
+  assert.equal(covered.mode, 'skip'); assert.match(covered.reason, /semana de Instagram cubierta/);
+  const q = oc.igWeekGate({ now: SUN, cfg: CFG, content_cfg: { ...IGCFG, ig_feed_max_pending: 1, ig_story_max_pending: 1 }, pieces: [igp(90, 'reel', 'in_review', '2026-10-12T18:00:00Z'), igp(91, 'historia', 'in_review', '2026-10-12T13:00:00Z')] });
+  assert.equal(q.mode, 'skip'); assert.match(q.reason, /colas de revisión de Instagram llenas/);
+});
+ok('calendario IG para /ops: 7 días con feed e historias con su estado, huecos libres y el resumen; el panel lo incluye', () => {
+  const ps = [igp(1, 'reel', 'in_review', '2026-10-12T18:00:00Z', { hook: '¿Quién contesta?' }), igp(2, 'historia', 'in_review', '2026-10-12T13:00:00Z', { story_template: 'chat', hook: 'Pidió la cotización' }), igp(3, 'historia', 'drafted', null)];
+  const c = oc.igCalendar({ now: SUN, cfg: CFG, content_cfg: IGCFG, pieces: ps });
+  assert.equal(c.days.length, 7); assert.equal(c.days[0].key, '2026-10-12'); assert.equal(c.days[0].label, 'lun 12 oct');
+  assert.equal(c.days[0].feed[0].status, 'por aprobar'); assert.equal(c.days[0].feed[0].at, '15:00'); assert.equal(c.days[0].feed[0].format, 'reel');
+  assert.equal(c.days[0].stories[0].at, '10:00'); assert.equal(c.days[0].stories[0].template, 'chat');
+  assert.deepEqual(c.days[0].open_stories, []); assert.equal(c.days[1].open_feed, true); assert.equal(c.preparing, 1);
+  assert.equal(c.stories.coverage, 2); assert.equal(c.feed.coverage, 1);
+  const p = oc.composePanel(base({ pieces: ps, content_cfg: IGCFG }));
+  assert.ok(p.content.ig && p.content.ig.days.length === 7);
+});
+
+ok('compuerta IG: recuerda los últimos lenguajes de motion y plantillas de historia para no repetir', () => {
+  const ps = [igp(1, 'reel', 'in_review', '2026-10-12T18:00:00Z', { motion_language: 'paneles-partidos', created_at: '2026-10-09T10:00:00Z' }), igp(2, 'historia', 'in_review', '2026-10-12T13:00:00Z', { story_template: 'chat', created_at: '2026-10-09T10:00:00Z' })];
+  const g = oc.igWeekGate({ now: SUN, cfg: CFG, content_cfg: IGCFG, pieces: ps });
+  assert.deepEqual(g.recent_motion_languages, ['paneles-partidos']); assert.deepEqual(g.recent_story_templates, ['chat']);
+});
+
+
+// ---------- Historias del día (reglas de historias v1.1, fuente de verdad de Christian)
+const N20 = Date.parse('2026-10-12T23:00:00Z');                       // lunes 12-oct 20:00 Chile → propone el martes 13
+const sdp = (i, format, status, at, extra) => ({ id: 'sd' + i, topic: 'T' + i, hook: 'Gancho ' + i, channel: 'instagram', format, status, is_test: false, created_at: '2026-10-10T10:00:00Z', scheduled_at: at, ...(extra || {}) });
+ok('historias del día: desde el mediodía propone el día SIGUIENTE y ve el feed de ese día, lo ya programado y lo de las últimas 48 h', () => {
+  const ps = [sdp(1, 'reel', 'scheduled', '2026-10-13T18:00:00Z'), sdp(2, 'historia', 'in_review', '2026-10-13T13:00:00Z'), sdp(3, 'historia', 'published', '2026-10-12T17:00:00Z'), sdp(4, 'carrusel', 'published', '2026-10-11T18:00:00Z'), sdp(5, 'reel', 'scheduled', '2026-10-13T18:00:00Z', { channel: 'linkedin_page' })];
+  const c = oc.storyDayContext({ now: N20, cfg: CFG, content_cfg: { ig_engine_enabled: true }, pieces: ps });
+  assert.equal(c.date, '2026-10-13'); assert.equal(c.utc_offset, '-03:00'); assert.equal(oc.storyDayContext({ now: Date.parse('2026-07-01T23:00:00Z'), cfg: CFG, content_cfg: {}, pieces: [] }).utc_offset, '-04:00'); assert.equal(c.feed_today.length, 1); assert.equal(c.feed_today[0].at, '15:00');
+  assert.equal(c.stories_already.length, 1); assert.deepEqual(c.recent_stories_48h, ['Gancho 3']); assert.deepEqual(c.recent_feed_48h, ['Gancho 4']);
+  assert.equal(oc.storyDayContext({ now: Date.parse('2026-10-13T12:00:00Z'), cfg: CFG, content_cfg: {}, pieces: [] }).date, '2026-10-13', 'antes del mediodía propone el mismo día');
+});
+ok('compuerta del día: apagada, ya propuesta o con 3 historias → skip; si no, run con el máximo que queda (sin cuota)', () => {
+  const d = (o) => ({ now: N20, cfg: CFG, content_cfg: { ig_engine_enabled: true }, pieces: [], story_proposals: [], ...o });
+  assert.equal(oc.storyDayGate(d({ content_cfg: { ig_engine_enabled: false } })).mode, 'skip');
+  assert.equal(oc.storyDayGate(d({ story_proposals: [{ for_date: '2026-10-13' }] })).mode, 'skip');
+  const three = [10, 14, 18].map((h, i) => sdp(20 + i, 'historia', 'in_review', '2026-10-13T' + (h + 3) + ':00:00Z'));
+  assert.match(oc.storyDayGate(d({ pieces: three })).reason, /ya tiene 3 historias/);
+  const g = oc.storyDayGate(d({ pieces: [three[0]] })); assert.equal(g.mode, 'run'); assert.equal(g.max_stories, 2);
+});
+ok('propuesta del día: valida tipos y horas, exige decisión editorial, y convierte el REPOST y los stickers en NOTAS para Christian', () => {
+  const p = { date: '2026-10-13', decision: 'Hay reel nuevo: repost + una observación; no agrego una tercera.', stories: [{ kind: 'REPOST_FEED', copy: 'el reel «¿Quién contesta?»', hour: '15:30' }, { kind: 'SUPPORT_STORY', copy: 'La parte interesante es lo que pasa después.', hour: '19:00', manual_note: 'Agregar en Instagram: encuesta «¿Lo hacen a mano?» Sí / No' }] };
+  const v = oc.storyProposalNorm(p);
+  assert.ok(v.ok, v.errors.join()); assert.equal(v.value.story_count, 2); assert.equal(v.value.manual_notes.length, 2);
+  assert.match(v.value.manual_notes[0].text, /^Repostear el reel/); assert.equal(v.value.manual_notes[1].type, 'sticker');
+  const t = oc.storyProposalText(v.value); assert.match(t, /Historias para el 2026-10-13: 2 historias/); assert.match(t, /Para hacer tú en Instagram/); assert.match(t, /15:30 · Repost/);
+  assert.ok(oc.storyProposalNorm({ ...p, stories: [{ kind: 'OTRA' }] }).errors.includes('historia_1_tipo_invalido'));
+  assert.ok(oc.storyProposalNorm({ ...p, decision: '' }).errors.includes('decision_editorial_obligatoria'));
+  assert.ok(oc.storyProposalNorm({ ...p, stories: [1, 2, 3, 4].map(() => ({ kind: 'ORIGINAL_STORY' })) }).errors.includes('mas_de_3_historias_requiere_special_reason'));
+  const none = oc.storyProposalNorm({ date: '2026-10-13', decision: 'Hoy no publicaría historias: el feed ya cumple el objetivo.', stories: [] });
+  assert.ok(none.ok); assert.match(oc.storyProposalText(none.value), /ninguna/);
+});
+
 console.log(n + ' ok');

@@ -78,4 +78,10 @@ ok('autocontenido: sin imports ni constantes de módulo (se incrusta en n8n)', (
   const fns = Object.values(g).filter((f) => typeof f === 'function'); const src = fns.map((f) => f.toString()).join('\n');
   assert.ok(!/\bimport\b|\brequire\(/.test(src)); const lib = new Function(src + '\nreturn { growthGovernor, growthFounderEvidence };')(); assert.equal(lib.growthGovernor({ pending: 7, origin: 'autonomous' }).allowed, false);
 });
+ok('inteligencia: hasta 14 ángulos propios, con formato y rubro sugeridos (banco de ideas del motor de Instagram); valores desconocidos se ignoran', () => {
+  const angles = Array.from({ length: 16 }, (_, i) => ({ angle: 'Ángulo ' + i, why: 'porque ' + i, channel_suggestion: 'instagram', format_suggestion: i === 0 ? 'reel' : i === 1 ? 'caos' : 'historia', rubro: i === 0 ? 'salud' : '' }));
+  const v = g.growthNormIntel({ run_id: 'intel-20261019-1200', competitors: [{ slug: 'vambe', pages_read: ['https://www.vambe.ai'] }], gaps: ['límites y traspaso humano'], own_angles: angles });
+  assert.ok(v.ok, v.errors.join()); assert.equal(v.value.own_angles.length, 14);
+  assert.equal(v.value.own_angles[0].format_suggestion, 'reel'); assert.equal(v.value.own_angles[0].rubro, 'salud'); assert.equal(v.value.own_angles[1].format_suggestion, null); assert.equal(v.value.own_angles[2].rubro, null);
+});
 console.log(n + ' ok');

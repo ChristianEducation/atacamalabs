@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "channel": "instagram",
+  "format": "historia",
+  "category": "Educativo",
+  "topic": "Historia: consultas que se pierden fuera de horario",
+  "angle": "Pregunta de dolor en chat: la cotización que nadie contestó",
+  "editorial_type": "customer_problem",
+  "visual": {
+    "need": "typographic",
+    "rationale": "Una historia se entiende en 3 segundos: pregunta de dolor y prueba en un chat",
+    "composition": "historia-chat"
+  },
+  "audience": "Dueños y gerentes de pymes que reciben consultas por WhatsApp e Instagram",
+  "sources": [
+    {
+      "kind": "evergreen",
+      "title": "Criterios de atención de Atacama Labs",
+      "url": "https://atacamalabs.cl",
+      "verified": true,
+      "evidence": []
+    }
+  ],
+  "claims": [],
+  "factors": {
+    "relevance": {
+      "value": 9,
+      "note": "Es el primer paso de cualquier proyecto de automatización de Atacama."
+    },
+    "audience_fit": {
+      "value": 8,
+      "note": "La duda típica de un dueño de pyme."
+    },
+    "novelty": {
+      "value": 5,
+      "note": "Tema recurrente; el valor está en la claridad."
+    },
+    "evidence": {
+      "value": 6,
+      "note": "Método propio, sin cifras externas."
+    },
+    "utility": {
+      "value": 8,
+      "note": "Tres preguntas aplicables hoy."
+    },
+    "clarity": {
+      "value": 9,
+      "note": "Una idea por slide."
+    },
+    "conversation": {
+      "value": 6,
+      "note": "Invita a mapear un proceso."
+    },
+    "differentiation": {
+      "value": 6,
+      "note": "Enfoca el freno antes del acelerador."
+    },
+    "non_repetition": {
+      "value": 10,
+      "note": "Primera pieza de este ángulo."
+    }
+  },
+  "rationale": "Historia de dolor reutilizable por rubro, sin cifras ni casos inventados.",
+  "hook": "¿Pidió la cotización y desapareció?",
+  "body": "Historia de 9:16 con chat de ejemplo. El texto vive en el campo story.",
+  "story": {
+    "template": "chat",
+    "kicker": "Cotizaciones",
+    "title": "¿Pidió la cotización y *desapareció*?",
+    "chat": [
+      {
+        "from": "in",
+        "text": "Hola, ¿me cotizan 3 equipos?"
+      },
+      {
+        "from": "out",
+        "text": "Claro. Te envío el detalle ahora mismo."
+      },
+      {
+        "from": "out",
+        "text": "Y mañana te escribo para ver si quedó alguna duda."
+      }
+    ],
+    "pill": "Seguimiento sin olvidos",
+    "body": "El agente responde, envía y vuelve a escribir."
+  },
+  "cta": {
+    "type": "none",
+    "text": ""
+  },
+  "hashtags": [],
+  "evidence_urls": [
+    "https://atacamalabs.cl"
+  ],
+  "visual_direction": "Panel azul profundo arriba con la pregunta, teléfono con chat sobre cuadrícula, logo oficial; sin mascota.",
+  "schedule_suggestion": null,
+  "media": []
+}

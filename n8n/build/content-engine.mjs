@@ -32,6 +32,7 @@ const NONE = 'https://localhost.invalid/';
 const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 const PACK_ID = '0ba54785-bff0-4a2d-a397-64e697d34e38'; // icp_packs.atacama-labs
 export const GHL_LOCATION = 'pxHuOsiz2i3lM6BtC9IM';
+const N8N_BASE = 'https://n8n.srv1650725.hstgr.cloud';
 export const ACCOUNTS = {
   instagram: '6ac43e3ecfe0752734a5fe1e_pxHuOsiz2i3lM6BtC9IM_17841424613699090',
   linkedin_page: '6ac4fabe3356d12d204557ea_pxHuOsiz2i3lM6BtC9IM_145278681_page',
@@ -109,14 +110,18 @@ if (ev.decision === 'rejected') return [{ json: { ...base, action: 'reject' } }]
 
 // ¿falta el render? Instagram y los formatos visuales requieren medio ya subido (URL).
 const media = Array.isArray(piece.media) ? piece.media.filter((m) => m && /^https?:\\/\\//.test(m.url || '')) : [];
-const needsMedia = piece.channel === 'instagram' || ['imagen', 'carrusel', 'demo', 'reel'].includes(piece.format);
+const needsMedia = piece.channel === 'instagram' || ['imagen', 'carrusel', 'demo', 'reel', 'historia'].includes(piece.format);
 let action = ev.decision === 'candidate' ? 'submit' : 'hold';
 let holdReason = ev.decision === 'candidate' ? null : 'score_bajo_el_umbral';
 if (action === 'submit' && needsMedia && !media.length) { action = 'hold'; holdReason = 'falta_render_o_medio'; }
 if (action === 'submit' && !wantsReview) { action = 'hold'; holdReason = 'submit_to_review_false'; }
 // Content Queue Governor: la generación AUTÓNOMA se detiene con la cola de revisión llena (no se guarda nada: la idea sigue disponible); una orden explícita pasa con advertencia.
 const cfgRow = okRows('Fetch Config')[0] || {};
-const gov = growthGovernor({ pending: okRows('Fetch Pending').filter((r) => Boolean(r.is_test) === isTest).length, max: cfgRow.max_pending_in_review, origin });
+// Carriles (Frente C): la cola de revisión se cuenta por carril para que 5 piezas de feed + 21 historias de Instagram por semana no frenen a LinkedIn (ni al revés).
+const laneOf = (r) => (r.format === 'historia' ? 'story' : r.channel === 'instagram' ? 'ig_feed' : 'other');
+const lane = laneOf({ format: piece.format, channel: piece.channel });
+const laneMax = lane === 'story' ? cfgRow.ig_story_max_pending : lane === 'ig_feed' ? cfgRow.ig_feed_max_pending : cfgRow.max_pending_in_review;
+const gov = growthGovernor({ pending: okRows('Fetch Pending').filter((r) => Boolean(r.is_test) === isTest && laneOf(r) === lane).length, max: laneMax, origin });
 if (action === 'submit' && !gov.allowed) return [{ json: { ...base, action: 'blocked', blockReason: gov.reason, governor: gov } }];
 
 const slug = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
@@ -133,10 +138,13 @@ const pieceRow = { icp_pack_id: PACK_ID, idea_key: ev.idea_key, topic: piece.top
 // a 72 h solo vale con schedule_justification escrita. Es solo una propuesta: el post nace in_review y nada se programa ni publica sin aprobación.
 const taken = [];
 const rowsSched = nodeJson('Fetch Scheduled').body;
-(Array.isArray(rowsSched) ? rowsSched : []).forEach((r) => { if (r && r.scheduled_at) taken.push({ account: r.ghl_account_id, at: Date.parse(r.scheduled_at) }); });
+(Array.isArray(rowsSched) ? rowsSched : []).forEach((r) => { if (r && r.scheduled_at) taken.push({ account: r.ghl_account_id, at: Date.parse(r.scheduled_at), kind: r.format === 'historia' ? 'story' : 'feed' }); });
 const gp = (nodeJson('List GHL Posts').body || {}).results;
-((gp && Array.isArray(gp.posts)) ? gp.posts : []).forEach((q) => { if (q && q.scheduleDate && !['deleted', 'failed'].includes(q.status)) (q.accountIds || []).forEach((a) => taken.push({ account: a, at: Date.parse(q.scheduleDate) })); });
-const sched = proposeSlot({ now: Date.now(), channel: piece.channel, category: piece.category, account: ACCOUNTS[piece.channel], suggestion: piece.schedule_suggestion, justification: piece.schedule_justification, taken });
+((gp && Array.isArray(gp.posts)) ? gp.posts : []).forEach((q) => { if (q && q.scheduleDate && !['deleted', 'failed'].includes(q.status)) (q.accountIds || []).forEach((a) => taken.push({ account: a, at: Date.parse(q.scheduleDate), kind: q.type === 'story' ? 'story' : 'feed' })); });
+// Instagram (Frente C): feed a la hora fija de content_config (15:00) y historias en 10:00/14:00/18:00; el resto de los canales no cambia.
+const igSlots = (txt, dflt) => String(txt || dflt).split(',').map((x) => x.trim()).filter((x) => /^[0-9]{1,2}:[0-9]{2}$/.test(x));
+const sched = proposeSlot({ now: Date.now(), channel: piece.channel, category: piece.category, account: ACCOUNTS[piece.channel], suggestion: piece.schedule_suggestion, justification: piece.schedule_justification, taken,
+  ...(piece.channel === 'instagram' ? { kind: lane === 'story' ? 'story' : 'feed', slots: igSlots(lane === 'story' ? cfgRow.ig_story_slots : cfgRow.ig_feed_slot, lane === 'story' ? '10:00,14:00,18:00' : '15:00'), minLeadH: 3 } : {}) });
 const when = sched.ms;
 // Recurso asociado: {{resource_url}} se reemplaza por la URL con atribución (UTM); si el modo es enlace directo y el texto no la trae, se agrega al final.
 let postText = ev.post_text;
@@ -149,9 +157,10 @@ if (resource) {
   if (piece.channel === 'instagram' && mode === 'resource_link') scheduleWarnings.push('instagram_no_enlaza_en_el_texto_usa_dm_o_link_en_bio');
 }
 if (postText.includes('{{resource_url}}')) throw new Error('El texto trae {{resource_url}} pero la pieza no tiene un recurso activo asociado.');
-const summary = (isTest ? '[PRUEBA ATACAMA OS — NO PUBLICAR] ' : '') + postText;
+// GHL rechaza (422) una historia de Instagram con texto: «Instagram Story will not support caption». Las historias van SIN texto (el mensaje vive en la imagen).
+const summary = piece.format === 'historia' ? '' : (isTest ? '[PRUEBA ATACAMA OS — NO PUBLICAR] ' : '') + postText;
 // Las etiquetas/categorías de Social Planner exigen ObjectIds creados desde la interfaz (la API con token de integración no puede crearlos): por ahora formato y categoría viajan en Supabase.
-const ghlBody = { accountIds: [ACCOUNTS[piece.channel]], summary, type: 'post', status: 'in_review', userId: APPROVER, media: media.map((m) => ({ url: m.url, type: m.type || 'image/png' })),
+const ghlBody = { accountIds: [ACCOUNTS[piece.channel]], summary, type: piece.format === 'historia' ? 'story' : piece.format === 'reel' ? 'reel' : 'post', status: 'in_review', userId: APPROVER, media: media.map((m) => ({ url: m.url, type: m.type || 'image/png' })),
   scheduleDate: new Date(when).toISOString(), postApprovalDetails: { approver: APPROVER }, ...(CATEGORIES[piece.category] ? { categoryId: CATEGORIES[piece.category] } : {}), ...(TAGS[piece.format] ? { tags: [TAGS[piece.format]] } : {}) };
 if (ghlBody.status !== 'in_review') throw new Error('SEGURIDAD: este workflow solo puede crear posts en in_review.');
 return [{ json: { ...base, action, holdReason, sourcesBody, existingSourceIds, pieceRow, ghlBody, schedule: { ...sched, warnings: scheduleWarnings }, governor: gov, resource: resource ? { id: resource.id, slug: resource.slug } : null, interviewId, interviewPieceIds: (interview && interview.piece_ids) || [] } }];`;
@@ -175,9 +184,29 @@ return [{ json: { ...ev, ghl_post_id: post._id, patchBody: { status: 'in_review'
 const RESP_REJECT = `if ($json.action === 'blocked') return [{ json: { ok: false, action: 'blocked', reason: $json.blockReason, pending_in_review: $json.governor.pending, max_pending_in_review: $json.governor.max, score: $json.evaluation.score, note: 'La cola de revisión está llena: no se creó la pieza (nada se guardó). Una orden explícita de Christian puede saltarse el límite.' } }];
 const e = $json.evaluation;
 return [{ json: { ok: false, action: 'rejected', errors: e.errors, warnings: e.warnings, score: e.score } }];`;
+// Frente C: una pieza visual (carrusel, imagen o historia) retenida solo por «falta_render_o_medio» pide SU visual al Media Gateway (workflow 30) en el mismo paso:
+// el worker de la VPS la dibuja, la sube y la reenvía a este Intake. Así Hermes solo llama a submit_content_piece (1 llamada por pieza). body.auto_media=false lo evita.
+const AUTO_MEDIA_PREP = `const ev = $('Build Row').first().json;
+const body = ($('Intake Webhook').first().json || {}).body || {};
+const up = $('Upsert Piece').first().json;
+const saved = Array.isArray(up.body) ? up.body[0] : null;
+const p = (ev.pieceRowFull && ev.pieceRowFull.piece) || {};
+const RENDERABLE = ['typographic', 'comparison', 'before_after', 'checklist', 'framework', 'resource_visual', 'process_flow'];
+const need = p.format === 'historia' ? 'typographic' : p.format === 'carrusel' ? 'carousel' : p.format === 'imagen' ? (RENDERABLE.includes(p.visual && p.visual.need) ? p.visual.need : 'typographic') : null;
+const hasContent = p.format === 'historia' ? Boolean(p.story) : Array.isArray(p.slides) && p.slides.length > 0;
+const none = 'https://localhost.invalid/';
+if (ev.holdReason !== 'falta_render_o_medio' || !saved || !saved.id || !need || !hasContent || body.auto_media === false) return [{ json: { skip: true, url: none, body: {} } }];
+let brief = String(p.hook || '') + ' — ' + String(p.topic || '');
+if (brief.length < 15) brief += ' (pieza de Atacama Labs)';
+return [{ json: { skip: false, url: '${N8N_BASE}/webhook/atacama-media-gateway', body: { action: 'request', piece_id: saved.id, need, brief: brief.slice(0, 590), composition: String((p.visual && p.visual.composition) || p.format).slice(0, 80), test: ev.test === true } } }];`;
+
 const RESP_HELD = `const ev = $('Build Row').first().json;
+const prep = $('Auto Media Prep').first().json || {};
+const mr = prep.skip ? null : (($('Auto Media Request').first().json || {}).body || {});
+const media_request = prep.skip ? null : { requested: true, ok: Boolean(mr && mr.ok), asset_status: mr && mr.asset ? mr.asset.status : null, provider: mr && mr.asset ? mr.asset.provider : null, error: mr && !mr.ok ? (mr.message || mr.error || 'sin respuesta del Media Gateway') : null };
+
 const saved = Array.isArray($('Upsert Piece').first().json.body) ? $('Upsert Piece').first().json.body[0] : null;
-return [{ json: { ok: true, action: 'held', reason: ev.holdReason, score: ev.evaluation.score, piece_id: saved && saved.id, status: saved && saved.status, breakdown: ev.evaluation.breakdown, lint_hits: ev.evaluation.lint_hits, editorial: ev.evaluation.editorial } }];`;
+return [{ json: { ok: true, action: 'held', reason: ev.holdReason, score: ev.evaluation.score, piece_id: saved && saved.id, status: saved && saved.status, breakdown: ev.evaluation.breakdown, lint_hits: ev.evaluation.lint_hits, editorial: ev.evaluation.editorial, media_request } }];`;
 const RESP_SUBMITTED = `const c = $('Check GHL').first().json;
 return [{ json: { ok: true, action: 'in_review', ghl_post_id: c.ghl_post_id, piece_id: ((($('Mark In Review').first().json.body) || [])[0] || {}).id || null, score: c.evaluation.score, channel: c.pieceRow.channel, status: 'in_review',
   editorial: c.evaluation.editorial, governor_warning: (c.governor && c.governor.warning) || null, pending_in_review: c.governor ? c.governor.pending : null, resource: c.resource, interview_id: c.interviewId,
@@ -190,11 +219,11 @@ export function buildContentIntake() {
       parameters: { httpMethod: 'POST', path: 'atacama-content-intake', authentication: 'headerAuth', responseMode: 'lastNode', options: {} } },
     sb('Fetch Keys', 'GET', `${SUPABASE}/rest/v1/content_pieces?icp_pack_id=eq.${PACK_ID}&status=not.in.(idea,scored,drafted)&select=idea_key&limit=1000`, null, [240, 0]),
     sb('Fetch Sources', 'GET', `${SUPABASE}/rest/v1/content_sources?icp_pack_id=eq.${PACK_ID}&select=id,source_key,verified&limit=3000`, null, [360, 0]),
-    { ...sb('Fetch Config', 'GET', `${SUPABASE}/rest/v1/content_config?id=eq.1&select=max_pending_in_review`, null, [420, 0]), continueOnFail: true, alwaysOutputData: true },
-    { ...sb('Fetch Pending', 'GET', `${SUPABASE}/rest/v1/content_pieces?icp_pack_id=eq.${PACK_ID}&status=eq.in_review&select=id,is_test&limit=200`, null, [440, 0]), continueOnFail: true, alwaysOutputData: true },
+    { ...sb('Fetch Config', 'GET', `${SUPABASE}/rest/v1/content_config?id=eq.1&select=max_pending_in_review,ig_feed_max_pending,ig_story_max_pending,ig_feed_slot,ig_story_slots`, null, [420, 0]), continueOnFail: true, alwaysOutputData: true },
+    { ...sb('Fetch Pending', 'GET', `${SUPABASE}/rest/v1/content_pieces?icp_pack_id=eq.${PACK_ID}&status=eq.in_review&select=id,is_test,channel,format&limit=500`, null, [440, 0]), continueOnFail: true, alwaysOutputData: true },
     { ...sb('Fetch Resource', 'GET', `={{ (() => { const b = $("Intake Webhook").first().json; const id = ((b.body || b).piece || {}).resource_id; return /^[0-9a-f-]{36}$/i.test(String(id || "")) ? "${SUPABASE}/rest/v1/content_resources?id=eq." + id + "&status=eq.active&select=id,slug,name,url,cta_mode,cta_copy" : "${NONE}"; })() }}`, null, [460, 0]), continueOnFail: true, alwaysOutputData: true },
     { ...sb('Fetch Interview', 'GET', `={{ (() => { const b = $("Intake Webhook").first().json; const id = (b.body || b).interview_id; return /^[0-9a-f-]{36}$/i.test(String(id || "")) ? "${SUPABASE}/rest/v1/founder_interviews?id=eq." + id + "&select=id,status,answer_text,piece_ids,is_test" : "${NONE}"; })() }}`, null, [470, 0]), continueOnFail: true, alwaysOutputData: true },
-    { ...sb('Fetch Scheduled', 'GET', `={{ "${SUPABASE}/rest/v1/content_pieces?icp_pack_id=eq.${PACK_ID}&scheduled_at=gte." + new Date(Date.now() - 36 * 3600000).toISOString() + "&status=in.(drafted,in_review,approved,scheduled,published)&select=ghl_account_id,scheduled_at,status&limit=300" }}`, null, [480, 0]), continueOnFail: true, alwaysOutputData: true },
+    { ...sb('Fetch Scheduled', 'GET', `={{ "${SUPABASE}/rest/v1/content_pieces?icp_pack_id=eq.${PACK_ID}&scheduled_at=gte." + new Date(Date.now() - 36 * 3600000).toISOString() + "&status=in.(drafted,in_review,approved,scheduled,published)&select=ghl_account_id,scheduled_at,status,format&limit=600" }}`, null, [480, 0]), continueOnFail: true, alwaysOutputData: true },
     { id: randomUUID(), name: 'List GHL Posts', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [600, 0], credentials: GHL_CRED, continueOnFail: true, alwaysOutputData: true,
       parameters: { method: 'POST', url: `https://services.leadconnectorhq.com/social-media-posting/${GHL_LOCATION}/posts/list`, authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth',
         sendHeaders: true, headerParameters: { parameters: [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', value: 'application/json' }] },
@@ -206,7 +235,10 @@ export function buildContentIntake() {
     code('Build Row', BUILD_ROW, [1200, 60]),
     sb('Upsert Piece', 'POST', `${SUPABASE}/rest/v1/content_pieces?on_conflict=icp_pack_id,idea_key`, '={{ JSON.stringify($json.pieceRowFull) }}', [1440, 60], 'resolution=merge-duplicates,return=representation'),
     iff('Submit?', '$("Build Row").first().json.action === "submit"', [1680, 60]),
-    code('Respond Held', RESP_HELD, [1920, -80]),
+    code('Auto Media Prep', AUTO_MEDIA_PREP, [1800, -80]),
+    { id: randomUUID(), name: 'Auto Media Request', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [1960, -80], credentials: INGEST_CRED, continueOnFail: true, alwaysOutputData: true,
+      parameters: { method: 'POST', url: '={{ $json.url }}', authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth', sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full() } },
+    code('Respond Held', RESP_HELD, [2120, -80]),
     { id: randomUUID(), name: 'Create GHL Post', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [1920, 160], credentials: GHL_CRED,
       parameters: { method: 'POST', url: `https://services.leadconnectorhq.com/social-media-posting/${GHL_LOCATION}/posts`, authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth',
         sendHeaders: true, headerParameters: { parameters: [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', value: 'application/json' }] },
@@ -234,7 +266,9 @@ export function buildContentIntake() {
     'Upsert Sources': { main: [to('Build Row')] },
     'Build Row': { main: [to('Upsert Piece')] },
     'Upsert Piece': { main: [to('Submit?')] },
-    'Submit?': { main: [to('Create GHL Post'), to('Respond Held')] },
+    'Submit?': { main: [to('Create GHL Post'), to('Auto Media Prep')] },
+    'Auto Media Prep': { main: [to('Auto Media Request')] },
+    'Auto Media Request': { main: [to('Respond Held')] },
     'Create GHL Post': { main: [to('Check GHL')] },
     'Check GHL': { main: [to('Mark In Review')] },
     'Mark In Review': { main: [to('Mark Sources Used')] },

@@ -20,7 +20,23 @@ export function evaluatePiece(piece, ctx = {}) {
   const errors = [];
   const warnings = [];
   const CHANNELS = ['instagram', 'linkedin_page', 'linkedin_profile'];
-  const FORMATS = ['texto', 'imagen', 'carrusel', 'demo', 'reel'];
+  const FORMATS = ['texto', 'imagen', 'carrusel', 'demo', 'reel', 'historia'];
+  // Motor de Instagram (Frente C): plantillas de historia (las dibuja scripts/content/story-templates.mjs) y lenguajes de motion validados (taller de la VPS).
+  const STORY_TEMPLATES = ['ilustrada', 'dolor', 'pregunta', 'chat', 'embudo', 'recurso', 'dato'];
+  // Ilustración del método visual obligatorio (escena para GPT Image 2.5): se valida igual en historias y en láminas.
+  const artErrors = (art, where) => {
+    if (!art || typeof art !== 'object') return [where + '_art_invalido'];
+    const e = [];
+    const sc = str(art.scene);
+    if (sc.length < 30 || sc.length > 1500) e.push(where + '_art_escena_de_30_a_1500_caracteres');
+    if (art.texts !== undefined && !Array.isArray(art.texts)) e.push(where + '_art_texts_debe_ser_lista');
+    const tx = Array.isArray(art.texts) ? art.texts : [];
+    if (tx.length > 8 || tx.some((t) => !str(t) || str(t).length > 120)) e.push(where + '_art_textos_max_8_de_120');
+    if (art.character !== undefined && art.character !== null && art.character !== 'llamita') e.push(where + '_art_personaje_invalido');
+    if (str(art.character_action).length > 220) e.push(where + '_art_accion_larga');
+    return e;
+  };
+  const MOTION_LANGUAGES = ['paneles-partidos', 'rafaga-de-camara', 'mini-interfaces', 'propuesta'];
   const CATEGORIES = ['Educativo', 'Caso', 'Demo', 'Noticia', 'Evergreen', 'Founder'];
   const SOURCE_KINDS = ['hermes_research', 'real_work', 'evergreen', 'manual'];
   const CTA_TYPES = ['none', 'comment_keyword', 'resource', 'dm', 'link'];
@@ -45,12 +61,62 @@ export function evaluatePiece(piece, ctx = {}) {
   if (!angle) errors.push('angle_obligatorio');
   if (!str(p.audience)) errors.push('audience_obligatoria');
   if (hook.length < 8 || hook.length > 160) errors.push('hook_fuera_de_rango');
-  if (body.length < 40) errors.push('body_muy_corto');
+  if (body.length < (p.format === 'historia' ? 10 : 40)) errors.push('body_muy_corto');
   if (!str(p.rationale)) errors.push('rationale_obligatorio');
-  if (!str(p.visual_direction) && ['imagen', 'carrusel', 'demo', 'reel'].includes(p.format)) errors.push('visual_direction_obligatoria');
+  if (!str(p.visual_direction) && ['imagen', 'carrusel', 'demo', 'reel', 'historia'].includes(p.format)) errors.push('visual_direction_obligatoria');
 
   // Canal ↔ formato
   if (p.channel === 'instagram' && p.format === 'texto') errors.push('instagram_requiere_medio');
+  // Historia (solo Instagram): una imagen 1080×1920 dibujada con una plantilla de marca; el texto de la historia vive en p.story (la «descripción» del post no se muestra).
+  const story = p.story && typeof p.story === 'object' ? p.story : null;
+  if (p.format === 'historia') {
+    if (p.channel !== 'instagram') errors.push('historia_solo_instagram');
+    if (!story) errors.push('historia_requiere_story');
+    else {
+      if (!STORY_TEMPLATES.includes(story.template)) errors.push('story_template_invalida');
+      const st = str(story.title);
+      // Largo del título según la plantilla (si no cabe, choca con el dibujo: p. ej. el embudo). «pregunta» se parte en dos mitades con | (arriba | abajo).
+      const TL = { ilustrada: 64, dolor: 72, pregunta: 80, chat: 60, embudo: 46, recurso: 56, dato: 56 };
+      if (!st) errors.push('story_sin_titulo'); else if (st.length > (TL[story.template] || 78)) errors.push('story_titulo_largo_para_' + story.template + '_max_' + (TL[story.template] || 78));
+      if (story.template === 'pregunta') { const halves = st.split('|'); if (halves.length !== 2 || halves.some((h) => !h.trim() || h.trim().length > 42)) errors.push('story_pregunta_parte_el_titulo_con_barra_arriba_|_abajo_max_42_cada_mitad'); }
+      // Nada de textos recortados con puntos suspensivos: se reescriben más cortos.
+      ['kicker', 'title', 'body', 'pill'].forEach((k) => { if (/(\.\.\.|…)\s*$/.test(str(story[k]))) errors.push('story_' + k + '_termina_en_puntos_suspensivos_reescribelo_mas_corto'); });
+      if (Array.isArray(story.chat) && story.chat.some((m) => m && /(\.\.\.|…)\s*$/.test(str(m.text)))) errors.push('story_chat_termina_en_puntos_suspensivos');
+      if (str(story.kicker).length > 32) errors.push('story_kicker_largo');
+      if (str(story.body).length > 150) errors.push('story_texto_largo');
+      if (str(story.pill).length > 38) errors.push('story_pill_largo');
+      if (story.template === 'chat') {
+        const chat = Array.isArray(story.chat) ? story.chat : [];
+        if (chat.length < 2 || chat.length > 6) errors.push('story_chat_2_a_6_mensajes');
+        if (chat.some((m) => !m || !['in', 'out'].includes(m.from) || !str(m.text) || str(m.text).length > 96)) errors.push('story_chat_mensaje_invalido');
+      }
+      if (story.template === 'embudo') {
+        const stg = Array.isArray(story.stages) ? story.stages : [];
+        if (stg.length !== 3 || stg.some((x) => !str(x) || str(x).length > 26)) errors.push('story_embudo_3_etapas_cortas');
+      }
+      if (story.template === 'recurso' && (!str(story.keyword) || str(story.keyword).length > 20)) errors.push('story_recurso_requiere_palabra_clave');
+      if (story.template === 'dato' && (!story.figure || !str(story.figure.value) || str(story.figure.value).length > 12 || str(story.figure.label).length > 90)) errors.push('story_dato_requiere_cifra');
+      // Reglas de historias v1.1: tipo (§2) y método visual obligatorio (§0.3). «ilustrada» = ilustración GPT Image 2.5 + texto de marca encima.
+      if (story.kind !== undefined && !['SUPPORT_STORY', 'ORIGINAL_STORY'].includes(story.kind)) errors.push('story_kind_invalido_usa_SUPPORT_STORY_u_ORIGINAL_STORY');
+      if (story.manual_note !== undefined && str(story.manual_note).length > 220) errors.push('story_nota_manual_larga');
+      if (story.template === 'ilustrada' && !story.art) errors.push('story_ilustrada_requiere_art');
+      if (story.art) artErrors(story.art, 'story').forEach((x) => errors.push(x));
+    }
+    if (Array.isArray(p.slides) && p.slides.length) warnings.push('historia_ignora_slides');
+  } else if (story) warnings.push('story_solo_aplica_a_historia');
+  // Reel / motion: el brief de motion declara lenguaje, frases, duración y el pedido de audio (el video lo produce el taller de la VPS).
+  const mb = p.motion_brief && typeof p.motion_brief === 'object' ? p.motion_brief : null;
+  if (p.format === 'reel') {
+    if (!mb) errors.push('reel_requiere_motion_brief');
+    else {
+      if (!MOTION_LANGUAGES.includes(mb.language)) errors.push('motion_language_invalido');
+      const ph = Array.isArray(mb.phrases) ? mb.phrases : [];
+      if (ph.length < 1 || ph.length > 6 || ph.some((x) => !str(x) || str(x).length > 70)) errors.push('motion_frases_1_a_6_cortas');
+      const du = Number(mb.duration_s);
+      if (!(du >= 5 && du <= 30)) errors.push('motion_duracion_5_a_30_s');
+      if (mb.audio_prompt !== undefined && (typeof mb.audio_prompt !== 'string' || mb.audio_prompt.length > 500)) errors.push('motion_audio_prompt_invalido');
+    }
+  } else if (mb) warnings.push('motion_brief_solo_aplica_a_reel');
   const hashtags = Array.isArray(p.hashtags) ? p.hashtags.map(str).filter(Boolean) : [];
   if (hashtags.length > 5) errors.push('demasiados_hashtags');
   const ctaObj = p.cta && typeof p.cta === 'object' ? p.cta : { type: 'none' };
@@ -92,6 +158,7 @@ export function evaluatePiece(piece, ctx = {}) {
       if (!okPose) errors.push('slide_' + (i + 1) + '_mascota_invalida');
       if (s.layout === 'content') errors.push('slide_' + (i + 1) + '_mascota_solo_en_portada_o_cierre');
     }
+    if (s && s.art) artErrors(s.art, 'slide_' + (i + 1)).forEach((x) => errors.push(x));
     if (s && s.figure) {
       if (!str(s.figure.value) || str(s.figure.value).length > 12) errors.push('slide_' + (i + 1) + '_cifra_invalida');
       if (str(s.figure.label).length > 80) errors.push('slide_' + (i + 1) + '_cifra_etiqueta_larga');
@@ -131,7 +198,9 @@ export function evaluatePiece(piece, ctx = {}) {
   });
   // Cifras / porcentajes en el texto deben tener respaldo en un claim
   const extra = (s) => [s && s.figure ? str(s.figure.value) + ' ' + str(s.figure.label) : '', s && s.compare ? [s.compare.left, s.compare.right].map((c) => (c ? str(c.label) + ' ' + str(c.text) : '')).join(' ') : ''];
-  const allText = [hook, body, ctaText].concat(slides.map((s) => [s && s.kicker, s && s.title, s && s.body].concat(extra(s)).concat((s && s.items) || []).map((x) => (typeof x === 'object' && x ? str(x.title) + ' ' + str(x.text) : str(x))).join(' '))).join('\n');
+  const storyTexts = story ? [story.kicker, story.title, story.body, story.pill, story.figure ? str(story.figure.value) + ' ' + str(story.figure.label) : ''].concat(story.art && Array.isArray(story.art.texts) ? story.art.texts : []).concat(Array.isArray(story.stages) ? story.stages : []).concat(Array.isArray(story.chat) ? story.chat.map((m) => m && m.text) : []).map(str).join(' ') : '';
+  const motionTexts = mb && Array.isArray(mb.phrases) ? mb.phrases.map(str).join(' ') : '';
+  const allText = [hook, body, ctaText, storyTexts, motionTexts].concat(slides.map((s) => [s && s.kicker, s && s.title, s && s.body].concat(extra(s)).concat((s && s.items) || []).map((x) => (typeof x === 'object' && x ? str(x.title) + ' ' + str(x.text) : str(x))).join(' '))).join('\n');
   const claimBlob = norm(claims.map((c) => str(c && c.text)).join(' | '));
   const figures = allText.match(/\d[\d.,]*\s?%|\$\s?\d[\d.,]*|\d[\d.,]*\s?(millones|mil millones|veces)\b/gi) || [];
   figures.forEach((f) => { if (!claimBlob.includes(norm(f))) errors.push('cifra_sin_respaldo:' + f.trim()); });

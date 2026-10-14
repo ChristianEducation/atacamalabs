@@ -664,7 +664,7 @@ export function weeklyContent(d) {
   const startKey = dayKey(now - sinceMon * 86400000, tz);            // lunes de esta semana (calendario de Chile)
   const endKey = dayKey(now + (6 - sinceMon) * 86400000, tz);        // domingo de esta semana
   const inWeek = (iso) => { if (!iso) return false; const k = dayKey(Date.parse(iso), tz); return k >= startKey && k <= endKey; };
-  const pcs = (d.pieces || []).filter((x) => !x.is_test);
+  const pcs = (d.pieces || []).filter((x) => !x.is_test && x.channel !== 'instagram');   // el ritmo semanal es de LinkedIn; Instagram tiene su propio carril (igWeekly)
   const published = pcs.filter((x) => x.status === 'published' && inWeek(x.published_at)).length;
   const scheduled = pcs.filter((x) => ['scheduled', 'approved'].includes(x.status) && inWeek(x.scheduled_at)).length;
   const inReview = pcs.filter((x) => (x.status === 'in_review' || (x.ghl_status === 'in_review' && x.ghl_approval_status !== 'approved')) && inWeek(x.scheduled_at || x.created_at)).length;
@@ -676,6 +676,179 @@ export function weeklyContent(d) {
   const state = done > maxNormal ? 'exceso' : done === maxNormal ? 'cubierta' : done >= minOk ? 'correcto' : done === 3 ? 'ritmo' : 'falta';
   const labels = { falta: 'Falta contenido', ritmo: 'En ritmo', correcto: 'Ritmo correcto', cubierta: 'Semana cubierta', exceso: 'No generar más automáticamente salvo señal excepcional o instrucción explícita' };
   return { week_start: startKey, week_end: endKey, target, min: minOk, max: maxNormal, done, published, scheduled, in_review: inReview, coverage, state, state_label: labels[state], runway_days: runway, runway_min: runwayMin, runway_max: runwayMax, runway_ok: runway >= runwayMin, covered: coverage >= target };
+}
+
+/**
+ * Motor semanal de Instagram (Frente C). Carril PROPIO: no cuenta para el ritmo de LinkedIn (weeklyContent) ni para su cola.
+ * Semana objetivo = la semana lun–dom de Chile que contiene «ahora + 12 h» (el domingo en la noche ya mira la semana que viene).
+ * Feed: 5 por semana (mezcla 2 reels · 2 carruseles · 1 imagen), una por día lun–vie a la hora fija (ig_feed_slot, 15:00).
+ * Historias: ig_story_per_day (3) por día en ig_story_slots (10:00/14:00/18:00), toda la semana. Un hueco solo está «abierto» si faltan ≥ 3 h para su hora.
+ */
+export function igZoned(key, hhmm, tz) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const g = Date.parse(key + 'T' + hhmm + ':00Z');
+  const off = (ms) => { const p = tzParts(ms, tz); return Date.parse(p.key + 'T' + pad(p.hh) + ':' + pad(p.mm) + ':00Z') - ms; };
+  const first = g - off(g);
+  return g - off(first);
+}
+
+export function igWeekly(d) {
+  const now = d.now, tz = (d.cfg && d.cfg.tz) || 'America/Santiago';
+  const c = d.content_cfg || {};
+  const num = (v, def) => (v != null && Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : def);
+  const feedTarget = num(c.ig_feed_weekly_target, 5), perDay = num(c.ig_story_per_day, 3);
+  const feedSlot = String(c.ig_feed_slot || '15:00').trim();
+  const norm2 = (s) => (s.length === 4 ? '0' + s : s);
+  const storySlots = String(c.ig_story_slots || '10:00,14:00,18:00').split(',').map((x) => x.trim()).filter((x) => /^[0-9]{1,2}:[0-9]{2}$/.test(x)).map(norm2).slice(0, perDay);
+  const anchor = now + 12 * 3600000;
+  const ap = tzParts(anchor, tz), sinceMon = (ap.dow + 6) % 7;
+  const monKey = new Date(Date.parse(ap.key + 'T12:00:00Z') - sinceMon * 86400000).toISOString().slice(0, 10);
+  const days = Array.from({ length: 7 }, (_, i) => new Date(Date.parse(monKey + 'T12:00:00Z') + i * 86400000).toISOString().slice(0, 10));
+  const inWindow = (iso) => { if (!iso) return false; const k = dayKey(Date.parse(iso), tz); return k >= days[0] && k <= days[6]; };
+  const pcs = (d.pieces || []).filter((x) => !x.is_test && x.channel === 'instagram');
+  const live = pcs.filter((x) => ['in_review', 'approved', 'scheduled', 'published'].includes(x.status) || (x.ghl_status === 'in_review' && x.ghl_approval_status !== 'approved'));
+  const prep = pcs.filter((x) => x.status === 'drafted' && !x.scheduled_at && now - Date.parse(x.created_at) < 8 * 86400000);   // en preparación (esperando su medio): cuentan para no duplicar
+  const isStory = (x) => x.format === 'historia';
+  const feedPieces = live.filter((x) => !isStory(x) && inWindow(x.scheduled_at)).concat(prep.filter((x) => !isStory(x)));
+  const storyPieces = live.filter((x) => isStory(x) && inWindow(x.scheduled_at)).concat(prep.filter(isStory));
+  const fmt = (x) => (x.format === 'reel' || x.format === 'demo' ? 'reel' : x.format === 'carrusel' ? 'carrusel' : 'imagen');
+  const have = { reel: 0, carrusel: 0, imagen: 0 };
+  feedPieces.forEach((x) => { have[fmt(x)]++; });
+  const MIX = { reel: 2, carrusel: 2, imagen: 1 };
+  const feedCover = feedPieces.length;
+  const feedDaysTaken = {};
+  feedPieces.forEach((x) => { if (x.scheduled_at) feedDaysTaken[dayKey(Date.parse(x.scheduled_at), tz)] = true; });
+  const feedOpen = days.slice(0, 5).filter((k) => !feedDaysTaken[k] && igZoned(k, feedSlot, tz) >= now + 3 * 3600000);
+  // Los reels y videos NO los produce el sistema: los hacen Christian y Claude juntos cuando hay una idea. Los huecos de reel quedan reservados para él
+  // (se informan aparte) y el sistema solo produce carruseles e imágenes.
+  const reelsForChristian = Math.max(0, MIX.reel - have.reel);
+  let missingTotal = Math.max(0, Math.min(feedTarget - feedCover - reelsForChristian, feedOpen.length - reelsForChristian));
+  const missingBy = {};
+  ['carrusel', 'imagen'].forEach((f) => { const m = Math.min(Math.max(0, MIX[f] - have[f]), missingTotal); if (m > 0) { missingBy[f] = m; missingTotal -= m; } });
+  if (missingTotal > 0) missingBy.carrusel = (missingBy.carrusel || 0) + missingTotal;      // si la mezcla ya está cumplida pero falta cantidad, se completa con carruseles
+  const feedMissing = Object.values(missingBy).reduce((a, b) => a + b, 0);
+  const takenSlots = {};
+  storyPieces.forEach((x) => { if (x.scheduled_at) { const p = tzParts(Date.parse(x.scheduled_at), tz); takenSlots[p.key + '|' + String(p.hh).padStart(2, '0') + ':' + String(p.mm).padStart(2, '0')] = true; } });
+  const storyOpen = [];
+  days.forEach((k) => storySlots.forEach((s) => { const ms = igZoned(k, s, tz); if (ms >= now + 3 * 3600000 && !takenSlots[k + '|' + s]) storyOpen.push({ date: k, slot: s, iso: new Date(ms).toISOString() }); }));
+  const unscheduledStories = storyPieces.filter((x) => !x.scheduled_at).length;      // en preparación: ocupan un hueco futuro
+  const storiesMissing = 0;   // reglas de historias v1.1: 0–3 por día según lo que haya que contar (job diario «Historias del día»), sin cuota semanal
+  void unscheduledStories;
+  const byRecent = (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at);
+  const langs = pcs.filter((x) => x.format === 'reel' && x.motion_language).sort(byRecent).slice(0, 3).map((x) => x.motion_language);
+  const tpls = pcs.filter((x) => isStory(x) && x.story_template).sort(byRecent).slice(0, 8).map((x) => x.story_template);
+  const pendingFeed = pcs.filter((x) => x.status === 'in_review' && !isStory(x)).length, pendingStory = pcs.filter((x) => x.status === 'in_review' && isStory(x)).length;
+  return { window: { start: days[0], end: days[6] }, days, enabled: c.ig_engine_enabled !== false,
+    feed: { target: feedTarget, coverage: feedCover, have, mix: MIX, missing: feedMissing, missing_by_format: missingBy, reels_for_christian: reelsForChristian, open_days: feedOpen, slot: feedSlot, pending_review: pendingFeed, max_pending: num(c.ig_feed_max_pending, 10) },
+    stories: { per_day: perDay, slots: storySlots, coverage: storyPieces.length, open_slots: [], suggested_slots: storyOpen, missing: storiesMissing, pending_review: pendingStory, max_pending: num(c.ig_story_max_pending, 28) },
+    recent_motion_languages: langs, recent_story_templates: tpls };
+}
+
+/** Calendario de la semana de Instagram para /ops: por día, el feed y las historias con su estado (por aprobar, programada, publicada, preparando) y lo que falta. */
+export function igCalendar(d) {
+  const w = igWeekly(d), tz = (d.cfg && d.cfg.tz) || 'America/Santiago', now = d.now;
+  const labelOf = { in_review: 'por aprobar', approved: 'aprobada', scheduled: 'programada', published: 'publicada', drafted: 'preparando', failed: 'falló' };
+  const dows = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'], months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  const pcs = (d.pieces || []).filter((x) => !x.is_test && x.channel === 'instagram' && !['rejected', 'discarded', 'scored', 'idea'].includes(x.status));
+  const pad = (n) => String(n).padStart(2, '0');
+  const days = w.days.map((k) => {
+    const dt = new Date(Date.parse(k + 'T12:00:00Z'));
+    const mine = pcs.filter((x) => x.scheduled_at && dayKey(Date.parse(x.scheduled_at), tz) === k).sort((a, b) => Date.parse(a.scheduled_at) - Date.parse(b.scheduled_at));
+    const at = (x) => { const p = tzParts(Date.parse(x.scheduled_at), tz); return pad(p.hh) + ':' + pad(p.mm); };
+    const st = (x) => labelOf[x.status] || x.status;
+    return { key: k, label: dows[dt.getUTCDay()] + ' ' + dt.getUTCDate() + ' ' + months[dt.getUTCMonth()], today: k === dayKey(now, tz),
+      feed: mine.filter((x) => x.format !== 'historia').map((x) => ({ id: x.id, at: at(x), format: x.format, title: String(x.hook || x.topic || '').slice(0, 90), status: st(x), status_key: x.status })),
+      stories: mine.filter((x) => x.format === 'historia').map((x) => ({ id: x.id, at: at(x), template: x.story_template || null, title: String(x.hook || x.topic || '').slice(0, 70), status: st(x), status_key: x.status })),
+      open_stories: w.stories.open_slots.filter((o) => o.date === k).map((o) => o.slot), open_feed: w.feed.open_days.includes(k) };
+  });
+  const preparing = pcs.filter((x) => x.status === 'drafted' && !x.scheduled_at).length;
+  return { window: w.window, enabled: w.enabled, days, feed: { target: w.feed.target, coverage: w.feed.coverage, missing: w.feed.missing, pending_review: w.feed.pending_review }, stories: { coverage: w.stories.coverage, missing: w.stories.missing, pending_review: w.stories.pending_review }, preparing };
+}
+
+/** Compuerta del job semanal de Instagram: corre solo si falta algo de la semana objetivo y las colas de revisión de Instagram tienen espacio. */
+export function igWeekGate(d) {
+  const w = igWeekly(d), now = d.now;
+  const base = { window: w.window, feed_missing: w.feed.missing, stories_missing: w.stories.missing, pending_feed: w.feed.pending_review, pending_stories: w.stories.pending_review };
+  if (!w.enabled) return { mode: 'skip', reason: 'motor de Instagram apagado (content_config.ig_engine_enabled)', ...base };
+  if (!w.feed.missing && !w.stories.missing) return { mode: 'skip', reason: 'semana de Instagram cubierta (' + w.feed.coverage + ' de feed y ' + w.stories.coverage + ' historias para ' + w.window.start + ' … ' + w.window.end + ')', ...base };
+  const run = (d.runs || []).find((r) => r.kind === 'ig_week' && r.status === 'ok');
+  const last = run ? Date.parse(run.created_at) : null;
+  if (last && now - last < 5 * 3600000) return { mode: 'skip', reason: 'ya corrió hace ' + ageText(now - last), ...base };
+  const room = { feed: Math.max(0, w.feed.max_pending - w.feed.pending_review), stories: Math.max(0, w.stories.max_pending - w.stories.pending_review) };
+  const feedMissing = Math.min(w.feed.missing, room.feed), storiesMissing = Math.min(w.stories.missing, room.stories);
+  if (!feedMissing && !storiesMissing) return { mode: 'skip', reason: 'colas de revisión de Instagram llenas (feed ' + w.feed.pending_review + '/' + w.feed.max_pending + ', historias ' + w.stories.pending_review + '/' + w.stories.max_pending + '): primero se revisa', ...base };
+  return { mode: 'run', reason: 'ok (faltan ' + w.feed.missing + ' de feed y ' + w.stories.missing + ' historias para ' + w.window.start + ' … ' + w.window.end + ')', ...base, feed_missing: feedMissing, stories_missing: storiesMissing,
+    feed_missing_by_format: w.feed.missing_by_format, feed_open_days: w.feed.open_days, story_slots_open: w.stories.open_slots.slice(0, storiesMissing).map((s) => s.date + ' ' + s.slot), recent_motion_languages: w.recent_motion_languages, recent_story_templates: w.recent_story_templates };
+}
+
+/**
+ * HISTORIAS DEL DÍA — reglas de historias v1.1 (brand/content/ATACAMA-LABS-REGLAS-HISTORIAS-INSTAGRAM.md, fuente de verdad escrita por Christian).
+ * 0–3 historias por día según lo que haya que contar (nunca una cuota). Con publicación nueva: 1 REPOST_FEED (NOTA para Christian, no se programa)
+ * + 0–2 SUPPORT_STORY. Sin publicación: 0–3 ORIGINAL_STORY. NO_STORY es válido. Stickers → nota manual. El job corre la noche anterior.
+ */
+export function storyDayContext(d) {
+  const now = d.now, tz = (d.cfg && d.cfg.tz) || 'America/Santiago';
+  const p = tzParts(now, tz);
+  const target = new Date(Date.parse(p.key + 'T12:00:00Z') + (p.hh >= 12 ? 86400000 : 0)).toISOString().slice(0, 10);   // desde el mediodía se propone el día siguiente
+  const prev = (k, n) => new Date(Date.parse(k + 'T12:00:00Z') - n * 86400000).toISOString().slice(0, 10);
+  const pcs = (d.pieces || []).filter((x) => !x.is_test && x.channel === 'instagram' && ['in_review', 'approved', 'scheduled', 'published', 'drafted'].includes(x.status));
+  const at = (x) => { const q = tzParts(Date.parse(x.scheduled_at), tz); return String(q.hh).padStart(2, '0') + ':' + String(q.mm).padStart(2, '0'); };
+  const onDay = (x, k) => x.scheduled_at && dayKey(Date.parse(x.scheduled_at), tz) === k;
+  const feed = pcs.filter((x) => x.format !== 'historia' && onDay(x, target)).map((x) => ({ id: x.id, format: x.format, hook: String(x.hook || x.topic || '').slice(0, 120), at: at(x), status: x.status }));
+  const already = pcs.filter((x) => x.format === 'historia' && onDay(x, target)).map((x) => ({ at: at(x), hook: String(x.hook || x.topic || '').slice(0, 90) }));
+  const recent = pcs.filter((x) => x.format === 'historia' && x.scheduled_at && dayKey(Date.parse(x.scheduled_at), tz) >= prev(target, 2) && dayKey(Date.parse(x.scheduled_at), tz) < target)
+    .map((x) => String(x.hook || x.topic || '').slice(0, 90));
+  const recentFeed = pcs.filter((x) => x.format !== 'historia' && x.scheduled_at && dayKey(Date.parse(x.scheduled_at), tz) >= prev(target, 2) && dayKey(Date.parse(x.scheduled_at), tz) < target)
+    .map((x) => String(x.hook || x.topic || '').slice(0, 90));
+  const proposal = (d.story_proposals || []).find((x) => x.for_date === target) || null;
+  const offMin = Math.round((Date.parse(target + 'T12:00:00Z') - igZoned(target, '12:00', tz)) / 60000);
+  const utcOffset = (offMin < 0 ? '-' : '+') + String(Math.floor(Math.abs(offMin) / 60)).padStart(2, '0') + ':' + String(Math.abs(offMin) % 60).padStart(2, '0');
+  return { date: target, utc_offset: utcOffset, feed_today: feed, stories_already: already, recent_stories_48h: recent, recent_feed_48h: recentFeed, proposal_exists: Boolean(proposal), enabled: (d.content_cfg || {}).ig_engine_enabled !== false };
+}
+
+export function storyDayGate(d) {
+  const c = storyDayContext(d);
+  const base = { date: c.date, utc_offset: c.utc_offset, feed_today: c.feed_today, stories_already: c.stories_already, recent_stories_48h: c.recent_stories_48h, recent_feed_48h: c.recent_feed_48h };
+  if (!c.enabled) return { mode: 'skip', reason: 'motor de Instagram apagado (content_config.ig_engine_enabled)', ...base };
+  if (c.proposal_exists) return { mode: 'skip', reason: 'ya hay propuesta de historias para ' + c.date, ...base };
+  if (c.stories_already.length >= 3) return { mode: 'skip', reason: 'el ' + c.date + ' ya tiene ' + c.stories_already.length + ' historias programadas (máximo habitual 3)', ...base };
+  return { mode: 'run', reason: 'ok (' + c.date + ': ' + (c.feed_today.length ? c.feed_today.length + ' publicación(es) de feed' : 'sin publicación de feed') + ', ' + c.stories_already.length + ' historias ya programadas)', ...base, max_stories: Math.max(0, 3 - c.stories_already.length) };
+}
+
+/** Valida la propuesta del día que guarda Hermes (formato §10 de las reglas). */
+export function storyProposalNorm(p) {
+  const x = p && typeof p === 'object' ? p : {};
+  const s = (v, n) => String(v == null ? '' : v).trim().slice(0, n);
+  const errors = [];
+  const date = s(x.date, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) errors.push('date_invalida_usa_AAAA-MM-DD');
+  const KINDS = ['REPOST_FEED', 'SUPPORT_STORY', 'ORIGINAL_STORY'];
+  const items = (Array.isArray(x.stories) ? x.stories : []).slice(0, 6).map((it, i) => {
+    const kind = s(it && it.kind, 20);
+    if (!KINDS.includes(kind)) errors.push('historia_' + (i + 1) + '_tipo_invalido');
+    const hour = s(it && it.hour, 5);
+    if (hour && !/^\d{2}:\d{2}$/.test(hour)) errors.push('historia_' + (i + 1) + '_hora_invalida');
+    return { n: i + 1, kind, objective: s(it && it.objective, 200), copy: s(it && it.copy, 300), visual: s(it && it.visual, 300), cta: s(it && it.cta, 200), hour, why: s(it && it.why, 300), manual_note: s(it && it.manual_note, 220), piece_id: /^[0-9a-f-]{36}$/i.test(String(it && it.piece_id)) ? it.piece_id : null };
+  });
+  if (items.length > 3 && !s(x.special_reason, 200)) errors.push('mas_de_3_historias_requiere_special_reason');
+  const decision = s(x.decision, 500);
+  if (decision.length < 10) errors.push('decision_editorial_obligatoria');
+  const notes = [];
+  items.forEach((it) => {
+    if (it.kind === 'REPOST_FEED') notes.push({ type: 'repost', hour: it.hour, text: 'Repostear ' + (it.copy || it.objective || 'la publicación del día') + (it.hour ? ' — ' + it.hour : '') });
+    if (it.manual_note) notes.push({ type: 'sticker', hour: it.hour, text: it.manual_note });
+  });
+  return { ok: errors.length === 0, errors, value: { for_date: date, decision, story_count: items.length, items, manual_notes: notes, context: { feed: s(x.feed_context, 300), recent: s(x.recent_context, 300), topic: s(x.topic, 200), special_reason: s(x.special_reason, 200) }, status: 'proposed', updated_at: new Date().toISOString() } };
+}
+
+/** Texto para Telegram con la propuesta guardada (formato corto de las reglas §10). */
+export function storyProposalText(v) {
+  const lines = ['Historias para el ' + v.for_date + ': ' + (v.story_count ? v.story_count + (v.story_count === 1 ? ' historia' : ' historias') : 'ninguna') + '.'];
+  (v.items || []).forEach((it) => lines.push((it.hour ? it.hour + ' · ' : '') + ({ REPOST_FEED: 'Repost', SUPPORT_STORY: 'Apoyo', ORIGINAL_STORY: 'Original' }[it.kind] || it.kind) + ': ' + (it.copy || it.objective)));
+  const notes = (v.manual_notes || []);
+  if (notes.length) { lines.push('Para hacer tú en Instagram:'); notes.forEach((x) => lines.push('• ' + x.text)); }
+  lines.push('Decisión: ' + v.decision);
+  return lines.join('\n');
 }
 
 /**
@@ -796,7 +969,7 @@ export function composePanel(d) {
   });
   const gr = summarizeGrowth(d);
   const wk = weeklyContent(d);
-  const content = { weekly: wk, queue: gr.queue, rss: gr.rss, intel: gr.intel, resources: gr.resources, founder: gr.founder, signals_count: Number(d.signals_candidate) || 0, signals: sig, in_review: inReview, scheduled, published, failed: ct.failed.concat(ct.late), metrics_ready: ct.snapshots.length, preview_ready: false };
+  const content = { weekly: wk, ig: igCalendar(d), queue: gr.queue, rss: gr.rss, intel: gr.intel, resources: gr.resources, founder: gr.founder, signals_count: Number(d.signals_candidate) || 0, signals: sig, in_review: inReview, scheduled, published, failed: ct.failed.concat(ct.late), metrics_ready: ct.snapshots.length, preview_ready: false };
   // --- sistema
   const system = { overall: h.overall, components: h.components.map((x) => ({ name: x.name, status: x.status, reason: x.reason })), outreach_mode: c.outreach.mode, approved_pending: c.outreach.approved_pending, drafts: c.outreach.drafts_initial, errors24h: (d.errors24h || []).slice(0, 6), hermes_known: Boolean(d.hermes && Array.isArray(d.hermes.jobs)) };
   const lo = linkedinOverview(d.candidates || [], now);

@@ -105,7 +105,7 @@ t('F) act log_phone sobre un prospecto aún no creado: lo crea directamente en C
 
 // ---------- G. PREPARE
 r = await pipeline({ action: 'prepare', request_id: 'prep-0001', prospects: [good()] });
-t('G) PREPARE: email + WhatsApp en borrador, guardados; no toca GHL', r.fin.rows[0].drafts.email_body.includes('hipótesis') && r.s1[0].kind === 'noop' && r.s2[0].kind === 'noop' && r.response.results[0].drafts.never_sent === true);
+t('G) PREPARE: email + WhatsApp en borrador, guardados; no toca GHL', r.fin.rows[0].drafts.email_body.startsWith('Estimado equipo de') && r.s1[0].kind === 'noop' && r.s2[0].kind === 'noop' && r.response.results[0].drafts.never_sent === true);
 
 // ---------- H. formatos HTML / CSV / texto / URL
 const fixture = fs.readFileSync(new URL('../../scripts/prospecting/fixtures/prospects-sample.html', import.meta.url), 'utf8');

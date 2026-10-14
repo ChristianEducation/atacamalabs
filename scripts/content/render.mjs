@@ -144,7 +144,8 @@ export async function renderPiece(piece, outDir) {
   const fontUrl = pathToFileURL(FONT).href;
   const { themes, logoTop } = themesFor(piece);
   const slides = piece.slides || [];
-  const browser = await chromium.launch();
+  // En la VPS (contenedor sin sandbox de usuario) el worker define ATACAMA_CHROMIUM_ARGS="--no-sandbox"; en el PC no hace falta.
+  const browser = await chromium.launch(process.env.ATACAMA_CHROMIUM_ARGS ? { args: process.env.ATACAMA_CHROMIUM_ARGS.split(' ') } : {});
   const page = await browser.newPage({ viewport: { width: 1080, height: 1350 }, deviceScaleFactor: 1 });
   const files = [];
   for (let i = 0; i < slides.length; i++) {

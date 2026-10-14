@@ -69,6 +69,8 @@ const res = $json || {};
 const posts = res.body && res.body.results && Array.isArray(res.body.results.posts) ? res.body.results.posts : null;
 if (!Array.isArray(pending) || !pending.length) return [];
 if (!posts || (res.statusCode || 0) >= 300) throw new Error('GHL posts/list fallo (HTTP ' + res.statusCode + '): ' + JSON.stringify(res.body || {}).slice(0, 300));
+// GHL entrega como máximo 100 posts por página: si llegan 100 la lista pudo quedar truncada y un post ausente NO significa borrado (así se marcó «descartado» un reel publicado el 12-oct-2026).
+if (posts.length >= 100) throw new Error('GHL posts/list devolvió 100 posts (lista truncada): no se marca ninguna pieza como borrada.');
 const byId = {};
 posts.forEach((p) => { byId[p._id] = p; });
 const now = Date.now();
@@ -96,7 +98,7 @@ export function buildContentSync() {
       parameters: { method: 'POST', url: `https://services.leadconnectorhq.com/social-media-posting/${GHL_LOCATION}/posts/list`, authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth',
         sendHeaders: true, headerParameters: { parameters: [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', value: 'application/json' }] },
         sendBody: true, specifyBody: 'json',
-        jsonBody: `={{ JSON.stringify({ type: 'all', accounts: ${JSON.stringify(ACCOUNT_IDS.join(','))}, skip: '0', limit: '100', fromDate: new Date(Date.now() - 400 * 86400000).toISOString(), toDate: new Date(Date.now() + 400 * 86400000).toISOString(), includeUsers: 'false' }) }}`,
+        jsonBody: `={{ JSON.stringify({ type: 'all', accounts: ${JSON.stringify(ACCOUNT_IDS.join(','))}, skip: '0', limit: '100', fromDate: new Date(Date.now() - 21 * 86400000).toISOString(), toDate: new Date(Date.now() + 90 * 86400000).toISOString(), includeUsers: 'false' }) }}`,
         options: full() } },
     code('Compute', COMPUTE, [840, 0]),
     { id: randomUUID(), name: 'Patch Piece', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [1080, 0], credentials: SUPABASE_CRED,

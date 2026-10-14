@@ -1,5 +1,6 @@
 # ATACAMA OS — HANDOFF (estado al cierre del 8/9-oct-2026)
 
+> **Actualización 14-oct:** para ejecutar el spec de Atacama OS v3, lee primero `ARRANQUE-NUEVA-SESION-OS-V3.md` (estado vigente y protocolo). Este handoff es del 8/9-oct: su §4 (cómo operar y desplegar) y §5 (reglas y lecciones) siguen vigentes; el resto puede estar desactualizado.
 > Léelo primero si empiezas una sesión nueva. Resume qué está vivo, qué quedó pendiente y cómo operar/desplegar sin tener que reconstruir el contexto.
 > Documentos hermanos: `ATACAMA-OS-ARQUITECTURA-FINAL.md` (§11–16 = Ola A, /ops V2 y Ola B), `OPERATIONS.md` (§13–15 = operación diaria), `HERMES-OPERATOR.md`, `n8n/README.md`.
 

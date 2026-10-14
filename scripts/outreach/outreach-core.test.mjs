@@ -121,6 +121,24 @@ ok('aprobar: con código correcto y orden → approved y programado en ventana; 
   const sat = oc.planApprove({ confirmation_code: 'CONF-123456', order_text: 'Sí, envíalo' }, { now: SAT, candidate: cand(), history: [{ ...l, confirm_expires_at: new Date(SAT + 600000).toISOString() }], suppression: [], config: CFG });
   assert.equal(sat.writes[0].body.scheduled_for, '2026-10-12T12:00:00.000Z');
 });
+ok('aprobar: huella guardada desactualizada (texto editado por fuera de «guardar borrador») → se re-sella al aprobar y no se cancela al enviar', () => {
+  const stale = { ...live0(), body: BODY + ' (editado)', content_hash: live0().content_hash };
+  const fresh = oc.contentHash(stale.to_email, stale.subject, stale.body);
+  assert.notEqual(fresh, stale.content_hash);
+  const r1 = oc.planApprove({ by: 'Christian vía /ops' }, { now: WED, candidate: cand(), history: [stale], suppression: [], config: CFG, rnd: () => 0.5 });
+  assert.equal(r1.response.status, 'confirmation_required'); assert.equal(r1.writes[0].body.confirm_hash, fresh); assert.equal(r1.writes[0].body.content_hash, fresh);
+  const l = { ...stale, confirm_code: 'CONF-123456', confirm_hash: fresh, confirm_expires_at: new Date(WED + 600000).toISOString() };
+  const r2 = oc.planApprove({ confirmation_code: 'CONF-123456', order_text: 'Sí, envíalo' }, { now: WED, candidate: cand(), history: [l], suppression: [], config: CFG });
+  assert.equal(r2.response.status, 'approved'); assert.equal(r2.writes[0].body.content_hash, fresh);
+  // el motor de envío acepta lo aprobado: la huella guardada ya coincide con el texto
+  const due = (m) => oc.pickDue([{ ...m, scheduled_for: new Date(WED).toISOString() }], CFG, WED, 0, [], { 'c-1': cand() }, {}, {});
+  assert.equal(due(r2.approved).action, 'send');
+  assert.equal(due({ ...r2.approved, content_hash: stale.content_hash }).action, 'cancel'); // lo que pasaba antes del arreglo
+  assert.equal(oc.contentHash(r2.approved.to_email, r2.approved.subject, r2.approved.body), r2.approved.content_hash);
+  // con huella al día, el primer paso no toca content_hash
+  const r0 = oc.planApprove({}, { now: WED, candidate: cand(), history: [live0()], suppression: [], config: CFG, rnd: () => 0.5 });
+  assert.ok(!('content_hash' in r0.writes[0].body));
+});
 ok('aprobar: código inválido, vencido, contenido cambiado, sin orden, suprimido, descartado', () => {
   const l = { ...live0(), confirm_code: 'CONF-123456', confirm_hash: live0().content_hash, confirm_expires_at: new Date(WED + 600000).toISOString() };
   const ap = (o, l2, c2, sup) => oc.planApprove({ confirmation_code: 'CONF-123456', order_text: 'Sí, envíalo', ...(o || {}) }, { now: WED, candidate: c2 || cand(), history: [l2 || l], suppression: sup || [], config: CFG }).response;

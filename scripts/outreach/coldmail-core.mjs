@@ -112,12 +112,31 @@ export function coldLint(d, peers, cold) {
   if (/\b\d{1,3}(?:[.,]\d+)?\s?%/.test(body) || /\b(garantiz|garantia de|sin riesgo alguno|resultados asegurados)/.test(bn)) hard.push('afirmación cuantificada o garantía sin respaldo verificable (porcentajes, «garantizamos»): quítala o respáldala con evidencia');
   if (/\b(hemos|hicimos|logramos)\s+(ayudado|trabajado|implementado|automatizado|aumentado|reducido)\b[^.]*\b\d+/.test(bn) || /\bm[aá]s de \d+ (clientes|empresas|proyectos)\b/.test(bn)) hard.push('afirma resultados o cantidad de clientes sin evidencia: Atacama no debe declarar números que no pueda respaldar');
 
-  // ---- asunto
-  const generic = /^(una idea para|idea para|propuesta (para|de|comercial)|automatizaci[oó]n con ia|soluci[oó]n de ia|inteligencia artificial para|oportunidad (para|de)|alianza con|presentaci[oó]n (de|para)|atacama labs)\b/;
+  // ---- PLAYBOOK de correos outbound v1.0 (aprobado por Christian el 13-oct-2026): reglas duras del PRIMER correo.
+  // Saludo formal con nombre confiable o «Estimado equipo de…»; sin ofrecer demo/ejemplo/prueba/video/propuesta/auditoría/reunión (salvo allow_offer, cuando el recurso existe de verdad).
+  // `d.strict` lo activa el motor para los borradores AUTÓNOMOS de Hermes (auto=true): ahí el incumplimiento bloquea el guardado. En los guardados manuales de Christian solo resta puntos (su criterio manda).
+  if (!isFollow && d.allow_offer !== true) {
+    const strict = d.strict === true;
+    const brk = (hardText, code, warnText) => { if (strict) hard.push(hardText); else warn(code, warnText, 20); };
+    const g = cmNorm(parts.greeting);
+    if (!/^estimad[oa]s? /.test(g)) brk('el saludo debe ser «Estimado/Estimada [nombre],» o «Estimado equipo de [empresa],» (nunca «Hola»)', 'saludo_no_playbook', 'El saludo no sigue el playbook: «Estimado/Estimada [nombre],» o «Estimado equipo de [empresa],» (no «Hola»).');
+    else if (/^estimad[oa]s? (contacto|cliente|senor|senores|sr|sra|sres)\b/.test(g)) brk('saludo genérico («Estimado contacto/cliente»): usa un nombre confiable o «Estimado equipo de [empresa],»', 'saludo_generico', 'Saludo genérico («Estimado contacto/cliente»): usa un nombre confiable o «Estimado equipo de [empresa],».');
+    const closing2 = cmNorm(parts.sentences.slice(-2).join(' '));
+    if (/\b(te|les|le) (mando|mande|envio|envie|enviare|muestro|muestre|mostrare|comparto|comparta|paso|pase|dejo|deje|preparo|prepare|armo|arme|puedo (mandar|enviar|mostrar|preparar|armar|compartir))\b[^.?!]{0,40}\b(un|una|el|la|algun|alguna|unos|unas)\s+(ejemplo|demo|demostracion|video|propuesta|cotizacion|auditoria|prueba|diagnostico|esquema|flujo|caso|idea)/.test(bn)
+      || /\b(te|les|le) (muestro|muestre|mostrare|enseno|ensene|explico|cuento|cuente)\b/.test(closing2)
+      || /\b(quieres|quieren|te gustaria|les gustaria|te interesa|les interesa|te sirve|les sirve)\b[^.?!]{0,25}\b(ver|conocer|probar|que (te|les) (mande|muestre|envie))\b/.test(closing2)
+      || /\b(\d+\s*(min|minutos)|reunion|videollamada|llamada|agendemos|agendamos|agendar (una|un|la|el|algo)|coordinemos (una|un))\b/.test(closing2)) brk('el primer correo no debe ofrecer demo, ejemplo, prueba, video, propuesta, auditoría ni reunión: cierra con una pregunta conversacional sobre el proceso', 'oferta_prohibida', 'El primer correo ofrece demo, ejemplo, prueba, video, propuesta o reunión: el playbook lo prohíbe; cierra con una pregunta conversacional sobre el proceso.');
+  }
+
+  // ---- asunto (playbook: 3–7 palabras, parece un correo real, no una campaña)
+  const generic = /^(una idea para|idea para|una propuesta|propuesta (para|de|comercial)|automatizaci[oó]n con (ia|inteligencia artificial)|soluci[oó]n de ia|inteligencia artificial para|oportunidad (para|de)|alianza con|presentaci[oó]n (de|para)|atacama labs|potencia (tu|su)|tenemos una soluci[oó]n)\b/;
   let pts = 0;
-  if (generic.test(sn)) { pts = 15; warn('asunto_generico', 'El asunto es genérico («' + subject + '»): usa algo corto y específico del proceso (ej. «reservas por WhatsApp»).', pts); }
+  if (generic.test(sn)) { pts = 15; warn('asunto_generico', 'El asunto es genérico («' + subject + '»): usa algo corto y específico del proceso (ej. «solicitudes de arriendo antes de cotizar»).', pts); }
   const sw = cmWords(subject);
-  if (sw.length > 8) warn('asunto_largo', 'El asunto tiene ' + sw.length + ' palabras: mejor 2–6.', 4);
+  if (sw.length > 8) warn('asunto_largo', 'El asunto tiene ' + sw.length + ' palabras: mejor 3–7.', 4);
+  else if (sw.length === 1) warn('asunto_corto', 'El asunto tiene una sola palabra: mejor 3–7.', 3);
+  const letters = subject.replace(/[^A-Za-zÁÉÍÓÚÑáéíóúñ]/g, '');
+  if ((letters.length >= 6 && letters === letters.toUpperCase()) || /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(subject)) warn('asunto_publicitario', 'El asunto usa MAYÚSCULAS o emojis: parece campaña.', 8);
   const pre = sw.slice(0, 3).join(' ');
   const sameSubj = list.filter((p) => cmNorm(p.subject) === sn).length;
   const samePre = sw.length >= 2 ? same(list, (p) => cmWords(p.subject).slice(0, 3).join(' ') === pre) : 0;
@@ -127,14 +146,28 @@ export function coldLint(d, peers, cold) {
 
   // ---- apertura
   const open3 = cmOpening(body, 3), open4 = cmOpening(body, 4);
-  if (/^(vi|vimos|he visto)\b/.test(open3) || /^vi que\b/.test(cmNorm(parts.sentences[0] || ''))) {
-    const rep = same(list, (p) => /^(vi|vimos|he visto)\b/.test(cmOpening(p.body, 3)));
-    warn('apertura_vi_que', '«Vi que…» abre el correo' + (rep >= 2 ? ' y se repite en ' + rep + ' correos recientes' : '') + ': prueba una observación, pregunta o contraste.', rep >= 2 ? 18 : 8);
+  // Playbook §12: no abrir con fórmulas que delatan la investigación («Vi que…», «Revisando su sitio…», «Estuve mirando…», «Noté que…», «En su web dicen…»).
+  const peek = /\b(vi que|veo que|vimos que|he visto que|revisando (su|tu|el) (sitio|web|pagina)|estuve (mirando|revisando|viendo)|en (su|tu) (web|sitio|pagina)[^.]{0,25}(dicen|indican|mencionan|senalan|publican)|note que|me fije que)\b/;
+  const firstS = cmNorm(parts.sentences[0] || '');
+  if (peek.test(firstS) || /^(vi|vimos|he visto)\b/.test(open3)) {
+    const rep = same(list, (p) => peek.test(cmNorm(cmParts(p.body).sentences[0] || '')) || /^(vi|vimos|he visto)\b/.test(cmOpening(p.body, 3)));
+    warn('apertura_vi_que', 'El correo abre con una fórmula de investigación («Vi que…», «Revisando su sitio…»)' + (rep >= 2 ? ' y se repite en ' + rep + ' correos recientes' : '') + ': parte del contexto del proceso o de la fricción; la investigación debe ser invisible.', rep >= 2 ? 22 : 14);
+  } else if (peek.test(bn)) {
+    warn('frase_investigacion', 'Usa una fórmula que muestra que investigaste («vi que», «noté que», «en su web dicen»): personaliza el problema, no la evidencia.', 8);
   } else if (open4 && same(list, (p) => cmOpening(p.body, 4) === open4) >= 2) warn('apertura_repetida', 'La apertura («' + open4 + '…») se repite en otros correos.', 10);
   if (/hipotesis/.test(bn)) {
     const rep = same(list, (p) => /hipotesis/.test(cmNorm(p.body)));
     warn('mi_hipotesis', '«Mi hipótesis…» aparece' + (rep >= 2 ? ' y ya está en ' + rep + ' correos recientes' : '') + ': suena a plantilla.', rep >= 2 ? 16 : 8);
   }
+  // Playbook §12: «Imagino que…» y «Ahí suele aparecer el trabajo repetitivo…» no deben ser la estructura estándar.
+  const muletillas = (bn.match(/\b(imagino que|ahi suele aparecer el trabajo repetitivo)\b/g) || []).length;
+  if (muletillas) {
+    const rep = same(list, (p) => /\b(imagino que|ahi suele aparecer el trabajo repetitivo)\b/.test(cmNorm(p.body)));
+    warn('muletilla_repetida', 'Usa «imagino que…» o «ahí suele aparecer el trabajo repetitivo…»' + (rep >= 2 ? ', que ya están en ' + rep + ' correos recientes' : '') + ': varía la redacción.', rep >= 2 ? 14 : (muletillas > 1 ? 8 : 4));
+  }
+  // Playbook §1 y §6: investigación invisible. Correos, enlaces, teléfonos o «en su sitio web…» exponen el trabajo de búsqueda; el exceso de detalles también.
+  if (/@|https?:|www\.|\b[a-z0-9-]+\.(cl|com|net|org)\b|\+?56\s?9\s?\d{4}|\b\d{8,}\b/.test(body) || /\b(en|de) (su|tu|la) (pagina|sitio|web)( web)?\b|\bsu sitio web\b|\bsu pagina web\b/.test(bn)) warn('evidencia_expuesta', 'El correo deja ver la investigación (correo, enlace, teléfono o «en su sitio web…»): personaliza el problema, no la evidencia de que investigaste.', 14);
+  if (/\b(\d+|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)\s+(sucursales|sedes|numeros|whatsapp|servicios|locales|canales|plataformas|oficinas|tiendas|formularios)\b/.test(bn)) warn('detalle_excesivo', 'Acumula detalles contables de la empresa («dos sucursales», «tres WhatsApp»): se siente excesivamente investigado.', 8);
   if (/(no lo he visto por dentro|no lo he visto desde dentro|no se si les pasa|no se si te pasa|perdona que te escriba|disculpa la molestia|no quiero quitarte tiempo|no es spam|sin compromiso|espero no molestar)/.test(bn)) {
     const m = (bn.match(/no lo he visto por dentro|no lo he visto desde dentro|perdona que te escriba|disculpa la molestia|no quiero quitarte tiempo|no es spam|sin compromiso|espero no molestar/g) || []).length;
     if (m) warn('frases_defensivas', 'Frases defensivas innecesarias (' + m + '): restan confianza.', Math.min(9, 3 * m));
@@ -143,25 +176,30 @@ export function coldLint(d, peers, cold) {
   // ---- CTA
   const cta = cmCtaKind(body);
   const ctaHead = cmWords(parts.sentences.slice(-1)[0] || '').slice(0, 5).join(' ');
-  if (cta === 'meeting') warn('cta_reunion', 'El primer correo pide reunión/minutos: baja la fricción (ej. «¿te mando un ejemplo?»).', isFollow ? 6 : 10);
-  if (ctaHead && same(list, (p) => cmWords(cmParts(p.body).sentences.slice(-1)[0] || '').slice(0, 5).join(' ') === ctaHead) >= 2) warn('cta_repetido', 'El cierre se repite en otros correos.', 8);
-  if (!isFollow && cta === 'statement') warn('cta_ausente', 'El correo no cierra con algo fácil de responder (una pregunta corta).', 6);
+  if (cta === 'meeting') warn('cta_reunion', isFollow ? 'El seguimiento pide reunión/minutos: baja la fricción con una pregunta fácil de responder.' : 'El primer correo pide reunión/minutos: el playbook lo prohíbe; cierra con una pregunta conversacional sobre el proceso.', isFollow ? 6 : 10);
+  if (cta === 'example' && !isFollow) warn('cta_ofrece_ejemplo', 'El cierre ofrece mandar/mostrar algo: el primer correo solo busca conversación (ej. «¿Les haría sentido conversar sobre cómo automatizar esta primera etapa u otro proceso que hoy les quite tiempo?»).', 12);
+  if (ctaHead && same(list, (p) => cmWords(cmParts(p.body).sentences.slice(-1)[0] || '').slice(0, 5).join(' ') === ctaHead) >= 2) warn('cta_repetido', 'El cierre se repite en otros correos: varía la pregunta según el contexto.', 8);
+  if (!isFollow && cta === 'statement') warn('cta_ausente', 'El correo no cierra con una pregunta fácil de responder.', 10);
 
   // ---- foco y largo
   const atcSent = parts.sentences.filter((s) => /(atacama|armamos|implementamos|ayudamos a|nuestros agentes|trabajamos con empresas|somos una)/.test(cmNorm(s)) && !(/^(soy|me llamo) [^.]{0,40}atacama labs[.!]?$/.test(cmNorm(s)) && cmWords(s).length <= 9));
   const atcWords = atcSent.reduce((n, s) => n + cmWords(s).length, 0);
   if (atcSent.length > 1 || (atcSent.length === 1 && nWords > 0 && atcWords / nWords > 0.4)) warn('explica_atacama', 'Explica demasiado a Atacama Labs (' + atcSent.length + ' oraciones): el correo es sobre el prospecto, no sobre nosotros.', atcSent.length > 1 ? 10 : 6);
-  if (nWords > 130) warn('largo', 'Tiene ' + nWords + ' palabras: un correo en frío funciona mejor con 50–100.', 10);
-  else if (nWords > 100) warn('largo', 'Tiene ' + nWords + ' palabras: apunta a 50–100.', 4);
-  else if (nWords < 30) warn('muy_corto', 'Tiene solo ' + nWords + ' palabras: falta contexto para que tenga sentido.', 8);
+  if (nWords > 130) warn('largo', 'Tiene ' + nWords + ' palabras: el playbook apunta a 70–120.', 10);
+  else if (nWords > 120) warn('largo', 'Tiene ' + nWords + ' palabras: apunta a 70–120.', 4);
+  else if (nWords < 40) warn('muy_corto', 'Tiene solo ' + nWords + ' palabras: falta contexto para que tenga sentido.', 8);
   const fr = parts.sentences.filter((s) => /(repite|a mano|manual|se pierde|se pierden|demora|tarda|cuello de botella|duplica|persigue|incomplet|desordenad|fuera de horario|sin respuesta|responder lo mismo)/.test(cmNorm(s))).length;
   const conn = (bn.match(/\b(ademas|tambien|por otro lado|por otra parte|asimismo|por ultimo)\b/g) || []).length;
   if (fr >= 3 || conn >= 2) warn('varios_problemas', 'Toca más de un problema: elige uno solo.', fr >= 3 ? 8 : 4);
 
   // ---- tono
-  const buzz = bn.match(/\b(sinergia|disruptiv\w*|revolucion\w*|transformacion digital|solucion integral|innovador\w*|de vanguardia|lider en|potenciar|llevar (tu|su) (negocio|empresa) al siguiente nivel|optimizar procesos|ecosistema|360|a la medida de sus necesidades|de ultima generacion|impulsar su crecimiento)\b/g) || [];
+  const buzz = bn.match(/\b(sinergia|disruptiv\w*|revolucion\w*|transformacion digital|transformar (tu|su) (empresa|negocio)|solucion integral|innovador\w*|de vanguardia|lider en|potenciar|potencia (tu|su) (negocio|empresa)|llevar (tu|su) (negocio|empresa) al siguiente nivel|optimizar procesos|ecosistema|360|a la medida de sus necesidades|de ultima generacion|impulsar su crecimiento)\b/g) || [];
   if (buzz.length) warn('buzzwords', 'Jerga/buzzwords: ' + buzz.slice(0, 3).join(', ') + '.', Math.min(12, 4 * buzz.length));
   if (/(somos una agencia|nuestra agencia|soluciones (a medida|personalizadas|integrales)|equipo de expertos|amplia experiencia)/.test(bn)) warn('tono_agencia', 'Suena a agencia («soluciones a medida», «equipo de expertos»).', 6);
+  // Playbook §3: el agente trabaja dentro del proceso, no es «un chatbot» ni un «asistente inteligente 24/7» genérico.
+  if (/\bchatbots?\b|asistente (virtual|inteligente)|\b24\s?\/\s?7\b/.test(bn)) warn('suena_chatbot', 'Suena a chatbot genérico («chatbot», «asistente inteligente», «24/7»): explica el trabajo que el agente ejecuta dentro del proceso.', 8);
+  // Playbook §7: no presentar una inferencia como hecho («su equipo pierde mucho tiempo…», «responden todo a mano»).
+  if (/\b(su|tu) (equipo|personal|gente)\b[^.?!]{0,50}\b(pierde|pierden|dedica|dedican|gasta|gastan|responde|responden|hace|hacen|copia|copian|revisa|revisan)\b[^.?!]{0,50}\b(mucho|todo|siempre|a mano|manual\w*)\b|\b(ustedes|usted) (pierden|pierde|responden|hacen|copian|revisan)\b[^.?!]{0,50}\b(mucho|todo|siempre|a mano|manual\w*)\b|\bhoy (lo|las|los) (hacen|responden|gestionan|coordinan) (a mano|manualmente)\b/.test(bn)) warn('inferencia_como_hecho', 'Presenta como hecho algo que solo es una inferencia (ej. «su equipo pierde mucho tiempo»): usa «suele ocurrir…», «en este tipo de operación…».', 10);
   const ai = [];
   if (/espero que (este|el) (mensaje|correo)/.test(bn)) ai.push('«espero que este mensaje…»');
   if (/(en el mundo actual|en la era de|en un mundo (cada vez|donde)|en el panorama actual)/.test(bn)) ai.push('apertura grandilocuente');
@@ -179,8 +217,10 @@ export function coldLint(d, peers, cold) {
   }
   const procWords = bn.match(/\b(reserva\w*|cotizacion\w*|solicitud\w*|agenda\w*|recepcion|sucursal\w*|sede\w*|turno\w*|pedido\w*|stock|despacho\w*|factura\w*|cobranza\w*|whatsapp|formulario\w*|catalogo|sku|reclamo\w*|ticket\w*|postventa|inventario|cita\w*|horas?|presupuesto\w*|matricula\w*|admision|postulacion\w*|derivacion\w*|seguimiento|orden(es)? de trabajo|mantencion\w*)\b/g) || [];
   const distinctProc = Object.keys(procWords.reduce((o, w) => { o[w] = 1; return o; }, {})).length;
-  const specific = used || distinctProc >= 2 || /\b\d{2,}\b/.test(parts.text);
-  if (c.evidence.length && !used) warn('evidencia_no_usada', 'Declaraste evidencia pero el correo no la usa: la observación debe salir de ella.', 8);
+  // Con la investigación invisible el correo ya no repite la evidencia: el problema es específico si nombra cosas concretas del proceso (palabras de proceso, cifras o una enumeración de antecedentes/datos del rubro).
+  const listy = parts.sentences.some((s) => (s.match(/,/g) || []).length >= 2 && /\b(y|e)\b/.test(s) && cmWords(s).length >= 12);
+  const specific = used || distinctProc >= 2 || /\b\d{2,}\b/.test(parts.text) || listy;
+  // (playbook: la investigación es invisible; ya no se exige que el correo repita la evidencia, solo que el problema sea específico)
   if (!specific) warn('sin_senal_concreta', 'No hay una señal concreta del prospecto (proceso, dato o situación): quedaría igual para cualquier empresa.', 14);
 
   // ---- similitud con otros borradores
@@ -196,10 +236,13 @@ export function coldLint(d, peers, cold) {
   if (sigRep >= 3) warn('misma_estructura', 'Tiene la misma estructura que ' + sigRep + ' correos recientes (' + sig.replace(/>/g, ' → ') + ').', 10);
 
   // ---- premios
-  if (specific) rew('senal_concreta', used ? 'Usa la evidencia investigada.' : 'Menciona algo concreto del proceso.', used ? 12 : 8);
-  if (nWords >= 45 && nWords <= 100) rew('breve', 'Largo ideal (' + nWords + ' palabras).', 8);
-  else if (nWords > 100 && nWords <= 130) rew('breve', 'Largo razonable (' + nWords + ' palabras).', 3);
-  if (cta === 'example' || cta === 'who' || cta === 'question') rew('cta_facil', 'Cierra con algo fácil de responder.', 8);
+  if (specific) rew('senal_concreta', used ? 'El problema sale de la evidencia investigada.' : 'Menciona algo concreto del proceso.', used ? 10 : 8);
+  if (nWords >= 70 && nWords <= 120) rew('breve', 'Largo ideal del playbook (' + nWords + ' palabras).', 8);
+  else if ((nWords >= 55 && nWords < 70) || (nWords > 120 && nWords <= 130)) rew('breve', 'Largo razonable (' + nWords + ' palabras).', 3);
+  if (cta === 'question') rew('cta_facil', 'Cierra con una pregunta conversacional fácil de responder.', 8);
+  else if (cta === 'who') rew('cta_facil', 'Cierra preguntando quién lo ve: fácil de responder.', 4);
+  else if (isFollow && cta === 'example') rew('cta_facil', 'Cierra con algo fácil de responder.', 8);
+  if (!isFollow && /^estimad[oa]s? /.test(cmNorm(parts.greeting))) rew('saludo_formal', 'Saludo profesional del playbook.', 3);
   if (fr <= 1 && conn === 0 && nWords >= 30) rew('un_problema', 'Trata una sola idea.', 6);
   if (!sigRep && !(maxSim >= 0.25)) rew('diverso', 'Su estructura es distinta a la de los demás.', 6);
   if (!buzz.length && !ai.length && !/(somos una agencia|nuestra agencia|soluciones (a medida|personalizadas|integrales))/.test(bn)) rew('natural', 'Lenguaje natural, sin jerga.', 4);
@@ -211,7 +254,7 @@ export function coldLint(d, peers, cold) {
   score = Math.max(0, Math.min(100, Math.round(score)));
   const level = score >= 80 ? 'bueno' : score >= 65 ? 'aceptable' : 'bajo';
   warnings.sort((a, b) => b.pts - a.pts);
-  return { v: 2, score, level, warnings, rewards, hard, metrics: { words: nWords, subject_words: sw.length }, similarity: { max: maxSim, with: simWith }, signature: sig, cta_kind: cta, opening: open3, evidence_used: used };
+  return { v: 3, score, level, warnings, rewards, hard, metrics: { words: nWords, subject_words: sw.length }, similarity: { max: maxSim, with: simWith }, signature: sig, cta_kind: cta, opening: open3, evidence_used: used };
 }
 
 /** Resumen compacto que se guarda en outreach_messages.metadata.cold (sin duplicar el texto del correo). */

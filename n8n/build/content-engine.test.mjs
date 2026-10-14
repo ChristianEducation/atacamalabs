@@ -159,6 +159,62 @@ const guard = (res, n = nodes) => { try { run('Check GHL', { nodes: n, json: res
 t('Check GHL aborta si GHL devuelve scheduled', /SEGURIDAD/.test(guard({ statusCode: 201, body: { results: { post: { _id: 'abc', status: 'scheduled' } } } }) || ''));
 t('Check GHL aborta si GHL falla', /no creó el post/.test(guard({ statusCode: 422, body: { message: 'x' } }) || ''));
 t('Check GHL aborta si Supabase falló', /content_pieces falló/.test(guard({ statusCode: 201, body: { results: { post: { _id: 'a', status: 'in_review' } } } }, { ...nodes, 'Upsert Piece': { statusCode: 400, body: { message: 'x' } } }) || ''));
+// ---- Motor de Instagram (Frente C): historias y reels en el Intake
+{
+  const hist = JSON.parse(fs.readFileSync(new URL('../../scripts/content/examples/instagram-historia.piece.json', import.meta.url), 'utf8'));
+  const reel = JSON.parse(fs.readFileSync(new URL('../../scripts/content/examples/instagram-reel.piece.json', import.meta.url), 'utf8'));
+  const MON = Date.parse('2026-10-12T12:00:00Z');                  // lunes 12-oct 09:00 Chile
+  const hhmmCL = (iso) => new Date(iso).toLocaleTimeString('en-GB', { timeZone: 'America/Santiago', hour: '2-digit', minute: '2-digit' });
+  const dayCL2 = (iso) => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+  const IGCFG = { max_pending_in_review: 6, ig_feed_max_pending: 10, ig_story_max_pending: 28, ig_feed_slot: '15:00', ig_story_slots: '10:00,14:00,18:00' };
+  const withMedia = (p, type) => ({ ...clone(p), media: [{ url: 'https://cdn.test/m.' + (type === 'video/mp4' ? 'mp4' : 'png'), type }] });
+  let h = evaluate({ piece: withMedia(hist, 'image/png'), test: true }, [], [], { now: MON, config: [IGCFG] });
+  t('historia con imagen: se envía a GHL como type «story», en revisión, en un hueco de 10/14/18', h.action === 'submit' && h.ghlBody.type === 'story' && h.ghlBody.status === 'in_review' && ['10:00', '14:00', '18:00'].includes(hhmmCL(h.ghlBody.scheduleDate)), JSON.stringify(h.evaluation && h.evaluation.errors) + ' ' + (h.ghlBody && h.ghlBody.scheduleDate));
+  t('historia: su primer hueco es hoy 14:00 (anticipación mínima de 3 h)', dayCL2(h.ghlBody.scheduleDate) === '2026-10-12' && hhmmCL(h.ghlBody.scheduleDate) === '14:00');
+  t('historia: se envía SIN texto a GHL (Instagram rechaza historias con caption: 422 «Story will not support caption»)', h.ghlBody.summary === '' && evaluate({ piece: withMedia(reel, 'video/mp4'), test: true }, [], [], { now: MON, config: [IGCFG] }).ghlBody.summary.length > 10);
+  const taken3 = [{ ghl_account_id: ACCOUNTS.instagram, scheduled_at: '2026-10-12T17:00:00Z', format: 'historia' }, { ghl_account_id: ACCOUNTS.instagram, scheduled_at: '2026-10-12T21:00:00Z', format: 'historia' }];
+  h = evaluate({ piece: withMedia(hist, 'image/png'), test: true }, [], [], { now: MON, config: [IGCFG], scheduled: taken3 });
+  t('historia: con las 14:00 y 18:00 de hoy ocupadas pasa a mañana 10:00 (varias historias el mismo día)', dayCL2(h.ghlBody.scheduleDate) === '2026-10-13' && hhmmCL(h.ghlBody.scheduleDate) === '10:00', h.ghlBody.scheduleDate);
+  h = evaluate({ piece: withMedia(hist, 'image/png'), test: true }, [], [], { now: MON, config: [IGCFG], ghlPosts: [{ accountIds: [ACCOUNTS.instagram], scheduleDate: '2026-10-12T17:00:00Z', status: 'in_review', type: 'story' }] });
+  t('historia: respeta también las historias que ya están en GHL (Social Planner)', hhmmCL(h.ghlBody.scheduleDate) === '18:00' && dayCL2(h.ghlBody.scheduleDate) === '2026-10-12');
+  const reelPost = evaluate({ piece: withMedia(reel, 'video/mp4'), test: true }, [], [], { now: MON, config: [IGCFG] });
+  t('reel con video: type «reel», media video/mp4 y feed a las 15:00 (no a las 12:30/19:00)', reelPost.action === 'submit' && reelPost.ghlBody.type === 'reel' && reelPost.ghlBody.media[0].type === 'video/mp4' && hhmmCL(reelPost.ghlBody.scheduleDate) === '15:00', JSON.stringify(reelPost.evaluation && reelPost.evaluation.errors) + ' ' + (reelPost.ghlBody && reelPost.ghlBody.scheduleDate));
+  const feedTaken = [{ ghl_account_id: ACCOUNTS.instagram, scheduled_at: '2026-10-12T18:00:00Z', format: 'reel' }, { ghl_account_id: ACCOUNTS.instagram, scheduled_at: '2026-10-13T18:00:00Z', format: 'reel' }];
+  const reel3 = evaluate({ piece: withMedia(reel, 'video/mp4'), test: true }, [], [], { now: MON, config: [IGCFG], scheduled: feedTaken.concat(taken3) });
+  t('feed: 1 por día — lun y mar ocupados por reels → miércoles 15:00, aunque las historias ocupen días', dayCL2(reel3.ghlBody.scheduleDate) === '2026-10-14' && hhmmCL(reel3.ghlBody.scheduleDate) === '15:00', reel3.ghlBody.scheduleDate);
+  const pc = clone(base); pc.channel = 'linkedin_page'; pc.category = 'Educativo';
+  const li = evaluate({ piece: pc, test: true }, [], [], { now: MON, config: [IGCFG], pending: Array.from({ length: 30 }, (_, i) => ({ id: 'x' + i, is_test: true, channel: 'instagram', format: i % 3 ? 'historia' : 'carrusel' })) });
+  t('carriles: 30 historias/feed de Instagram en revisión NO frenan a LinkedIn (su cola cuenta aparte)', li.action === 'submit' && li.ghlBody.type === 'post', li.action);
+  const full = evaluate({ piece: withMedia(hist, 'image/png'), test: true }, [], [], { now: MON, config: [IGCFG], pending: Array.from({ length: 28 }, (_, i) => ({ id: 's' + i, is_test: true, channel: 'instagram', format: 'historia' })) });
+  t('carriles: con 28 historias en revisión una historia autónoma se bloquea; la explícita pasa con advertencia', evaluate({ piece: withMedia(hist, 'image/png'), test: true, origin: 'autonomous' }, [], [], { now: MON, config: [IGCFG], pending: Array.from({ length: 28 }, (_, i) => ({ id: 's' + i, is_test: true, channel: 'instagram', format: 'historia' })) }).action === 'blocked' && full.action === 'submit' && full.governor.warning === 'cola_llena_por_orden_explicita');
+  const noMedia = evaluate({ piece: clone(hist), test: true }, [], [], { now: MON, config: [IGCFG] });
+  t('historia sin imagen renderizada queda retenida (falta_render_o_medio) para que la dibuje el worker', noMedia.action === 'hold' && noMedia.holdReason === 'falta_render_o_medio');
+}
+
+// ---- Auto-pedido de visual (Frente C): una pieza visual retenida por falta de medio pide su render al Media Gateway
+{
+  const hist = JSON.parse(fs.readFileSync(new URL('../../scripts/content/examples/instagram-historia.piece.json', import.meta.url), 'utf8'));
+  const IGCFG = { max_pending_in_review: 6, ig_feed_max_pending: 10, ig_story_max_pending: 28, ig_feed_slot: '15:00', ig_story_slots: '10:00,14:00,18:00' };
+  const MON = Date.parse('2026-10-12T12:00:00Z');
+  const held = evaluate({ piece: clone(hist), test: true }, [], [], { now: MON, config: [IGCFG] });
+  const prep = (ev, extraBody) => run('Auto Media Prep', { nodes: { 'Build Row': { ...ev, pieceRowFull: ev.pieceRow, holdReason: ev.holdReason, test: true }, 'Intake Webhook': { body: { piece: {}, ...(extraBody || {}) } }, 'Upsert Piece': { body: [{ id: '11111111-1111-4111-8111-111111111111' }] } } })[0].json;
+  let p = prep(held);
+  t('historia sin imagen: pide un visual «typographic» para SU pieza y hereda la marca de prueba', p.skip === false && p.body.action === 'request' && p.body.need === 'typographic' && p.body.piece_id === '11111111-1111-4111-8111-111111111111' && p.body.test === true && p.body.brief.length >= 15 && /atacama-media-gateway$/.test(p.url), JSON.stringify(p));
+  t('el pedido sale hacia el workflow 30 (url real, no localhost) y se puede apagar con auto_media:false', !/localhost\.invalid/.test(p.url) && prep(held, { auto_media: false }).skip === true);
+  const car = clone(hist); car.format = 'carrusel'; delete car.story; car.slides = [{ layout: 'cover', title: 'a' }, { layout: 'content', title: 'b' }, { layout: 'cta', title: 'c' }]; car.visual = { need: 'carousel', rationale: 'x' };
+  p = prep(evaluate({ piece: car, test: true }, [], [], { now: MON, config: [IGCFG] }));
+  t('carrusel sin render: need «carousel»', p.skip === false && p.body.need === 'carousel', JSON.stringify(p));
+  const li = clone(base); const evLi = evaluate({ piece: li, test: true }, [], [], { now: MON, config: [IGCFG] });
+  t('un texto de LinkedIn o una pieza que pasó a revisión NO piden visual', prep({ ...evLi, holdReason: null }).skip === true && prep({ ...evLi, holdReason: 'score_bajo_el_umbral' }).skip === true);
+  const reelNoMedia = JSON.parse(fs.readFileSync(new URL('../../scripts/content/examples/instagram-reel.piece.json', import.meta.url), 'utf8'));
+  t('un reel NO se auto-pide (el video lo produce el taller y Hermes pide el asset studio con su proyecto)', prep(evaluate({ piece: reelNoMedia, test: true }, [], [], { now: MON, config: [IGCFG] })).skip === true);
+  const respHeld = (skip, body) => run('Respond Held', { nodes: { 'Build Row': { ...held, holdReason: 'falta_render_o_medio', evaluation: held.evaluation }, 'Upsert Piece': { body: [{ id: 'p1', status: 'drafted' }] }, 'Auto Media Prep': { skip }, 'Auto Media Request': { body } } })[0].json;
+  const rh = respHeld(false, { ok: true, asset: { status: 'queued', provider: 'renderer' } });
+  t('la respuesta de «held» informa el pedido de visual (estado y proveedor) para que Hermes no tenga que pedirlo', rh.action === 'held' && rh.media_request.requested === true && rh.media_request.ok === true && rh.media_request.asset_status === 'queued' && rh.media_request.provider === 'renderer');
+  t('si el Media Gateway falla, el error queda visible; si no se pidió, media_request es null', respHeld(false, { ok: false, message: 'brief inválido' }).media_request.error === 'brief inválido' && respHeld(true, {}).media_request === null);
+  t('conexiones: Submit? (no) → Auto Media Prep → Auto Media Request → Respond Held', wf.connections['Submit?'].main[1][0].node === 'Auto Media Prep' && wf.connections['Auto Media Prep'].main[0][0].node === 'Auto Media Request' && wf.connections['Auto Media Request'].main[0][0].node === 'Respond Held' && wf.nodes.find((n) => n.name === 'Auto Media Request').continueOnFail === true);
+}
+
 // Ningún nodo del workflow puede crear scheduled/published
 const all = JSON.stringify(wf);
 t('el workflow no contiene estados scheduled/published en cuerpos a GHL', !/status: 'scheduled'|status: 'published'|"status":"scheduled"|"status":"published"/.test(all));

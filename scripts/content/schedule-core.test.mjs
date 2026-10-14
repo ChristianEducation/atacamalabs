@@ -80,4 +80,29 @@ ok('el módulo es autocontenido (sin imports ni constantes de módulo) para incr
   const src = Object.values(sc).filter((f) => typeof f === 'function').map((f) => f.toString()).join('\n');
   assert.ok(!/\bimport\b|\brequire\(/.test(src)); assert.ok(!/\+ ?7 \* 86400000|7 \* 86400000/.test(src), 'sin fallback de 7 días');
 });
+
+// ---- Carriles de Instagram: historias (3 al día en horas fijas) y feed a las 15:00 (Frente C)
+const MON = Date.parse('2026-10-12T12:00:00Z');                    // lunes 12-oct, 09:00 en Chile
+const STORY = { now: MON, account: 'ig', channel: 'instagram', category: 'Educativo', kind: 'story', slots: ['10:00', '14:00', '18:00'], taken: [], suggestion: null, justification: null };
+ok('historias: se llenan 3 por día en 10:00/14:00/18:00, en orden, sin repetir hueco (la primera es hoy 14:00 por la anticipación de 3 h)', () => {
+  let taken = []; const got = [];
+  for (let i = 0; i < 21; i++) { const r = sc.proposeSlot({ ...STORY, taken }); got.push(r); taken = taken.concat([{ account: 'ig', at: r.ms, kind: 'story' }]); }
+  assert.equal(new Set(got.map((r) => r.iso)).size, 21);
+  assert.deepEqual(got.slice(0, 3).map((r) => day(r.iso) + ' ' + hhmm(r.iso)), ['2026-10-12 14:00', '2026-10-12 18:00', '2026-10-13 10:00']);
+  assert.equal(day(got[20].iso) + ' ' + hhmm(got[20].iso), '2026-10-19 10:00');
+  got.forEach((r) => assert.ok(['10:00', '14:00', '18:00'].includes(hhmm(r.iso)) && r.tier === 'historia'));
+});
+ok('las historias no ocupan el día del feed ni el feed ocupa los huecos de historias (carriles separados)', () => {
+  const feedTaken = [{ account: 'ig', at: Date.parse('2026-10-12T18:00:00Z') }];       // feed lunes 15:00
+  const s1 = sc.proposeSlot({ ...STORY, taken: feedTaken });
+  assert.equal(day(s1.iso) + ' ' + hhmm(s1.iso), '2026-10-12 14:00');
+  const storyTaken = [{ account: 'ig', at: Date.parse('2026-10-13T13:00:00Z'), kind: 'story' }, { account: 'ig', at: Date.parse('2026-10-13T17:00:00Z'), kind: 'story' }, { account: 'ig', at: Date.parse('2026-10-13T21:00:00Z'), kind: 'story' }];
+  const f1 = sc.proposeSlot({ now: MON, account: 'ig', channel: 'instagram', category: 'Educativo', slots: ['15:00'], minLeadH: 3, taken: storyTaken, suggestion: null, justification: null });
+  assert.equal(day(f1.iso) + ' ' + hhmm(f1.iso), '2026-10-12 15:00');                  // el martes con 3 historias sigue libre para el feed, y hoy 15:00 está a 6 h
+});
+ok('feed de Instagram a las 15:00 con 1 por día: salta los días ocupados y minLeadH reduce la anticipación', () => {
+  const taken = [0, 1, 2].map((k) => ({ account: 'ig', at: Date.parse('2026-10-12T18:00:00Z') + k * D }));   // lun, mar, mié 15:00 (reels ya programados)
+  const r = sc.proposeSlot({ now: MON, account: 'ig', channel: 'instagram', category: 'Educativo', slots: ['15:00'], minLeadH: 3, taken, suggestion: null, justification: null });
+  assert.equal(day(r.iso) + ' ' + hhmm(r.iso), '2026-10-15 15:00');
+});
 console.log(n + ' ok');

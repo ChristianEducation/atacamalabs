@@ -16,5 +16,8 @@ t('sin correo ni LinkedIn: una búsqueda pública acotada y, si no, BUSCAR CONTA
 t('LinkedIn: manual, sin Waalaxy, y «Leads Pro» solo si la fuente lo dice', /MANUAL/.test(p) && /no se usa Waalaxy/.test(p) && /Solo menciona «Leads Pro» si el campo source/.test(p));
 t('reporta la corrida y termina con [SILENT]', /report_content_job\(kind="contact_prep"/.test(p) && /EXACTAMENTE «\[SILENT\]»/.test(p));
 t('sin secretos', !/(pit-[0-9a-f]{8}|eyJ[A-Za-z0-9_-]{20}|sk-[A-Za-z0-9]{20}|Bearer [A-Za-z0-9]{20})/.test(p));
+t('Playbook de correos outbound v1.0: lo lee completo, manda sobre style_samples y las estructuras viejas', /PLAYBOOK DE CORREOS OUTBOUND v1\.0/.test(p) && /\/opt\/data\/content\/playbook-correos\.md/.test(p) && /manda sobre cualquier otra instrucción de estilo/.test(p) && /style_samples/.test(p) && /SOLO para la voz/.test(p));
+t('Playbook: investigación invisible, «Estimado/Estimada» o «Estimado equipo de», 70–120 palabras, un solo problema, cierre conversacional, asunto de 3–7 palabras', /INVISIBLE/.test(p) && /«Estimado\/Estimada <primer nombre>,»/.test(p) && /«Estimado equipo de <empresa>,»/.test(p) && /70–120 palabras/.test(p) && /UNA fricción concreta/.test(p) && /pregunta fácil de responder/.test(p) && /3–7 palabras/.test(p));
+t('Playbook: PROHIBIDO ofrecer demo/ejemplo/reunión y ya no ordena la estructura vieja («Ahí suele aparecer…», «te mando un ejemplo», «imagino que…» como fórmula)', /PROHIBIDO ofrecer demo, ejemplo, prueba, video, propuesta, cotización, auditoría o reunión/.test(p) && !/Estructura aprobada por Christian/.test(p) && !/¿Les sirve que les mande un ejemplo aplicado/.test(p) && /invalid_draft/.test(p));
 console.log(`\n${pass} ok ${fail} fallos`);
 process.exit(fail ? 1 : 0);

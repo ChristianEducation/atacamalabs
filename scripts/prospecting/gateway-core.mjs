@@ -182,7 +182,7 @@ export function finishHtmlCard(c) {
   if (!location) { const pm = c.body.match(/<p[^>]*>\s*<b>([^<]+)<\/b>/); if (pm) location = clean(pm[1]); }
   location = clean(String(location || '').replace(/https?:\/\/\S+/g, '').split(/[;]|\. | con proyectos/i)[0]).replace(/[\s,]+$/, '').slice(0, 70);
   const flagM = c.body.match(/<span class="flag">([^<]+)</i);
-  let industry = dash(get('categoria')) || dash(String(get('vertical/nicho lety')).split(/;|nicho/i)[0]) || (tagM ? clean(tagM[1]) : '') || (meta ? clean(meta.split('·')[1] || '') : '');
+  let industry = dash(get('categoria')) || dash(String(get('vertical/nicho lety')).split(/;|\bnicho\b/i)[0]) || (tagM ? clean(tagM[1]) : '') || (meta ? clean(meta.split('·')[1] || '') : '');
   // hechos / inferencias / hipótesis
   const typed = [];
   ['senal / problema', 'dolor', 'problema / oportunidad', 'problema, agente y financiero', 'razon'].forEach((k) => splitTyped(get(k), 'fact').forEach((x) => typed.push(x)));
@@ -503,7 +503,7 @@ export function decideCandidate(c, sc, matches, opts) {
 
 /* ============================================================== BORRADORES (PREPARE) */
 
-export function lintOutreach(subject, message, company) {
+export function lintOutreach(subject, message, company, opts) {
   const probs = [];
   const text = String(message || '').trim();
   const words = text.split(/\s+/).filter(Boolean).length;
@@ -514,6 +514,14 @@ export function lintOutreach(subject, message, company) {
   if (/chatbot/i.test(text)) probs.push('dice_chatbot');
   if (/como (conversamos|hablamos|acordamos)|de nuevo|nuevamente/i.test(text)) probs.push('finge_relacion_previa');
   if (!/\?/.test(text)) probs.push('sin_pregunta_final');
+  // Playbook de correos outbound v1.0 (solo correos: el WhatsApp tiene otro formato y no empieza con «Estimado»).
+  if (opts && opts.email) {
+    let t2 = text; // el nombre de la empresa no cuenta como oferta de demo/propuesta
+    String(company || '').split(/\s+/).filter((w) => w.length >= 3).forEach((w) => { t2 = t2.split(w).join(' '); });
+    if (!/^estimad[oa]s? /i.test(text)) probs.push('saludo_no_estimado');
+    if (/\bvi que\b|\bveo que\b|estuve (mirando|revisando)|revisando (su|tu) (sitio|web|p[aá]gina)|\bnot[eé] que\b|me fij[eé] que|https?:|www\./i.test(t2)) probs.push('evidencia_expuesta');
+    if (/\b\d+\s*(min|minutos)\b|\breuni[oó]n\b|videollamada|\bdemo\b|\bpropuesta\b|auditor[ií]a|\b(te|les) (mando|muestro|env[ií]o|comparto|dejo|paso)\b/i.test(t2)) probs.push('ofrece_demo_o_reunion');
+  }
   const n = String(company || '').toLowerCase().split(/\s+/)[0];
   if (n && n.length > 2 && !text.toLowerCase().includes(n) && !String(subject || '').toLowerCase().includes(n)) probs.push('no_menciona_a_la_empresa');
   return probs;
@@ -529,19 +537,19 @@ export function prepareDrafts(c) {
   const hyp = (c.commercial_hypotheses || []).find((h) => h.length >= 20) || (c.inferences || [])[0] || '';
   const hypClean = String(hyp).replace(/\s+/g, ' ').replace(/[.\s]+$/, '').slice(0, 220);
   const sol = String(c.proposed_solution || '').replace(/\s+/g, ' ').replace(/[.\s]+$/, '').slice(0, 200);
-  const lines = [greet, ''];
-  if (factClean) lines.push('Estuve mirando ' + (c.website ? c.website.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '') : 'su sitio') + ' y vi que ' + factClean.charAt(0).toLowerCase() + factClean.slice(1) + '.', '');
-  if (hypClean) lines.push('Mi hipótesis (no lo he visto por dentro): ' + hypClean.charAt(0).toLowerCase() + hypClean.slice(1) + '.');
-  lines.push('En Atacama Labs armamos agentes y automatizaciones conectadas a las herramientas que ya usan' + (sol ? ', por ejemplo: ' + sol.charAt(0).toLowerCase() + sol.slice(1) : '') + '.', '');
-  lines.push(first ? '¿Te sirve que te muestre en 10 minutos cómo se vería para ' + company + '?' : '¿Les sirve que les muestre en 10 minutos cómo se vería para ' + company + '?', '', 'Christian Wevar · Atacama Labs · atacamalabs.cl');
+  // Playbook de correos outbound v1.0: «Estimado equipo de…», investigación invisible, un solo problema con prudencia, el agente trabaja dentro del proceso y cierre conversacional sin demo/ejemplo/reunión.
+  const lines = ['Estimado equipo de ' + company + ',', ''];
+  lines.push('En operaciones como la de ' + company + ', suele haber bastante trabajo previo en reunir información, completar lo que falta y ordenar cada solicitud antes de que una persona pueda continuar.', '');
+  lines.push('Soy Christian, de Atacama Labs. Armamos agentes que pueden hacerse cargo de esa primera parte, dejar cada solicitud registrada y lista para que el equipo continúe, y derivarla a una persona cuando realmente hace falta.', '');
+  lines.push('¿Les haría sentido conversar sobre cómo automatizar esta primera etapa u otro proceso que hoy les esté quitando tiempo?', '', 'Christian Wevar · Atacama Labs · atacamalabs.cl');
   const emailBody = lines.join('\n');
-  const subject = ('Una idea para ' + company).slice(0, 80);
+  const subject = 'la etapa previa a cada solicitud';
   const wa = 'Hola' + (first ? ' ' + first : '') + ', soy Christian de Atacama Labs. ' + (factClean ? 'Vi que ' + factClean.charAt(0).toLowerCase() + factClean.slice(1).slice(0, 140) + '. ' : '') + 'Armamos agentes que ordenan ese trabajo (sin reemplazar a su equipo). ¿Te muestro una idea en 10 minutos?';
-  const hermesLint = c.suggested_email ? lintOutreach(subject, c.suggested_email, company) : ['sin_borrador_previo'];
+  const hermesLint = c.suggested_email ? lintOutreach(subject, c.suggested_email, company, { email: true }) : ['sin_borrador_previo'];
   const useGiven = c.suggested_email && !hermesLint.length && !/^Asunto:/i.test(c.suggested_email.trim() ? '' : '');
   return {
     email_subject: subject, email_body: useGiven ? c.suggested_email : emailBody, email_source: useGiven ? 'externo' : 'plantilla',
     whatsapp: c.suggested_whatsapp && !lintOutreach('', c.suggested_whatsapp, company).filter((p) => p !== 'muy_corto').length ? c.suggested_whatsapp : wa.slice(0, 480),
-    lint: lintOutreach(subject, useGiven ? c.suggested_email : emailBody, company), external_lint: hermesLint, never_sent: true,
+    lint: lintOutreach(subject, useGiven ? c.suggested_email : emailBody, company, { email: true }), external_lint: hermesLint, never_sent: true,
   };
 }

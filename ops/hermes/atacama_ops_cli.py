@@ -7,6 +7,7 @@
 
 stdout se entrega tal cual a Telegram en los jobs --no-agent. Nunca imprime claves."""
 import datetime
+import json
 import os
 import sys
 from zoneinfo import ZoneInfo
@@ -91,6 +92,8 @@ GATES = {  # tipo → (acción de compuerta, cómo se registra una omisión)
     "rss": ("rss_gate", {"action": "job_report", "kind": "content_rss"}),
     "competitors": ("competitor_gate", {"action": "job_report", "kind": "competitor_intel"}),
     "pieces": ("pieces_gate", {"action": "job_report", "kind": "content_pieces"}),
+    "igweek": ("igweek_gate", {"action": "job_report", "kind": "ig_week"}),
+    "storyday": ("storyday_gate", {"action": "job_report", "kind": "story_day"}),
 }
 
 
@@ -123,6 +126,21 @@ def gate(kind):
         if kind in ("content", "pieces", "rss"):
             extra += " pieces_allowed=%s pending_review=%s/%s" % (str(r.get("pieces_allowed", True)).lower(), r.get("pending_review"), r.get("max_pending_in_review"))
     print("COMPUERTA DEL %s (calculada por Atacama OS antes de esta corrida): mode=%s%s — %s" % (kind.upper(), mode, extra, reason))
+    if kind == "storyday" and mode != "skip":
+        print("FECHA_PROPUESTA: %s (hora de Chile; desfase UTC ese día: %s → schedule_suggestion = %sTHH:MM:00%s)" % (r.get("date"), r.get("utc_offset"), r.get("date"), r.get("utc_offset")))
+        feed = r.get("feed_today") or []
+        print("FEED_DEL_DIA: %s" % ("; ".join("%s %s «%s» (%s)" % (x.get("at"), x.get("format"), x.get("hook"), x.get("status")) for x in feed) or "ninguna publicación de feed ese día"))
+        print("HISTORIAS_YA_PROGRAMADAS_ESE_DIA: %s" % ("; ".join("%s «%s»" % (x.get("at"), x.get("hook")) for x in (r.get("stories_already") or [])) or "ninguna"))
+        print("HISTORIAS_ULTIMAS_48H: %s" % ("; ".join(r.get("recent_stories_48h") or []) or "ninguna"))
+        print("FEED_ULTIMAS_48H: %s" % ("; ".join(r.get("recent_feed_48h") or []) or "ninguno"))
+        print("MAXIMO_HISTORIAS_NUEVAS: %s (0 es una respuesta válida)" % r.get("max_stories"))
+    if kind == "igweek" and mode != "skip":
+        w = r.get("window") or {}
+        print("SEMANA_OBJETIVO: %s a %s (lunes a domingo, hora de Chile)" % (w.get("start"), w.get("end")))
+        print("FEED_FALTANTE (solo carruseles e imágenes): total=%s mezcla=%s" % (r.get("feed_missing"), json.dumps(r.get("feed_missing_by_format") or {}, ensure_ascii=False)))
+        print("HUECOS_RESERVADOS_PARA_REELS_DE_CHRISTIAN (no produzcas reels): %s" % r.get("reels_for_christian"))
+        print("FEED_DIAS_ABIERTOS (un feed por día, 15:00): %s" % ", ".join(r.get("feed_open_days") or []))
+        print("MOTION_RECIENTE (no repetir el mismo lenguaje seguido): %s" % ", ".join(r.get("recent_motion_languages") or ["ninguno"]))
 
 
 def main():
@@ -134,7 +152,7 @@ def main():
     elif a[0] == "gate" and len(a) > 1 and a[1] in GATES:
         gate(a[1])
     else:
-        print("uso: atacama_ops_cli.py daily [--force] | alerts | gate radar|prep|content|rss|competitors|pieces")
+        print("uso: atacama_ops_cli.py daily [--force] | alerts | gate radar|prep|content|rss|competitors|pieces|igweek|storyday")
 
 
 if __name__ == "__main__":

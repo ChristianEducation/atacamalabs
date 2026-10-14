@@ -270,7 +270,7 @@ export function planDraft(req, ctx) {
   let lint = null;
   if (isCold) {
     const peers = (ctx.peers || []).filter((p) => p.candidate_id !== cand.id && (!live || p.id !== live.id));
-    lint = coldLint({ subject, body, kind }, peers, cold);
+    lint = coldLint({ subject, body, kind, strict: req.auto === true }, peers, cold);
     if (lint.hard.length) return { response: { ok: false, status: 'invalid_draft', error: 'borrador_invalido', message: 'El borrador no se puede guardar: ' + lint.hard.join('; ') + '.', errors: lint.hard, cold: { score: lint.score } }, writes: [] };
     if (req.auto === true) {
       if (kind === 'initial' && !cold.evidence.length) return { response: { ok: false, status: 'needs_evidence', error: 'sin_evidencia', message: 'Un borrador automático necesita evidence (1–3 hechos verificados del prospecto que respaldan lo que dice el correo). Agrégala y vuelve a guardarlo.', safety: { messages_sent: 0 } }, writes: [] };
@@ -329,13 +329,15 @@ export function planApprove(req, ctx) {
   const v = validateDraft({ to_email: live.to_email, subject: live.subject, body: live.body }, { suppression: ctx.suppression });
   if (!v.ok) return { response: { ok: false, status: 'invalid_draft', error: 'borrador_invalido', message: 'No se puede aprobar: ' + v.errors.join('; ') + '.', errors: v.errors }, writes: [] };
   const hash = contentHash(live.to_email, live.subject, live.body);
+  // La huella guardada debe ser la del texto actual. Si no lo es (el texto se editó por fuera de «guardar borrador»), se re-sella AL APROBAR: Christian confirma exactamente este texto (el código y confirm_hash lo amarran), y el motor de envío compara contra esta huella. Así el desajuste no se descubre recién al enviar.
+  const stale = live.content_hash !== hash;
   const code = String(req.confirmation_code || '').trim();
   if (!code) {
     const c = codeFrom(ctx.rnd);
     const exp = new Date(nowMs + 30 * 60000).toISOString();
     return { response: { ok: false, status: 'confirmation_required', confirmation_code: c, expires_at: exp, executed: false, safety: { messages_sent: 0 },
       message: 'Falta la confirmación de Christian. Muéstrale EXACTAMENTE este correo (destinatario, asunto y cuerpo) y pídele que confirme. Si confirma, vuelve a llamar con confirmation_code y sus palabras en christian_order. El correo se enviará en la próxima ventana (lun-vie 09:00-17:30), nunca en este momento.', preview: { ...preview(live), rendered: renderEmail(live, ctx.config || {}).text } },
-      writes: [{ method: 'PATCH', path: 'outreach_messages?id=eq.' + live.id, body: { confirm_code: c, confirm_hash: hash, confirm_expires_at: exp, updated_at: now } }] };
+      writes: [{ method: 'PATCH', path: 'outreach_messages?id=eq.' + live.id, body: { confirm_code: c, confirm_hash: hash, confirm_expires_at: exp, ...(stale ? { content_hash: hash } : {}), updated_at: now } }] };
   }
   if (!live.confirm_code || live.confirm_code !== code) return fail('codigo_invalido', 'El código de confirmación no corresponde a este correo. Pide uno nuevo (llama sin código).', 'invalid_code');
   if (!live.confirm_expires_at || Date.parse(live.confirm_expires_at) < nowMs) return fail('codigo_vencido', 'El código venció (30 min). Pide uno nuevo y confirma de nuevo.', 'expired_code');
@@ -343,7 +345,7 @@ export function planApprove(req, ctx) {
   const order = String(req.order_text || '').trim();
   if (order.length < 4) return fail('falta_orden', 'Falta christian_order: las palabras exactas con las que Christian confirmó el envío.', 'needs_explicit_order');
   const sched = ctx.config ? nextWindowStart(nowMs, ctx.config) : nowMs;
-  const upd = { status: 'approved', approved_by: req.by || 'Christian vía Hermes', approved_at: now, approval_text: order.slice(0, 400), scheduled_for: new Date(sched).toISOString(), confirm_code: null, confirm_hash: null, confirm_expires_at: null, updated_at: now };
+  const upd = { status: 'approved', approved_by: req.by || 'Christian vía Hermes', approved_at: now, approval_text: order.slice(0, 400), scheduled_for: new Date(sched).toISOString(), confirm_code: null, confirm_hash: null, confirm_expires_at: null, content_hash: hash, updated_at: now };
   return { response: { ok: true, status: 'approved', executed: true, safety: { messages_sent: 0 }, message: 'Aprobado: ' + cand.company_name + ' (' + live.to_email + '). Saldrá ' + (sched <= nowMs + 60000 ? 'en la próxima corrida (cada 10 min)' : 'en la próxima ventana de envío (' + new Date(sched).toISOString() + ')') + '. Aún NO se ha enviado; puedes cancelarlo antes.', draft: preview({ ...live, ...upd }), scheduled_for: upd.scheduled_for },
     writes: [{ method: 'PATCH', path: 'outreach_messages?id=eq.' + live.id + '&status=eq.draft', body: upd }], approved: { ...live, ...upd } };
 }
