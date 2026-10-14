@@ -176,3 +176,8 @@ Carga extra en n8n: ~96 consultas/día de alertas (cada una lee unas 10 tablas/e
 
 ## 16. Contacto preparado (9-oct-2026)
 Ver [`CONTACTO-PREPARADO.md`](CONTACTO-PREPARADO.md): salidas de cada Investigado, job «Contact Prep», radar a 3 corridas L–V, Control Center en `/ops`, interruptor de envío automático (OFF) y cómo confirmar envíos de LinkedIn.
+
+## 16. Atacama OS v3 · Fase 1 (14-oct-2026): «Hoy», navegación nueva y pausa general
+- **/ops tiene 5 secciones:** Hoy · Redes · Prospección y correo · Resultados · Sistema. Las URLs viejas (`?view=aprobaciones`, `?view=outreach&tab=linkedin`…) siguen funcionando: abren dentro de su sección. Para volver al menú anterior: `content_config.ops_nav_v2 = false`.
+- **Hoy** = bandeja única de decisiones en orden de prioridad (correos → ideas → piezas → respuestas → contactos → alertas → LinkedIn → publicaciones en revisión de GHL), con antigüedad en color. Se calcula en n8n 25 (`panel.v3.inbox`).
+- **Pausa general** (Sistema → Controles, o en Hoy): un toque con confirmación. Escribe `system_state.global_pause`; un disparador de base pone `outreach_config.paused = true` (el Sender y los Followups ya lo respetan) y al reanudar restaura el valor previo. Las 8 compuertas de Hermes devuelven `skip` y el Media Worker no toma trabajos. **No retiene lo ya programado en GHL** (la pantalla lo lista con enlace al Planner). Cada cambio queda en `operator_audit_log` (`ops_pause_set`, nivel 3).

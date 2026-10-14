@@ -58,7 +58,7 @@ t('25: sin secretos y sin nodos de envío (Gmail/Telegram/WhatsApp/SMTP)', !/(Be
 t('25: los nodos HTTP toleran fallos (siempre responde)', wf.nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest').every((n) => n.continueOnFail === true));
 t('25: lecturas = GET; los únicos POST son la búsqueda de tareas de GHL, gmail_check (solo lectura) y las escrituras a Supabase', wf.nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest' && n.parameters.method === 'POST').every((n) => /GHL Tasks|Gmail Check|Apply Writes/.test(n.name)) && !wf.nodes.some((n) => n.parameters.method === 'DELETE' || n.parameters.method === 'PUT'));
 t('25: GHL y Gmail solo se leen (no hay PUT/DELETE ni llamadas a la API de envío)', !JSON.stringify(wf).includes('messages/send') && !JSON.stringify(wf).includes('/conversations/messages'));
-t('25: escribe únicamente en ops_alerts y ops_runs', (() => { const c0 = code('Compute'); const c = c0.slice(c0.indexOf('const CFG = ')); const paths = [...c.matchAll(/path: '([a-z_]+)/g)].map((m) => m[1]); return paths.length >= 3 && paths.every((p) => ['ops_alerts', 'ops_runs'].includes(p)); })());
+t('25: escribe únicamente en ops_alerts, ops_runs y story_proposals (propuesta diaria de historias, reglas v1.1)', (() => { const c0 = code('Compute'); const c = c0.slice(c0.indexOf('const CFG = ')); const paths = [...c.matchAll(/path: '([a-z_]+)/g)].map((m) => m[1]); return paths.length >= 3 && paths.every((p) => ['ops_alerts', 'ops_runs', 'story_proposals'].includes(p)); })());
 let r = await call({ action: 'inventada' }); t('acción inválida → error claro con la lista', /action inválida/.test(r.fatal) && ACTIONS.every((a) => r.fatal.includes(a)));
 
 // ---------- A. daily con datos actuales
@@ -188,6 +188,24 @@ r = await call({ action: 'panel', now_ms: NOW, hermes: hermesOk }, mkC(2, { chan
 t('panel: incluye el resumen de preparación (colas, métrica crítica y autoenvío OFF)', r.resp.panel.prep && r.resp.panel.prep.counts.en_espera === 2 && r.resp.panel.prep.valid_unactioned === 0 && r.resp.panel.prep.autosend.enabled === false, JSON.stringify(Object.keys(r.resp.panel.prep || {})));
 r = await call({ action: 'panel', now_ms: NOW, hermes: hermesOk }, mkC(2));
 t('panel: «Investigados válidos sin acción» aparece como atención', r.resp.panel.attention.some((a) => a.key === 'prep_unactioned' && a.count === 2) && r.resp.panel.prep.valid_unactioned === 2);
+
+// ---------- Atacama OS v3 · Fase 1: pausa general en TODAS las compuertas y bandeja «Hoy» en el panel
+const paused = (o) => FIX({ growth: { sys_state: [{ id: 1, global_pause: true, reason: 'viaje', paused_at: iso(H), paused_by: 'Christian via /ops', meta: {} }], ...(o || {}) } });
+let allSkip = true;
+for (const g of ['radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'storyday_gate']) {
+  r = await call({ action: g, now_ms: NOW }, paused());
+  if (!(r.resp.mode === 'skip' && r.resp.paused === true && /Pausa general activa/.test(r.resp.reason) && /skip — Pausa general/.test(r.resp.text))) { allSkip = false; console.log('  compuerta sin pausa:', g, JSON.stringify(r.resp).slice(0, 200)); }
+}
+t('v3 · pausa general: las 8 compuertas de Hermes devuelven skip con el motivo', allSkip);
+r = await call({ action: 'radar_gate', now_ms: NOW }, FIX({ growth: { sys_state: [{ id: 1, global_pause: false }] } }));
+t('v3 · sin pausa, la compuerta sigue igual que antes', r.resp.mode === 'import' && !r.resp.paused);
+r = await call({ action: 'panel', now_ms: NOW, hermes: hermesOk }, FIX({ sb: { ...FIX().sb, 'SB Messages': ok200([{ id: 'd1', candidate_id: 'k1', company_name: 'Clínica Ramis', kind: 'initial', direction: 'outbound', status: 'draft', created_at: iso(3 * H), metadata: {} }]) },
+  growth: { sys_state: [{ id: 1, global_pause: false }], ideas: [{ id: 'i1', title: 'Idea fundada', status: 'proposed', created_at: iso(H), is_test: false }], content_cfg: [{ id: 1, ops_nav_v2: true }] } }));
+const v3p = r.resp.panel.v3;
+t('v3 · panel trae pausa, navegación nueva y bandeja «Hoy» (correo antes que idea)', v3p && v3p.pause.paused === false && v3p.nav_v2 === true && v3p.inbox.items[0].kind === 'correo' && v3p.inbox.items[1].kind === 'idea', JSON.stringify(v3p).slice(0, 300));
+r = await call({ action: 'panel', now_ms: NOW, hermes: hermesOk }, FIX({ growth: { content_cfg: [{ id: 1, ops_nav_v2: false }] } }));
+t('v3 · el interruptor ops_nav_v2=false vuelve a la navegación anterior', r.resp.panel.v3.nav_v2 === false);
+t('v3 · el panel lee system_state y content_ideas (solo reales)', JSON.stringify(wf).includes('system_state?id=eq.1') && JSON.stringify(wf).includes('content_ideas?is_test=eq.false'));
 
 console.log(`\n${pass} ok, ${fail} fallos`);
 process.exit(fail ? 1 : 0);

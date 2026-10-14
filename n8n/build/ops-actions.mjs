@@ -3,7 +3,7 @@
  * Atacama OS · workflow n8n «29 Ops Actions» (/ops V2) — aprobar, editar y rechazar desde el celular.
  *
  * POST /webhook/atacama-ops-actions  (X-Ops-Approval = clave EXCLUSIVA de /ops, distinta de la que usa Hermes)  { action, request_id, … }
- *   overview · email_save · email_approve · email_reject · email_reopen · linkedin_approve · linkedin_reject · content_approve · content_reject
+ *   overview · email_save · email_approve · email_reject · email_reopen · linkedin_approve · linkedin_reject · content_approve · content_reject · pause_set (v3)
  *
  * NO es una segunda lógica de aprobación: es una puerta con sesión humana hacia las rutas reales ya existentes (21 Outreach Engine, 26 LinkedIn Engine,
  * GHL Social Planner). No envía correos ni mensajes por sí mismo, no hay ejecutor genérico y cada acción queda en operator_audit_log
@@ -13,6 +13,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import * as li from '../../scripts/linkedin/linkedin-core.mjs';
 import * as oa from '../../scripts/ops/ops-actions-core.mjs';
+import * as v3 from '../../scripts/ops/v3-core.mjs';
 
 const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 export const N8N_BASE = 'https://n8n.srv1650725.hstgr.cloud';
@@ -31,7 +32,7 @@ const ifNode = (name, expr, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.i
   parameters: { conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'loose' }, combinator: 'and', conditions: [{ leftValue: `={{ (${expr}) ? "yes" : "no" }}`, rightValue: 'yes', operator: { type: 'string', operation: 'equals' } }] }, options: {} } });
 
 const fnsOf = (mod) => Object.values(mod).filter((f) => typeof f === 'function');
-export const LIB = [...new Map([...fnsOf(li), ...fnsOf(oa)].map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
+export const LIB = [...new Map([...fnsOf(li), ...fnsOf(oa), ...fnsOf(v3)].map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
 
 export const PARSE = `${LIB}
 

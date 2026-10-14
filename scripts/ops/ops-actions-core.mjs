@@ -12,7 +12,7 @@
  */
 
 export function oaActionList() {
-  return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject', 'autosend_set', 'autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release', 'prep_contact'];
+  return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject', 'autosend_set', 'autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release', 'prep_contact', 'pause_set'];
 }
 
 export function oaIsUuid(v) {
@@ -50,6 +50,15 @@ export function oaValidate(b) {
       const ms = Number(x.min_score);
       if (!Number.isFinite(ms) || ms < 60 || ms > 100) return { ok: false, error: 'score_invalido', message: 'min_score debe estar entre 60 y 100.' };
       req.min_score = Math.floor(ms);
+    }
+  }
+  if (action === 'pause_set') {
+    if (typeof x.paused !== 'boolean') return { ok: false, error: 'paused_invalido', message: 'paused (true/false) es obligatorio.' };
+    req.paused = x.paused;
+    if (x.resume_at != null && x.resume_at !== '') {
+      const ra = Date.parse(String(x.resume_at));
+      if (!Number.isFinite(ra)) return { ok: false, error: 'fecha_invalida', message: 'resume_at debe ser una fecha válida.' };
+      req.resume_at = new Date(ra).toISOString();
     }
   }
   if (action.startsWith('prep_')) {
@@ -94,6 +103,8 @@ export function oaReads(req, sb) {
     add('config', 'outreach_config?id=eq.1&select=autosend_enabled,autosend_min_score');
   } else if (req.action.startsWith('linkedin_') || req.action.startsWith('prep_')) {
     add('candidate', 'prospect_candidates?id=eq.' + req.candidate_id + '&select=id,company_name,status,channel_state,last_contact_channel,contact:canonical->contact&limit=1');
+  } else if (req.action === 'pause_set') {
+    add('state', 'system_state?id=eq.1&select=*&limit=1');
   } else if (req.action.startsWith('content_')) {
     add('piece', 'content_pieces?id=eq.' + req.piece_id + '&select=id,status,ghl_post_id,ghl_status,channel,format,topic,is_test,scheduled_at&limit=1');
   }
@@ -348,6 +359,13 @@ export function oaStep(req, R, results, nowMs, env) {
     }
   }
 
+  // ---------------------------------------------------------------- pausa general (spec §8.8): system_state + reflejo en outreach_config.paused
+  if (A === 'pause_set') {
+    const plan = v3PausePlan(req, (R.state || [])[0] || null, (R.config || [])[0] || null, nowMs, by);
+    if (plan.error) return fail(plan.error, plan.message);
+    return done(plan.resp, plan.writes);
+  }
+
   // ---------------------------------------------------------------- contenido
   if (A.startsWith('content_')) {
     const p = (R.piece || [])[0];
@@ -395,7 +413,7 @@ export function oaAudit(req, R, final, nowMs) {
   if (req.candidate_id) { const c = (R.candidate || [])[0]; ent.candidate_id = req.candidate_id; if (c) ent.company = c.company_name; }
   if (req.piece_id) { const p = (R.piece || [])[0]; ent.piece_id = req.piece_id; if (p) { ent.topic = p.topic; ent.channel = p.channel; ent.ghl_post_id = p.ghl_post_id; } }
   const type = req.action.split('_')[0];
-  const params = { type, decision: /approve/.test(req.action) ? 'approved' : /reject/.test(req.action) ? 'rejected' : req.action.replace(type + '_', ''), reason: req.reason || null, ...(req.subject ? { subject_len: req.subject.length, body_len: req.body.length } : {}) };
-  return { request_id: req.request_id + (r.ok ? '' : '~' + Math.floor(nowMs / 1000).toString(36)), actor: 'Christian via /ops', tool: 'ops_' + req.action, level: /approve|autosend_set/.test(req.action) ? 3 : 2, entity: ent, params,
+  const params = { type, decision: req.action === 'pause_set' ? (req.paused ? 'paused' : 'resumed') : /approve/.test(req.action) ? 'approved' : /reject/.test(req.action) ? 'rejected' : req.action.replace(type + '_', ''), reason: req.reason || null, ...(req.subject ? { subject_len: req.subject.length, body_len: req.body.length } : {}) };
+  return { request_id: req.request_id + (r.ok ? '' : '~' + Math.floor(nowMs / 1000).toString(36)), actor: 'Christian via /ops', tool: 'ops_' + req.action, level: /approve|autosend_set|pause_set/.test(req.action) ? 3 : 2, entity: ent, params,
     status: r.ok ? 'executed' : 'refused', result_summary: String(r.message || '').slice(0, 300), response: { ok: Boolean(r.ok), status: r.status || null, error: r.error || null, message: String(r.message || '').slice(0, 300) } };
 }

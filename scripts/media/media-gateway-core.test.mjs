@@ -12,9 +12,9 @@ ok('las necesidades visuales del gateway son exactamente las del Editorial Brain
   assert.deepEqual(mg.mgNeeds(), edVisualNeeds());
 });
 
-ok('el gateway está DESACOPLADO del proveedor: el registro es datos (renderer, manual, higgsfield) y se enruta por capacidades, no por nombre', () => {
+ok('el gateway está DESACOPLADO del proveedor: el registro es datos (renderer, studio, manual, higgsfield) y se enruta por capacidades, no por nombre', () => {
   const p = mg.mgProviders({});
-  assert.deepEqual(Object.keys(p).sort(), ['higgsfield', 'manual', 'renderer']);
+  assert.deepEqual(Object.keys(p).sort(), ['higgsfield', 'manual', 'renderer', 'studio']);
   for (const v of Object.values(p)) { assert.ok(v.needs.length && v.operations.length && typeof v.enabled === 'boolean' && v.note); }
   // Cambiar el proveedor generativo es cambiar un registro: el enrutador no menciona ninguna API concreta
   assert.ok(!/api\.|https?:\/\//.test(mg.mgRoute.toString()));
@@ -117,6 +117,47 @@ ok('render hash determinista: mismas slides => mismo hash (reutilizable); otra s
 ok('el gateway no tiene ninguna ruta a publicar, programar o aprobar', () => {
   const src = Object.values(mg).filter((f) => typeof f === 'function').map((f) => f.toString()).join('\n');
   assert.ok(!/scheduled|published|approvalStatus|social-media-posting|status: 'in_review'/.test(src));
+});
+
+
+// ---- Frente C: proveedor «studio» (video del taller de la VPS), historias y subida de MP4
+ok('studio: short_video con composition válida se encola sin costo; sin composition o con otra necesidad queda unavailable con el motivo', () => {
+  const r = mg.mgRoute({ need: 'short_video', brief: 'x'.repeat(20), provider: 'studio', composition: '2026-10-19-quien-contesta' }, {});
+  assert.equal(r.provider, 'studio'); assert.equal(r.status, 'queued'); assert.equal(r.operation, 'video'); assert.equal(r.cost_estimate_usd, 0);
+  assert.equal(mg.mgRoute({ need: 'short_video', brief: 'x'.repeat(20), provider: 'studio' }, {}).status, 'unavailable');
+  assert.equal(mg.mgRoute({ need: 'short_video', brief: 'x'.repeat(20), provider: 'studio', composition: '../etc/passwd' }, {}).status, 'unavailable');
+  assert.equal(mg.mgRoute({ need: 'carousel', brief: 'x'.repeat(20), provider: 'studio', composition: 'abc-def' }, {}).status, 'unavailable');
+  assert.equal(mg.mgRoute({ need: 'short_video', brief: 'x'.repeat(20) }, {}).provider, 'higgsfield', 'sin provider explícito, short_video sigue el camino generativo (apagado)');
+});
+
+ok('hash de render: los carruseles conservan su hash de siempre y la historia depende de su contenido', () => {
+  const car = { format: 'carrusel', channel: 'instagram', slides: [{ layout: 'cover', title: 'a' }] };
+  assert.equal(mg.mgRenderHash(car), mg.mgFnv(JSON.stringify({ f: 'carrusel', c: 'instagram', s: car.slides, v: 'render-v1' })));
+  const h1 = mg.mgRenderHash({ format: 'historia', channel: 'instagram', story: { template: 'chat', title: 'A' } });
+  assert.notEqual(h1, mg.mgRenderHash({ format: 'historia', channel: 'instagram', story: { template: 'chat', title: 'B' } }));
+  assert.equal(h1, mg.mgRenderHash({ format: 'historia', channel: 'instagram', story: { template: 'chat', title: 'A' } }));
+});
+
+ok('subida: acepta PNG y MP4 válidos con su nombre y mime; rechaza lo que no coincide', () => {
+  const png = 'iVBORw0KGgo' + 'A'.repeat(300);
+  const mp4 = Buffer.concat([Buffer.from([0, 0, 0, 28]), Buffer.from('ftypisom'), Buffer.alloc(300)]).toString('base64');
+  const a = mg.mgValidateUpload({ png_base64: png, index: 2, label: 'Hola Mundo' });
+  assert.ok(a.ok); assert.equal(a.filename, 'atacama-holamundo-03.png'); assert.equal(a.mime, 'image/png');
+  const b = mg.mgValidateUpload({ png_base64: mp4, mime: 'video/mp4', index: 0 });
+  assert.ok(b.ok, b.errors.join()); assert.equal(b.filename, 'atacama-01.mp4'); assert.equal(b.mime, 'video/mp4');
+  assert.ok(mg.mgValidateUpload({ png_base64: png, mime: 'video/mp4' }).errors.includes('no_es_mp4'));
+  assert.ok(mg.mgValidateUpload({ png_base64: mp4 }).errors.includes('no_es_png'));
+  assert.ok(mg.mgValidateUpload({ png_base64: 'A'.repeat(14000100), mime: 'video/mp4' }).errors.includes('video_demasiado_grande_max_10mb'));
+  assert.ok(!mg.mgValidateUpload({ png_base64: png + '<' }).ok);
+});
+
+ok('claim: elige primero lo más antiguo en cola, luego un huérfano; a los 3 intentos lo abandona con el motivo', () => {
+  assert.equal(mg.mgPickClaim([{ id: 'q', attempts: 0 }], [{ id: 's', attempts: 1 }]).asset.id, 'q');
+  assert.equal(mg.mgPickClaim([], [{ id: 's', attempts: 1 }]).attempts, 2);
+  assert.equal(mg.mgPickClaim([{ id: 'q', attempts: 0 }], [], { global_pause: true }).action, 'paused');
+  assert.equal(mg.mgPickClaim([{ id: 'q', attempts: 0 }], [], { global_pause: false }).action, 'claim');
+  const g = mg.mgPickClaim([], [{ id: 's', attempts: 2 }]); assert.equal(g.action, 'give_up'); assert.match(g.error, /3 intentos/);
+  assert.equal(mg.mgPickClaim([], []).action, 'none');
 });
 
 console.log(n + ' ok');

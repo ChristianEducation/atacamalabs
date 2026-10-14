@@ -47,7 +47,11 @@ const prepData = () => ({
     linkedin_en_curso: [], waalaxy: [], buscar_contacto: [PR(3, { state: 'buscar_contacto', reason: 'Sin correo ni LinkedIn público', find: { draft: { subject: 'una consulta', body: 'Mensaje ya redactado para Prep 3, solo falta el contacto.' }, at: ISO(-2) } })],
     en_espera: [PR(4, { state: 'en_espera', reason: 'Prioridad B: se contacta después de avanzar con los A', priority: 'B' })], no_contactar: [], sin_accion: [PR(5), PR(6)] },
   valid_unactioned: 2, investigated: 8, sent_today: 1, replies_7d: 0, followup_drafts: 0, generated_at: new Date().toISOString(), autosend: { enabled: state.autosend === true, min_score: 80, updated_at: null } });
-const panel = () => ({ prep: prepData(), generated_at: new Date().toISOString(), date_label: 'jue 8 oct', tz: 'America/Santiago', missing: [], attention_total: 1, attention: [{ key: 'content_pending', tone: 'act', title: 'Contenido por aprobar', count: 2, items: ['«API Gateway…»'], more: 0 }],
+const v3 = () => ({ pause: { paused: state.paused, reason: state.paused ? 'Viaje' : null, since: state.paused ? ISO(-1) : null, by: state.paused ? 'Christian via /ops' : null, resume_at: null }, nav_v2: state.navV2,
+  inbox: { total: 3 + 1 + 2, items: [{ kind: 'correo', prio: 1, count: 3, title: '3 correos por aprobar', from: 'Prospección y correo', age: 'hace 3 d', tone: 'old', href: '/ops?view=aprobaciones&filter=correos', examples: ['Empresa 1', 'Empresa 2'] },
+    { kind: 'idea', prio: 2, count: 1, title: '1 idea por decidir', from: 'Redes → Ideas', age: 'hace 2 h', tone: 'fresh', href: '/ops?view=ideas', examples: ['Idea de prueba'] },
+    { kind: 'publicacion', prio: 8, count: 2, title: '2 publicaciones en revisión (GHL)', from: 'Redes', age: '', tone: 'fresh', href: '/ops?view=aprobaciones&filter=contenido', examples: [] }] } });
+const panel = () => ({ v3: v3(), prep: prepData(), generated_at: new Date().toISOString(), date_label: 'jue 8 oct', tz: 'America/Santiago', missing: [], attention_total: 1, attention: [{ key: 'content_pending', tone: 'act', title: 'Contenido por aprobar', count: 2, items: ['«API Gateway…»'], more: 0 }],
   outreach: { email: { mode: 'live', sent_today: 1, cap: 5, drafts: 3, approved_waiting: 1 }, linkedin: { mode: 'live', imported_today: 1, cap: 10, ready: 1, pending_approval: 0, in_campaign: 1, replied: 0, errors: 0 } },
   approvals: { emails: 3, linkedin: 1, content: 2 },
   prospecting: { backlog: 23, backlog_alta: 13, new_since_run: 2, new_since_run_alta: 1, contacted: 0, overdue_review_tasks: 0, last_run: { at: ISO(-20), label: 'mié 7 oct 10:30', imported: 3, minutes: 6, ago: '20 h' }, latest: [{ company: 'Clínica Ramis SpA', short: 'Clínica Ramis', score: 84, band: 'alta', industry: 'Salud', city: 'Antofagasta', domain: 'clinicaramis.cl', angle: 'Recepción', quote: 'agenda online', source: 'Prospect Radar v2', days: 1, is_new: true }] },
@@ -59,7 +63,7 @@ const panel = () => ({ prep: prepData(), generated_at: new Date().toISOString(),
   linkedin: { mode: 'live', counts: { pendiente: 0, en_lista: 0, en_campana: 1, conexion: 0, mensaje: 0, followup: 0, respondio: 0, rechazo: 0, error: 0 }, ready: 1, rows: [], note: 'Waalaxy no informa por API si la invitación se envió, si la aceptaron o si respondieron: esos estados los registras tú con Hermes.' } });
 
 // ------------------------------------------------------------------ n8n simulado
-const state = { cards: CARDS, pieces: PIECES, calls: [], opsHits: 0, mode: 'ok', autosend: false };
+const state = { cards: CARDS, pieces: PIECES, calls: [], opsHits: 0, mode: 'ok', autosend: false, paused: false, navV2: true };
 const mock = http.createServer((req, res) => {
   let body = '';
   req.on('data', (c) => { body += c; });
@@ -67,7 +71,8 @@ const mock = http.createServer((req, res) => {
     const send = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
     const j = body ? JSON.parse(body) : {};
     if (req.url === '/__calls') return send(200, state.calls);
-    if (req.url === '/__reset') { state.calls = []; state.mode = 'ok'; state.cards = CARDS; state.autosend = false; return send(200, {}); }
+    if (req.url === '/__reset') { state.calls = []; state.mode = 'ok'; state.cards = CARDS; state.autosend = false; state.paused = false; state.navV2 = true; return send(200, {}); }
+    if (req.url === '/__nav') { state.navV2 = j.v2 !== false; return send(200, {}); }
     if (req.url === '/__mode') { state.mode = j.mode; return send(200, {}); }
     if (req.url === '/webhook/atacama-ops') { state.opsHits++; return req.headers['x-atacama-key'] === INGEST_KEY ? send(200, { ok: true, panel: panel() }) : send(403, {}); }
     if (req.url === '/webhook/atacama-ops-actions') {
@@ -77,6 +82,7 @@ const mock = http.createServer((req, res) => {
       if (state.mode === 'error') return send(200, { ok: false, error: 'rechazado', message: 'El motor rechazó la acción (prueba).' });
       if (state.mode === 'down') return send(500, { message: 'boom' });
       if (j.action === 'content_approve' || j.action === 'content_reject') return send(200, { ok: true, status: j.action === 'content_approve' ? 'scheduled' : 'rejected', message: j.action === 'content_approve' ? 'Aprobada y programada en GHL (prueba).' : 'Rechazada (prueba).' });
+      if (j.action === 'pause_set') { state.paused = j.paused === true; return send(200, { ok: true, status: j.paused ? 'paused' : 'resumed', message: j.paused ? 'PAUSA GENERAL activa (prueba).' : 'Sistema reanudado (prueba).' }); }
       if (j.action === 'autosend_set') { state.autosend = j.enabled === true; return send(200, { ok: true, status: j.enabled ? 'autosend_on' : 'autosend_off', message: 'Envío automático ' + (j.enabled ? 'ON' : 'OFF') + ' (prueba).' }); }
       if (j.action === 'email_save') return send(200, { ok: true, status: 'saved', message: 'Guardado. NO se envió: aprueba el envío cuando estés listo.', hash: 'hashNEW1' });
       return send(200, { ok: true, status: j.action.replace('email_', '').replace('linkedin_', ''), message: 'Hecho (prueba): ' + j.action });
@@ -120,30 +126,44 @@ async function main() {
     await page.waitForTimeout(700);
     await login(page, PIN);
     await page.waitForSelector('.ops-side', { timeout: 20000 });
-    t('login correcto: entra al cockpit con barra lateral y estado ON', (await page.locator('.ops-side .ops-on').innerText()) === 'ON' && (await page.locator('h1').first().innerText()) === 'Inicio');
+    t('login correcto: entra al cockpit con barra lateral y estado ON', (await page.locator('.ops-side .ops-on').innerText()) === 'ON' && (await page.locator('h1').first().innerText()) === 'Hoy');
 
     // ---------------------------------------------------------------- navegación escritorio
-    const views = [['inicio', 'Inicio'], ['aprobaciones', 'Aprobaciones'], ['control', 'Control'], ['prospeccion', 'Prospección'], ['outreach', 'Outreach'], ['contenido', 'Contenido'], ['sistema', 'Sistema']];
+    const secs = [['Hoy', 'hoy', 'Hoy'], ['Redes', 'ideas', 'Ideas'], ['Prospección y correo', 'aprobaciones', 'Aprobaciones'], ['Resultados', 'resultados', 'Resultados'], ['Sistema', 'sistema', 'Sistema']];
     let navOk = true;
-    for (const [id, label] of views) {
-      await page.locator(`.ops-side a.ops-nav-a`, { hasText: new RegExp('^' + label) }).first().click();
-      await page.waitForURL(new RegExp(`view=${id}`));
-      await page.waitForSelector('h1');
-      const h1 = await page.locator('h1').first().innerText();
+    for (const [label, id, h1want] of secs) {
+      await page.locator('.ops-side a.ops-nav-a', { hasText: new RegExp('^' + label) }).first().click();
+      await page.waitForURL(new RegExp('view=' + id));
+      await page.waitForFunction((w) => document.querySelector('#ops-main h1') && document.querySelector('#ops-main h1').textContent === w, h1want);
       const cur = await page.locator('.ops-side a[aria-current="page"]').innerText();
-      if (h1 !== label || !cur.startsWith(label)) navOk = false;
+      if (!cur.startsWith(label)) { navOk = false; console.log('  sección', label, 'activa:', cur); }
     }
-    t('navegación: las 7 secciones cambian de vista, título y marca activa (aria-current)', navOk);
+    t('v3 · navegación: las 5 secciones (Hoy, Redes, Prospección y correo, Resultados, Sistema) cambian de vista y marcan la activa', navOk);
+    let oldOk = true;
+    for (const [id, h1, sec] of [['inicio', 'Hoy', 'Hoy'], ['aprobaciones', 'Aprobaciones', 'Prospección y correo'], ['control', 'Control', 'Prospección y correo'], ['prospeccion', 'Prospección', 'Prospección y correo'], ['outreach', 'Outreach', 'Prospección y correo'], ['contenido', 'Contenido', 'Redes'], ['sistema', 'Sistema', 'Sistema']]) {
+      await page.goto(APP + '/ops?view=' + id); await page.waitForSelector('#ops-main h1');
+      const got = await page.locator('#ops-main h1').first().innerText();
+      const cur = await page.locator('.ops-side a[aria-current="page"]').innerText();
+      if (got !== h1 || !cur.startsWith(sec)) { oldOk = false; console.log('  URL vieja', id, '→', got, '/', cur); }
+    }
+    t('v3 · ninguna URL vieja de /ops queda rota: cada vista vieja abre dentro de su sección nueva', oldOk);
+    await page.goto(APP + '/ops?view=control'); await page.waitForSelector('.ops-sec-tabs');
+    t('v3 · pestañas de sección: Prospección y correo muestra Aprobaciones, Contacto preparado, Radar y Envíos', (await page.locator('.ops-sec-tabs a').allInnerTexts()).join('|') === 'Aprobaciones|Contacto preparado|Radar|Envíos' && (await page.locator('.ops-sec-tabs a[aria-current="page"]').innerText()) === 'Contacto preparado');
+    await fetch(`http://localhost:${MOCK_PORT}/__nav`, { method: 'POST', body: JSON.stringify({ v2: false }) });
+    await page.goto(APP + '/ops'); await page.waitForSelector('#ops-main h1');
+    t('v3 · interruptor ops_nav_v2=false: vuelve la navegación anterior (7 vistas, portada Inicio)', (await page.locator('.ops-side a.ops-nav-a').count()) === 7 && (await page.locator('#ops-main h1').first().innerText()) === 'Inicio' && (await page.locator('.ops-sec-tabs').count()) === 0);
+    t('navegación anterior: badge de aprobaciones (6 = 3 correos + 1 LinkedIn + 2 publicaciones)', (await page.locator('.ops-side a[href="/ops?view=aprobaciones"] .ops-badge').innerText()) === '6');
+    await fetch(`http://localhost:${MOCK_PORT}/__nav`, { method: 'POST', body: JSON.stringify({ v2: true }) });
     await page.goto(APP + '/ops?view=outreach&tab=linkedin');
     await page.reload(); await page.waitForFunction(() => document.querySelector('#ops-main h1') && document.querySelector('#ops-main h1').textContent !== 'Cargando…'); await page.waitForSelector('a.ops-tab-on');
-    t('deep link: recargar conserva la vista y la pestaña', (await page.locator('h1').first().innerText()) === 'Outreach' && (await page.locator('a.ops-tab-on').innerText()) === 'LinkedIn');
-    t('badge de aprobaciones en el menú (6 = 3 correos + 1 LinkedIn + 2 publicaciones)', (await page.locator('.ops-side a[href="/ops?view=aprobaciones"] .ops-badge').innerText()) === '6');
+    t('deep link: recargar conserva la vista y la pestaña', (await page.locator('h1').first().innerText()) === 'Outreach' && (await page.locator('nav[aria-label="Canal"] a.ops-tab-on').innerText()) === 'LinkedIn');
+    t('v3 · badges: Hoy = total de la bandeja (6); Prospección y correo = 3 correos + 1 LinkedIn + 4 de contacto preparado (8)', (await page.locator('.ops-side a[href="/ops?view=hoy"] .ops-badge').innerText()) === '6' && (await page.locator('.ops-side a[href="/ops?view=aprobaciones"] .ops-badge').innerText()) === '8');
 
     // ---------------------------------------------------------------- paridad de información
-    await page.goto(APP + '/ops?view=inicio'); await page.waitForSelector('#ops-main h1');
+    await page.goto(APP + '/ops?view=hoy'); await page.waitForSelector('#ops-main h1');
     await shot(page, 'desktop-inicio');
     const ini = await page.locator('#ops-main').innerText();
-    t('Inicio: decisión (publicaciones/correos/LinkedIn), pipeline, outreach X/5 y X/10, contenido X/5, sistema y atención', /necesita tu decisión/i.test(ini) && /publicaciones/i.test(ini) && /pipeline/i.test(ini) && /1\/5/.test(ini) && /1\/10/.test(ini) && /3\/5/.test(ini) && /en ritmo/i.test(ini) && /todo ok/i.test(ini) && /necesita tu atención/i.test(ini), ini.slice(0, 500));
+    t('Hoy: bandeja de decisiones + pipeline, outreach X/5 y X/10, contenido X/5, sistema y atención', /hoy requiere tu decisión/i.test(ini) && /publicaciones/i.test(ini) && /pipeline/i.test(ini) && /1\/5/.test(ini) && /1\/10/.test(ini) && /3\/5/.test(ini) && /en ritmo/i.test(ini) && /todo ok/i.test(ini) && /necesita tu atención/i.test(ini), ini.slice(0, 500));
     await page.goto(APP + '/ops?view=contenido'); await page.waitForSelector('#ops-main h1');
     const con = await page.locator('#ops-main').innerText();
     t('Contenido: ritmo «3 / 5», estado, publicadas/programadas/en revisión/runway, cola, RSS, inteligencia, recursos, señales y por aprobar', /contenido esta semana: 3 \/ 5/i.test(con) && /en ritmo/i.test(con) && /runway/i.test(con) && /2\/6/.test(con) && /rss · 7\/7/i.test(con) && /inteligencia orgánica/i.test(con) && /recursos activos/i.test(con) && /señal de prueba/i.test(con) && /por aprobar/i.test(con), con.slice(0, 600));
@@ -159,7 +179,7 @@ async function main() {
     await shot(page, 'desktop-control');
     const ctl = await page.locator('#ops-main').innerText();
     t('Control: métricas (sin acción, emails listos, LinkedIn por enviar, buscar contacto, enviados hoy, respuestas, follow-ups)', /Investigados válidos SIN ACCIÓN/i.test(ctl) && /Emails listos para aprobación/i.test(ctl) && /LinkedIn por enviar/i.test(ctl) && /Buscar contacto/i.test(ctl) && /Enviados hoy/i.test(ctl) && /Respuestas/i.test(ctl) && /Follow-ups/i.test(ctl), ctl.slice(0, 300));
-    t('Control: el menú muestra el badge de pendientes (2 sin acción + 1 LinkedIn + 1 buscar contacto = 4)', (await page.locator('.ops-side a[href="/ops?view=control"] .ops-badge').innerText()) === '4');
+    t('Control: vive en «Prospección y correo» y su pestaña está activa', (await page.locator('.ops-side a[aria-current="page"]').innerText()).startsWith('Prospección y correo') && (await page.locator('.ops-sec-tabs a[aria-current="page"]').innerText()) === 'Contacto preparado');
     t('Control: el envío automático nace en OFF', (await page.getByTestId('autosend-state').innerText()) === 'OFF');
     await page.getByRole('button', { name: /Encender envío automático/ }).click();
     t('Control: encender pide confirmación explícita y no llama a nada todavía', (await page.getByRole('button', { name: 'Sí, encender' }).count()) === 1 && (await calls()).filter((c) => c.action === 'autosend_set').length === 0);
@@ -363,6 +383,31 @@ async function main() {
     // ---------------------------------------------------------------- seguridad del HTML
     await login(page, PIN);
     await page.waitForSelector('.ops-side');
+    // ---------------------------------------------------------------- v3 · «Hoy» y pausa general
+    await reset();
+    await page.goto(APP + '/ops?view=hoy'); await page.waitForSelector('[data-testid="inbox"]');
+    const kinds = await page.locator('[data-testid="inbox"] li').evaluateAll((els) => els.map((e) => e.getAttribute('data-kind')));
+    t('v3 · Hoy: la bandeja muestra correo → idea → publicación, en ese orden, con antigüedad en color', kinds.join(',') === 'correo,idea,publicacion' && (await page.locator('[data-testid="inbox"] li.ops-inbox-old').count()) === 1, kinds.join(','));
+    await page.locator('[data-testid="inbox"] li[data-kind="idea"] a').click(); await page.waitForURL(/view=ideas/);
+    t('v3 · Hoy: cada ítem lleva directo a su lugar (idea → Redes → Ideas)', (await page.locator('#ops-main h1').first().innerText()) === 'Ideas' && (await page.locator('.ops-side a[aria-current="page"]').innerText()).startsWith('Redes'));
+    await page.goto(APP + '/ops?view=controles'); await page.waitForSelector('[data-testid="pause-card"]');
+    t('v3 · Controles: pausa general «Funcionando» y lista de motores (Instagram apagado)', (await page.getByTestId('pause-card').getAttribute('data-paused')) === 'false' && /Motor de Instagram/.test(await page.getByTestId('motors').innerText()));
+    await page.getByRole('button', { name: 'Pausar todo…' }).click();
+    t('v3 · pausar pide confirmación y no llama a nada todavía', (await page.getByRole('button', { name: 'Sí, pausar todo' }).count()) === 1 && (await calls()).filter((c) => c.action === 'pause_set').length === 0);
+    await page.getByRole('button', { name: 'Viaje' }).click();
+    await page.getByRole('button', { name: 'Sí, pausar todo' }).click();
+    await waitCall('pause_set');
+    await page.waitForSelector('[data-testid="pause-card"][data-paused="true"]', { timeout: 20000 });
+    const pz = (await calls()).filter((c) => c.action === 'pause_set');
+    t('v3 · confirmar llama UNA vez a pause_set (paused=true, motivo «Viaje»); la tarjeta pasa a EN PAUSA y la marca del menú también', pz.length === 1 && pz[0].paused === true && pz[0].reason === 'Viaje' && /EN PAUSA/.test(await page.locator('.ops-side .ops-on').innerText()), JSON.stringify(pz));
+    t('v3 · en pausa se explica qué quedó detenido y que lo programado en GHL no se retiene', /Quedó detenido/.test(await page.getByTestId('pause-card').innerText()) && /no.{0,3} retiene/i.test(await page.getByTestId('pause-card').innerText()));
+    await page.goto(APP + '/ops?view=hoy'); await page.waitForSelector('[data-testid="pause-card"]');
+    t('v3 · con pausa activa, «Hoy» muestra el aviso de pausa arriba', (await page.getByTestId('pause-card').first().getAttribute('data-paused')) === 'true');
+    await page.getByRole('button', { name: 'Reanudar todo' }).click();
+    await page.waitForSelector('[data-testid="pause-card"][data-paused="false"]', { timeout: 20000 });
+    const pz2 = (await calls()).filter((c) => c.action === 'pause_set');
+    t('v3 · reanudar es un toque (pause_set paused=false) y vuelve «ON»', pz2.length === 2 && pz2[1].paused === false && (await page.locator('.ops-side .ops-on').innerText()) === 'ON');
+    await reset();
     await page.goto(APP + '/ops?view=aprobaciones');
     await page.waitForSelector('.ops-ap');
     const html = await page.content();
@@ -391,13 +436,13 @@ async function main() {
       await mp.locator('.ops-drawer .ops-close').click();
       t(`móvil ${w}: la X cierra el menú`, (await mp.locator('.ops-drawer-open').count()) === 0);
       await mp.locator('.ops-burger').click();
-      await mp.locator('.ops-drawer a', { hasText: /^Aprobaciones/ }).click();
+      await mp.locator('.ops-drawer a', { hasText: /^Prospección y correo/ }).click();
       await mp.waitForURL(/view=aprobaciones/);
       t(`móvil ${w}: elegir una sección cierra el menú y navega`, (await mp.locator('.ops-drawer-open').count()) === 0 && (await mp.locator('h1').first().innerText()) === 'Aprobaciones');
       await mp.waitForSelector('.ops-ap');
       await shot(mp, `movil-${w}-aprobaciones`);
       t(`móvil ${w}: sin scroll horizontal en Aprobaciones`, await mp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
-      for (const v of ['inicio', 'control', 'outreach', 'contenido', 'sistema', 'prospeccion']) {
+      for (const v of ['hoy', 'inicio', 'ideas', 'resultados', 'controles', 'control', 'outreach', 'contenido', 'sistema', 'prospeccion']) {
         await mp.goto(`${APP}/ops?view=${v}`);
         await mp.waitForSelector('h1');
         if (!(await mp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1))) { t(`móvil ${w}: sin scroll horizontal en ${v}`, false); break; }

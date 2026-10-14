@@ -48,7 +48,7 @@ export async function getOverview(): Promise<OverviewResult> {
   }
 }
 
-const ACTIONS = new Set(["email_save", "email_approve", "email_reject", "email_reopen", "linkedin_approve", "linkedin_reject", "content_approve", "content_reject", "autosend_set", "autosend_sweep", "prep_li_sent", "prep_hold", "prep_release", "prep_contact"]);
+const ACTIONS = new Set(["email_save", "email_approve", "email_reject", "email_reopen", "linkedin_approve", "linkedin_reject", "content_approve", "content_reject", "autosend_set", "autosend_sweep", "prep_li_sent", "prep_hold", "prep_release", "prep_contact", "pause_set"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Valida la solicitud antes de salir del servidor (lista cerrada de acciones; nada genérico). */
@@ -58,6 +58,8 @@ export function checkInput(i: OpsActionInput): string | null {
   if (i.action.startsWith("email_") && !UUID.test(i.message_id ?? "")) return "Correo inválido.";
   if ((i.action.startsWith("linkedin_") || i.action.startsWith("prep_")) && !UUID.test(i.candidate_id ?? "")) return "Prospecto inválido.";
   if (i.action === "autosend_set" && typeof i.enabled !== "boolean") return "Falta indicar si se enciende o se apaga.";
+  if (i.action === "pause_set" && typeof i.paused !== "boolean") return "Falta indicar si se pausa o se reanuda.";
+  if (i.resume_at !== undefined && (typeof i.resume_at !== "string" || !Number.isFinite(Date.parse(i.resume_at)))) return "Fecha inválida.";
   if (i.text !== undefined && (typeof i.text !== "string" || i.text.length > 1500)) return "Texto inválido.";
   if (i.email !== undefined && (typeof i.email !== "string" || i.email.length > 200)) return "Correo inválido.";
   if (i.linkedin !== undefined && (typeof i.linkedin !== "string" || i.linkedin.length > 300)) return "Enlace inválido.";

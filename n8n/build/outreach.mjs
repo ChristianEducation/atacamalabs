@@ -399,7 +399,7 @@ const initials = arr('Load Initials');
 const ids = [...new Set(initials.map((m) => m.candidate_id).filter(Boolean))];
 const inList = ids.length ? '(' + ids.join(',') + ')' : '(00000000-0000-0000-0000-000000000000)';
 const sb = '${SUPABASE}/rest/v1/';
-return [{ json: { now, config, initials, off: config.mode === 'off' || !initials.length,
+return [{ json: { now, config, initials, off: config.mode === 'off' || config.paused === true || !initials.length,
   recent_url: sb + 'prospect_candidates?status=in.(in_ghl,contacted,accepted)&created_at=gte.' + new Date(now - 3 * 86400000).toISOString() + '&select=id,ghl_contact_id&limit=60',
   cand_url: sb + 'prospect_candidates?id=in.' + inList + '&select=${CAND_SELECT}',
   msgs_url: sb + 'outreach_messages?candidate_id=in.' + inList + '&select=*&order=created_at.desc&limit=1000' } }];`;

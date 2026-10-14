@@ -60,7 +60,7 @@ async function exec(body, o = {}) {
   if (parsed.fatal) { const r = (await run('Respond Error', { ...store }, {})).length ? { ok: false, error: 'solicitud_invalida', message: parsed.fatal } : null; return { resp: r, calls: [], writes: [] }; }
   const reads = (await run('Expand Reads', store)).map((x) => x.json);
   const dbForKey = (key) => key === 'audit' ? w.db.audit : key === 'message' ? [{ ...w.db.message, cand: { id: CID, company_name: 'Clínica Ramis', status: 'in_ghl' } }] : key === 'candidate' ? [w.db.candidate] : key === 'piece' ? [w.db.piece]
-    : key === 'messages' ? (o.messages || [w.db.message]) : key === 'candidates' ? (o.candidates || [w.db.candidate]) : key === 'suppression' ? [] : key === 'config' ? [o.config || { mode: 'live', paused: false, daily_cap: 5, window_start: '09:00', window_end: '17:30', tz: 'America/Santiago', linkedin_mode: 'live', linkedin_list_id: 'L1', linkedin_campaign_id: 'C1', linkedin_daily_cap: 10 }] : [];
+    : key === 'messages' ? (o.messages || [w.db.message]) : key === 'candidates' ? (o.candidates || [w.db.candidate]) : key === 'suppression' ? [] : key === 'state' ? (o.state === null ? [] : [o.state || { id: 1, global_pause: false, meta: {} }]) : key === 'config' ? [o.config || { mode: 'live', paused: false, daily_cap: 5, window_start: '09:00', window_end: '17:30', tz: 'America/Santiago', linkedin_mode: 'live', linkedin_list_id: 'L1', linkedin_campaign_id: 'C1', linkedin_daily_cap: 10 }] : [];
   const readRes = reads.map((r) => (o.readFails === r.key ? { statusCode: 500, body: {} } : { statusCode: 200, body: dbForKey(r.key) }));
   store.Read = readRes[0]; const lists = { Read: readRes };
   const slotResult = {};
@@ -87,7 +87,7 @@ const names = new Set(wf.nodes.map((n) => n.name));
 t('29: conexiones válidas y webhook con clave EXCLUSIVA de /ops (no la de Hermes)', Object.entries(wf.connections).every(([a, v]) => names.has(a) && v.main.every((o) => o.every((c) => names.has(c.node)))) && wf.nodes[0].parameters.authentication === 'headerAuth' && wf.nodes[0].credentials.httpHeaderAuth.name === 'Atacama Labs - Ops Approval Key' && wf.nodes[0].parameters.path === 'atacama-ops-actions');
 t('29: sin secretos incrustados y sin nodos de envío directo (Gmail, Telegram, SMTP, Waalaxy)', !/(Bearer |eyJ[A-Za-z0-9_-]{20}|pit-[0-9a-f]{8}|sk-[A-Za-z0-9]{20})/.test(JSON.stringify(wf)) && !wf.nodes.some((n) => /gmail|emailSend|telegram|slack|smtp|waalaxy/i.test(n.type + JSON.stringify(n.credentials || {}))));
 t('29: los únicos destinos son los motores 21/26 (webhooks de n8n) y GHL Social Planner (posts)', (() => { const c = code('Plan 1'); return /atacama-outreach-engine/.test(c) && /atacama-linkedin/.test(c) && /social-media-posting/.test(c) && !/messages\/send|conversations\/messages|\/delete|DELETE/.test(c); })());
-t('29: las acciones permitidas son exactamente la lista cerrada (sin ejecutor genérico)', JSON.stringify(wf.nodes.find((n) => n.name === 'Parse').parameters.jsCode.match(/return \['overview'[^\]]*\]/)[0]) === JSON.stringify("return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject', 'autosend_set', 'autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release', 'prep_contact']"));
+t('29: las acciones permitidas son exactamente la lista cerrada (sin ejecutor genérico)', JSON.stringify(wf.nodes.find((n) => n.name === 'Parse').parameters.jsCode.match(/return \['overview'[^\]]*\]/)[0]) === JSON.stringify("return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject', 'autosend_set', 'autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release', 'prep_contact', 'pause_set']"));
 t('29: las escrituras reintentan 3 veces y las llamadas externas no cortan el flujo', wf.nodes.find((n) => n.name === 'Apply Writes').maxTries === 3 && wf.nodes.filter((n) => /^(Ingest|GHL (Get|Put)) \d$/.test(n.name)).every((n) => n.continueOnFail === true));
 t('29: cada PUT a GHL envía su cuerpo JSON (sendBody) y cada GET no envía cuerpo', wf.nodes.filter((n) => /^GHL Put \d$/.test(n.name)).every((n) => n.parameters.method === 'PUT' && n.parameters.sendBody === true && /JSON\.stringify/.test(n.parameters.jsonBody)) && wf.nodes.filter((n) => /^GHL Get \d$/.test(n.name)).every((n) => n.parameters.method === 'GET' && !n.parameters.sendBody));
 
@@ -263,6 +263,20 @@ t('buscar contacto → pegar LinkedIn: solo guarda el contacto', r.resp.ok === t
 r = await exec({ ...reqBase, action: 'prep_contact', candidate_id: CID2 });
 t('buscar contacto sin dato => rechazado', r.resp.ok === false && /correo o un enlace/.test(r.resp.message));
 t('ninguna acción de preparación llama a Gmail, GHL directo ni aprueba correos', ['autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release'].length === 4);
+
+// ---------------------------------------------------------------- v3 · pausa general (§8.8)
+r = await exec({ ...reqBase, action: 'pause_set' });
+t('pausa: sin paused true/false => rechazada', r.resp.ok === false && /paused/.test(r.resp.message));
+r = await exec({ ...reqBase, action: 'pause_set', paused: true, reason: 'viaje' });
+t('pausa: UNA escritura con candado en system_state (el disparador detiene el envío) + auditoría nivel 3; no llama a motores ni a GHL', r.resp.ok === true && r.resp.status === 'paused' && r.calls.length === 0
+  && r.writes.filter((w) => !w.audit).length === 1 && r.writes.some((w) => /^system_state\?id=eq\.1&global_pause=eq\.false/.test(w.path) && w.body.global_pause === true && w.body.reason === 'viaje')
+  && r.writes.some((w) => w.audit && w.body.tool === 'ops_pause_set' && w.body.level === 3 && w.body.params.decision === 'paused'), JSON.stringify(r.writes).slice(0, 400));
+r = await exec({ ...reqBase, action: 'pause_set', paused: false }, { state: { id: 1, global_pause: true, meta: { prev_outreach_paused: false } } });
+t('reanudar: vuelve a false (el disparador restaura el envío)', r.resp.ok === true && r.resp.status === 'resumed' && r.writes.some((w) => /global_pause=eq\.true/.test(w.path) && w.body.global_pause === false));
+r = await exec({ ...reqBase, action: 'pause_set', paused: true }, { state: { id: 1, global_pause: true, meta: {} } });
+t('pausa: si ya estaba en pausa no escribe nada (solo auditoría)', r.resp.status === 'already_paused' && r.writes.filter((w) => !w.audit).length === 0);
+r = await exec({ ...reqBase, action: 'pause_set', paused: true }, { rowsChanged: false });
+t('pausa: si el candado no encuentra la fila (alguien cambió el estado) => error claro, sin éxito falso', r.resp.ok === false && /Recarga/.test(r.resp.message));
 
 console.log(`\n${pass} ok, ${fail} fallos`);
 process.exit(fail ? 1 : 0);

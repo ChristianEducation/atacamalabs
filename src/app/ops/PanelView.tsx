@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { getPanel } from "@/lib/ops/data";
 import { getOverview } from "@/lib/ops/actions-client";
-import type { Overview, Panel, PieceRow, Prospect, Status } from "@/lib/ops/types";
+import type { InboxItem, Overview, Panel, PieceRow, Prospect, Status } from "@/lib/ops/types";
 import { Freshness } from "./Client";
 import { ApprovalsCenter, ContentApprovalCard, EmailLibrary, LinkedinReadyCard, LinkedinSentRow, type ApprovalFilter } from "./Approvals";
 import { GHL_PLANNER_URL, Preview } from "./Parts";
 import { Shell } from "./Shell";
 import { ControlCenter } from "./Control";
-import { parseView, type ViewId } from "./views";
+import { PauseCard } from "./Pause";
+import { parseView, sectionOf, type ViewId } from "./views";
 
 const STATUS_LABEL: Record<Status, string> = { ok: "Todo OK", atencion: "Atención", fallo: "Fallo" };
 const BAND_LABEL: Record<string, string> = { alta: "Prioridad alta", valida: "Válida", pendiente: "Pendiente" };
@@ -114,7 +115,7 @@ function OverviewError({ reason }: { reason: string }) {
 }
 
 /* ------------------------------------------------------------------- Inicio */
-function Inicio({ panel, fetchedAt, stale }: { panel: Panel; fetchedAt: number; stale: boolean }) {
+function Inicio({ panel, fetchedAt, stale, embedded = false }: { panel: Panel; fetchedAt: number; stale: boolean; embedded?: boolean }) {
   const ap = panel.approvals ?? { emails: 0, linkedin: 0, content: 0 };
   const out = panel.outreach;
   const wk = panel.content.weekly;
@@ -124,16 +125,16 @@ function Inicio({ panel, fetchedAt, stale }: { panel: Panel; fetchedAt: number; 
   const total = ap.emails + ap.linkedin + ap.content;
   return (
     <>
-      <Head title="Inicio" sub="¿Qué necesita Christian ahora?" fetchedAt={fetchedAt} stale={stale} />
+      {embedded ? null : <Head title="Inicio" sub="¿Qué necesita Christian ahora?" fetchedAt={fetchedAt} stale={stale} />}
 
-      <Section id="ops-dec" title="Necesita tu decisión" aside={<Link className="ops-note ops-a" href="/ops?view=aprobaciones" scroll={false}>{total ? `Ver las ${total} →` : "Al día"}</Link>}>
+      {embedded ? null : <Section id="ops-dec" title="Necesita tu decisión" aside={<Link className="ops-note ops-a" href="/ops?view=aprobaciones" scroll={false}>{total ? `Ver las ${total} →` : "Al día"}</Link>}>
         <div className="ops-stats ops-stats-3">
           <Stat n={ap.content} label="publicaciones" tone={ap.content ? "hi" : undefined} href="/ops?view=aprobaciones&filter=contenido" />
           <Stat n={ap.emails} label="correos" tone={ap.emails ? "hi" : undefined} href="/ops?view=aprobaciones&filter=correos" />
           <Stat n={ap.linkedin} label="LinkedIn" tone={ap.linkedin ? "hi" : undefined} href="/ops?view=aprobaciones&filter=linkedin" />
         </div>
         {total === 0 ? <Empty>Nada espera tu decisión ahora.</Empty> : <p className="ops-foot">Cada uno se abre, se edita si hace falta y se aprueba o rechaza aquí mismo.</p>}
-      </Section>
+      </Section>}
 
       <Section id="ops-pipe" title="Pipeline" aside={<Link className="ops-note ops-a" href="/ops?view=prospeccion" scroll={false}>Prospección →</Link>}>
         <div className="ops-stats">
@@ -183,6 +184,94 @@ function Inicio({ panel, fetchedAt, stale }: { panel: Panel; fetchedAt: number; 
             ))}
           </ul>
         )}
+      </Section>
+    </>
+  );
+}
+
+/* ----------------------------------------------------------- Hoy (v3 §8.1) */
+const TONE_LABEL: Record<InboxItem["tone"], string> = { fresh: "reciente", warn: "esperando", old: "atrasado" };
+
+function InboxList({ items }: { items: InboxItem[] }) {
+  return (
+    <ul className="ops-inbox" data-testid="inbox">
+      {items.map((i) => (
+        <li key={i.kind} className={`ops-inbox-${i.tone}`} data-kind={i.kind}>
+          <Link href={i.href} scroll={false} className="ops-inbox-a">
+            <span className="ops-row-main">
+              <span className="ops-row-title">{i.title}</span>
+              <span className="ops-row-sub">{[i.from, i.age ? `${i.age} (${TONE_LABEL[i.tone]})` : null].filter(Boolean).join(" · ")}</span>
+              {i.examples.length ? <span className="ops-row-sub ops-ellipsis">{i.examples.join(" · ")}</span> : null}
+            </span>
+            <span className="ops-inbox-go" aria-hidden="true">Abrir →</span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Hoy({ panel, fetchedAt, stale }: { panel: Panel; fetchedAt: number; stale: boolean }) {
+  const v3 = panel.v3;
+  const items = v3?.inbox.items ?? [];
+  const paused = v3?.pause.paused === true;
+  return (
+    <>
+      <Head title="Hoy" sub="Lo que espera tu decisión, en orden de prioridad" fetchedAt={fetchedAt} stale={stale} />
+      {paused && v3 ? <PauseCard pause={v3.pause} scheduled={panel.content.scheduled} /> : null}
+      <Section id="ops-today" title="Hoy requiere tu decisión" aside={items.length ? <span className="ops-count">{v3?.inbox.total ?? 0}</span> : <Pill status="ok">Al día</Pill>}>
+        {!v3 ? <Empty>La bandeja aún no está disponible (el servidor no la informa). Usa las secciones del menú.</Empty>
+          : items.length ? <InboxList items={items} />
+          : <Empty>Nada espera tu decisión ahora. Lo nuevo aparecerá aquí apenas llegue.</Empty>}
+      </Section>
+      <Inicio panel={panel} fetchedAt={fetchedAt} stale={stale} embedded />
+      {!paused && v3 ? <PauseCard pause={v3.pause} scheduled={panel.content.scheduled} /> : null}
+    </>
+  );
+}
+
+/* --------------------------------------------------------- Redes → Ideas (v3 §6.1) */
+function Ideas({ fetchedAt, stale }: { fetchedAt: number; stale: boolean }) {
+  return (
+    <>
+      <Head title="Ideas" sub="La propuesta de la semana siguiente, por red" fetchedAt={fetchedAt} stale={stale} />
+      <Section id="ops-ideas" title="Propuesta de la semana">
+        <Empty>Todavía no hay propuesta. Hermes la entrega los lunes a las 07:30 con su ficha completa; aquí podrás aprobar, pedir cambios o descartar cada idea.</Empty>
+      </Section>
+    </>
+  );
+}
+
+/* ---------------------------------------------------------------- Resultados */
+function Resultados({ fetchedAt, stale }: { fetchedAt: number; stale: boolean }) {
+  return (
+    <>
+      <Head title="Resultados" sub="Qué contenido trae contactos y qué aprende el sistema" fetchedAt={fetchedAt} stale={stale} />
+      <Section id="ops-res" title="Contenido → ventas y aprendizaje">
+        <Empty>Aún sin datos suficientes. Aquí verás, por pieza y por recurso, los contactos, reuniones y clientes que trajo, y las reglas que el sistema propone a partir de tus correcciones (siempre para que tú las apruebes).</Empty>
+      </Section>
+    </>
+  );
+}
+
+/* -------------------------------------------------------- Sistema → Controles */
+function Controles({ panel, fetchedAt, stale }: { panel: Panel; fetchedAt: number; stale: boolean }) {
+  const v3 = panel.v3;
+  const out = panel.outreach;
+  const auto = panel.prep?.autosend;
+  const ig = panel.content.ig;
+  const mode = (m: string | undefined) => (m === "live" ? "en vivo" : m === "off" ? "apagado" : m ?? "—");
+  return (
+    <>
+      <Head title="Controles" sub="Pausa general y estado de los motores" fetchedAt={fetchedAt} stale={stale} />
+      {v3 ? <PauseCard pause={v3.pause} scheduled={panel.content.scheduled} /> : <Section id="ops-pause-na" title="Pausa general"><Empty>La pausa general aún no está disponible en el servidor.</Empty></Section>}
+      <Section id="ops-motors" title="Motores">
+        <ul className="ops-list ops-signals" data-testid="motors">
+          <li><span className="ops-row-title">Envío de correos · {mode(out?.email.mode)}{v3?.pause.paused ? " · en pausa" : ""}</span><span className="ops-row-sub">{out ? `${out.email.sent_today}/${out.email.cap} hoy · ${out.email.approved_waiting} aprobados esperando` : "sin datos"}</span></li>
+          <li><span className="ops-row-title">Envío automático · {auto?.enabled ? "ON" : "OFF"}</span><span className="ops-row-sub">Se cambia en Prospección y correo → Contacto preparado.</span></li>
+          <li><span className="ops-row-title">LinkedIn (Waalaxy) · {mode(out?.linkedin.mode)}</span><span className="ops-row-sub">{out ? `${out.linkedin.imported_today}/${out.linkedin.cap} hoy` : "sin datos"}</span></li>
+          <li><span className="ops-row-title">Motor de Instagram · {ig?.enabled ? "encendido" : "apagado"}</span><span className="ops-row-sub">Se enciende solo con tu «sí», tras la primera corrida supervisada.</span></li>
+        </ul>
       </Section>
     </>
   );
@@ -428,12 +517,29 @@ function Sistema({ panel, fetchedAt, stale }: { panel: Panel; fetchedAt: number;
   );
 }
 
+/** Pestañas de la sección (navegación v2): una por vista. */
+function SectionTabs({ view }: { view: ViewId }) {
+  const sec = sectionOf(view);
+  if (sec.views.length < 2) return null;
+  const cur = view === "inicio" ? "hoy" : view;
+  return (
+    <nav className="ops-tabs ops-sec-tabs" aria-label={sec.label}>
+      {sec.views.map((v) => (
+        <Link key={v.id} href={`/ops?view=${v.id}`} scroll={false} className={v.id === cur ? "ops-tab ops-tab-on" : "ops-tab"} aria-current={v.id === cur ? "page" : undefined}>{v.label}</Link>
+      ))}
+    </nav>
+  );
+}
+
 /** Marco + vista elegida. `sp` = parámetros de la URL (?view=…&filter=…&tab=…). */
 export async function PanelView({ sp }: { sp: { view?: string | string[]; filter?: string | string[]; tab?: string | string[] } }) {
-  const view: ViewId = parseView(sp.view);
+  const asked = parseView(sp.view);
   // Las aprobaciones se piden EN PARALELO con el panel (antes iban una tras otra) y solo en las vistas que las usan.
-  const ovP = view === "aprobaciones" || view === "outreach" ? getOverview() : Promise.resolve<Awaited<ReturnType<typeof getOverview>>>({ ok: false, reason: "not_configured" });
+  const ovP = asked === "aprobaciones" || asked === "outreach" ? getOverview() : Promise.resolve<Awaited<ReturnType<typeof getOverview>>>({ ok: false, reason: "not_configured" });
   const r = await getPanel();
+  // Navegación v2 (spec §5) salvo que content_config.ops_nav_v2 = false. Sin vista en la URL: «Hoy» (v2) o «Inicio» (v1).
+  const v2 = !(r.ok && r.panel.v3 && r.panel.v3.nav_v2 === false);
+  const view: ViewId = asked ?? (v2 ? "hoy" : "inicio");
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
   if (!r.ok) {
     const msg = r.reason === "not_configured"
@@ -441,16 +547,26 @@ export async function PanelView({ sp }: { sp: { view?: string | string[]; filter
       : r.reason === "unreachable"
         ? "No pude conectar con Atacama OS (n8n no responde). Reintenta en un minuto."
         : "Atacama OS respondió algo inesperado. Reintenta en un minuto.";
-    return (<Shell view={view} badges={{}}><Section id="ops-err" title="Sin datos"><Empty>{msg}</Empty></Section></Shell>);
+    return (<Shell view={view} badges={{}} v2={v2}><Section id="ops-err" title="Sin datos"><Empty>{msg}</Empty></Section></Shell>);
   }
   const { panel, fetchedAt, stale } = r;
   const ap = panel.approvals;
-  const badges = { aprobaciones: ap ? ap.emails + ap.linkedin + ap.content : 0, control: panel.prep ? panel.prep.valid_unactioned + panel.prep.counts.linkedin_listo + panel.prep.counts.buscar_contacto : 0, contenido: panel.content.weekly && panel.content.weekly.state === "falta" ? 1 : 0 };
+  const ctl = panel.prep ? panel.prep.valid_unactioned + panel.prep.counts.linkedin_listo + panel.prep.counts.buscar_contacto : 0;
+  const inbox = panel.v3?.inbox;
+  const nKind = (k: string) => inbox?.items.filter((i) => i.kind === k || i.kind.startsWith(k + "_")).reduce((a, i) => a + i.count, 0) ?? 0;
+  const badges: Record<string, number> = v2
+    ? { hoy: inbox?.total ?? 0, redes: nKind("idea") + nKind("pieza") + (ap ? ap.content : 0), correo: (ap ? ap.emails + ap.linkedin : 0) + ctl, sistema: nKind("alerta") }
+    : { aprobaciones: ap ? ap.emails + ap.linkedin + ap.content : 0, control: ctl, contenido: panel.content.weekly && panel.content.weekly.state === "falta" ? 1 : 0 };
   const filter = (["todas", "correos", "linkedin", "contenido"].includes(one(sp.filter) ?? "") ? one(sp.filter) : "todas") as ApprovalFilter;
   const tab = one(sp.tab) === "linkedin" ? "linkedin" : "email";
   return (
-    <Shell view={view} badges={badges}>
-      {view === "inicio" ? <Inicio panel={panel} fetchedAt={fetchedAt} stale={stale} />
+    <Shell view={view} badges={badges} v2={v2} paused={panel.v3?.pause.paused === true}>
+      {v2 ? <SectionTabs view={view} /> : null}
+      {view === "hoy" || (v2 && view === "inicio") ? <Hoy panel={panel} fetchedAt={fetchedAt} stale={stale} />
+        : view === "inicio" ? <Inicio panel={panel} fetchedAt={fetchedAt} stale={stale} />
+        : view === "ideas" ? <Ideas fetchedAt={fetchedAt} stale={stale} />
+        : view === "resultados" ? <Resultados fetchedAt={fetchedAt} stale={stale} />
+        : view === "controles" ? <Controles panel={panel} fetchedAt={fetchedAt} stale={stale} />
         : view === "aprobaciones" ? <Aprobaciones panel={panel} fetchedAt={fetchedAt} stale={stale} filter={filter} ovP={ovP} />
         : view === "control" ? <Control panel={panel} fetchedAt={fetchedAt} stale={stale} />
         : view === "prospeccion" ? <Prospeccion panel={panel} fetchedAt={fetchedAt} stale={stale} />

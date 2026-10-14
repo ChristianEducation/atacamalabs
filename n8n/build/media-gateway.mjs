@@ -9,6 +9,8 @@
  *   list      → assets por estado (para el worker local y para /ops)
  *   complete  → el worker cierra el asset: ready (URLs https ya alojadas) o failed (error visible)
  *   cancel    → cancela un asset que aún no está listo
+ *   claim     → (worker de la VPS) entrega el siguiente asset del renderer en cola + la fila de su pieza y lo marca «generating» (candado). Un huérfano de >20 min se reclama (máx. 3 intentos)
+ *   upload    → (worker de la VPS) recibe UN png en base64 de un asset «generating» y lo sube a la biblioteca de medios de GHL (única llamada a GHL: /medias/upload-file); devuelve { url, fileId }
  *
  * Solo lee/escribe media_assets (+ lee content_config y content_pieces). NO publica, NO programa, NO aprueba, NO crea piezas y NO llama a ningún proveedor
  * generativo: la generación (si algún día se autoriza) la hace el worker local, nunca este workflow. La pieza sigue entrando por «12 Content Intake».
@@ -21,6 +23,7 @@ const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 const NONE = 'https://localhost.invalid/';
 const SUPABASE_CRED = { supabaseApi: { id: 'XOmXUuyLVSazDIh5', name: 'Atacama Labs - Supabase' } };
 const INGEST_CRED = { httpHeaderAuth: { id: 'lUGhlXVaQBEiEh5S', name: 'Atacama Labs - Ingest Key' } };
+const GHL_CRED = { httpHeaderAuth: { id: '4Vc6nfxyKjZ14Bep', name: 'GHL — Atacama OS' } };
 const full = (timeout = 30000) => ({ response: { response: { fullResponse: true, neverError: true, responseFormat: 'json' } }, timeout });
 const code = (name, jsCode, pos) => ({ id: randomUUID(), name, type: 'n8n-nodes-base.code', typeVersion: 2, position: pos, parameters: { jsCode } });
 const to = (n) => [{ node: n, type: 'main', index: 0 }];
@@ -30,7 +33,7 @@ const sbApply = (name, pos) => ({ id: randomUUID(), name, type: 'n8n-nodes-base.
   parameters: { method: '={{ $json.skip ? "GET" : ($json.method || "POST") }}', url: `={{ $json.skip ? "${SUPABASE}/rest/v1/content_config?select=id&limit=1" : "${SUPABASE}/rest/v1/" + $json.path }}`, authentication: 'predefinedCredentialType', nodeCredentialType: 'supabaseApi', sendHeaders: true,
     headerParameters: { parameters: [{ name: 'Prefer', value: '={{ $json.prefer || "return=minimal" }}' }] }, sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full() } });
 
-export const ACTIONS = ['request', 'status', 'list', 'complete', 'cancel'];
+export const ACTIONS = ['request', 'status', 'list', 'complete', 'cancel', 'claim', 'upload'];
 export const LIB = Object.values(mg).filter((f) => typeof f === 'function').map((f) => f.toString()).join('\n\n');
 
 export const PARSE = `${LIB}
@@ -62,6 +65,12 @@ try {
   } else if (action === 'list') {
     const st = String(b.status || '').split(',').filter((x) => ['requested', 'queued', 'generating', 'ready', 'failed', 'unavailable', 'cancelled'].includes(x));
     add('assets', 'media_assets?' + (st.length ? 'status=in.(' + st.join(',') + ')&' : '') + 'is_test=eq.' + (b.test === true ? 'true' : 'false') + '&select=' + SEL + '&order=created_at.desc&limit=' + Math.min(Math.max(parseInt(b.limit, 10) || 25, 1), 100));
+  } else if (action === 'claim') {
+    const test = b.test === true ? 'true' : 'false';
+    const emb = ',content_pieces(id,status,origin,interview_id,is_test,piece)';
+    add('queue', 'media_assets?status=eq.queued&provider=in.(renderer,studio)&is_test=eq.' + test + '&select=' + SEL + emb + '&order=created_at.asc&limit=1');
+    add('sys', 'system_state?id=eq.1&select=global_pause,reason');
+    add('stale', 'media_assets?status=eq.generating&provider=in.(renderer,studio)&is_test=eq.' + test + '&updated_at=lt.' + new Date(Date.now() - 20 * 60000).toISOString() + '&select=' + SEL + emb + '&order=updated_at.asc&limit=1');
   } else {
     if (!isUuid(b.id)) throw new Error('id (uuid del asset) obligatorio');
     add('asset', 'media_assets?id=eq.' + b.id + '&select=' + SEL);
@@ -85,7 +94,7 @@ if (bad.length) return [{ json: { resp: { ok: false, error: 'lectura_fallida', m
 const cfg = (R.config || [])[0] || {};
 const nowIso = new Date().toISOString();
 const uuid = () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = (Math.random() * 16) | 0; return (c === 'x' ? r : (r & 3) | 8).toString(16); });
-const view = (a) => ({ id: a.id, piece_id: a.piece_id, need: a.need, operation: a.operation, provider: a.provider, status: a.status, error: a.error || null, urls: a.urls || [], attempts: a.attempts, cost_estimate_usd: a.cost_estimate_usd, cost_authorized: a.cost_authorized, content_hash: a.content_hash, created_at: a.created_at, updated_at: a.updated_at, reason: (a.meta || {}).reason || null, alternatives: (a.meta || {}).alternatives || [] });
+const view = (a) => ({ id: a.id, piece_id: a.piece_id, need: a.need, operation: a.operation, provider: a.provider, status: a.status, error: a.error || null, urls: a.urls || [], attempts: a.attempts, cost_estimate_usd: a.cost_estimate_usd, cost_authorized: a.cost_authorized, content_hash: a.content_hash, created_at: a.created_at, updated_at: a.updated_at, reason: (a.meta || {}).reason || null, composition: (a.meta || {}).composition || null, alternatives: (a.meta || {}).alternatives || [] });
 const writes = [];
 let resp = { ok: true, action: A };
 const fail = (error, message, extra) => { resp = { ok: false, action: A, error, message, ...(extra || {}) }; };
@@ -100,8 +109,9 @@ if (A === 'request') {
   else {
     const slides = piece && piece.piece && Array.isArray(piece.piece.slides) ? piece.piece.slides : [];
     const wantsRender = mgOperation(req) === 'render';
-    if (wantsRender && piece && !slides.length) {
-      fail('pieza_sin_slides', 'El renderer necesita las slides de la pieza (piece.slides): redáctalas primero y vuelve a pedir el visual.');
+    const isStoryPiece = Boolean(piece && piece.piece && piece.piece.format === 'historia');
+    if (wantsRender && piece && !(isStoryPiece ? piece.piece.story : slides.length)) {
+      fail('pieza_sin_slides', isStoryPiece ? 'El renderer necesita piece.story de la historia: complétala y vuelve a pedir el visual.' : 'El renderer necesita las slides de la pieza (piece.slides): redáctalas primero y vuelve a pedir el visual.');
     } else {
       const content_hash = wantsRender && piece ? mgRenderHash(piece.piece) : null;
       const plan = mgPlan({ ...req, content_hash }, (R.same || []).concat(R.ready || []), cfg);
@@ -127,7 +137,7 @@ if (A === 'request') {
           resp = { ok: true, action: A, created: plan.action === 'create', reused: plan.action === 'reuse', asset: view({ id, ...row, attempts: 0, created_at: nowIso }) };
         }
         const st = resp.asset.status;
-        resp.message = st === 'ready' ? 'Asset reutilizado: ya estaba listo para asociarlo a la pieza.' : st === 'queued' ? (route.provider === 'renderer' ? 'En cola para el renderer. Se produce en el equipo de Christian: node scripts/media/media-gateway.mjs run' : route.provider === 'manual' ? 'Esperando el asset de Christian (captura, foto o imagen propia).' : 'En cola.') : 'NO disponible: ' + route.reason;
+        resp.message = st === 'ready' ? 'Asset reutilizado: ya estaba listo para asociarlo a la pieza.' : st === 'queued' ? (route.provider === 'renderer' ? 'En cola para el renderer: el worker de la VPS lo produce solo (cada ~5 min). Respaldo manual en el PC: node scripts/media/media-gateway.mjs run' : route.provider === 'studio' ? 'En cola: el worker de la VPS sube el video del taller de motion (cada ~5 min).' : route.provider === 'manual' ? 'Esperando el asset de Christian (captura, foto o imagen propia).' : 'En cola.') : 'NO disponible: ' + route.reason;
       }
     }
   }
@@ -153,6 +163,27 @@ if (A === 'request') {
       resp = { ok: true, action: A, asset: view({ ...a, ...body }), message: r.value.status === 'ready' ? 'Asset listo y asociado a su pieza. Para que llegue a revisión, reenvía la pieza con sus medios (node scripts/content/render-pending.mjs --run).' : 'Asset marcado como fallido (error visible): ' + r.value.error };
     }
   }
+} else if (A === 'claim') {
+  const pick = mgPickClaim(R.queue, R.stale, (R.sys || [])[0] || null);
+  if (pick.action === 'paused') resp = { ok: true, action: A, claimed: false, paused: true, message: pick.message };
+  else if (pick.action === 'none') resp = { ok: true, action: A, claimed: false, message: 'No hay assets del renderer en cola.' };
+  else if (pick.action === 'give_up') {
+    writes.push({ method: 'PATCH', path: 'media_assets?id=eq.' + pick.asset.id + '&status=eq.generating', body: { status: 'failed', error: pick.error, attempts: pick.attempts, updated_at: nowIso } });
+    resp = { ok: true, action: A, claimed: false, gave_up: pick.asset.id, message: pick.error };
+  } else {
+    const a = pick.asset;
+    writes.push({ method: 'PATCH', path: 'media_assets?id=eq.' + a.id + '&status=in.(queued,generating)', body: { status: 'generating', error: null, attempts: pick.attempts, updated_at: nowIso } });
+    resp = { ok: true, action: A, claimed: true, asset: view({ ...a, status: 'generating', attempts: pick.attempts }), row: a.content_pieces || null, message: 'Asset reclamado: se marcó «generating» (candado). Cierra con complete.' };
+  }
+} else if (A === 'upload') {
+  const a = (R.asset || [])[0];
+  if (!a) fail('asset_no_encontrado', 'No existe ese asset.');
+  else if (a.status !== 'generating') fail('estado_no_valido', 'Solo se suben imágenes de un asset reclamado (generating); este está en «' + a.status + '».', { current_status: a.status });
+  else {
+    const u = mgValidateUpload(b);
+    if (!u.ok) fail('imagen_invalida', 'La imagen no es válida: ' + u.errors.join('; '), { errors: u.errors });
+    else resp = { ok: true, action: A, asset_id: a.id, upload: { filename: u.filename, mime: u.mime, b64: String(b.png_base64) } };
+  }
 } else if (A === 'cancel') {
   const a = (R.asset || [])[0];
   if (!a) fail('asset_no_encontrado', 'No existe ese asset.');
@@ -165,6 +196,17 @@ return [{ json: { resp, writes } }];`;
 export const EXPAND_WRITES = `const w = $('Compute').first().json.writes || [];
 if (!w.length) return [{ json: { skip: true } }];
 return w.map((x) => ({ json: { skip: false, ...x } }));`;
+
+export const PREP_UPLOAD = `const u = $('Compute').first().json.resp.upload;
+const bin = await this.helpers.prepareBinaryData(Buffer.from(u.b64, 'base64'), u.filename, u.mime || 'image/png');
+return [{ json: { filename: u.filename, mime: u.mime || 'image/png' }, binary: { data: bin } }];`;
+
+export const RESPOND_UPLOAD = `const c = $('Compute').first().json.resp;
+const g = $('GHL Upload').first().json || {};
+const body = g.body && typeof g.body === 'object' ? g.body : {};
+const safety = { published: 0, scheduled: 0, approved: 0, generated_with_cost: 0, note: 'Solo sube una imagen a la biblioteca de medios de GHL; no publica ni programa nada.' };
+if (!g.statusCode || g.statusCode >= 300 || !body.url) return [{ json: { ok: false, action: 'upload', asset_id: c.asset_id, error: 'subida_ghl_fallida', message: 'GHL no aceptó la imagen: ' + (g.statusCode ? 'HTTP ' + g.statusCode : 'sin respuesta (red)') + ' ' + JSON.stringify(body).slice(0, 160), safety } }];
+return [{ json: { ok: true, action: 'upload', asset_id: c.asset_id, url: body.url, type: ($('Prep Upload').first().json || {}).mime || 'image/png', fileId: body.fileId || null, safety } }];`;
 
 export const RESPOND = `const c = $('Compute').first().json;
 const planned = c.writes || [];
@@ -184,11 +226,18 @@ export function buildMediaGateway() {
     { id: randomUUID(), name: 'Read', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [840, 0], credentials: SUPABASE_CRED, continueOnFail: true, alwaysOutputData: true,
       parameters: { method: 'GET', url: '={{ $json.url }}', authentication: 'predefinedCredentialType', nodeCredentialType: 'supabaseApi', options: full() } },
     code('Compute', COMPUTE, [1060, 0]),
-    code('Expand Writes', EXPAND_WRITES, [1280, 0]),
-    sbApply('Apply Writes', [1500, 0]),
-    code('Respond', RESPOND, [1720, 0]),
+    ifNode('Upload?', '!!($json.resp && $json.resp.upload)', [1280, 0]),
+    code('Prep Upload', PREP_UPLOAD, [1500, 220]),
+    { id: randomUUID(), name: 'GHL Upload', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [1720, 220], credentials: GHL_CRED, continueOnFail: true, alwaysOutputData: true,
+      parameters: { method: 'POST', url: 'https://services.leadconnectorhq.com/medias/upload-file', authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth',
+        sendHeaders: true, headerParameters: { parameters: [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', value: 'application/json' }] },
+        sendBody: true, contentType: 'multipart-form-data', bodyParameters: { parameters: [{ parameterType: 'formBinaryData', name: 'file', inputDataFieldName: 'data' }, { name: 'hosted', value: 'false' }] }, options: full(60000) } },
+    code('Respond Upload', RESPOND_UPLOAD, [1940, 220]),
+    code('Expand Writes', EXPAND_WRITES, [1500, 0]),
+    sbApply('Apply Writes', [1720, 0]),
+    code('Respond', RESPOND, [1940, 0]),
   ];
-  const c = { 'Media Webhook': { main: [to('Parse')] }, 'Parse': { main: [to('Valid?')] }, 'Valid?': { main: [to('Expand Reads'), to('Respond Error')] }, 'Expand Reads': { main: [to('Read')] }, 'Read': { main: [to('Compute')] }, 'Compute': { main: [to('Expand Writes')] }, 'Expand Writes': { main: [to('Apply Writes')] }, 'Apply Writes': { main: [to('Respond')] } };
+  const c = { 'Media Webhook': { main: [to('Parse')] }, 'Parse': { main: [to('Valid?')] }, 'Valid?': { main: [to('Expand Reads'), to('Respond Error')] }, 'Expand Reads': { main: [to('Read')] }, 'Read': { main: [to('Compute')] }, 'Compute': { main: [to('Upload?')] }, 'Upload?': { main: [to('Prep Upload'), to('Expand Writes')] }, 'Prep Upload': { main: [to('GHL Upload')] }, 'GHL Upload': { main: [to('Respond Upload')] }, 'Expand Writes': { main: [to('Apply Writes')] }, 'Apply Writes': { main: [to('Respond')] } };
   return { name: 'Atacama Labs - 30 Media Gateway', nodes, connections: c, settings: { executionOrder: 'v1' } };
 }
 

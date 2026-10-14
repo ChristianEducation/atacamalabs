@@ -1,0 +1,51 @@
+# ARRANQUE — nueva sesión para ejecutar el spec de Atacama OS v3 (preparado el 14-oct-2026)
+
+> Léelo primero. Está pensado para una sesión **nueva y sin contexto** (por ejemplo con Opus). Resume qué es el spec, en qué estado quedó todo, cómo trabajar con Christian y qué no hacer. Nada de lo que está aquí se ha ejecutado: **el spec está escrito, no construido.**
+
+## 1. Qué hay que ejecutar
+- **Spec maestro (fuente de verdad):** `docs/SPEC-ATACAMA-OS-V3-TALLER-Y-CORREO.md` (~290 líneas; fases 0–9). Léelo **entero** antes de tocar nada, en especial §0 (cómo ejecutarlo), §2 (decisiones de Christian: no reabrir), §13 (fases) y §14 (pruebas de aceptación).
+- **Última incorporación (14-oct):** la **ficha de idea** de §6.1 (12 campos: objetivo, público/insight, gancho, idea central, formato, estructura/escenas, CTA si corresponde, cómo se produce, recurso si corresponde, costo/esfuerzo, riesgos, métrica principal). Está reflejada en `content_ideas` (§9) y en las aceptaciones de la Fase 4 y §14-A.
+- **Regla de oro:** no se construye, migra, despliega ni enciende nada hasta que Christian diga **«ejecuta el spec»** o **«ejecuta la fase N»**. Si no lo ha dicho en la conversación, solo conversa.
+- **Ritmo de ejecución:** una fase a la vez, en el orden de §13. Al terminar cada fase: pruebas verdes (§14), resumen corto en español simple y **esperar su «sí»** antes de la siguiente y antes de cualquier `git push`/deploy/encendido de motor. Sugerencia a proponerle: empezar por la **Fase 0** sola (verificaciones sin cambios visibles).
+
+## 2. Orden de lectura (todo en `atacama-labs-app/docs/` salvo indicación)
+1. `SPEC-ATACAMA-OS-V3-TALLER-Y-CORREO.md` (el spec).
+2. `ATACAMA-OS-HANDOFF.md` (cómo operar y desplegar; ojo: su estado es del 9-oct y está desactualizado, pero **§4 «Cómo operar y desplegar» y §5 «Reglas y lecciones» siguen vigentes**).
+3. `ATACAMA-OS-ARQUITECTURA-FINAL.md`, `MAQUINA-INSTAGRAM.md` (motor actual de Instagram, que el spec reemplaza en su parte de planificación), `CONTACTO-PREPARADO.md`, `ESTRATEGIA-CARRUSELES-ILUSTRADOS.md`, `TALLER-MOTION-VPS.md`, `OPERATIONS.md`.
+4. `brand/outreach/PLAYBOOK-CORREOS-OUTBOUND.md` (v1.0, reglas del correo en frío).
+5. Memoria de Claude (se carga sola si la sesión se abre desde este repo; carpeta `C:\Users\alain\.claude\projects\C--Users-alain\memory\`): `atacama-spec-os-v3`, `atacama-correos-huella-13-oct`, `atacama-semana-13-17-oct`, `atacama-carrusel-estrategia`, `atacama-maquina-instagram`, `atacama-metodo-visual-historias`, `feedback_cold-email-structure`.
+
+## 3. Quién es Christian y cómo trabajar con él
+- **No es técnico.** Español simple, frases cortas, sin jerga; explica el porqué y qué cambia para él. Usa pronombres neutros o solo su nombre; **nunca inferir pronombres por el nombre de nadie.**
+- «**Responder sin codificar**» = solo conversación, no toques archivos ni sistemas. Cuando da el OK («dale», «vamos con…»), entonces se hace.
+- **Nunca** publicar, programar, aprobar ni enviar por su cuenta. **Nunca** `git push` ni deploy sin su «sí» explícito (el clasificador de permisos puede bloquear el push aunque él ya haya dicho sí: avisarle, no es un bug). No insistir con razón social/RUT. No inventar datos, estados ni éxitos; decir lo que no se pudo verificar.
+- **Lo que pide para un video o pieza concreta no es regla general.** (Aclaración suya del 14-oct: las preferencias de los videos de motion de esta semana eran «solo para esos momentos»; no escribirlas «en piedra» ni llevarlas al spec.)
+
+## 4. Estado al 14-oct (qué es verdad hoy)
+**Repositorio:** carpeta `atacama-labs-app`, rama local `feat/frontend-v2-2-1` (empuja a producción con `git push origin HEAD:main` solo con su «sí»). Último commit: `1711f19` (recursos «solo con la URL», **ya en `main` y verificado en producción el 13-oct**). **Hay ~95 cambios sin commit** (53 archivos modificados —n8n JSON y generadores, `ops/hermes`, `scripts/content`…— y 42 nuevos —docs, `social/exports`…): son trabajo real de las últimas semanas; **no los pierdas, no hagas `git clean`/`reset`**; ordenar y commitear solo cuando él lo pida, añadiendo por ruta (nunca `git add -A` a ciegas). El repo propio es `atacama-labs-app` (remoto `ChristianEducation/atacamalabs`); **ojo:** existe además un git externo en `C:\Users\alain` (rama `master`, con miles de carpetas ajenas «untracked»): no es este repo, no lo uses.
+
+**Sistema:** Atacama OS está **ON** con aprobación humana: correo y LinkedIn en `live`; Hermes (VPS) por Telegram y MCP; n8n orquesta; Supabase `uwquwjmiofixzugttals` (compartido con EnBandeja LEGACY: **no tocar sus tablas**); GHL es la verdad comercial y el Social Planner. Motor de Instagram **APAGADO** (`content_config.ig_engine_enabled=false`) hasta una corrida supervisada. Higgsfield en la VPS: autorizado el 13-oct (workspace Private, tope **200 créditos/semana**); no generar ni gastar sin su autorización.
+
+**Correo (incidente del 13-oct y su arreglo):** 23 correos aprobados se cancelaron porque su huella (`content_hash`) ya no coincidía tras ediciones con GPT. Ya hecho: el motor (workflow 21) **re-sella la huella al aprobar** (salvaguarda S1), con pruebas; respaldo en `backups/2026-10-13/n8n/`. Los **23 borradores de Christian** (editados con GPT) están restaurados como borrador **esperando su revisión/aprobación en /ops**; los 12 que reescribió Hermes quedaron cancelados y se conservan como pares de aprendizaje (S6). Tope diario `outreach_config.daily_cap` = 20 (él lo subirá); Sender 1/min, ventana lun–vie 09:00–17:30 America/Santiago. Lo que falta del spec en correo: S2–S6, la sección completa y los controles en la UI (Fase 6; S2 y S3 pueden adelantarse como parche si él lo pide).
+
+**Redes esta semana (flujo actual, antes del spec):** carrusel de Flows **ya publicado** en Instagram el mar 13-oct 16:31 con 5 imágenes (lo programó Christian a mano desde el compositor de GHL; post `6ace86ba54bf3b1e02f09771`; el post `6ace80297ad751f690ee25e2` que preparó Claude quedó rechazado); reel jueves 15 y reel sábado 17 programados; **carrusel educativo del viernes 16 («Qué proceso automatizar primero») aún por hacer**; recurso activo `que-proceso-automatizar-primero`. Los posts viejos del carrusel quedaron rechazados en GHL (no se pueden borrar por API).
+
+**Videos de motion:** se hicieron fuera del spec, en el PC; viven en `social/exports/content/` (`video-11-de-la-noche`, `motion-ia-vs-humano`, `reel-demo-oficina`), sin publicar. Método (HTML determinista → PNG → ffmpeg) en la memoria `atacama-pipeline-motion-html`. Sirve de antecedente para la Fase 5 (Motion v2), no es parte del spec.
+
+## 5. Datos de entorno (sin secretos)
+- **Supabase:** proyecto `uwquwjmiofixzugttals`; migraciones por el MCP de Supabase (`apply_migration`); consultas con la service role de `.env.local`.
+- **n8n:** URL y llave en `.env.local` (`N8N_BASE_URL`, `N8N_API_KEY`). Ids de workflows: 12 `wKrn00R0x4XXcfvR` · 14 `E9KMwNH7QmWbuy8Q` · 20 `Pm5XfYBocmWR3YgY` · 21 `7yRgPPDkiVyjmb3t` · 24 `rWulaiKeio0CsXrs` · 25 `OxLcj12RP0qLVLVc` · 26 `ve4uKTMQkGWzzmBV` · 27 `M4LyGH4UxE5sYIh5` · 28 `6wnrHglfnt6l9va0` · 29 `ruk7KnHLppPSI8wK` · 30 `3o3xAfWvkDcGjtJd`. Generar con `node n8n/build/<nombre>.mjs`; **no desplegar 22 ni 23 desde el JSON** (sus credenciales de Gmail viven en n8n). Respaldar el JSON vivo antes de cada despliegue.
+- **GHL:** location `pxHuOsiz2i3lM6BtC9IM`; usar `GHL_PRIVATE_INTEGRATION_TOKEN2` (los otros dos tokens dan 401 en esa location); versión de API `2021-07-28`. Cuentas del Social Planner: Instagram `@atacama.labs`, LinkedIn página «Atacama Labs», LinkedIn perfil «Christian Wevar».
+- **GHL — lecciones que cambian el diseño de «Programar» (§6.3):** un **PUT** (mover fecha, aprobar, rechazar, editar caption) sobre un **carrusel lo reduce a 1 imagen**; el **POST** de creación conserva las 5. Para cambiar hora o pie de un carrusel hay que crearlo de nuevo con POST y rechazar el viejo (queda `failed`/`rejected`, el DELETE está bloqueado por permisos). PUT exige `userId` como string. Las historias no llevan texto (422).
+- **VPS de Hermes:** acceso por SSH con la clave de `~/hermes-ops` y `hermes-exec-agent` (ver HANDOFF §4; **nunca imprimir ni abrir el `.env` de la VPS**); subir archivos con `ops/hermes/deploy-to-vps.sh`; los prompts de cron se guardan en línea (re-aplicar con `hermes cron edit <id> --prompt "$(cat archivo)"` como usuario hermes). Jobs vivos: Prospect Radar `8421589d0902`, Contact Prep `25562a86293c`, Instagram Semanal `38f0f3d1d99e` y Historias del día `fedb73e89062` (los dos que el spec reemplaza), media-worker `301099be4b42`, atacama-daily, atacama-alerts (cada 15 min), Content Radar / RSS / Content Pieces / Competitor.
+- **Pruebas:** `node scripts/run-all-tests.mjs` · `node scripts/ops/ui-tests.mjs` (con `OPS_NO_CACHE=1`) · `npx tsc --noEmit` · `npx eslint src` · `npx next build`. **Antes de escribir código de Next.js lee `node_modules/next/dist/docs/`** (versión con cambios incompatibles; ver `AGENTS.md`).
+- **Trampas de esta máquina (Windows):** el bash rompe heredocs con comillas y barras invertidas → escribe scripts con la herramienta de archivos y ejecútalos; rutas de Windows con barras normales; en `subprocess` de Python resuelve `higgsfield` con `shutil.which`.
+
+## 6. Decisiones abiertas que hay que cerrar con Christian al arrancar
+1. **Puente:** ¿el ciclo nuevo parte el lunes 19-oct proponiendo la semana 26–31 (con 19–24 armada con el flujo actual), o parte el 26? (§4 y §15-1).
+2. Telegram «ON por defecto» para avisos (§15-7): confirmar tono y frecuencia al primer uso.
+3. Si quiere partir por la **Fase 0** (recomendado) y cuál es el siguiente paso después.
+4. Para el carrusel educativo del viernes 16: si lo produce el flujo actual o espera al Taller (no bloquea el spec).
+
+## 7. Texto sugerido para abrir la sesión nueva (Christian lo pega)
+> Lee `atacama-labs-app/docs/ARRANQUE-NUEVA-SESION-OS-V3.md` y luego el spec `docs/SPEC-ATACAMA-OS-V3-TALLER-Y-CORREO.md`. Quiero ejecutar el spec de Atacama OS v3. Empieza por la **Fase 0** (solo verificaciones, sin cambios visibles). Trabaja una fase a la vez, pásame un resumen corto en español simple al terminar cada una y espera mi «sí» antes de seguir, de hacer `git push` o de encender cualquier motor. No publiques, programes, apruebes ni envíes nada por tu cuenta.

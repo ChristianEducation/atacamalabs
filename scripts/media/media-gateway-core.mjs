@@ -23,9 +23,12 @@ export function mgProviders(cfg) {
   const c = cfg && typeof cfg === 'object' ? cfg : {};
   const generativeOn = c.media_generative_enabled === true && Number(c.media_generative_budget_usd) > 0;
   return {
-    renderer: { label: 'Renderer de carruseles (Playwright)', kind: 'deterministic', runs_on: 'worker_local', enabled: true, verified: true, cost_usd: 0,
+    renderer: { label: 'Renderer de carruseles (Playwright)', kind: 'deterministic', runs_on: 'vps_worker', enabled: true, verified: true, cost_usd: 0,
       needs: ['carousel', 'typographic', 'comparison', 'before_after', 'checklist', 'framework', 'resource_visual', 'process_flow'], operations: ['render'],
-      note: 'Texto exacto, marca oficial, sin costo. Corre en el equipo de Christian: node scripts/media/media-gateway.mjs run' },
+      note: 'Texto exacto, marca oficial, sin costo. Corre solo en la VPS (worker de Hermes cada ~5 min); respaldo manual en el PC: node scripts/media/media-gateway.mjs run' },
+    studio: { label: 'Taller de motion (HyperFrames en la VPS)', kind: 'deterministic', runs_on: 'vps_worker', enabled: true, verified: true, cost_usd: 0,
+      needs: ['short_video'], operations: ['video'],
+      note: 'El video ya se produjo y validó en el taller de la VPS (motion_render.sh); el worker lo sube a la biblioteca de medios y reenvía la pieza a revisión. Sin costo.' },
     manual: { label: 'Asset propio (captura, foto, diagrama hecho a mano)', kind: 'manual', runs_on: 'christian', enabled: true, verified: true, cost_usd: 0,
       needs: ['annotated_screenshot', 'editorial_image', 'conceptual_image', 'diagram', 'architecture', 'chart', 'short_video', 'resource_visual'], operations: ['register'],
       note: 'Christian entrega la imagen o el video y se registra y asocia a la pieza' },
@@ -134,6 +137,12 @@ export function mgRoute(req, cfg) {
   const wanted = r.provider && provs[r.provider] ? r.provider : null;
   const pick = (name) => ({ provider: name, operation: op, cost_estimate_usd: provs[name].cost_usd == null ? null : provs[name].cost_usd });
   if (op === 'register' || wanted === 'manual') return { ...pick('manual'), operation: 'register', status: provs.manual.needs.includes(r.need) ? 'queued' : 'unavailable', reason: provs.manual.needs.includes(r.need) ? 'Esperando el asset de Christian' : 'El asset manual no aplica a esta necesidad', alternatives: alt, needs_authorization: false };
+  if (wanted === 'studio') {
+    const okSlug = /^[a-z0-9][a-z0-9-]{2,60}$/.test(String(r.composition || ''));
+    return okSlug && provs.studio.needs.includes(r.need)
+      ? { ...pick('studio'), operation: 'video', status: 'queued', reason: 'El taller de motion produjo el video (proyecto «' + r.composition + '»); el worker lo sube', alternatives: [], needs_authorization: false }
+      : { provider: 'studio', operation: 'video', status: 'unavailable', reason: 'El taller de motion solo sirve «short_video» y exige composition = nombre del proyecto en /opt/data/motion-studio/projects (minúsculas, números y guiones).', alternatives: alt, cost_estimate_usd: 0, needs_authorization: false };
+  }
   if ((wanted === 'renderer' || !wanted) && provs.renderer.needs.includes(r.need) && op === 'render') return { ...pick('renderer'), status: 'queued', reason: 'El renderer lo produce con texto exacto y sin costo', alternatives: [], needs_authorization: false };
   const gen = provs.higgsfield;
   if (!gen.needs.includes(r.need) && !['edit', 'variation', 'from_reference'].includes(op)) {
@@ -182,5 +191,46 @@ export function mgValidateResult(r) {
 export function mgRenderHash(piece) {
   const p = piece && typeof piece === 'object' ? piece : {};
   const slides = Array.isArray(p.slides) ? p.slides : [];
-  return mgFnv(JSON.stringify({ f: p.format, c: p.channel, s: slides, v: 'render-v1' }));
+  const o = { f: p.format, c: p.channel, s: slides, v: 'render-v1' };
+  if (p.format === 'historia') o.st = p.story || null;      // las historias se dibujan desde piece.story (las demás claves quedan idénticas: los hashes antiguos siguen valiendo)
+  return mgFnv(JSON.stringify(o));
+}
+
+/** Valida un archivo (PNG o MP4, base64) que el worker de la VPS manda para subir a la biblioteca de GHL. Devuelve el nombre de archivo seguro y el mime. */
+export function mgValidateUpload(b) {
+  const x = b && typeof b === 'object' ? b : {};
+  const errors = [];
+  const mime = x.mime === 'video/mp4' ? 'video/mp4' : 'image/png';
+  const data = typeof x.png_base64 === 'string' ? x.png_base64 : '';
+  const dec = (c) => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.indexOf(c);
+  if (!data) errors.push('png_base64_obligatorio');
+  else {
+    if (data.length < 100) errors.push('archivo_demasiado_pequeno');
+    if (data.length > (mime === 'video/mp4' ? 14000000 : 9000000)) errors.push(mime === 'video/mp4' ? 'video_demasiado_grande_max_10mb' : 'imagen_demasiado_grande_max_6mb');
+    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(data)) errors.push('no_es_base64');
+    else if (mime === 'image/png' && data.indexOf('iVBORw0KGgo') !== 0) errors.push('no_es_png');
+    else if (mime === 'video/mp4') {
+      // bytes 4..7 de un MP4 = «ftyp»
+      const bytes = []; for (let k = 0; k < 12; k += 4) { const n = (dec(data[k]) << 18) | (dec(data[k + 1]) << 12) | (dec(data[k + 2]) << 6) | dec(data[k + 3]); bytes.push((n >> 16) & 255, (n >> 8) & 255, n & 255); }
+      if (String.fromCharCode(bytes[4], bytes[5], bytes[6], bytes[7]) !== 'ftyp') errors.push('no_es_mp4');
+    }
+  }
+  const label = String(x.label || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 30);
+  const idx = Math.min(Math.max(parseInt(x.index, 10) || 0, 0), 99);
+  return { ok: errors.length === 0, errors, mime, filename: 'atacama-' + (label ? label + '-' : '') + String(idx + 1).padStart(2, '0') + (mime === 'video/mp4' ? '.mp4' : '.png') };
+}
+
+/**
+ * Elige qué asset reclama el worker. Primero el más antiguo en cola; si no hay, un asset «generating» huérfano (el worker anterior murió: más de
+ * 20 min sin avance). Un huérfano con 2 o más intentos ya no se reintenta: se cierra como fallido con el motivo visible.
+ * Con la pausa general activa (system_state.global_pause) no reclama nada (Atacama OS v3 §8.8).
+ */
+export function mgPickClaim(queued, stale, sys) {
+  if (sys && sys.global_pause === true) return { action: 'paused', message: 'Pausa general activa: el worker no toma trabajos nuevos hasta que Christian reanude desde /ops.' };
+  const q = Array.isArray(queued) ? queued[0] : null;
+  if (q) return { action: 'claim', asset: q, attempts: q.attempts || 0 };
+  const s = Array.isArray(stale) ? stale[0] : null;
+  if (!s) return { action: 'none' };
+  if ((s.attempts || 0) >= 2) return { action: 'give_up', asset: s, attempts: (s.attempts || 0) + 1, error: 'El worker no pudo terminar el render tras 3 intentos (se quedó a medias): revisar el log del worker en la VPS.' };
+  return { action: 'claim', asset: s, attempts: (s.attempts || 0) + 1 };
 }

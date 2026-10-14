@@ -92,7 +92,14 @@ export type Prep = {
   autosend: { enabled: boolean; min_score: number; updated_at: string | null };
 };
 
+/** Atacama OS v3 · Fase 1: bandeja «Hoy» y pausa general (n8n 25 → panel.v3). */
+export type InboxItem = { kind: string; prio: number; count: number; title: string; from: string; age: string; tone: "fresh" | "warn" | "old"; href: string; examples: string[] };
+export type PauseState = { paused: boolean; reason: string | null; since: string | null; by: string | null; resume_at: string | null };
+export type PanelV3 = { pause: PauseState; nav_v2: boolean; inbox: { items: InboxItem[]; total: number } };
+
 export type Panel = {
+  /** Opcional: un n8n anterior no lo trae (se usa la navegación nueva sin bandeja). */
+  v3?: PanelV3;
   prep?: Prep;
   outreach?: {
     email: { mode: string; sent_today: number; cap: number; drafts: number; approved_waiting: number };
@@ -173,6 +180,6 @@ export type Overview = {
 };
 export type OverviewResult = { ok: true; overview: Overview } | { ok: false; reason: "not_configured" | "unreachable" | "bad_response" };
 
-export type OpsActionName = "email_save" | "email_approve" | "email_reject" | "email_reopen" | "linkedin_approve" | "linkedin_reject" | "content_approve" | "content_reject" | "autosend_set" | "autosend_sweep" | "prep_li_sent" | "prep_hold" | "prep_release" | "prep_contact";
-export type OpsActionInput = { action: OpsActionName; request_id: string; message_id?: string; candidate_id?: string; piece_id?: string; subject?: string; body?: string; expected_hash?: string; reason?: string; enabled?: boolean; min_score?: number; kind?: string; text?: string; email?: string; linkedin?: string };
+export type OpsActionName = "email_save" | "email_approve" | "email_reject" | "email_reopen" | "linkedin_approve" | "linkedin_reject" | "content_approve" | "content_reject" | "autosend_set" | "autosend_sweep" | "prep_li_sent" | "prep_hold" | "prep_release" | "prep_contact" | "pause_set";
+export type OpsActionInput = { action: OpsActionName; request_id: string; message_id?: string; candidate_id?: string; piece_id?: string; subject?: string; body?: string; expected_hash?: string; reason?: string; enabled?: boolean; min_score?: number; kind?: string; text?: string; email?: string; linkedin?: string; paused?: boolean; resume_at?: string };
 export type OpsActionState = { ok: boolean; message: string; status?: string; hash?: string | null; needsGhl?: boolean; replayed?: boolean };
