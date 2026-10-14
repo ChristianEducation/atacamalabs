@@ -17,3 +17,5 @@ Orden: F0 ✅ → F1 recortada → F4 → S2+S3 → F2 → F3 → resto F6 → F
 - **UI F1:** navegación v2 (`views.ts` SECTIONS + pestañas de sección), vista **Hoy** (bandeja + resumen + pausa), **Redes → Ideas** (estado vacío hasta F4), **Resultados** (vacío útil), **Sistema → Controles** (pausa + motores), marca «EN PAUSA» en el menú, interruptor `ops_nav_v2`. `Pause.tsx` (confirmación con motivo; reanudar en un toque).
 - **Pruebas F1:** `run-all-tests` 44/44 (1419), `ui-tests` 91 ok (nuevas: 5 secciones, URLs viejas, pestañas, interruptor v1, badges, bandeja ordenada, pausa→EN PAUSA→reanudar), `tsc` y `eslint` limpios, `next build` ok. Capturas revisadas (escritorio y 390 px).
 - **Commits:** `ddbb285` = trabajo previo vivo sin versionar (D-01, sin `src/`). Commit de F1 a continuación.
+- **F1 CERRADA · push `1711f19..49408da` a main.** Vercel `dpl_3JTSJgTJiVHL9P8DW7Tzxneunyv2` READY. Verificado: `/` 200, `/recursos/que-proceso-automatizar-primero` 200, `/ops` 200 pide PIN. Ejecuciones posteriores de 24/25/29/30 en `success`. Revertir: `git revert 49408da` (+ respaldos n8n y bloque REVERSIÓN de la migración).
+- **Sigue:** Fase 4 (Ideas con ficha).
