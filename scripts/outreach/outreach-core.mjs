@@ -377,7 +377,9 @@ export function pickDue(msgs, cfg, nowMs, sentToday, suppression, candidatesById
     const sup = checkSuppression(m.to_email, suppression);
     if (sup) return { action: 'cancel', message: m, reason: 'suprimido (' + sup.reason + ')' };
     if (c && c.status === 'discarded') return { action: 'cancel', message: m, reason: 'el prospecto fue descartado' };
-    if (contentHash(m.to_email, m.subject, m.body) !== m.content_hash) return { action: 'cancel', message: m, reason: 'el contenido cambió después de la aprobación' };
+    // S3 (Atacama OS v3, lección del 13-oct): si el texto ya no coincide con su huella NO se cancela en silencio: vuelve a borrador con el motivo
+    // (la revisión de integridad S2 avisa a Christian) y se aprueba de nuevo cuando él lo revise.
+    if (contentHash(m.to_email, m.subject, m.body) !== m.content_hash) return { action: 'cancel', return_draft: true, message: m, reason: 'el texto cambió después de aprobar: revísalo y vuelve a aprobar' };
     if (m.kind !== 'initial' && m.kind !== 'reply') {
       if (lastSentByCandidate && lastSentByCandidate[m.candidate_id] && nowMs - lastSentByCandidate[m.candidate_id] < 48 * 3600000) { skipped.push({ id: m.id, why: 'espaciado: menos de 48 h desde el último correo a este prospecto' }); continue; }
       if (inboundByCandidate && inboundByCandidate[m.candidate_id]) return { action: 'cancel', message: m, reason: 'el prospecto ya respondió' };

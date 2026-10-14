@@ -212,6 +212,7 @@ return [{ json: base }];`;
 
 export const senderCancelCode = `const d = $('Decide').first().json;
 const now = new Date(d.now).toISOString();
+if (d.decision.return_draft) return [{ json: { skip: false, method: 'PATCH', path: 'outreach_messages?id=eq.' + d.message.id + '&status=eq.approved', body: { status: 'draft', approved_by: null, approved_at: null, approval_text: null, scheduled_for: null, confirm_code: null, confirm_hash: null, confirm_expires_at: null, error: 'Devuelto a borrador por el motor: ' + d.decision.reason, updated_at: now }, prefer: 'return=minimal' } }];
 return [{ json: { skip: false, method: 'PATCH', path: 'outreach_messages?id=eq.' + d.message.id + '&status=eq.approved', body: { status: 'cancelled', error: 'Cancelado por el motor: ' + d.decision.reason, updated_at: now }, prefer: 'return=minimal' } }];`;
 
 export const senderClaimCode = `const d = $('Decide').first().json;
@@ -266,7 +267,7 @@ export function buildSender() {
     ifNode('Cancel?', '$json.decision.action === "cancel"', [2640, 180]),
     code('Cancel Plan', senderCancelCode, [2880, 120]),
     sbApply('Apply Cancel', [3120, 120]),
-    code('Respond Cancel', "const d = $('Decide').first().json; return [{ json: { ok: true, status: 'cancelled', message: 'Mensaje cancelado por el motor: ' + d.decision.reason, message_id: d.message.id, safety: { messages_sent: 0 } } }];", [3360, 120]),
+    code('Respond Cancel', "const d = $('Decide').first().json; return [{ json: { ok: true, status: d.decision.return_draft ? 'returned_to_draft' : 'cancelled', message: (d.decision.return_draft ? 'Mensaje devuelto a borrador por el motor: ' : 'Mensaje cancelado por el motor: ') + d.decision.reason, message_id: d.message.id, safety: { messages_sent: 0 } } }];", [3360, 120]),
     code('Respond None', "const d = $('Decide').first().json; return [{ json: { ok: true, status: 'idle', mode: d.config.mode, message: d.decision.reason || 'Nada que enviar.', sent_today: d.sent_today, safety: { messages_sent: 0 } } }];", [2880, 300]),
     code('Claim Plan', senderClaimCode, [2640, -140]),
     { id: uuid(), name: 'Claim', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [2880, -140], credentials: SUPABASE_CRED, continueOnFail: true, alwaysOutputData: true,

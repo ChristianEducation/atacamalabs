@@ -133,7 +133,8 @@ ok('aprobar: huella guardada desactualizada (texto editado por fuera de «guarda
   // el motor de envío acepta lo aprobado: la huella guardada ya coincide con el texto
   const due = (m) => oc.pickDue([{ ...m, scheduled_for: new Date(WED).toISOString() }], CFG, WED, 0, [], { 'c-1': cand() }, {}, {});
   assert.equal(due(r2.approved).action, 'send');
-  assert.equal(due({ ...r2.approved, content_hash: stale.content_hash }).action, 'cancel'); // lo que pasaba antes del arreglo
+  assert.equal(due({ ...r2.approved, content_hash: stale.content_hash }).action, 'cancel'); // lo que pasaba antes del arreglo (S1)
+  assert.equal(due({ ...r2.approved, content_hash: stale.content_hash }).return_draft, true); // S3: ya no destruye el mensaje: vuelve a borrador
   assert.equal(oc.contentHash(r2.approved.to_email, r2.approved.subject, r2.approved.body), r2.approved.content_hash);
   // con huella al día, el primer paso no toca content_hash
   const r0 = oc.planApprove({}, { now: WED, candidate: cand(), history: [live0()], suppression: [], config: CFG, rnd: () => 0.5 });
@@ -175,6 +176,8 @@ ok('pickDue: cancela suprimidos, descartados, contenido alterado, seguimiento tr
   assert.equal(oc.pickDue([appr()], CFG, WED, 0, [{ domain: 'clinicarica.cl', reason: 'bounce' }], cb).action, 'cancel');
   assert.equal(oc.pickDue([appr()], CFG, WED, 0, [], { 'c-1': cand({ status: 'discarded' }) }).action, 'cancel');
   assert.match(oc.pickDue([appr({ body: BODY + ' x' })], CFG, WED, 0, [], cb).reason, /cambió/);
+  assert.equal(oc.pickDue([appr({ body: BODY + ' x' })], CFG, WED, 0, [], cb).return_draft, true);
+  assert.equal(oc.pickDue([appr()], CFG, WED, 0, [{ domain: 'clinicarica.cl', reason: 'bounce' }], cb).return_draft, undefined);
   assert.match(oc.pickDue([appr({ kind: 'followup_1' })], CFG, WED, 0, [], cb, { 'c-1': true }).reason, /respondió/);
   assert.equal(oc.pickDue([appr({ kind: 'followup_1' })], CFG, WED, 0, [], cb, {}).action, 'send');
 });

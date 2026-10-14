@@ -74,7 +74,7 @@ export const parseCode = `try {
   const iso = (ms) => new Date(ms).toISOString();
   const n8n = '${N8N_BASE}/api/v1/';
   const u = {
-    messages: sb + 'outreach_messages?created_at=gte.' + iso(now - 45 * 86400000) + '&select=id,candidate_id,company_name,kind,direction,status,classification,subject,body,sent_at,created_at,updated_at,metadata&order=created_at.desc&limit=700',
+    messages: sb + 'outreach_messages?created_at=gte.' + iso(now - 45 * 86400000) + '&select=id,candidate_id,company_name,kind,direction,status,classification,subject,body,to_email,content_hash,sent_at,created_at,updated_at,metadata&order=created_at.desc&limit=700',
     cands: sb + 'prospect_candidates?status=in.(in_ghl,accepted,contacted)&select=id,company_name,status,band,priority_score,source_name,created_at,ghl_stage,ghl_opportunity_id,ghl_contact_id,next_action_at,channel_state,industry,location,domain,angle:canonical->>outreach_angle,quote:canonical->evidence_quotes->0->>quote,contact:canonical->contact,sflags:canonical->source_flags,extra_emails:canonical->extra_contacts->emails,more_emails:canonical->emails&order=created_at.desc&limit=400',
     pieces: sb + 'content_pieces?select=id,topic,channel,resource_id,editorial_type:piece->>editorial_type,status,ghl_status,ghl_approval_status,scheduled_at,published_at,is_test,learning,learned_at,created_at,format,category,score,hook:piece->>hook,taller_status,updated_at,motion_language:piece->motion_brief->>language,story_template:piece->story->>template&order=created_at.desc&limit=300',
     metrics: sb + 'content_metrics?captured_at=gte.' + iso(now - 30 * 86400000) + '&select=content_piece_id,metric_window,status,likes,comments,shares,captured_at&order=captured_at.desc&limit=200',

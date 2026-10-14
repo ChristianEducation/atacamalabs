@@ -392,6 +392,19 @@ export function radarGate(d) {
  * Alertas: reglas SOLO para lo que merece interrumpir. existing = filas de ops_alerts. Devuelve el conjunto actual, qué notificar ahora y qué resolver.
  * Deduplicación por alert_key: un evento se avisa una vez; una condición abierta no se repite salvo si es crítica (cada 12 h, máx. 3 veces).
  */
+/** Huella de 16 hex de un correo: idéntica a contentHash de scripts/outreach/outreach-core.mjs (doble FNV-1a sobre correo␁asunto␁cuerpo). */
+export function opsContentHash(to, subject, body) {
+  const t = String(to == null ? '' : to).trim().toLowerCase().replace(/^mailto:/, '') + '\u0001' + String(subject || '').trim() + '\u0001' + String(body || '').trim();
+  let a = 0x811c9dc5, b = 0x9747b28c;
+  for (let i = 0; i < t.length; i++) { const c = t.charCodeAt(i); a ^= c; a = Math.imul(a, 0x01000193); b ^= c + i; b = Math.imul(b, 0x85ebca6b); }
+  return (a >>> 0).toString(16).padStart(8, '0') + (b >>> 0).toString(16).padStart(8, '0');
+}
+
+/** S2: correos salientes en borrador o aprobados cuya huella guardada ya no coincide con su texto (solo los que traen huella y destinatario). */
+export function opsHashMismatches(messages) {
+  return (Array.isArray(messages) ? messages : []).filter((m) => m && m.direction === 'outbound' && ['draft', 'approved'].includes(m.status) && m.content_hash && m.to_email && !/\bTEST\b/.test(String(m.company_name || '')) && opsContentHash(m.to_email, m.subject, m.body) !== m.content_hash);
+}
+
 export function evaluateAlerts(d, existing) {
   const now = d.now, tz = (d.cfg && d.cfg.tz) || 'America/Santiago';
   const cur = [];
@@ -432,6 +445,8 @@ export function evaluateAlerts(d, existing) {
     add('run:' + r.id, n.severity, n.title, '', true, { notice: n.text });
   }
   { const pf = prepFreshNotice(d); if (pf) add(pf.key, pf.severity, pf.title, '', true, { notice: pf.text }); }
+  // 6b) S2 (Atacama OS v3): huella que no coincide con el texto en borradores/aprobados → CRÍTICA, antes de que llegue la hora de envío
+  for (const m of opsHashMismatches(d.messages || [])) add('hash_mismatch:' + m.id, 'critical', 'Huella no coincide: ' + (m.company_name || 'correo'), (m.status === 'approved' ? 'Un correo APROBADO cambió de texto por fuera del camino normal. Si llega su hora, el envío lo devolverá a borrador (no se cancela). ' : 'El borrador cambió de texto por fuera del camino normal (se volverá a sellar al aprobarlo). ') + 'Revísalo en Prospección y correo antes de aprobar.', false);
   // 7) feeds RSS con 3+ fallos seguidos (aviso, no crítico)
   summarizeGrowth(d).rss.failing.forEach((f) => add('rss_feed:' + f.slug, 'high', 'Feed RSS con fallos: ' + f.slug, f.error + ' (' + f.failures + ' veces seguidas)', false));
   // --- dedupe

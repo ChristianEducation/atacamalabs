@@ -147,7 +147,8 @@ t('22 suprimido: cancela el mensaje (no envía)', r.dec.decision.action === 'can
 r = await sender({ config: LIVE(), approved: [liveAppr()], candidates: [{ ...liveCand, status: 'discarded' }] });
 t('22 descartado después de aprobar: cancela', r.dec.decision.action === 'cancel');
 r = await sender({ config: LIVE(), approved: [liveAppr({ body: BODY + ' cambio sin reaprobar' })], candidates: [liveCand] });
-t('22 contenido alterado tras la aprobación: cancela (la aprobación solo vale para el hash aprobado)', r.dec.decision.action === 'cancel' && /cambió/.test(r.dec.decision.reason));
+t('22 contenido alterado tras la aprobación: NO sale (la aprobación solo vale para el texto aprobado)', r.dec.decision.action === 'cancel' && /cambió/.test(r.dec.decision.reason));
+t('22 · S3: el texto alterado vuelve a BORRADOR con el motivo (no se cancela) y la aprobación anterior queda anulada', r.cancel.body.status === 'draft' && r.cancel.body.approved_by === null && r.cancel.body.scheduled_for === null && /Devuelto a borrador por el motor/.test(r.cancel.body.error) && /status=eq\.approved/.test(r.cancel.path) && r.resp.status === 'returned_to_draft' && r.resp.safety.messages_sent === 0, JSON.stringify(r.cancel));
 r = await sender({ config: LIVE(), approved: [appr()], candidates: [CAND] });
 t('22 candidato TEST jamás sale en modo live', r.dec.decision.action === 'none');
 r = await sender({ config: LIVE(), approved: [liveAppr({ kind: 'followup_1' })], candidates: [liveCand], inbound: [{ candidate_id: CAND.id }] });

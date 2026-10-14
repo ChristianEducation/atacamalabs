@@ -4,6 +4,8 @@
  *
  *   node scripts/ops/n8n-deploy.mjs <archivo.json> <workflowId>            → solo compara (no cambia nada)
  *   node scripts/ops/n8n-deploy.mjs <archivo.json> <workflowId> --apply    → respalda, despliega y verifica
+ *   node scripts/ops/n8n-deploy.mjs <copia-parcheada-del-vivo.json> <id> --apply --live-patch  → SOLO 22/23: parche puntual sobre una copia del
+ *       workflow vivo; exige que todos los nodos conserven EXACTAMENTE sus credenciales (las de Gmail viven solo en n8n).
  *
  * 1) Lee el workflow vivo y lo guarda en backups/<fecha>/n8n/wf-<id>-antes-<hora>.json (antes de cualquier cambio).
  * 2) Muestra qué nodos cambian (por nombre) entre lo vivo y lo generado: así se ve si el JSON local trae algo más que el cambio buscado.
@@ -18,10 +20,12 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const [file, id, flag] = process.argv.slice(2);
+const [file, id, flag, flag2] = process.argv.slice(2);
+const livePatch = flag2 === '--live-patch' || flag === '--live-patch';
 if (!file || !id) { console.error('uso: node scripts/ops/n8n-deploy.mjs <archivo.json> <workflowId> [--apply]'); process.exit(2); }
 const gen = JSON.parse(fs.readFileSync(path.resolve(ROOT, file), 'utf8'));
-if (/^Atacama Labs - 2[23] /.test(gen.name) || /-2[23]-/.test(path.basename(file))) { console.error('PROHIBIDO: los workflows 22 y 23 no se despliegan desde el JSON (credenciales de Gmail).'); process.exit(3); }
+const is2223 = /^Atacama Labs - 2[23] /.test(gen.name) || /-2[23]-/.test(path.basename(file));
+if (is2223 && !livePatch) { console.error('PROHIBIDO: los workflows 22 y 23 no se despliegan desde el JSON (credenciales de Gmail). Solo se admite --live-patch sobre una copia del vivo.'); process.exit(3); }
 
 const env = Object.fromEntries(fs.readFileSync(path.join(ROOT, '.env.local'), 'utf8').split(/\r?\n/).filter((l) => /^[A-Z0-9_]+=/.test(l)).map((l) => { const i = l.indexOf('='); return [l.slice(0, i), l.slice(i + 1).replace(/^["']|["']$/g, '')]; }));
 const BASE = String(env.N8N_BASE_URL || '').replace(/\/$/, '');
@@ -47,6 +51,10 @@ fs.writeFileSync(bak, JSON.stringify(live, null, 2));
 console.log('respaldo:', path.relative(ROOT, bak));
 
 const liveBy = Object.fromEntries(live.nodes.map((n) => [n.name, n]));
+if (is2223) {
+  const credDiff = gen.nodes.filter((n) => !liveBy[n.name] || JSON.stringify(n.credentials || null) !== JSON.stringify(liveBy[n.name].credentials || null)).map((n) => n.name);
+  if (credDiff.length || gen.nodes.length !== live.nodes.length) { console.error('PROHIBIDO: --live-patch exige los mismos nodos y credenciales que el vivo. Distintos: ' + (credDiff.join(', ') || 'cantidad de nodos')); process.exit(3); }
+}
 const genBy = Object.fromEntries(gen.nodes.map((n) => [n.name, n]));
 const added = gen.nodes.filter((n) => !liveBy[n.name]).map((n) => n.name);
 const removed = live.nodes.filter((n) => !genBy[n.name]).map((n) => n.name);

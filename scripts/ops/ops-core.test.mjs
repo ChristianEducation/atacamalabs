@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import * as oc from './ops-core.mjs';
+import * as oc2 from '../outreach/outreach-core.mjs';
 
 let n = 0;
 const ok = (name, fn) => { try { fn(); n++; } catch (e) { console.error('FAIL', name, '\n', e.stack.split('\n').slice(0, 4).join('\n')); process.exitCode = 1; } };
@@ -596,6 +597,16 @@ ok('propuesta del día: valida tipos y horas, exige decisión editorial, y convi
   assert.ok(none.ok); assert.match(oc.storyProposalText(none.value), /ninguna/);
 });
 
+ok('S2 · huella: idéntica a la del motor de correos; detecta borradores/aprobados alterados y alerta CRÍTICA (sin TEST)', () => {
+  assert.equal(oc.opsContentHash(' Dra@Clinica.cl ', ' Asunto ', ' Cuerpo\n'), oc2.contentHash('dra@clinica.cl', 'Asunto', 'Cuerpo'));
+  const good = { id: 'g', direction: 'outbound', status: 'approved', company_name: 'Alfa', to_email: 'a@b.cl', subject: 'S', body: 'B', content_hash: oc.opsContentHash('a@b.cl', 'S', 'B') };
+  const bad = { ...good, id: 'x', body: 'B alterado' };
+  const test = { ...bad, id: 't', company_name: 'Empresa TEST' };
+  assert.deepEqual(oc.opsHashMismatches([good, bad, test, { ...bad, id: 's', status: 'sent' }]).map((m) => m.id), ['x']);
+  const ev = oc.evaluateAlerts(base({ messages: [good, bad] }), []);
+  const a = ev.notify.find((n) => n.key === 'hash_mismatch:x');
+  assert.ok(a && a.severity === 'critical' && /Huella no coincide: Alfa/.test(a.title) && /devolverá a borrador/.test(a.detail));
+});
 ok('v3 · aviso «ideas listas»: una vez por corrida real con ideas; nada si no hubo ideas', () => {
   const d = base();
   const n1 = oc.runNotice(d, { kind: 'ideas_week', status: 'ok', created_at: iso(H), summary: { created: 7, week_start: '2026-10-26' } });
