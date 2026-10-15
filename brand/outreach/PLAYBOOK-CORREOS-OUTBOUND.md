@@ -552,7 +552,64 @@ Si alguna respuesta genera dudas, reescribe antes de entregar.
 
 ---
 
-## 17. Principio final
+## 17. Follow-ups outbound
+
+Los seguimientos no deben volver a vender ni prometer demos, ejemplos, videos, propuestas o reuniones que no estén realmente preparados.
+
+Principio general: **Follow-up 1 valida el dolor. Follow-up 2 cierra el hilo y deja la puerta abierta.**
+
+### Follow-up 1
+
+**Objetivo:** validar si el problema planteado en el primer correo realmente existe.
+
+Debe:
+
+- retomar el hilo brevemente;
+- evitar repetir toda la propuesta;
+- hacer una pregunta simple y fácil de responder;
+- permitir que el prospecto diga tanto «sí» como «no, eso ya lo tenemos resuelto».
+
+Ejemplo explícito:
+
+> Estimado equipo de Rentalin,
+>
+> Retomo esto por si quedó abajo en la bandeja.
+>
+> ¿Ese trabajo previo a cotizar hoy les quita tiempo, o es una parte que ya tienen bastante resuelta?
+
+Usar este ejemplo como referencia de tono y lógica, no como plantilla literal. Adaptar la pregunta al proceso específico del prospecto.
+
+### Follow-up 2
+
+**Objetivo:** cerrar el hilo con educación y sin presión.
+
+Debe:
+
+- dejar claro que no seguiremos insistiendo;
+- no volver a presentar la solución;
+- mantener abierta la posibilidad de conversar más adelante;
+- permitir que la conversación se abra también hacia otro proceso repetitivo de la empresa.
+
+Ejemplo explícito:
+
+> Estimado equipo de Rentalin,
+>
+> Cierro el hilo por acá para no insistir. Si en algún momento quieren revisar esta u otra parte del proceso que siga siendo repetitiva, encantado de conversarlo.
+>
+> Saludos,
+> Christian
+
+Usar este ejemplo como referencia de tono y lógica, no como plantilla rígida.
+
+### Nota de implementación
+
+- La firma («Christian Wevar | Atacama Labs») la agrega el sistema al enviar; en el cuerpo basta con «Saludos,».
+- Los seguimientos siguen siendo borradores: nunca se envían sin la aprobación de Christian.
+- La plantilla automática anterior de seguimiento (que ofrecía «un ejemplo concreto») queda reemplazada por estas reglas.
+
+---
+
+## 18. Principio final
 
 El mejor correo de Atacama Labs no es el que demuestra que sabemos mucho sobre la empresa.
 

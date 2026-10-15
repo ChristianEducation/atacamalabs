@@ -158,12 +158,18 @@ export function validateDraft(d, ctx) {
   return { ok: errors.length === 0, errors };
 }
 
-/** Plantilla de seguimiento (el humano la edita y aprueba; nunca se envía sola). */
+/**
+ * Plantilla de seguimiento según Playbook §17 (el humano la edita y aprueba; nunca se envía sola).
+ * Seguimiento 1 valida el dolor con una pregunta simple; seguimiento 2 cierra el hilo y deja la puerta abierta.
+ * No promete demos, ejemplos, videos, propuestas ni reuniones. La firma la agrega el sistema al enviar.
+ * El seguimiento 1 es una base genérica: conviene adaptar la pregunta al proceso del prospecto.
+ */
 export function followupTemplate(kind, cand, firstSubject) {
   const co = (cand && cand.company_name) || 'su empresa';
   const subj = 'Re: ' + String(firstSubject || 'Atacama Labs').replace(/^re:\s*/i, '');
-  if (kind === 'followup_2') return { subject: subj, body: 'Hola, otra forma de verlo para ' + co + ': si hoy una persona atiende esas consultas una por una, la idea es que el sistema las ordene primero y solo pase a una persona lo que necesita criterio. Si quieres, te mando un esquema de cómo se vería. Y si no es prioridad, lo dejamos aquí sin problema.' };
-  return { subject: subj, body: 'Hola, te dejo un ejemplo concreto de lo que te comentaba: un agente que responde la primera consulta, pide los datos que faltan y deja el caso listo para que ' + co + ' lo cierre. ¿Te sirve que te mande cómo lo plantearía?' };
+  const greet = 'Estimado equipo de ' + co + ',\n\n';
+  if (kind === 'followup_2') return { subject: subj, body: greet + 'Cierro el hilo por acá para no insistir. Si en algún momento quieren revisar esta u otra parte del proceso que siga siendo repetitiva, encantado de conversarlo.\n\nSaludos,' };
+  return { subject: subj, body: greet + 'Retomo esto por si quedó abajo en la bandeja.\n\n¿Ese trabajo previo hoy les quita tiempo, o es una parte que ya tienen bastante resuelta?' };
 }
 
 export function escapeHtml(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }

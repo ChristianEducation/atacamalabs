@@ -177,7 +177,8 @@ export function coldLint(d, peers, cold) {
   const cta = cmCtaKind(body);
   const ctaHead = cmWords(parts.sentences.slice(-1)[0] || '').slice(0, 5).join(' ');
   if (cta === 'meeting') warn('cta_reunion', isFollow ? 'El seguimiento pide reunión/minutos: baja la fricción con una pregunta fácil de responder.' : 'El primer correo pide reunión/minutos: el playbook lo prohíbe; cierra con una pregunta conversacional sobre el proceso.', isFollow ? 6 : 10);
-  if (cta === 'example' && !isFollow) warn('cta_ofrece_ejemplo', 'El cierre ofrece mandar/mostrar algo: el primer correo solo busca conversación (ej. «¿Les haría sentido conversar sobre cómo automatizar esta primera etapa u otro proceso que hoy les quite tiempo?»).', 12);
+  if (cta === 'example' && isFollow) warn('cta_ofrece_ejemplo', 'El seguimiento ofrece mandar/mostrar algo: el Playbook §17 prohíbe prometer demos, ejemplos, videos, propuestas o reuniones que no estén preparados.', 14);
+  else if (cta === 'example') warn('cta_ofrece_ejemplo', 'El cierre ofrece mandar/mostrar algo: el primer correo solo busca conversación (ej. «¿Les haría sentido conversar sobre cómo automatizar esta primera etapa u otro proceso que hoy les quite tiempo?»).', 12);
   if (ctaHead && same(list, (p) => cmWords(cmParts(p.body).sentences.slice(-1)[0] || '').slice(0, 5).join(' ') === ctaHead) >= 2) warn('cta_repetido', 'El cierre se repite en otros correos: varía la pregunta según el contexto.', 8);
   if (!isFollow && cta === 'statement') warn('cta_ausente', 'El correo no cierra con una pregunta fácil de responder.', 10);
 
@@ -187,7 +188,7 @@ export function coldLint(d, peers, cold) {
   if (atcSent.length > 1 || (atcSent.length === 1 && nWords > 0 && atcWords / nWords > 0.4)) warn('explica_atacama', 'Explica demasiado a Atacama Labs (' + atcSent.length + ' oraciones): el correo es sobre el prospecto, no sobre nosotros.', atcSent.length > 1 ? 10 : 6);
   if (nWords > 130) warn('largo', 'Tiene ' + nWords + ' palabras: el playbook apunta a 70–120.', 10);
   else if (nWords > 120) warn('largo', 'Tiene ' + nWords + ' palabras: apunta a 70–120.', 4);
-  else if (nWords < 40) warn('muy_corto', 'Tiene solo ' + nWords + ' palabras: falta contexto para que tenga sentido.', 8);
+  else if (!isFollow && nWords < 40) warn('muy_corto', 'Tiene solo ' + nWords + ' palabras: falta contexto para que tenga sentido.', 8);
   const fr = parts.sentences.filter((s) => /(repite|a mano|manual|se pierde|se pierden|demora|tarda|cuello de botella|duplica|persigue|incomplet|desordenad|fuera de horario|sin respuesta|responder lo mismo)/.test(cmNorm(s))).length;
   const conn = (bn.match(/\b(ademas|tambien|por otro lado|por otra parte|asimismo|por ultimo)\b/g) || []).length;
   if (fr >= 3 || conn >= 2) warn('varios_problemas', 'Toca más de un problema: elige uno solo.', fr >= 3 ? 8 : 4);
@@ -207,7 +208,8 @@ export function coldLint(d, peers, cold) {
   if (/(me permito|quisiera presentar|tengo el agrado|le escribo para presentar)/.test(bn)) ai.push('fórmula de carta formal');
   if ((body.match(/—/g) || []).length >= 2 || /[\u{1F300}-\u{1FAFF}]/u.test(body)) ai.push('rayas largas/emojis');
   if (ai.length) warn('tono_ia', 'Suena generado: ' + ai.join('; ') + '.', Math.min(10, 5 * ai.length));
-  if (isFollow && /\b(retomo|retomar|solo queria|por si se perdio|recordarte|seguimiento de mi|quedo atento|reflotar)\b/.test(bn)) warn('followup_sin_aporte', 'El seguimiento solo recuerda: agrega algo nuevo (ejemplo, dato, versión más simple o pregunta distinta).', 12);
+  if (isFollow && /\b(demo|video|propuesta|cotizacion|presentacion|esquema|ejemplo)\b/.test(bn)) warn('followup_promete', 'El seguimiento menciona demo/ejemplo/video/propuesta: el Playbook §17 prohíbe prometer algo que no esté realmente preparado.', 14);
+  if (isFollow && /\b(armamos agentes|implementamos|nuestros agentes|nuestra solucion)\b/.test(bn)) warn('followup_vuelve_a_vender', 'El seguimiento vuelve a presentar la solución: el Playbook §17 pide solo retomar y preguntar (S1) o cerrar con cortesía (S2).', 10);
 
   // ---- personalización real (evidencia usada / señal concreta)
   let used = false;
@@ -221,7 +223,7 @@ export function coldLint(d, peers, cold) {
   const listy = parts.sentences.some((s) => (s.match(/,/g) || []).length >= 2 && /\b(y|e)\b/.test(s) && cmWords(s).length >= 12);
   const specific = used || distinctProc >= 2 || /\b\d{2,}\b/.test(parts.text) || listy;
   // (playbook: la investigación es invisible; ya no se exige que el correo repita la evidencia, solo que el problema sea específico)
-  if (!specific) warn('sin_senal_concreta', 'No hay una señal concreta del prospecto (proceso, dato o situación): quedaría igual para cualquier empresa.', 14);
+  if (!specific && !isFollow) warn('sin_senal_concreta', 'No hay una señal concreta del prospecto (proceso, dato o situación): quedaría igual para cualquier empresa.', 14);
 
   // ---- similitud con otros borradores
   const mine = cmShingles(parts.text, 3);
@@ -241,12 +243,12 @@ export function coldLint(d, peers, cold) {
   else if ((nWords >= 55 && nWords < 70) || (nWords > 120 && nWords <= 130)) rew('breve', 'Largo razonable (' + nWords + ' palabras).', 3);
   if (cta === 'question') rew('cta_facil', 'Cierra con una pregunta conversacional fácil de responder.', 8);
   else if (cta === 'who') rew('cta_facil', 'Cierra preguntando quién lo ve: fácil de responder.', 4);
-  else if (isFollow && cta === 'example') rew('cta_facil', 'Cierra con algo fácil de responder.', 8);
-  if (!isFollow && /^estimad[oa]s? /.test(cmNorm(parts.greeting))) rew('saludo_formal', 'Saludo profesional del playbook.', 3);
+  if (/^estimad[oa]s? /.test(cmNorm(parts.greeting))) rew('saludo_formal', 'Saludo profesional del playbook.', 3);
   if (fr <= 1 && conn === 0 && nWords >= 30) rew('un_problema', 'Trata una sola idea.', 6);
   if (!sigRep && !(maxSim >= 0.25)) rew('diverso', 'Su estructura es distinta a la de los demás.', 6);
   if (!buzz.length && !ai.length && !/(somos una agencia|nuestra agencia|soluciones (a medida|personalizadas|integrales))/.test(bn)) rew('natural', 'Lenguaje natural, sin jerga.', 4);
-  if (isFollow && /\b(ejemplo|esquema|caso|dato|version mas simple|asi lo plantearia|asi lo veria|recurso|idea concreta)\b/.test(bn)) rew('followup_aporta', 'El seguimiento aporta algo nuevo.', 8);
+  if (kind === 'followup_1' && cta === 'question' && /\b(resuelt|quita tiempo|ya lo tienen|ya tienen)\b/.test(bn)) rew('followup_valida', 'Valida el dolor con una pregunta que admite «sí» o «ya lo tenemos resuelto» (Playbook §17).', 14);
+  if (kind === 'followup_2' && /\b(cierro|no insist|dejo el hilo|dejamos aqui)\b/.test(bn)) rew('followup_cierra', 'Cierra el hilo con educación y sin presión (Playbook §17).', 14);
 
   let score = 60;
   for (const r of rewards) score += r.pts;

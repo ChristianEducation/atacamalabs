@@ -143,12 +143,31 @@ ok('personalización: sin señal concreta resta; la investigación es invisible 
   assert.ok(cm.coldLint(GOOD_A, [], EV).evidence_used === true);
 });
 
-ok('seguimientos: «solo retomo» penaliza; aportar algo nuevo premia; las plantillas del sistema ya no son «retomo»', () => {
-  const weak = { kind: 'followup_1', subject: 'Re: consultas entre sedes', body: 'Hola, retomo mi mensaje anterior por si se perdió. Quedo atento a tu respuesta para coordinar una llamada de 15 minutos.' };
-  assert.ok(cm.coldLint(weak, [], {}).warnings.some((w) => w.code === 'followup_sin_aporte'));
-  const strong = { kind: 'followup_1', subject: 'Re: consultas entre sedes', body: 'Hola Andrea, te dejo un ejemplo concreto de cómo se vería: la consulta llega con sede y tratamiento definidos y recepción solo confirma la hora. ¿Te sirve que te mande el esquema?' };
-  assert.ok(cm.coldLint(strong, [], {}).rewards.some((r) => r.code === 'followup_aporta'));
-  for (const k of ['followup_1', 'followup_2']) { const t = oc.followupTemplate(k, { company_name: 'Dentaline' }, 'consultas entre sedes'); assert.ok(!cm.coldLint({ kind: k, ...t }, [], {}).warnings.some((w) => w.code === 'followup_sin_aporte'), k); }
+ok('seguimientos (Playbook §17): prometer ejemplo/demo penaliza; retomar y preguntar premia; cerrar el hilo premia; las plantillas del sistema pasan limpias', () => {
+  const sub = 'Re: consultas entre sedes';
+  const promete = { kind: 'followup_1', subject: sub, body: 'Hola Andrea, te dejo un ejemplo concreto de cómo se vería. ¿Te sirve que te mande el esquema o una demo?' };
+  const lp = cm.coldLint(promete, [], {});
+  assert.ok(lp.warnings.some((w) => w.code === 'followup_promete'));
+  assert.ok(lp.warnings.some((w) => w.code === 'cta_ofrece_ejemplo'));
+  const vende = { kind: 'followup_1', subject: sub, body: 'Estimado equipo de Dentaline,\n\nArmamos agentes que responden la primera consulta y dejan el caso listo. ¿Lo conversamos?' };
+  assert.ok(cm.coldLint(vende, [], {}).warnings.some((w) => w.code === 'followup_vuelve_a_vender'));
+  const f1 = { kind: 'followup_1', subject: sub, body: 'Estimado equipo de Rentalin,\n\nRetomo esto por si quedó abajo en la bandeja.\n\n¿Ese trabajo previo a cotizar hoy les quita tiempo, o es una parte que ya tienen bastante resuelta?' };
+  const l1 = cm.coldLint(f1, [], {});
+  assert.ok(l1.rewards.some((r) => r.code === 'followup_valida'));
+  assert.deepEqual(l1.hard, []);
+  assert.ok(!l1.warnings.some((w) => ['muy_corto', 'sin_senal_concreta', 'followup_sin_aporte', 'followup_promete', 'cta_ofrece_ejemplo'].includes(w.code)));
+  const f2 = { kind: 'followup_2', subject: sub, body: 'Estimado equipo de Rentalin,\n\nCierro el hilo por acá para no insistir. Si en algún momento quieren revisar esta u otra parte del proceso que siga siendo repetitiva, encantado de conversarlo.\n\nSaludos,' };
+  const l2 = cm.coldLint(f2, [], {});
+  assert.ok(l2.rewards.some((r) => r.code === 'followup_cierra'));
+  assert.ok(!l2.warnings.some((w) => ['muy_corto', 'followup_promete', 'cta_ofrece_ejemplo', 'cta_reunion', 'followup_vuelve_a_vender'].includes(w.code)));
+  for (const k of ['followup_1', 'followup_2']) {
+    const t = oc.followupTemplate(k, { company_name: 'Dentaline' }, 'consultas entre sedes');
+    const l = cm.coldLint({ kind: k, ...t }, [], {});
+    assert.deepEqual(l.hard, [], k);
+    assert.ok(!l.warnings.some((w) => ['followup_promete', 'cta_ofrece_ejemplo', 'followup_vuelve_a_vender', 'muy_corto'].includes(w.code)), k);
+    assert.ok(/^Estimado equipo de Dentaline,/.test(t.body), k);
+    assert.ok(!/ejemplo|demo|video|propuesta|reuni/i.test(t.body), k);
+  }
 });
 
 ok('bloqueos reales: porcentajes, garantías y números de clientes sin respaldo', () => {
