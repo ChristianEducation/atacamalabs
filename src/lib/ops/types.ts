@@ -136,7 +136,7 @@ export type WeekData = {
     meetings_today: { at: string; day: string; who: string }[]; close: { scheduled: number; total: number; light: string } };
   costs: { higgs: { balance: number | null; spent_week: number; cap: number; reserve: number; week: string | null; at: string | null } | null; pieces: { id: string; topic: string; credits: number; status: string | null }[]; total_pieces: number; note: string };
 };
-export type LibraryIndex = { font: string; palette: { name: string; hex: string }[]; brand: { name: string; url: string; kind: string }[]; mascot: { name: string; path: string }[]; recipes: { slug: string; title: string; path: string; receta: string; prompts: { name: string; text: string }[] }[] };
+export type LibraryIndex = { font: string; palette: { name: string; hex: string }[]; brand: { name: string; url: string; kind: string }[]; mascot: { name: string; path: string }[]; recipes: { slug: string; title: string; path: string; receta: string; prompts: { name: string; text: string }[] }[]; motion?: { slug: string; title: string; path: string; text: string }[] };
 /** Fase 8: contenido → ventas, aprendizaje e iteraciones. */
 export type ResultsPiece = { id: string; topic: string; channel: string | null; format: string | null; at: string; keyword: string | null; resource: { slug: string; name: string } | null; contacts_dm: number; contacts_web: number; meetings: number; metrics: { likes: number | null; comments: number | null; shares: number | null; window: string } | null };
 export type ResultsData = {

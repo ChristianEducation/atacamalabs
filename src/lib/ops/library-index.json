@@ -186,5 +186,43 @@
     }
    ]
   }
+ ],
+ "motion": [
+  {
+   "slug": "brief-director",
+   "title": "Brief de director (piezas de más de 30 s)",
+   "path": "brand/content/motion/brief-director.md",
+   "text": "# Brief de director (piezas de más de 30 s)\n\n- **Pieza / idea:** id y título.\n- **Para quién y qué problema reconocible.**\n- **Una frase:** lo único que tiene que quedar.\n- **Formato y duración:** 9:16 (y si va 1:1 / 16:9), segundos.\n- **Estructura por escenas:** escena · segundos · qué se ve · texto en pantalla · sonido.\n- **Estilo:** guía de estilo aprobada o plantilla (lista de estados, paneles partidos, ráfaga…), perfil de movimiento.\n- **Material:** capturas reales, logos oficiales, llamita oficial (bípeda), audio.\n- **Cierre:** CTA y logo.\n- **Topes:** créditos de Higgsfield (si hay, con autorización), fecha límite.\n- **Riesgos:** qué puede salir mal y cómo se ve si falla."
+  },
+  {
+   "slug": "lista-de-estados",
+   "title": "Plantilla «lista de estados» (mini-interfaces)",
+   "path": "brand/content/motion/lista-de-estados/README.md",
+   "text": "# Plantilla «lista de estados» (mini-interfaces)\n\nUn solo elemento que se transforma, un cursor que dispara cada cambio y **último frame = primero** (loop sin costura). Ejemplo: formulario de WhatsApp Flows que se completa.\n\n- Cambiar solo los textos de `STATES` y el título; tiempos y cuadrícula quedan.\n- Exportar: `node scripts/motion/multiformat.mjs brand/content/motion/lista-de-estados/composition.html --out <carpeta>` (9:16, 1:1, 16:9 con reencuadre).\n- Puerta de calidad: `node scripts/motion/quality-gate.mjs prepare <video> --twin <segundo render>` y `grade`.\n- Validada el 15-oct-2026 con la composición de prueba: determinismo OK (framemd5 idéntico) y nota 8,0."
+  },
+  {
+   "slug": "perfiles-movimiento",
+   "title": "Perfiles de movimiento (Motion v2)",
+   "path": "brand/content/motion/perfiles-movimiento.md",
+   "text": "# Perfiles de movimiento (Motion v2)\n\nCuatro perfiles de resorte amortiguado (ω = rigidez, ζ = amortiguación). Se eligen por pieza y se mantienen en toda la pieza.\n\n| Perfil | ω | ζ | Cuándo |\n|---|---|---|---|\n| **seco** | 22 | 1,0 | cursores, cortes de interfaz, datos: llega sin rebote |\n| **estándar** | 14 | 0,8 | la mayoría de entradas y cambios de estado |\n| **pesado** | 8 | 0,9 | objetos grandes, cierres con logo, calma |\n| **juguetón** | 16 | 0,45 | llamita, ganchos, un acento por pieza (no todo) |\n\n**Suma de resortes:** cuando un elemento cambia de destino a mitad de camino, NO se reinicia la animación: cada cambio de destino agrega su propio resorte desde ese instante (`valor = inicio + Σ (destinoᵢ − destinoᵢ₋₁) · resorte(t − tᵢ)`). Así no hay saltos. Implementación de referencia: `lista-de-estados/composition.html` (`spring`, `sumSprings`).\n\n**Determinismo:** todo depende solo de `t` (sin `Date.now`, sin azar sin semilla). La puerta de calidad lo comprueba renderizando dos veces."
+  },
+  {
+   "slug": "reglas-sonido",
+   "title": "Reglas de sonido (Motion v2)",
+   "path": "brand/content/motion/reglas-sonido.md",
+   "text": "# Reglas de sonido (Motion v2)\n\n- Los efectos van **por debajo de la música**; nada agudo ni estridente.\n- Empezar en **tiempo fuerte** (el primer golpe coincide con el primer cambio visual).\n- Nivel de loudness según el estándar vigente del taller (medirlo con `ffmpeg -af loudnorm=print_format=summary` y ajustar; no \"a oído\").\n- **No prometer sincronía con el beat sin un detector de ritmo real:** usar `hyperframes beats` y anclar los cambios a esos tiempos.\n- Si el audio no convence, la pieza se muestra sin sonido (antecedente del 14-oct): mejor silencio que audio sintético pobre.\n- Audio de Higgsfield solo con autorización de Christian (créditos)."
+  },
+  {
+   "slug": "skill-una-frase",
+   "title": "Pedido en una frase (plantilla)",
+   "path": "brand/content/motion/skill-una-frase.md",
+   "text": "# Pedido en una frase (plantilla)\n\nChristian puede pedir un video así, y Claude pide de una vez lo que falte:\n\n> «Video **[formato 9:16/1:1/16:9]** de **[segundos]** s para **[red]** sobre **[tema]**, estilo **[plantilla o guía]**, perfil **[seco/estándar/pesado/juguetón]**, con **[material]**, cierre **[CTA]**, para el **[fecha]**.»\n\nSi falta algún dato, Claude lo pregunta **todo junto en un solo mensaje**, no de a uno."
+  },
+  {
+   "slug": "style-guide-plantilla",
+   "title": "Guía de estilo desde referencias — plantilla (`style_guide.md`)",
+   "path": "brand/content/motion/style-guide-plantilla.md",
+   "text": "# Guía de estilo desde referencias — plantilla (`style_guide.md`)\n\n> Se toma la **gramática**, nunca el contenido, logos ni personajes de la referencia. Christian la aprueba antes de usarla; queda en la Biblioteca.\n\n1. **Referencias:** enlaces o archivos (solo para análisis; no se reutilizan).\n2. **Frames extraídos:** hoja de contacto a 2 fps de cada referencia (`quality-gate.mjs prepare` sirve para esto).\n3. **Ritmo:** duración de cada plano, aceleraciones, pausas.\n4. **Transiciones:** tipo (corte, barrido, morph del mismo elemento…), duración, perfil de movimiento.\n5. **Cámara:** fija / paneo / zoom; profundidad.\n6. **Textura:** grano, papel, ruido, luz.\n7. **Tipografía:** familia equivalente con DM Sans, pesos, tamaños relativos, mayúsculas.\n8. **Entrada/salida del texto:** por palabra, por línea, máscara, escritura.\n9. **Qué NO tomar:** logos, personajes, frases, música y colores propios de la referencia.\n10. **Aprobación:** fecha y «sí» de Christian."
+  }
  ]
 }

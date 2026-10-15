@@ -81,3 +81,11 @@ Orden: F0 ✅ → F1 recortada → F4 → S2+S3 → F2 → F3 → resto F6 → F
 - **Prueba de aceptación en vivo (TEST):** 30 eventos TEST → `learning_propose` sin test = «bloqueado (job apagado)»; con test = 1 propuesta guardada (muestra 30, 3 citas, «por decidir»). Todo lo TEST borrado por ID exacto (0 restantes). Lectura viva de `results_view`: 2 piezas, 6 recursos, 12 eventos reales con «muestra insuficiente». `piece_contact` y `learning_decide` probados offline (no se creó ningún contacto real en GHL).
 - Desplegados con respaldo: 25 y 29 (`backups/2026-10-15/n8n/`), VPS (`atacama_ops_mcp.py`, `atacama_ops_cli.py`, `learning_gate.sh`, prompts), gateway reiniciado.
 - Prueba de interfaz de cierre de sesión: era una carrera (se enviaba antes de hidratar); la prueba ahora espera `networkidle`.
+
+## Fase 5 · herramientas de Motion v2 en el PC (15-oct)
+- `scripts/motion/quality-gate.mjs` (+ núcleo `qgate-core.mjs`): hoja de contacto 2 fps, teléfono 360 px, tira de 12 frames en la acción más rápida, loop ×2, determinismo por framemd5; `grade` escribe `qa.json`.
+- `scripts/motion/multiformat.mjs`: un video en 9:16 · 1:1 · 16:9 desde una línea de tiempo (reencuadre por CSS).
+- `scripts/taller/taller-add-version.mjs` y `taller-pendientes.mjs` + comando `/taller-pendientes` (`.claude/commands/`).
+- Biblioteca → «Motion v2»: perfiles de movimiento (resortes sumados), reglas de sonido, plantilla de guía de estilo, brief de director, pedido en una frase y la plantilla **«lista de estados»** (`brand/content/motion/`). Skill `atacama-motion` §8.
+- **Validación sin créditos:** composición de prueba renderizada en los 3 formatos (26 s); primera calificación honesta 7,1 → NO pasó (cursor fuera de cuadro, gancho quieto, fantasma a los 5 s); corregida → determinismo OK y nota 8,0. Pieza TEST `en_pc_con_claude` → `taller-pendientes` la lista → subida sin qa rechazada → con qa queda `para_revisar` (v1, qa guardado). El paso a «programada» no se hizo (programar es solo de Christian; el flujo está probado en F2). Pieza, versión y archivo TEST borrados por ID (0 restantes).
+- Brag: no evaluado (espera OK).

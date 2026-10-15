@@ -3,7 +3,8 @@
  * Atacama OS v3 · Fase 7 — índice de la Biblioteca (spec §8.7, anexo §H3).
  *   node scripts/ops/build-library-index.mjs          → escribe src/lib/ops/library-index.json
  *   node scripts/ops/build-library-index.mjs --check  → falla si el índice no está al día (lo usa run-all-tests)
- * Fuente única: public/brand (logos oficiales), brand/content/mascot (poses), brand/content/recetas (recetas y prompts aprobados).
+ * Fuente única: public/brand (logos oficiales), brand/content/mascot (poses), brand/content/recetas (recetas y prompts aprobados),
+ * brand/content/motion (Motion v2: perfiles, sonido, guía de estilo, brief de director, plantillas).
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -29,7 +30,9 @@ export function buildIndex() {
     return { slug, title, path: rel(dir), receta: md.trim(), prompts };
   }) : [];
   const palette = [{ name: 'Azul Atacama', hex: '#0F5CED' }, { name: 'Tinta', hex: '#121A2B' }, { name: 'Noche', hex: '#041228' }, { name: 'Papel', hex: '#F5F4F0' }, { name: 'Línea', hex: '#DDD9D1' }];
-  return { font: 'DM Sans', palette, brand, mascot, recipes };
+  const motDir = path.join(ROOT, 'brand/content/motion');
+  const motion = fs.existsSync(motDir) ? fs.readdirSync(motDir).sort().flatMap((n) => { const p = path.join(motDir, n); const md = fs.statSync(p).isDirectory() ? path.join(p, 'README.md') : (n.endsWith('.md') ? p : null); if (!md || !fs.existsSync(md)) return []; const text = read(md).trim(); return [{ slug: n.replace(/\.md$/, ''), title: (text.match(/^#\s+(.+)$/m) || [])[1] || n, path: rel(md), text }]; }) : [];
+  return { font: 'DM Sans', palette, brand, mascot, recipes, motion };
 }
 
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);

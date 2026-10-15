@@ -150,6 +150,14 @@ export async function LibraryView({ panel, idP, fetchedAt, stale }: { panel: Pan
           </details>
         )) : <Empty>Aún no hay recetas versionadas.</Empty>}
       </Section>
+      <Section id="ops-lib-motion" title={`Motion v2 (${(lib.motion ?? []).length})`}>
+        {(lib.motion ?? []).length ? (lib.motion ?? []).map((m) => (
+          <details key={m.slug} className="ops-more-box" data-testid="library-motion">
+            <summary>{m.title}</summary>
+            <pre className="ops-diff">{m.text}</pre>
+          </details>
+        )) : <Empty>Aún no hay plantillas de motion.</Empty>}
+      </Section>
       <Section id="ops-lib-res" title={`Recursos (${res.length})`}>
         {res.length ? (
           <ul className="ops-list ops-signals">

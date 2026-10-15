@@ -63,3 +63,10 @@ Límites del servidor: 2 CPU, sin GPU. Un video de 8 s tarda ≈ 50 s en renderi
 
 ## 7. Qué NO haces
 No publicas, no programas, no apruebas, no tocas LinkedIn ni Meta, no gastas créditos de Higgsfield por encima del tope semanal, no modificas las plantillas ni los archivos de `/opt/data/atacama-media/`, y no contactas a terceros.
+
+## 8. Motion v2 (spec §6.6, 15-oct)
+- **Perfiles de movimiento** (seco · estándar · pesado · juguetón) con suma de resortes: `brand/content/motion/perfiles-movimiento.md`.
+- **Reglas de sonido** (efectos bajo la música, tiempo fuerte, loudness medido, sin prometer beat sin `hyperframes beats`): `brand/content/motion/reglas-sonido.md`.
+- **Puerta de calidad** antes de mostrar un video: hoja de contacto 2 fps, teléfono 360 px, tira de 12 frames, loop ×2, determinismo; nota ≥ 8 (`scripts/motion/quality-gate.mjs` en el PC).
+- **Un video, tres formatos** (9:16 · 1:1 · 16:9) con reencuadre: `scripts/motion/multiformat.mjs` y el contrato `atacamaSeek(t)`.
+- Plantillas: guía de estilo desde referencias (solo gramática; Christian la aprueba), «lista de estados», brief de director (> 30 s) y pedido en una frase. Todas en la Biblioteca.

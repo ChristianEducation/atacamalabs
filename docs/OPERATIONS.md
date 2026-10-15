@@ -218,3 +218,9 @@ Ver [`CONTACTO-PREPARADO.md`](CONTACTO-PREPARADO.md): salidas de cada Investigad
 - `/ops?view=resultados|aprendizaje|iteraciones`. Lecturas 25: `results_view`, `learning_context`; escritura 25 (Hermes): `learning_propose` (solo con `learning_enabled=true` o `test=true`). Escrituras 29: `piece_contact`, `learning_decide`.
 - Encender el aprendizaje (solo Christian): `update content_config set learning_enabled = true where id = 1;` + `hermes cron resume 93c607085f8b`. Apagar: al revés.
 - Muestra mínima: `content_config.learning_min_sample` (30).
+
+## 23. Atacama OS v3 · Fase 5 (15-oct-2026): Motion v2 en el PC
+- Cola: `/taller-pendientes` o `node scripts/taller/taller-pendientes.mjs`.
+- Exportar: `node scripts/motion/multiformat.mjs <composicion.html> --out <dir>` (contrato `?format=` + `atacamaSeek(t)`).
+- Calidad: `node scripts/motion/quality-gate.mjs prepare <video> --twin <render2>` → mirar imágenes → `grade <dir> --scores notas.json`.
+- Subir: `node scripts/taller/taller-add-version.mjs --piece <id> --file <video> --qa <qa.json> --caption "…"` (≤ 10 MB por archivo).
