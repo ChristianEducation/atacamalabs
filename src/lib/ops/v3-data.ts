@@ -1,5 +1,5 @@
 import "server-only";
-import type { DnsCheck, HistoryData, IdeasView, MailView, TallerView, WeekData } from "./types";
+import type { DnsCheck, HistoryData, IdeasView, MailView, ResultsData, TallerView, WeekData } from "./types";
 import { swr } from "./swr";
 
 /**
@@ -95,6 +95,16 @@ export async function getMail(): Promise<V3Result<MailView>> {
   try { return { ok: true, value: (await mailCache.get()).value }; } catch { return { ok: false, reason: "unreachable" }; }
 }
 
+const resultsCache = swr<ResultsData>(() => read("results_view", (j) => {
+  const r = j.results as ResultsData["results"] | undefined, l = j.learning as ResultsData["learning"] | undefined;
+  return r && Array.isArray(r.pieces) && l ? { results: r, learning: l, learning_enabled: j.learning_enabled === true } : null;
+}), { freshMs: 60_000, maxStaleMs: 15 * 60_000 });
+
+export async function getResults(): Promise<V3Result<ResultsData>> {
+  if (!config()) return { ok: false, reason: "not_configured" };
+  try { return { ok: true, value: (await resultsCache.get()).value }; } catch { return { ok: false, reason: "unreachable" }; }
+}
+
 export async function getHistory(): Promise<V3Result<HistoryData>> {
   if (!config()) return { ok: false, reason: "not_configured" };
   try { return { ok: true, value: (await historyCache.get()).value }; } catch { return { ok: false, reason: "unreachable" }; }
@@ -115,5 +125,6 @@ export function invalidateV3(): void {
   tallerCache.drop();
   mailCache.drop();
   historyCache.drop();
+  resultsCache.drop();
   weekCache.drop();
 }

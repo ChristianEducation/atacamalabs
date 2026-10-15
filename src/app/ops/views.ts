@@ -19,11 +19,11 @@ export const SECTIONS = [
   { id: "hoy", label: "Hoy", views: [{ id: "hoy", label: "Hoy" }] },
   { id: "redes", label: "Redes", views: [{ id: "ideas", label: "Ideas" }, { id: "taller", label: "Taller" }, { id: "contenido", label: "Publicaciones" }, { id: "biblioteca", label: "Biblioteca" }] },
   { id: "correo", label: "Prospección y correo", views: [{ id: "correo", label: "Hoy" }, { id: "aprobaciones", label: "Borradores", q: "&filter=correos" }, { id: "cola", label: "Cola" }, { id: "respuestas", label: "Enviados y respuestas" }, { id: "seguimientos", label: "Seguimientos" }, { id: "embudo", label: "Embudo" }, { id: "prospeccion", label: "Radar" }, { id: "control", label: "Falta contacto" }, { id: "salud", label: "Salud" }, { id: "outreach", label: "LinkedIn", q: "&tab=linkedin" }] },
-  { id: "resultados", label: "Resultados", views: [{ id: "resultados", label: "Resultados" }] },
+  { id: "resultados", label: "Resultados", views: [{ id: "resultados", label: "Contenido → ventas" }, { id: "aprendizaje", label: "Aprendizaje" }, { id: "iteraciones", label: "Iteraciones" }] },
   { id: "sistema", label: "Sistema", views: [{ id: "sistema", label: "Salud" }, { id: "historial", label: "Historial" }, { id: "alertas", label: "Alertas" }, { id: "costos", label: "Costos" }, { id: "controles", label: "Controles" }] },
 ] as const;
 
-export type ViewId = (typeof VIEWS)[number]["id"] | "hoy" | "ideas" | "taller" | "resultados" | "controles" | "correo" | "cola" | "respuestas" | "seguimientos" | "embudo" | "salud" | "biblioteca" | "historial" | "alertas" | "costos";
+export type ViewId = (typeof VIEWS)[number]["id"] | "hoy" | "ideas" | "taller" | "resultados" | "controles" | "correo" | "cola" | "respuestas" | "seguimientos" | "embudo" | "salud" | "biblioteca" | "historial" | "alertas" | "costos" | "aprendizaje" | "iteraciones";
 type SectionView = { id: string; label: string; q?: string };
 
 /** Enlace de una pestaña de sección (algunas llevan su filtro: Borradores = solo correos, LinkedIn = pestaña LinkedIn). */

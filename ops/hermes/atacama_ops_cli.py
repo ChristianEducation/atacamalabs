@@ -95,6 +95,7 @@ GATES = {  # tipo → (acción de compuerta, cómo se registra una omisión)
     "igweek": ("igweek_gate", {"action": "job_report", "kind": "ig_week"}),
     "storyday": ("storyday_gate", {"action": "job_report", "kind": "story_day"}),
     "ideas": ("ideas_gate", {"action": "job_report", "kind": "ideas_week"}),
+    "learning": ("learning_context", {"action": "job_report", "kind": "learning"}),
 }
 
 

@@ -708,7 +708,7 @@ def ideas_context() -> str:
         r = post_ops({"action": "ideas_gate"}, timeout=90)
     except Exception as ex:
         return json.dumps({"ok": False, "error": "red", "message": "No pude consultar Atacama OS: %s" % type(ex).__name__}, ensure_ascii=False)
-    return json.dumps({k: r.get(k) for k in ("ok", "mode", "reason", "week_start", "caps", "max_total", "min_score", "already", "recent", "changes", "mine", "sources", "resources", "intel", "rules") if k in r}, ensure_ascii=False)
+    return json.dumps({k: r.get(k) for k in ("ok", "mode", "reason", "week_start", "caps", "max_total", "min_score", "already", "recent", "changes", "mine", "sources", "resources", "intel", "rules", "results") if k in r}, ensure_ascii=False)
 
 
 @mcp.tool()
@@ -747,6 +747,37 @@ def revise_idea(idea_id: str, idea_json: str = "", idea_path: str = "", test: bo
     except Exception as ex:
         return json.dumps({"ok": False, "error": "red", "message": "No pude guardar la idea: %s" % type(ex).__name__}, ensure_ascii=False)
     return json.dumps({k: r.get(k) for k in ("ok", "text", "status", "error") if k in r}, ensure_ascii=False)
+
+
+# ---------------------------------------------------------------- Aprendizaje semanal (Atacama OS v3 · Fase 8): solo PROPONE, nunca aplica
+@mcp.tool()
+def learning_context(test: bool = False) -> str:
+    """APRENDIZAJE — patrones detectados en las correcciones de Christian (ediciones de correo, ideas descartadas, cambios pedidos a piezas,
+    piezas programadas sin cambios), cada uno con su muestra (n), ejemplos (event_id) y si alcanza la muestra mínima (~30).
+    mode=skip si el job está apagado o hay pausa general: entonces responde [SILENT]. Solo lectura."""
+    try:
+        from atacama_common import post_ops
+        r = post_ops({"action": "learning_context", "params": {"test": bool(test)}}, timeout=90)
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "red", "message": "No pude consultar Atacama OS: %s" % type(ex).__name__}, ensure_ascii=False)
+    return json.dumps({k: r.get(k) for k in ("ok", "mode", "reason", "min_sample", "total_events", "by_type", "patterns", "open_patterns", "rules", "error") if k in r}, ensure_ascii=False)
+
+
+@mcp.tool()
+def propose_learning(proposals_json: str = "", proposals_path: str = "", test: bool = False) -> str:
+    """APRENDIZAJE — guarda propuestas para que Christian las apruebe o rechace en /ops → Resultados → Aprendizaje. NUNCA aplica nada.
+    proposals = [{"pattern_id": "playbook:acorta", "proposal": "qué cambiar y por qué (30–1500 caracteres)",
+    "citations": [{"event_id": "...", "note": "qué muestra ese ejemplo"}, ... ≥ 3 del mismo patrón]}] (máx. 8).
+    El servidor descarta las de patrones con muestra insuficiente, sin ≥ 3 citas o ya abiertas. test=true guarda como prueba (is_test)."""
+    proposals, err = _json_arg(proposals_json, proposals_path, "proposals")
+    if err:
+        return err
+    try:
+        from atacama_common import post_ops
+        r = post_ops({"action": "learning_propose", "params": {"proposals": proposals, "test": bool(test)}}, timeout=90)
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "red", "message": "No pude guardar las propuestas: %s" % type(ex).__name__}, ensure_ascii=False)
+    return json.dumps({k: r.get(k) for k in ("ok", "text", "proposed", "discarded", "error") if k in r}, ensure_ascii=False)
 
 
 # ---------------------------------------------------------------- Taller · producción en la VPS (Atacama OS v3 · Fase 3)

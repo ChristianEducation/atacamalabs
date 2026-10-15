@@ -24,6 +24,8 @@ import * as mvCore from '../../scripts/outreach/mail-view-core.mjs';
 import * as hrCore from '../../scripts/ops/health-rules.mjs';
 import * as hiCore from '../../scripts/ops/history-core.mjs';
 import * as wkCore from '../../scripts/ops/week-core.mjs';
+import * as rsCore from '../../scripts/ops/results-core.mjs';
+import * as lnCore from '../../scripts/ops/learning-core.mjs';
 
 const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 export const N8N_BASE = 'https://n8n.srv1650725.hstgr.cloud';
@@ -52,10 +54,10 @@ const sbApply = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRe
     headerParameters: { parameters: [{ name: 'Prefer', value: '={{ $json.prefer || "return=minimal" }}' }] }, sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full() } });
 const GH_HEADERS = [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', value: 'application/json' }];
 
-export const LIB = [...new Map([...Object.values(core), ...['linkedinOverview', 'linkedinView', 'liLabel'].map((k) => liCore[k]), ...Object.values(prepCore), ...Object.values(edCore), ...Object.values(rfCore), growthNorm, growthResourceRank, ...Object.values(v3Core), ...Object.values(ideasCore), ...Object.values(tallerCore), ...Object.values(mvCore), ...Object.values(hrCore), ...Object.values(hiCore), ...Object.values(wkCore)].filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
+export const LIB = [...new Map([...Object.values(core), ...['linkedinOverview', 'linkedinView', 'liLabel'].map((k) => liCore[k]), ...Object.values(prepCore), ...Object.values(edCore), ...Object.values(rfCore), growthNorm, growthResourceRank, ...Object.values(v3Core), ...Object.values(ideasCore), ...Object.values(tallerCore), ...Object.values(mvCore), ...Object.values(hrCore), ...Object.values(hiCore), ...Object.values(wkCore), ...Object.values(rsCore), ...Object.values(lnCore)].filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
 const CFG_JSON = JSON.stringify({ tz: OPS_CFG.tz, stages: OPS_CFG.stages, ignore_opps: OPS_CFG.ignore_opps });
 
-export const ACTIONS = ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'radar_report', 'content_radar_report', 'job_report', 'alerts_poll', 'alerts_ack', 'ideas_list', 'ideas_gate', 'ideas_propose', 'ideas_revise', 'taller_list', 'mail_view', 'history_list', 'week_status'];
+export const ACTIONS = ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'radar_report', 'content_radar_report', 'job_report', 'alerts_poll', 'alerts_ack', 'ideas_list', 'ideas_gate', 'ideas_propose', 'ideas_revise', 'taller_list', 'mail_view', 'history_list', 'week_status', 'results_view', 'learning_context', 'learning_propose'];
 
 export const parseCode = `try {
   const first = $('Ops Webhook').first().json || {};
@@ -65,7 +67,7 @@ export const parseCode = `try {
   if (!ACTIONS.includes(action)) throw new Error('action inválida: usa ' + ACTIONS.join(' | '));
   const dry = b.dry_run === true;
   // la hora solo se puede simular en consultas de lectura o con dry_run (pruebas); las escrituras siempre usan la hora real
-  const now = Number.isFinite(Number(b.now_ms)) && (dry || ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'ideas_list', 'ideas_gate', 'taller_list', 'mail_view', 'history_list', 'week_status'].includes(action)) ? Number(b.now_ms) : Date.now();
+  const now = Number.isFinite(Number(b.now_ms)) && (dry || ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'ideas_list', 'ideas_gate', 'taller_list', 'mail_view', 'history_list', 'week_status', 'results_view', 'learning_context', 'learning_propose'].includes(action)) ? Number(b.now_ms) : Date.now();
   const need = {
     sb: !['alerts_ack'].includes(action) || true,
     ghl: ['daily', 'today', 'urgent', 'stale', 'replies', 'panel'].includes(action),
@@ -73,7 +75,7 @@ export const parseCode = `try {
     deep: (action === 'health' && b.deep === true) || (action === 'alerts_poll' && b.deep_gmail === true) || (action === 'daily' && b.deep === true),
     learn: action === 'content_performance',
     panel: action === 'panel',
-    growth: ['panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'content_performance', 'alerts_poll', 'health', 'ideas_list', 'ideas_gate', 'ideas_propose', 'ideas_revise', 'taller_list', 'mail_view', 'history_list', 'week_status'].includes(action),
+    growth: ['panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'content_performance', 'alerts_poll', 'health', 'ideas_list', 'ideas_gate', 'ideas_propose', 'ideas_revise', 'taller_list', 'mail_view', 'history_list', 'week_status', 'results_view', 'learning_context', 'learning_propose'].includes(action),
   };
   const sb = '${SUPABASE}/rest/v1/', none = '${NONE}';
   const iso = (ms) => new Date(ms).toISOString();
@@ -127,6 +129,17 @@ export const parseCode = `try {
     { key: 'mail_cands', url: sb + 'prospect_candidates?select=id,company_name,status,industry,ghl_stage&limit=2000' });
   // v3 · Fase 7: historial legible (90 días) y «Mi semana» (solo lectura)
   if (action === 'panel') growth_reads.push({ key: 'meet_today', url: sb + 'lead_submissions?meeting_start=gte.' + iso(now - 86400000) + '&meeting_start=lte.' + iso(now + 86400000) + '&select=meeting_start,name,company&order=meeting_start.asc&limit=20' });
+  if (['results_view', 'ideas_gate'].includes(action)) growth_reads.push(
+    { key: 'r_pieces', url: sb + 'content_pieces?created_at=gte.' + iso(now - 120 * 86400000) + '&select=id,topic,channel,format,published_at,scheduled_at,created_at,taller_status,resource_id,is_test,idea:content_ideas!content_pieces_idea_id_fkey(keyword)&order=created_at.desc&limit=400' },
+    { key: 'r_att', url: sb + 'content_attributions?created_at=gte.' + iso(now - 90 * 86400000) + '&select=piece_id,resource_id,source,created_at,is_test&limit=2000' },
+    { key: 'r_leads', url: sb + 'lead_submissions?source_section=eq.recurso-cierre&created_at=gte.' + iso(now - 90 * 86400000) + '&select=source_page,source_section,created_at,meeting_start&limit=1000' });
+  if (action === 'results_view') growth_reads.push(
+    { key: 'r_metrics', url: sb + 'content_metrics?captured_at=gte.' + iso(now - 90 * 86400000) + '&select=content_piece_id,metric_window,likes,comments,shares&limit=2000' },
+    { key: 'r_versions', url: sb + 'content_versions?created_at=gte.' + iso(now - 90 * 86400000) + '&select=piece_id,version_no,cost_credits,created_at,is_test&limit=2000' },
+    { key: 'r_feedback', url: sb + 'content_feedback?created_at=gte.' + iso(now - 90 * 86400000) + '&select=piece_id,created_at,is_test&limit=2000' });
+  if (['results_view', 'learning_context', 'learning_propose'].includes(action)) growth_reads.push(
+    { key: 'l_events', url: sb + 'learning_events?created_at=gte.' + iso(now - 365 * 86400000) + '&select=id,type,subject_id,before,after,reason,is_test,created_at&order=created_at.desc&limit=3000' },
+    { key: 'l_props', url: sb + 'learning_proposals?select=id,target,proposal,evidence,sample_size,status,decided_at,is_test,created_at&order=created_at.desc&limit=200' });
   if (action === 'history_list') growth_reads.push({ key: 'h_audit', url: sb + 'operator_audit_log?created_at=gte.' + iso(now - 90 * 86400000) + '&select=id,actor,tool,status,entity,params,created_at&order=created_at.desc&limit=3000' },
     { key: 'h_runs', url: sb + 'ops_runs?created_at=gte.' + iso(now - 90 * 86400000) + '&select=id,kind,status,summary,created_at&order=created_at.desc&limit=1000' },
     { key: 'h_msgs', url: sb + 'outreach_messages?updated_at=gte.' + iso(now - 90 * 86400000) + '&select=direction,status,classification,error,company_name,sent_at,created_at,updated_at&order=updated_at.desc&limit=3000' },
@@ -231,10 +244,19 @@ else if (A === 'taller_list') {
   out = { taller: tallerListView({ include_test: (p.params || {}).test === true, now: p.now, pieces: G.tpieces || [], versions: G.tversions || [], feedback: G.tfeedback || [], ideas: G.tideas || [], taken: G.ttaken || [], cfg: d.content_cfg || {}, signed }) };
 }
 else if (A === 'mail_view') { if (!G.mail_cfg) missing.push('configuración de correo'); out = { mail: mailView({ now: p.now, tz: CFG.tz, cfg: (G.mail_cfg || [])[0] || {}, msgs: G.mail_msgs || [], supp: G.mail_supp || [], cands: G.mail_cands || [], pause: v3Pause(d.system_state) }) }; }
+else if (A === 'results_view') { const cc = d.content_cfg || {}; out = { results: resultsView({ now: p.now, pieces: G.r_pieces || [], resources: d.resources || [], attributions: G.r_att || [], leads: G.r_leads || [], metrics: G.r_metrics || [], versions: G.r_versions || [], feedback: G.r_feedback || [] }), learning: lnView({ events: G.l_events || [], proposals: G.l_props || [], min: cc.learning_min_sample }), learning_enabled: cc.learning_enabled === true }; }
+else if (A === 'learning_context') { const test = (p.params || {}).test === true, cc = d.content_cfg || {}; out = lnContext({ events: G.l_events || [], proposals: G.l_props || [], min: cc.learning_min_sample, enabled: test || cc.learning_enabled === true, paused: !!(d.system_state && d.system_state.global_pause === true), with_test: test }); out.text = 'Aprendizaje: ' + out.mode + ' — ' + out.reason; }
+else if (A === 'learning_propose') {
+  const test = (p.params || {}).test === true, cc = d.content_cfg || {};
+  const blocked = d.system_state && d.system_state.global_pause === true ? 'Pausa general activa: no se guardan propuestas.' : (!test && cc.learning_enabled !== true) ? 'El job de aprendizaje está apagado (content_config.learning_enabled = false): solo se aceptan pruebas (test=true).' : null;
+  const plan = blocked ? { error: 'bloqueado', message: blocked } : lnProposePlan((p.params || {}).proposals, { events: G.l_events || [], proposals: G.l_props || [], min: cc.learning_min_sample, now: p.now, is_test: test });
+  if (plan.error) out = { ok: false, error: plan.error, text: plan.message };
+  else { plan.writes.forEach((w) => writes.push(w)); out = { ...plan.resp }; }
+}
 else if (A === 'history_list') { out = { history: historyView({ now: p.now, tz: CFG.tz, audit: G.h_audit || [], runs: G.h_runs || [], msgs: G.h_msgs || [], pieces: G.h_pieces || [], alerts: G.h_alerts || [] }), alerts_open: d.alerts.filter((a) => a.status === 'open' && !/^_state:/.test(a.alert_key || '') && !(a.meta && a.meta.notice)).slice(0, 100).map((a) => ({ key: a.alert_key, severity: a.severity, title: a.title, detail: a.detail || '', since: a.first_seen_at, last: a.last_seen_at, panel_only: Boolean(a.meta && a.meta.panel_only) })) }; ['h_audit', 'h_runs', 'h_msgs'].forEach((k) => { if (!G[k]) missing.push(k); }); }
 else if (A === 'week_status') { out = { week: weekView({ now: p.now, tz: CFG.tz, ritual: d.content_cfg && d.content_cfg.week_ritual, ideas: G.w_ideas || [], messages: d.messages, meetings: G.w_meet || [], intel_at: d.intel && d.intel.created_at, pieces: G.w_pieces || [] }), costs: costsView({ higgs: d.hermes && d.hermes.higgs, pieces: G.w_pieces || [] }) }; }
 else if (A === 'ideas_list') { out = { ideas: ideasListView(G.ideas_rows || [], G.idea_batches || [], p.now, CFG.tz) }; }
-else if (A === 'ideas_gate') { out = ideasGateView({ now: p.now, tz: CFG.tz, content_cfg: d.content_cfg, system_state: d.system_state, ideas_all: G.ideas_all || [], pieces: d.pieces, sources_verified: G.sources_verified || [], resources: d.resources, intel: d.intel }); out.text = 'Ideas: ' + out.mode + ' — ' + out.reason; }
+else if (A === 'ideas_gate') { out = ideasGateView({ now: p.now, tz: CFG.tz, content_cfg: d.content_cfg, system_state: d.system_state, ideas_all: G.ideas_all || [], pieces: d.pieces, sources_verified: G.sources_verified || [], resources: d.resources, intel: d.intel }); out.text = 'Ideas: ' + out.mode + ' — ' + out.reason; out.results = rsMondaySummary({ now: p.now, pieces: (G.r_pieces || []).filter((x) => !x.is_test), attributions: (G.r_att || []).filter((x) => !x.is_test), leads: G.r_leads || [], resources: d.resources || [] }); }
 else if (A === 'ideas_propose' || A === 'ideas_revise') {
   const test = (p.params || {}).test === true;
   const known = { sources: Object.fromEntries((G.ev_sources || []).map((x) => [String(x.id).toLowerCase(), x.verified === true])), intel: (G.intel_ids || []).map((x) => x.id), metrics: (G.ev_pieces || []).filter((x) => x.published_at).map((x) => x.id), resources: (d.resources || []).filter((x) => x.status === 'active').map((x) => x.id) };
@@ -259,8 +281,8 @@ else if (A === 'ig_week_status') { out = igWeekly(d); out.text = 'Instagram sema
 else if (A === 'editorial_plan') { out = editorialDecision(d, p.params); }
 else if (A === 'job_report') {
   const r = p.report || {};
-  const kind = ['content_rss', 'competitor_intel', 'content_pieces', 'contact_prep', 'ig_week', 'story_day', 'ideas_week'].includes(r.kind) ? r.kind : null;
-  if (!kind) out = { ok: false, error: 'report.kind debe ser content_rss | competitor_intel | content_pieces | contact_prep | ig_week | story_day | ideas_week', text: 'Tipo de corrida no válido.' };
+  const kind = ['content_rss', 'competitor_intel', 'content_pieces', 'contact_prep', 'ig_week', 'story_day', 'ideas_week', 'learning'].includes(r.kind) ? r.kind : null;
+  if (!kind) out = { ok: false, error: 'report.kind debe ser content_rss | competitor_intel | content_pieces | contact_prep | ig_week | story_day | ideas_week | learning', text: 'Tipo de corrida no válido.' };
   else {
   const n0 = (v) => Math.max(0, Math.min(1000, Number(v) || 0));
   writes.push({ method: 'POST', path: 'ops_runs', body: { kind, status: ['ok', 'skipped', 'error'].includes(r.status) ? r.status : 'ok', summary: { mode: String(r.mode || ''), reason: String(r.reason || '').slice(0, 300), minutes: n0(r.minutes), items_reviewed: n0(r.items_reviewed), signals: n0(r.signals), created: n0(r.created), blocked: n0(r.blocked), held: n0(r.held), competitors: n0(r.competitors), searches: n0(r.searches), pages_opened: n0(r.pages_opened) }, est_cost_usd: Number.isFinite(Number(r.est_cost_usd)) ? Math.max(0, Math.min(50, Number(r.est_cost_usd))) : null }, prefer: 'return=minimal' });
@@ -299,7 +321,7 @@ const planned = c.writes || [], applied = $('Apply Writes').all().map((i) => i.j
 planned.forEach((w, i) => { const a = applied[i] || {}; if (w.check_rows && (a.statusCode || 0) < 300 && !(Array.isArray(a.body) && a.body.length)) { r.ok = false; r.error = 'sin_cambios'; r.text = w.check_message || 'No se aplicó el cambio.'; } });
 if (bad.length) { r.ok = false; r.persist_error = 'Supabase ' + (bad[0].statusCode ? 'HTTP ' + bad[0].statusCode : 'sin respuesta (red)') + ': ' + JSON.stringify(bad[0].body || {}).slice(0, 160); }
 if (c.dry) r.dry_run = true;
-r.safety = { messages_sent: 0, writes: 'solo ops_alerts/ops_runs/story_proposals/content_ideas (ideas: nunca aprueba, produce ni publica)' };
+r.safety = { messages_sent: 0, writes: 'solo ops_alerts/ops_runs/story_proposals/content_ideas/learning_proposals (ideas y aprendizaje: nunca aprueban, aplican, producen ni publican)' };
 return [{ json: r }];`;
 
 export function buildOps() {

@@ -88,7 +88,10 @@ function Detail({ p }: { p: TallerPiece }) {
   const last = p.versions[p.versions.length - 1] ?? null;
   const [sel, setSel] = useState(last ? last.version_no : 0);
   const [cmp, setCmp] = useState<number | null>(null);
-  const [mode, setMode] = useState<null | "schedule" | "discard" | "duplicate">(null);
+  const [mode, setMode] = useState<null | "schedule" | "discard" | "duplicate" | "contact">(null);
+  const [cName, setCName] = useState("");
+  const [cHandle, setCHandle] = useState("");
+  const [cKw, setCKw] = useState(p.keyword ?? "");
   const [fb, setFb] = useState("");
   const [scope, setScope] = useState("global");
   const [cap, setCap] = useState(last?.caption ?? "");
@@ -168,6 +171,14 @@ function Detail({ p }: { p: TallerPiece }) {
           <p className="ops-foot">{p.ghl_post_id ? "Ya está en GHL: se retira con un rechazo (reversible desde GHL) y queda descartada." : "Queda descartada y la razón se guarda para aprender."}</p>
           <div className="ops-btns"><button type="button" className="ops-btn ops-btn-danger" disabled={pending} onClick={() => act({ action: "taller_discard", piece_id: p.id, reason: reason || undefined })}>{pending ? "Descartando…" : "Sí, descartar"}</button><button type="button" className="ops-btn" onClick={() => setMode(null)}>Cancelar</button></div>
         </div>
+      ) : mode === "contact" ? (
+        <div className="ops-reject" data-testid="piece-contact">
+          <p className="ops-foot">Alguien escribió por esta pieza (comentario o mensaje con la palabra clave). Se crea o actualiza el contacto en GHL con la etiqueta <strong>origen:ig:{cKw || "palabra"}</strong> y una nota con la pieza.</p>
+          <input className="ops-input" type="text" maxLength={80} placeholder="Nombre" aria-label="Nombre del contacto" value={cName} onChange={(e) => setCName(e.target.value)} />
+          <input className="ops-input" type="text" maxLength={31} placeholder="@usuario de Instagram (opcional)" aria-label="Usuario de Instagram" value={cHandle} onChange={(e) => setCHandle(e.target.value)} />
+          <input className="ops-input" type="text" maxLength={30} placeholder="Palabra clave" aria-label="Palabra clave" value={cKw} onChange={(e) => setCKw(e.target.value)} />
+          <div className="ops-btns"><button type="button" className="ops-btn ops-btn-primary" disabled={pending || cName.trim().length < 2} onClick={() => act({ action: "piece_contact", piece_id: p.id, contact_name: cName.trim(), handle: cHandle.trim() || undefined, keyword: cKw.trim().toLowerCase() || undefined })}>{pending ? "Registrando…" : "Registrar contacto"}</button><button type="button" className="ops-btn" disabled={pending} onClick={() => setMode(null)}>Cancelar</button></div>
+        </div>
       ) : mode === "duplicate" ? (
         <div className="ops-reject">
           <select className="ops-select" aria-label="Otra red" value={net} onChange={(e) => setNet(e.target.value)}><option value="">Elige la red…</option>{NETS.filter((x) => x.id && x.id !== p.channel).map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</select>
@@ -180,6 +191,7 @@ function Detail({ p }: { p: TallerPiece }) {
           {canReview && last ? <button type="button" className="ops-btn ops-btn-primary" disabled={pending} onClick={() => setMode("schedule")}>Programar…</button> : null}
           {p.status !== "publicada" && p.status !== "descartada" ? <button type="button" className="ops-btn" disabled={pending} onClick={() => setMode("discard")}>Descartar</button> : null}
           <button type="button" className="ops-btn" disabled={pending} onClick={() => setMode("duplicate")}>Duplicar a otra red</button>
+          {["programada", "publicada"].includes(p.status) ? <button type="button" className="ops-btn" disabled={pending} onClick={() => setMode("contact")}>Registrar contacto de esta pieza</button> : null}
         </div>
       )}
     </section>

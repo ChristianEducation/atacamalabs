@@ -12,7 +12,7 @@
  */
 
 export function oaActionList() {
-  return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject', 'autosend_set', 'autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release', 'prep_contact', 'pause_set', 'idea_decide', 'idea_mine', 'taller_feedback', 'taller_approve', 'taller_schedule', 'taller_discard', 'taller_duplicate', 'taller_caption', 'taller_add_version', 'mail_config_set', 'mail_outcome', 'week_ritual_set'];
+  return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject', 'autosend_set', 'autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release', 'prep_contact', 'pause_set', 'idea_decide', 'idea_mine', 'taller_feedback', 'taller_approve', 'taller_schedule', 'taller_discard', 'taller_duplicate', 'taller_caption', 'taller_add_version', 'mail_config_set', 'mail_outcome', 'week_ritual_set', 'piece_contact', 'learning_decide'];
 }
 
 export function oaIsUuid(v) {
@@ -80,6 +80,16 @@ export function oaValidate(b) {
     }
     if (!Object.keys(set).length) return { ok: false, error: 'sin_cambios', message: 'No indicaste ningún cambio.' };
     req.set = set;
+  }
+  if (action === 'piece_contact') {
+    const v = rsPieceContactInput(x);
+    if (v.error) return { ok: false, error: v.error, message: v.message };
+    req.piece_id = String(x.piece_id).toLowerCase(); req.name = v.name; req.handle = v.handle; req.keyword = v.keyword;
+  }
+  if (action === 'learning_decide') {
+    if (!oaIsUuid(x.proposal_id)) return { ok: false, error: 'proposal_id_invalido', message: 'proposal_id (uuid de la propuesta) es obligatorio.' };
+    if (!['approve', 'reject'].includes(x.decision)) return { ok: false, error: 'decision_invalida', message: 'decision: approve | reject' };
+    req.proposal_id = String(x.proposal_id).toLowerCase(); req.decision = x.decision;
   }
   if (action === 'week_ritual_set') {
     const v = wkValidateRitual(x.ritual);
@@ -184,6 +194,10 @@ export function oaReads(req, sb) {
     add('config', 'outreach_config?id=eq.1&select=autosend_enabled,autosend_min_score');
   } else if (req.action === 'week_ritual_set') {
     add('wcfg', 'content_config?id=eq.1&select=week_ritual');
+  } else if (req.action === 'piece_contact') {
+    add('piece', 'content_pieces?id=eq.' + req.piece_id + '&select=id,topic,channel,format,resource_id,is_test,idea:content_ideas!content_pieces_idea_id_fkey(keyword)&limit=1');
+  } else if (req.action === 'learning_decide') {
+    add('proposal', 'learning_proposals?id=eq.' + req.proposal_id + '&select=id,target,status,is_test&limit=1');
   } else if (req.action === 'mail_outcome') {
     add('candidate', 'prospect_candidates?id=eq.' + req.candidate_id + '&select=id,company_name,status,ghl_stage,ghl_opportunity_id,canonical&limit=1');
   } else if (req.action === 'mail_config_set') {
@@ -346,7 +360,9 @@ export function oaStep(req, R, results, nowMs, env) {
         return ingest('atacama-outreach-engine', { action: 'draft', candidate_id: m.candidate_id, kind: m.kind, subject: req.subject, body: req.body, by, christian: true, reason: req.paste ? 'Versión pegada por Christian (/ops)' : 'Editado desde /ops' });
       }
       const b = results[0] && results[0].body;
-      if (b && b.ok && b.draft) return done({ ok: true, status: 'saved', message: 'Guardado. NO se envió: aprueba el envío cuando estés listo.', hash: b.draft.hash || null, draft: { subject: b.draft.subject, body: b.draft.body, status: b.draft.status } });
+      // Aprendizaje (spec §8.2): cada edición de Christian queda como evento (antes → después).
+      const lev = { method: 'POST', path: 'learning_events', prefer: 'return=minimal', body: { type: 'email_edit', subject_id: m.id, before: { subject: m.subject, body: m.body, kind: m.kind, message_id: m.id }, after: { subject: req.subject, body: req.body }, reason: req.paste ? 'Versión pegada por Christian (/ops)' : 'Editado desde /ops', by: 'Christian', is_test: !!(m.metadata && m.metadata.is_test) } };
+      if (b && b.ok && b.draft) return done({ ok: true, status: 'saved', message: 'Guardado. NO se envió: aprueba el envío cuando estés listo.', hash: b.draft.hash || null, draft: { subject: b.draft.subject, body: b.draft.body, status: b.draft.status } }, [lev]);
       return done(oaRelay(results[0], 'No pude guardar el borrador'));
     }
     if (A === 'email_approve') {
@@ -411,6 +427,36 @@ export function oaStep(req, R, results, nowMs, env) {
   }
 
   // ---------------------------------------------------------------- envío automático (interruptor): solo Christian, desde /ops
+  // ---------------------------------------------------------------- Resultados (spec §8.3) y aprendizaje (§8.2)
+  if (A === 'learning_decide') {
+    const pl = lnDecidePlan(req, (R.proposal || [])[0] || null, { now: nowMs, by });
+    return pl.error ? fail(pl.error, pl.message) : done(pl.resp, pl.writes);
+  }
+  if (A === 'piece_contact') {
+    const p = (R.piece || [])[0];
+    if (!p) return fail('pieza_no_encontrada', 'No encontré esa pieza.');
+    if (p.is_test && req.test !== true) return fail('pieza_test', 'Esa pieza es de prueba.');
+    const kw = req.keyword || (p.idea && p.idea.keyword) || 'contenido';
+    const tag = 'origen:ig:' + kw;
+    const C = 'https://services.leadconnectorhq.com/contacts/';
+    const gc = (method, url, body) => ({ call: { kind: 'ghl', method, url, body: body || null } });
+    const ok = (r) => r && r.statusCode && r.statusCode < 300;
+    if (n === 0) return gc('GET', C + '?locationId=' + env.ghl_loc + '&query=' + encodeURIComponent(req.handle || req.name) + '&limit=10');
+    const list = results[0] && results[0].body && Array.isArray(results[0].body.contacts) ? results[0].body.contacts : null;
+    if (!ok(results[0]) || !list) return done(oaRelay(results[0], 'No pude buscar el contacto en GHL'));
+    const norm = (s) => String(s || '').trim().toLowerCase();
+    const hit = list.find((c) => norm(c.contactName || [c.firstName, c.lastName].filter(Boolean).join(' ')) === norm(req.name)) || null;
+    if (n === 1) {
+      if (hit) return gc('POST', C + hit.id + '/tags', { tags: [tag] });
+      const parts = req.name.split(/\s+/);
+      return gc('POST', C, { locationId: env.ghl_loc, name: req.name, firstName: parts[0], lastName: parts.slice(1).join(' ') || undefined, tags: [tag], source: 'Instagram (Atacama OS)' });
+    }
+    const cid = hit ? hit.id : (results[1] && results[1].body && results[1].body.contact && results[1].body.contact.id) || null;
+    if (!ok(results[1]) || !cid) return done(oaRelay(results[1], 'GHL no aceptó el contacto'));
+    if (n === 2) return gc('POST', C + cid + '/notes', { body: 'Contacto desde Instagram por la pieza «' + String(p.topic || '').slice(0, 80) + '» (piece_id ' + p.id + '), palabra «' + kw + '»' + (req.handle ? ', usuario @' + req.handle : '') + '. Registrado desde /ops.' });
+    return done({ ok: true, status: hit ? 'contact_updated' : 'contact_created', ghl_contact_id: cid, tag, message: (hit ? 'Actualicé a ' : 'Creé a ') + req.name + ' en GHL con la etiqueta ' + tag + (ok(results[2]) ? ' y una nota de la pieza.' : '. La nota no se pudo guardar; la etiqueta sí.') },
+      [{ method: 'POST', path: 'content_attributions', prefer: 'return=minimal', body: { piece_id: p.id, resource_id: p.resource_id || null, keyword: kw, source: 'dm', contact_name: req.name, handle: req.handle, ghl_contact_id: cid, created_by: by, is_test: p.is_test === true } }]);
+  }
   if (A === 'week_ritual_set') {
     return done({ ok: true, status: 'ritual_saved', ritual: req.ritual, message: 'Guardé tu ritual de la semana.' },
       [{ method: 'PATCH', path: 'content_config?id=eq.1', body: { week_ritual: req.ritual }, prefer: 'return=representation', check_rows: true, check_message: 'No pude guardar el ritual.' }]);
@@ -613,9 +659,11 @@ export function oaAudit(req, R, final, nowMs) {
   if (req.action === 'week_ritual_set') { ent.config = 'content_config.week_ritual'; ent.before = ((R.wcfg || [])[0] || {}).week_ritual || null; ent.after = req.ritual; }
   if (req.action === 'mail_config_set') { const c = (R.config || [])[0] || {}; ent.config = 'outreach_config'; ent.before = { daily_cap: c.daily_cap, window_start: c.window_start, window_end: c.window_end, followup_days: c.followup_days, funnel_min_sample: c.funnel_min_sample }; ent.after = req.set; }
   if (req.piece_id && req.action.startsWith('taller_')) { const p = (R.piece || [])[0]; ent.piece_id = req.piece_id; if (p) { ent.topic = p.topic; ent.channel = p.channel; ent.format = p.format; ent.taller_status = p.taller_status; } }
+  else if (req.action === 'piece_contact') { ent.piece_id = req.piece_id; ent.contact = req.name; ent.keyword = req.keyword; }
   else if (req.piece_id) { const p = (R.piece || [])[0]; ent.piece_id = req.piece_id; if (p) { ent.topic = p.topic; ent.channel = p.channel; ent.ghl_post_id = p.ghl_post_id; } }
+  if (req.proposal_id) { const pr = (R.proposal || [])[0]; ent.proposal_id = req.proposal_id; if (pr) ent.target = pr.target; }
   const type = req.action.split('_')[0];
-  const params = { type, decision: req.action === 'pause_set' ? (req.paused ? 'paused' : 'resumed') : req.action === 'idea_decide' ? req.decision : req.action === 'idea_mine' ? 'mine' : req.action.startsWith('taller_') ? req.action.replace('taller_', '') : req.action === 'mail_config_set' || req.action === 'week_ritual_set' ? 'config' : req.action === 'mail_outcome' ? req.outcome : req.action === 'email_save' && req.paste ? 'paste' : /approve/.test(req.action) ? 'approved' : /reject/.test(req.action) ? 'rejected' : req.action.replace(type + '_', ''), reason: req.reason || null, ...(req.subject ? { subject_len: req.subject.length, body_len: req.body.length } : {}) };
+  const params = { type, decision: req.action === 'pause_set' ? (req.paused ? 'paused' : 'resumed') : req.action === 'idea_decide' ? req.decision : req.action === 'idea_mine' ? 'mine' : req.action.startsWith('taller_') ? req.action.replace('taller_', '') : req.action === 'mail_config_set' || req.action === 'week_ritual_set' ? 'config' : req.action === 'mail_outcome' ? req.outcome : req.action === 'learning_decide' ? req.decision : req.action === 'piece_contact' ? 'contact' : req.action === 'email_save' && req.paste ? 'paste' : /approve/.test(req.action) ? 'approved' : /reject/.test(req.action) ? 'rejected' : req.action.replace(type + '_', ''), reason: req.reason || null, ...(req.subject ? { subject_len: req.subject.length, body_len: req.body.length } : {}) };
   return { request_id: req.request_id + (r.ok ? '' : '~' + Math.floor(nowMs / 1000).toString(36)), actor: 'Christian via /ops', tool: 'ops_' + req.action, level: /approve|autosend_set|pause_set|taller_schedule|mail_config_set/.test(req.action) ? 3 : 2, entity: ent, params,
     status: r.ok ? 'executed' : 'refused', result_summary: String(r.message || '').slice(0, 300), response: { ok: Boolean(r.ok), status: r.status || null, error: r.error || null, message: String(r.message || '').slice(0, 300) } };
 }

@@ -213,3 +213,8 @@ Ver [`CONTACTO-PREPARADO.md`](CONTACTO-PREPARADO.md): salidas de cada Investigad
 - Saldo Higgsfield: `/opt/data/scripts/higgs.sh status --json` → cache `/opt/data/state/higgs-status.json` (1 h), leído por `hermes_state()`.
 - Alertas informativas = solo panel (`meta.panel_only`); críticas/importantes = Telegram.
 - Biblioteca: si cambian `brand/` o recetas, correr `node scripts/ops/build-library-index.mjs` (las pruebas fallan con `--check` si quedó desactualizado).
+
+## 22. Atacama OS v3 · Fase 8 (15-oct-2026): Resultados y aprendizaje
+- `/ops?view=resultados|aprendizaje|iteraciones`. Lecturas 25: `results_view`, `learning_context`; escritura 25 (Hermes): `learning_propose` (solo con `learning_enabled=true` o `test=true`). Escrituras 29: `piece_contact`, `learning_decide`.
+- Encender el aprendizaje (solo Christian): `update content_config set learning_enabled = true where id = 1;` + `hermes cron resume 93c607085f8b`. Apagar: al revés.
+- Muestra mínima: `content_config.learning_min_sample` (30).

@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 const SUITES = [
   'scripts/ops/ops-core.test.mjs', 'scripts/ops/v3-core.test.mjs', 'n8n/build/ops.test.mjs', 'n8n/build/ops-actions.test.mjs', 'scripts/outreach/coldmail-core.test.mjs',
   'scripts/linkedin/linkedin-core.test.mjs', 'n8n/build/linkedin.test.mjs',
-  'scripts/outreach/outreach-core.test.mjs', 'scripts/outreach/prep-core.test.mjs', 'scripts/outreach/mail-view-core.test.mjs', 'scripts/ops/health-rules.test.mjs', 'scripts/ops/history-core.test.mjs', 'scripts/ops/week-core.test.mjs', 'scripts/ops/build-library-index.mjs --check', 'n8n/build/outreach.test.mjs',
+  'scripts/outreach/outreach-core.test.mjs', 'scripts/outreach/prep-core.test.mjs', 'scripts/outreach/mail-view-core.test.mjs', 'scripts/ops/health-rules.test.mjs', 'scripts/ops/history-core.test.mjs', 'scripts/ops/week-core.test.mjs', 'scripts/ops/results-core.test.mjs', 'scripts/ops/build-library-index.mjs --check', 'n8n/build/outreach.test.mjs',
   'scripts/prospecting/gateway-core.test.mjs', 'scripts/prospecting/gateway-flow.test.mjs', 'scripts/prospecting/admit-core.test.mjs',
   'n8n/build/prospect-gateway.test.mjs', 'n8n/build/prospect-flow.test.mjs', 'n8n/build/hermes-operator.test.mjs', 'scripts/operator/operator-core.test.mjs',
   'n8n/build/content-engine.test.mjs', 'n8n/build/content-signals.test.mjs', 'n8n/build/content-sync.test.mjs', 'n8n/build/content-metrics.test.mjs',

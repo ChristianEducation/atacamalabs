@@ -84,7 +84,7 @@ const mock = http.createServer((req, res) => {
     if (req.url === '/__reset') { state.calls = []; state.mode = 'ok'; state.cards = CARDS; state.autosend = false; state.paused = false; state.navV2 = true; state.tpieces = [TPIECE(1), TPIECE(2, { status: 'en_cola', status_label: 'En cola', current_version: null, versions: [], feedback: [], thumb: null, channel: 'linkedin_page', channel_label: 'LinkedIn · página', format: 'texto' })]; state.ideas = [IDEA(1), IDEA(2, { channel: 'linkedin_page', channel_label: 'LinkedIn · página', format: 'texto' }), IDEA(15, { score: 72, title: 'Idea débil plegada' })]; return send(200, {}); }
     if (req.url === '/__nav') { state.navV2 = j.v2 !== false; return send(200, {}); }
     if (req.url === '/__mode') { state.mode = j.mode; return send(200, {}); }
-    if (req.url === '/webhook/atacama-ops') { state.opsHits++; if (req.headers['x-atacama-key'] !== INGEST_KEY) return send(403, {}); return j.action === 'taller_list' ? send(200, { ok: true, taller: tallerView() }) : j.action === 'ideas_list' ? send(200, { ok: true, ideas: ideasView() }) : j.action === 'mail_view' ? send(200, { ok: true, mail: mailView() }) : j.action === 'history_list' ? send(200, { ok: true, ...historyData() }) : j.action === 'week_status' ? send(200, { ok: true, ...weekData() }) : send(200, { ok: true, panel: panel() }); }
+    if (req.url === '/webhook/atacama-ops') { state.opsHits++; if (req.headers['x-atacama-key'] !== INGEST_KEY) return send(403, {}); return j.action === 'taller_list' ? send(200, { ok: true, taller: tallerView() }) : j.action === 'ideas_list' ? send(200, { ok: true, ideas: ideasView() }) : j.action === 'mail_view' ? send(200, { ok: true, mail: mailView() }) : j.action === 'history_list' ? send(200, { ok: true, ...historyData() }) : j.action === 'results_view' ? send(200, { ok: true, ...resultsData() }) : j.action === 'week_status' ? send(200, { ok: true, ...weekData() }) : send(200, { ok: true, panel: panel() }); }
     if (req.url === '/webhook/atacama-ops-actions') {
       if (req.headers['x-ops-approval'] !== OPS_KEY) return send(403, { message: 'Authorization data is wrong!' });
       if (j.action === 'overview') return send(200, overview());
@@ -133,6 +133,19 @@ function weekData() {
     costs: { higgs: { balance: 1052.74, spent_week: 0, cap: 200, reserve: 300, week: '2026-10-12', at }, pieces: [], total_pieces: 0, note: 'Solo cuenta lo que Atacama OS gastó.' } };
 }
 
+/** Fase 8: resultados y aprendizaje simulados. */
+function resultsData() {
+  const at = new Date().toISOString();
+  return { results: { generated_at: at, days: 60, unknown_web: 0, note: 'Atribución parcial: los comentarios y mensajes de Instagram no se leen solos.',
+      pieces: [{ id: UID(801), topic: 'Carrusel WhatsApp', channel: 'instagram', format: 'carrusel', at, keyword: 'guia', resource: { slug: 'guia', name: 'Guía' }, contacts_dm: 2, contacts_web: 1, meetings: 1, metrics: null }],
+      resources: [{ slug: 'guia', name: 'Guía', web_leads: 1, meetings: 1, contacts_dm: 2, pieces: 1 }],
+      summary: { week: '2026-10-12', lines: [{ piece_id: UID(801), contacts: 3, meetings: 1, text: '«Carrusel WhatsApp» trajo 3 contactos y 1 reunión.' }], empty_text: null },
+      iterations: [{ id: UID(801), topic: 'Carrusel WhatsApp', format: 'carrusel', status: 'publicada', versions: 2, feedback: 1, credits: 6.5, days: 1.5, first_try: false }] },
+    learning: { min_sample: 30, total_events: 12, by_type: { email_edit: 12 }, sufficient: 0, patterns: [{ id: 'playbook:acorta', target: 'playbook', label: 'Christian acorta el correo (−15 % o más)', n: 12, sufficient: false }],
+      proposals: [{ id: UID(950), target: 'playbook', proposal: 'Acortar los correos a 70–90 palabras.', sample_size: 31, status: 'proposed', decided_at: null, created_at: at, pattern: 'Christian acorta el correo', citations: 3 }] },
+    learning_enabled: false };
+}
+
 async function startApp() {
   const env = { ...process.env, N8N_BASE_URL: `http://localhost:${MOCK_PORT}`, ATACAMA_INGEST_KEY: INGEST_KEY, OPS_APPROVAL_KEY: OPS_KEY, OPS_NO_CACHE: '1', OPS_PANEL_PASSWORD: PIN, OPS_PANEL_SECRET: 'secreto-de-prueba-largo-1234567890', SUPABASE_URL: 'http://127.0.0.1:9', SUPABASE_SERVICE_ROLE_KEY: 'x', NEXT_TELEMETRY_DISABLED: '1' };
   const child = spawn(process.execPath, [path.join(ROOT, 'node_modules/next/dist/bin/next'), 'dev', '-p', String(APP_PORT)], { cwd: ROOT, env, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -171,7 +184,7 @@ async function main() {
     t('login correcto: entra al cockpit con barra lateral y estado ON', (await page.locator('.ops-side .ops-on').innerText()) === 'ON' && (await page.locator('h1').first().innerText()) === 'Hoy');
 
     // ---------------------------------------------------------------- navegación escritorio
-    const secs = [['Hoy', 'hoy', 'Hoy'], ['Redes', 'ideas', 'Ideas'], ['Prospección y correo', 'correo', 'Prospección y correo'], ['Resultados', 'resultados', 'Resultados'], ['Sistema', 'sistema', 'Sistema']];
+    const secs = [['Hoy', 'hoy', 'Hoy'], ['Redes', 'ideas', 'Ideas'], ['Prospección y correo', 'correo', 'Prospección y correo'], ['Resultados', 'resultados', 'Contenido → ventas'], ['Sistema', 'sistema', 'Sistema']];
     let navOk = true;
     for (const [label, id, h1want] of secs) {
       await page.locator('.ops-side a.ops-nav-a', { hasText: new RegExp('^' + label) }).first().click();
@@ -331,6 +344,28 @@ async function main() {
     await waitCall('mail_outcome');
     const oc = (await calls()).slice(nb3).filter((c) => c.action === 'mail_outcome');
     t('F6 Respuestas: «Reunión» pide confirmación y llama mail_outcome una vez', oc.length === 1 && oc[0].outcome === 'reunion' && oc[0].candidate_id === UID(505), JSON.stringify(oc));
+    // ---------------------------------------------------------------- Fase 8: Resultados → Contenido → ventas · Aprendizaje · Iteraciones
+    await page.goto(APP + '/ops?view=resultados'); await page.waitForSelector('[data-testid="monday-summary"]');
+    t('F8 Contenido → ventas: resumen del lunes, atribución parcial declarada y reporte por pieza', /trajo 3 contactos y 1 reunión/.test(await page.locator('[data-testid="monday-summary"]').innerText()) && /Atribución parcial/.test(await page.locator('[data-testid="partial-note"]').innerText()) && /2 por mensaje · 1 por la web · 1 reuniones/.test(await page.locator('[data-testid="sales-pieces"]').innerText()));
+    await page.goto(APP + '/ops?view=aprendizaje'); await page.waitForSelector('[data-testid="learning-open"]');
+    t('F8 Aprendizaje: patrón con «muestra insuficiente» y job apagado', /muestra insuficiente/.test(await page.locator('[data-testid="learning-patterns"]').innerText()) && /apagado/.test(await page.locator('#ops-main').innerText()));
+    const nb8 = (await calls()).length;
+    await page.locator('[data-testid="learning-open"]').getByRole('button', { name: 'Aprobar' }).click();
+    await waitCall('learning_decide');
+    const lc = (await calls()).slice(nb8).filter((c) => c.action === 'learning_decide');
+    t('F8 Aprendizaje: aprobar envía learning_decide una vez con la propuesta', lc.length === 1 && lc[0].proposal_id === UID(950) && lc[0].decision === 'approve', JSON.stringify(lc));
+    await page.goto(APP + '/ops?view=iteraciones'); await page.waitForSelector('[data-testid="iterations"]');
+    t('F8 Iteraciones: versiones, cambios y créditos por pieza', /2 versiones · 1 cambios pedidos · 6.5 créditos/.test(await page.locator('[data-testid="iterations"]').innerText()));
+    state.tpieces.push(TPIECE(9, { status: 'publicada', status_label: 'Publicada' }));
+    await page.goto(APP + '/ops?view=taller&pieza=' + UID(809)); await page.waitForSelector('[data-testid="taller-detail"]');
+    await page.getByRole('button', { name: 'Registrar contacto de esta pieza' }).click();
+    await page.getByLabel('Nombre del contacto').fill('Ana Rojas'); await page.getByLabel('Usuario de Instagram').fill('@ana.rojas');
+    const nc8 = (await calls()).length;
+    await page.locator('[data-testid="piece-contact"]').getByRole('button', { name: 'Registrar contacto' }).click();
+    await waitCall('piece_contact');
+    const pc8 = (await calls()).slice(nc8).filter((c) => c.action === 'piece_contact');
+    t('F8 Taller: «Registrar contacto de esta pieza» envía piece_contact con nombre, usuario y palabra', pc8.length === 1 && pc8[0].piece_id === UID(809) && pc8[0].contact_name === 'Ana Rojas' && pc8[0].handle === '@ana.rojas', JSON.stringify(pc8));
+    state.tpieces = state.tpieces.filter((x) => x.id !== UID(809));
     // ---------------------------------------------------------------- Fase 7: Mi semana, Historial, Alertas, Costos, Biblioteca
     await page.goto(APP + '/ops?view=hoy'); await page.waitForSelector('[data-testid="week-days"]');
     t('F7 Hoy: «Mi semana» con avance, reuniones de hoy y semáforo del cierre', /2 de 4/.test(await page.locator('#ops-main').innerText()) && /Ana · Clínica X/.test(await page.locator('#ops-main').innerText()) && (await page.locator('[data-testid="week-days"] .ops-pill-fallo').count()) === 1);
@@ -605,6 +640,7 @@ async function main() {
     const html = await page.content();
     t('el navegador nunca recibe las claves (ni la de aprobación ni la de ingesta ni el PIN) ni el nombre de la cabecera', !html.includes(OPS_KEY) && !html.includes(INGEST_KEY) && !html.includes('X-Ops-Approval') && !html.includes(PIN + '<'));
     t('/ops no es indexable (noindex)', /noindex/.test(await page.locator('meta[name="robots"]').getAttribute('content')));
+    await page.waitForLoadState('networkidle');   // sin hidratar, el formulario sale como POST nativo y Next lo rechaza («Invalid Server Actions request»)
     await page.evaluate(() => document.querySelector('.ops-side form').requestSubmit());   // el indicador de desarrollo de Next.js tapa la esquina del botón (no existe en producción)
     await page.waitForSelector('#ops-pin');
     t('logout: vuelve a pedir el PIN y la vista ya no responde', (await page.locator('.ops-side').count()) === 0);
@@ -635,7 +671,7 @@ async function main() {
       await mp.waitForSelector('.ops-ap');
       await shot(mp, `movil-${w}-aprobaciones`);
       t(`móvil ${w}: sin scroll horizontal en Aprobaciones`, await mp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
-      for (const v of ['hoy', 'inicio', 'ideas', 'taller', 'taller&pieza=' + UID(801), 'resultados', 'controles', 'control', 'outreach', 'contenido', 'sistema', 'prospeccion', 'correo', 'cola', 'respuestas', 'seguimientos', 'embudo', 'salud', 'historial', 'alertas', 'costos', 'biblioteca']) {
+      for (const v of ['hoy', 'inicio', 'ideas', 'taller', 'taller&pieza=' + UID(801), 'resultados', 'controles', 'control', 'outreach', 'contenido', 'sistema', 'prospeccion', 'correo', 'cola', 'respuestas', 'seguimientos', 'embudo', 'salud', 'historial', 'alertas', 'costos', 'biblioteca', 'aprendizaje', 'iteraciones']) {
         await mp.goto(`${APP}/ops?view=${v}`);
         await mp.waitForSelector('h1');
         if (!(await mp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1))) { t(`móvil ${w}: sin scroll horizontal en ${v}`, false); break; }

@@ -10,8 +10,9 @@ import { ControlCenter } from "./Control";
 import { PauseCard } from "./Pause";
 import { IdeasBoard } from "./Ideas";
 import { TallerBoard } from "./Taller";
-import { getDns, getHistory, getIdeas, getMail, getTaller, getWeek } from "@/lib/ops/v3-data";
+import { getDns, getHistory, getIdeas, getMail, getResults, getTaller, getWeek } from "@/lib/ops/v3-data";
 import { AlertsView, CostsView, HistoryView, LibraryView, WeekCard } from "./SystemViews";
+import { IterationsView, LearningView, SalesView } from "./ResultsViews";
 import { parseView, sectionOf, viewHref, type ViewId } from "./views";
 import { MailSection, type MailTab } from "./Mail";
 
@@ -217,18 +218,6 @@ async function Taller({ fetchedAt, stale, tlP, pieza }: { fetchedAt: number; sta
     <>
       <Head title="Taller" sub="Revisa cada pieza, pide cambios y prográmala cuando te guste" fetchedAt={fetchedAt} stale={stale} />
       {r.ok ? <TallerBoard data={r.value} selected={pieza} /> : <Section id="ops-taller" title="Taller"><Empty>{r.reason === "not_configured" ? "Falta configurar la conexión con Atacama OS en el servidor." : "No pude leer el Taller (n8n no responde). Reintenta en un minuto."}</Empty></Section>}
-    </>
-  );
-}
-
-/* ---------------------------------------------------------------- Resultados */
-function Resultados({ fetchedAt, stale }: { fetchedAt: number; stale: boolean }) {
-  return (
-    <>
-      <Head title="Resultados" sub="Qué contenido trae contactos y qué aprende el sistema" fetchedAt={fetchedAt} stale={stale} />
-      <Section id="ops-res" title="Contenido → ventas y aprendizaje">
-        <Empty>Aún sin datos suficientes. Aquí verás, por pieza y por recurso, los contactos, reuniones y clientes que trajo, y las reglas que el sistema propone a partir de tus correcciones (siempre para que tú las apruebes).</Empty>
-      </Section>
     </>
   );
 }
@@ -519,6 +508,7 @@ export async function PanelView({ sp }: { sp: { view?: string | string[]; filter
   const idP = asked === "ideas" || asked === "biblioteca" ? getIdeas() : Promise.resolve<Awaited<ReturnType<typeof getIdeas>>>({ ok: false, reason: "not_configured" });
   const mP = asked && MAIL_TABS.includes(asked) ? getMail() : Promise.resolve<Awaited<ReturnType<typeof getMail>>>({ ok: false, reason: "not_configured" });
   const dnsP = asked === "salud" ? getDns() : Promise.resolve(null);
+  const rP = asked === "resultados" || asked === "aprendizaje" || asked === "iteraciones" ? getResults() : Promise.resolve<Awaited<ReturnType<typeof getResults>>>({ ok: false, reason: "not_configured" });
   const hP = asked === "historial" || asked === "alertas" ? getHistory() : Promise.resolve<Awaited<ReturnType<typeof getHistory>>>({ ok: false, reason: "not_configured" });
   const wP = !asked || asked === "hoy" || asked === "inicio" || asked === "costos" ? getWeek() : Promise.resolve<Awaited<ReturnType<typeof getWeek>>>({ ok: false, reason: "not_configured" });
   const r = await getPanel();
@@ -552,7 +542,9 @@ export async function PanelView({ sp }: { sp: { view?: string | string[]; filter
         : view === "inicio" ? <Inicio panel={panel} fetchedAt={fetchedAt} stale={stale} />
         : view === "ideas" ? <Ideas fetchedAt={fetchedAt} stale={stale} idP={idP} />
         : view === "taller" ? <Taller fetchedAt={fetchedAt} stale={stale} tlP={tlP} pieza={/^[0-9a-f-]{36}$/i.test(one(sp.pieza) ?? "") ? (one(sp.pieza) as string) : null} />
-        : view === "resultados" ? <Resultados fetchedAt={fetchedAt} stale={stale} />
+        : view === "resultados" ? <SalesView rP={rP} fetchedAt={fetchedAt} stale={stale} />
+        : view === "aprendizaje" ? <LearningView rP={rP} fetchedAt={fetchedAt} stale={stale} />
+        : view === "iteraciones" ? <IterationsView rP={rP} fetchedAt={fetchedAt} stale={stale} />
         : view === "controles" ? <Controles panel={panel} fetchedAt={fetchedAt} stale={stale} />
         : view === "aprobaciones" ? <Aprobaciones panel={panel} fetchedAt={fetchedAt} stale={stale} filter={filter} ovP={ovP} />
         : view === "control" ? <Control panel={panel} fetchedAt={fetchedAt} stale={stale} />

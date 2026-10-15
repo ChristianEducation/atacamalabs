@@ -17,6 +17,8 @@ import * as v3 from '../../scripts/ops/v3-core.mjs';
 import * as ideas from '../../scripts/content/ideas-core.mjs';
 import * as taller from '../../scripts/content/taller-core.mjs';
 import * as week from '../../scripts/ops/week-core.mjs';
+import * as learn from '../../scripts/ops/learning-core.mjs';
+import * as results from '../../scripts/ops/results-core.mjs';
 
 const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 export const N8N_BASE = 'https://n8n.srv1650725.hstgr.cloud';
@@ -36,7 +38,7 @@ const ifNode = (name, expr, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.i
   parameters: { conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'loose' }, combinator: 'and', conditions: [{ leftValue: `={{ (${expr}) ? "yes" : "no" }}`, rightValue: 'yes', operator: { type: 'string', operation: 'equals' } }] }, options: {} } });
 
 const fnsOf = (mod) => Object.values(mod).filter((f) => typeof f === 'function');
-export const LIB = [...new Map([...fnsOf(li), ...fnsOf(oa), ...fnsOf(v3), ...fnsOf(ideas), ...fnsOf(taller), ...fnsOf(week)].map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
+export const LIB = [...new Map([...fnsOf(li), ...fnsOf(oa), ...fnsOf(v3), ...fnsOf(ideas), ...fnsOf(taller), ...fnsOf(week), ...fnsOf(learn), ...fnsOf(results)].map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
 
 export const PARSE = `${LIB}
 
