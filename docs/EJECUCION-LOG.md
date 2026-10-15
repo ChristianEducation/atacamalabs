@@ -94,3 +94,9 @@ Orden: F0 ✅ → F1 recortada → F4 → S2+S3 → F2 → F3 → resto F6 → F
 - **Barrido final de pruebas:** Supabase 0 filas `is_test` en las 10 tablas con esa marca; Storage: bucket `taller` vacío y ningún objeto «test/prueba»; GHL: las 3 imágenes de la Prueba A y los 2 medios de la Fase 2 borrados; jobs: ninguno de prueba. **Quedan en GHL (no se borran por API, solo se listan):** posts TEST rechazados `6acf7ef8865e22086bd6e5e6` (Prueba A) y `6acfb709d754c6c5721e42ae` (Fase 2), ambos del 5-dic.
 - **Estado de motores al cerrar:** Instagram engine apagado; jobs nuevos PAUSADOS (`436164ef07f4` Ideas, `4088328668ec` Taller producción, `93c607085f8b` Aprendizaje) y viejos pausados (`38f0f3d1d99e`, `fedb73e89062`); `ideas_enabled`, `taller_production_enabled`, `learning_enabled`, `taller_carousel_direct_schedule` = false; autoenvío OFF; correo, radar y contact prep como estaban.
 - Commits en main: F7 25de5ac · F8 3f52c26 · F5 c62b9a8 (+ este cierre). Sitio, /rubros y /ops 200 tras cada push.
+
+## Después del cierre (15-oct)
+- Playbook §17 (seguimientos 1 y 2) agregado; plantilla `followupTemplate`, evaluador `coldLint` y workflows 21/24 actualizados y desplegados con respaldo (commit b33338b). Los 17 seguimientos 1 en borrador se reescribieron (sin aprobar; el texto original queda en `metadata.followup_rewrite`).
+- Respaldo en el repo de recetas/fuentes de los videos de motion e historias (commit babadac). Los renders pesados quedan fuera.
+- Revisado el aviso «Fallo» del Content Engine: pieza vieja de LinkedIn rechazada por GHL (aprobada fuera de hora); el motor está bien. Pendiente de Christian: descartar o reprogramar.
+- Estado: todo operativo, sin cambios a futuro por ahora. Jueves 16 y viernes 17: producción de ideas para la próxima semana; lunes 19: primera corrida supervisada de Ideas.

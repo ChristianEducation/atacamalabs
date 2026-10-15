@@ -1,3 +1,5 @@
+> **ACTUALIZACIÓN 15-oct: el spec YA FUE EJECUTADO (Fases 0–8) y está en main. Este documento es histórico: el estado vigente está en `ATACAMA-OS-HANDOFF.md` §00 y `EJECUCION-LOG.md` («Cierre»). Todo operativo, sin cambios a futuro por ahora; jueves 16 y viernes 17 = producción de ideas para la próxima semana.**
+
 # ARRANQUE — nueva sesión para ejecutar el spec de Atacama OS v3 (preparado el 14-oct-2026)
 
 > Léelo primero. Está pensado para una sesión **nueva y sin contexto** (por ejemplo con Opus). Resume qué es el spec, en qué estado quedó todo, cómo trabajar con Christian y qué no hacer. Nada de lo que está aquí se ha ejecutado: **el spec está escrito, no construido.**
