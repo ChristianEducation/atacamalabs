@@ -1,0 +1,253 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><style>
+@font-face{font-family:"DM Sans";src:url("__FONT__") format("woff2");font-weight:100 1000}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#eef3fe}
+body{font-family:"DM Sans",sans-serif;-webkit-font-smoothing:antialiased;color:#0b1e3f}
+#stage{position:absolute;left:0;top:0;width:1080px;height:1920px;overflow:hidden}
+#bg{position:absolute;inset:0;background:radial-gradient(62% 36% at 50% 46%,rgba(15,92,237,.17),rgba(15,92,237,0) 72%),linear-gradient(180deg,#eef3fe,#e3ecfc)}
+#grid{position:absolute;inset:0;background-image:linear-gradient(rgba(15,92,237,.12) 2px,transparent 2px),linear-gradient(90deg,rgba(15,92,237,.12) 2px,transparent 2px),linear-gradient(rgba(15,92,237,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(15,92,237,.055) 1px,transparent 1px);background-size:120px 120px,120px 120px,40px 40px,40px 40px}
+.abs{position:absolute}
+.h{position:absolute;left:90px;width:900px;top:290px;text-align:center;font-weight:700;font-size:76px;line-height:1.04;letter-spacing:-.035em;color:#0b1e3f;opacity:0}
+.h em{font-style:normal;color:#0f5ced}.h b{font-weight:700;color:#e5484d}
+.g{position:absolute;left:40px;width:1000px;text-align:center;font-weight:800;letter-spacing:-.05em;line-height:.98;color:#0b1e3f;opacity:0}
+.g .ln{display:block;opacity:0}.g em{font-style:normal;color:#0f5ced}.g b{font-weight:800;color:#e5484d}
+.g.dkc{color:#fff}.g.dkc b{color:#ff5a60}
+#dk{position:absolute;inset:0;opacity:0;background:radial-gradient(70% 42% at 50% 50%,#13204a 0%,#0a1226 55%,#04070f 100%)}
+#dk i{position:absolute;inset:0;background-image:linear-gradient(rgba(120,160,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(120,160,255,.07) 1px,transparent 1px);background-size:60px 60px}
+#adb{position:relative;overflow:hidden}#rip{position:absolute;left:50%;top:50%;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;background:rgba(255,255,255,.55);opacity:0}
+.sc{position:absolute;left:0;top:0;width:1080px;height:1920px;opacity:0}
+/* teléfono */
+#ph{position:absolute;left:190px;top:630px;width:700px;height:940px;border-radius:78px;background:#16233f;box-shadow:0 40px 80px rgba(11,30,63,.28);opacity:0}
+#scr{position:absolute;left:14px;top:14px;right:14px;bottom:14px;border-radius:66px;background:#e8eefb;overflow:hidden}
+#hd{position:absolute;left:0;right:0;top:0;height:118px;background:#fff;border-bottom:2px solid #dbe4f5;z-index:5}
+#av{position:absolute;left:30px;top:26px;width:66px;height:66px;border-radius:50%;background:#0f5ced;color:#fff;font-weight:700;font-size:28px;display:flex;align-items:center;justify-content:center}
+#nm{position:absolute;left:116px;top:22px;font-weight:700;font-size:32px;letter-spacing:-.01em}
+#sb{position:absolute;left:116px;top:66px;font-weight:500;font-size:24px;color:#5a6b8a}
+.chat{position:absolute;left:0;right:0;top:118px;bottom:0;overflow:hidden}
+.flow{position:absolute;left:0;right:0;top:0;padding:24px 24px 30px;display:flex;flex-direction:column;gap:16px}
+.b{max-width:500px;padding:16px 22px;border-radius:28px;font-size:31px;line-height:1.27;font-weight:500;opacity:0}
+.b.c{background:#fff;color:#0b1e3f;align-self:flex-start;border-bottom-left-radius:8px;box-shadow:0 4px 10px rgba(11,30,63,.08)}
+.b.a{background:#0f5ced;color:#fff;align-self:flex-end;border-bottom-right-radius:8px}
+.b small{display:block;margin-top:6px;font-size:20px;opacity:.6;font-weight:500}
+.tagia{display:inline-block;margin-bottom:6px;font-size:18px;font-weight:800;letter-spacing:.1em;opacity:.85}
+.ad{display:flex;gap:18px;align-items:center;background:#fff;border:3px solid #dbe4f5;border-radius:28px;padding:14px 18px;opacity:0;position:relative}
+.ad .th{width:150px;height:96px;border-radius:18px;background:linear-gradient(180deg,#dbe7fb,#c4d6f8);flex:none;display:flex;align-items:center;justify-content:center}
+.ad .t1{font-weight:700;font-size:30px;letter-spacing:-.01em}.ad .t2{font-weight:500;font-size:24px;color:#5a6b8a;margin-top:2px}.ad .t3{font-weight:800;font-size:30px;color:#0f5ced;margin-top:4px}
+.chip2{align-self:center;padding:8px 22px;border-radius:30px;background:#16233f;color:#fff;font-weight:700;font-size:24px;letter-spacing:.04em;opacity:0}
+.chip2.red{background:#e5484d}
+.ph4{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:360px}
+.ph4 div{height:112px;border-radius:16px;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.ph4 .more{position:absolute;inset:0;background:rgba(11,30,63,.55);color:#fff;font-weight:800;font-size:38px;display:flex;align-items:center;justify-content:center}
+.b.a.photos{padding:10px;background:#0f5ced}
+.vcard{align-self:flex-end;width:470px;border-radius:28px;background:#fff;border:3px solid #1e9d3d;padding:16px 20px;opacity:0;display:flex;gap:16px;align-items:center}
+.vcard .ok{width:60px;height:60px;border-radius:50%;background:#1e9d3d;flex:none}
+.vcard .v1{font-weight:800;font-size:28px;color:#1e9d3d}.vcard .v2{font-weight:600;font-size:25px;color:#34476b}
+#stamp{position:absolute;left:170px;top:150px;padding:6px 26px;border:7px solid #e5484d;color:#e5484d;font-weight:800;font-size:62px;letter-spacing:.06em;border-radius:14px;opacity:0;transform:rotate(-8deg);background:rgba(255,255,255,.7);z-index:6}
+#comp{position:absolute;left:140px;top:1130px;width:800px;border-radius:34px;background:#16233f;color:#fff;padding:26px 34px;opacity:0;box-shadow:0 26px 50px rgba(11,30,63,.35)}
+#comp .l1{font-weight:700;font-size:26px;letter-spacing:.12em;color:#9fb4dd}#comp .l2{font-weight:600;font-size:40px;line-height:1.2;margin-top:8px}
+/* escena reloj */
+#clk{position:absolute;left:0;width:1080px;top:690px;text-align:center;font-weight:800;font-size:200px;letter-spacing:-.05em;line-height:1;color:#0f5ced}
+.pill2{position:absolute;left:50%;transform:translateX(-50%);height:76px;padding:0 44px;border-radius:44px;font-weight:700;font-size:36px;letter-spacing:.06em;display:flex;align-items:center;white-space:nowrap}
+#fer{top:940px;background:#16233f;color:#fff}
+#clkb{position:absolute;left:150px;top:1120px;width:780px;opacity:0;display:flex;justify-content:flex-end}
+/* lista de conversaciones */
+.row{position:absolute;left:90px;width:900px;height:150px;border-radius:36px;background:#fff;border:3px solid #dbe4f5;box-shadow:0 14px 30px rgba(11,30,63,.1)}
+.row .a1{position:absolute;left:28px;top:32px;width:84px;height:84px;border-radius:50%;color:#fff;font-weight:700;font-size:32px;display:flex;align-items:center;justify-content:center}
+.row .n1{position:absolute;left:136px;top:28px;font-weight:700;font-size:34px;letter-spacing:-.01em}
+.row .p1{position:absolute;left:136px;top:78px;font-weight:500;font-size:27px;color:#5a6b8a;white-space:nowrap}
+.row .st{position:absolute;right:26px;top:48px;height:56px;padding:0 22px;border-radius:30px;font-weight:700;font-size:25px;display:flex;align-items:center;white-space:nowrap}
+/* CRM */
+.col{position:absolute;top:650px;width:284px;height:540px;border-radius:36px;background:#fff;border:3px solid #dbe4f5}
+.col .ct{position:absolute;left:0;right:0;top:20px;text-align:center;font-weight:700;font-size:30px;color:#34476b}
+.cc{position:absolute;width:244px;height:118px;border-radius:26px;background:#f4f7fe;border:3px solid #dbe4f5;padding:14px 18px}
+.cc .x1{font-weight:700;font-size:28px}.cc .x2{font-weight:500;font-size:23px;color:#5a6b8a;margin-top:2px}
+#fn{position:absolute;left:90px;width:900px;top:1600px;text-align:center;font-weight:500;font-size:30px;line-height:1.3;color:#5a6b8a;opacity:0}
+#black{position:absolute;inset:0;background:#fff;pointer-events:none}
+</style></head><body><div id="stage">
+<div id="bg"></div><div id="grid"></div><div id="dk"><i></i></div>
+<div id="g1" class="g" style="top:610px;font-size:158px"><span class="ln">Pagaste el</span><span class="ln">anuncio.</span><span class="ln">El cliente</span><span class="ln"><em>escribió.</em></span></div>
+<div id="h0" class="h">Alguien <em>toca tu anuncio.</em></div>
+<div id="h1b" class="h"></div>
+<div id="g2" class="g dkc" style="top:690px;font-size:182px"><span class="ln">Y nadie</span><span class="ln"><b>le contestó.</b></span></div>
+<div id="g3" class="g" style="top:470px;font-size:120px"><span class="ln">Tu competencia</span><span class="ln">no vende mejores</span><span class="ln">autos. <em>Contesta.</em></span></div>
+<div id="h4" class="h">Con un <em>agente de Atacama Labs</em>, tu WhatsApp <em>responde.</em></div>
+<div id="h5" class="h">A las 11 de la noche. <em>Y en feriado.</em></div>
+<div id="h6" class="h">Tus asesores hablan con quien <em>quiere comprar.</em></div>
+<div id="h7" class="h">Y todo queda <em>en tu CRM.</em></div>
+
+<div id="ph"><div id="scr">
+ <div id="hd"><div id="av">AR</div><div id="nm">Andrés Rojas</div><div id="sb">en línea</div></div>
+ <div id="stamp">VENDIDO</div>
+ <div class="chat" id="chA"><div class="flow" id="fA"></div></div>
+ <div class="chat" id="chB"><div class="flow" id="fB"></div></div>
+</div></div>
+<div id="comp"><div class="l1">AUTOMOTORA VECINA</div><div class="l2">«Hola Andrés, sí, está disponible. ¿Te lo muestro hoy?»</div></div>
+
+<div id="adx" class="sc"><div id="adc" style="position:absolute;left:120px;top:470px;width:840px;border-radius:44px;background:#fff;border:3px solid #dbe4f5;box-shadow:0 30px 60px rgba(11,30,63,.2);overflow:hidden">
+ <div style="display:flex;align-items:center;gap:18px;padding:22px 26px"><div style="width:72px;height:72px;border-radius:50%;background:#16233f;color:#fff;font-weight:700;font-size:28px;display:flex;align-items:center;justify-content:center">AS</div><div><div style="font-weight:700;font-size:32px">Automotora Sur</div><div style="font-weight:500;font-size:24px;color:#5a6b8a">Patrocinado</div></div></div>
+ <div style="height:400px;background:linear-gradient(180deg,#dbe7fb,#bcd0f6);display:flex;align-items:center;justify-content:center"><svg width="540" viewBox="0 0 200 90"><path d="M10 64 Q10 52 24 50 L52 47 Q64 24 92 22 L134 22 Q154 24 166 47 L182 51 Q192 53 192 65 L192 72 L10 72 Z" fill="#0f5ced"/><path d="M62 47 Q70 30 92 29 L106 29 L106 47 Z M114 29 L134 29 Q146 31 154 47 L114 47 Z" fill="rgba(255,255,255,.55)"/><circle cx="54" cy="72" r="15" fill="#16233f"/><circle cx="54" cy="72" r="6" fill="#dbe4f5"/><circle cx="150" cy="72" r="15" fill="#16233f"/><circle cx="150" cy="72" r="6" fill="#dbe4f5"/></svg></div>
+ <div style="padding:22px 26px 12px"><div style="font-weight:700;font-size:38px;letter-spacing:-.01em">Toyota Corolla 2021 · $13.990.000</div><div style="font-weight:500;font-size:28px;color:#5a6b8a;margin-top:4px">88.000 km · Automático</div></div>
+ <div style="padding:10px 26px 28px"><div id="adb" style="height:96px;border-radius:26px;background:#0f5ced;color:#fff;font-weight:700;font-size:36px;display:flex;align-items:center;justify-content:center"><span id="adbt">Enviar mensaje</span><i id="rip"></i></div></div>
+</div></div>
+<div id="s5" class="sc"><div id="clk">11:06 p. m.</div><div id="fer" class="pill2">DOMINGO · FERIADO</div><div id="clkb"></div></div>
+<div id="s6" class="sc"></div>
+<div id="s7" class="sc"></div>
+
+<div id="e6" class="sc">
+ <img id="logo" src="__LOGO__" class="abs" style="left:150px;top:660px;width:780px">
+ <div id="slogan" class="abs" style="left:0;width:1080px;top:850px;text-align:center;font:500 100px 'DM Sans';letter-spacing:-.03em;color:#16233f">Agentes que <span style="position:relative;font-weight:700;color:#0f5ced">trabajan.<i id="ul" style="position:absolute;left:2%;bottom:-4px;height:7px;width:0;background:#0f5ced;border-radius:4px"></i></span></div>
+ <div id="url" class="abs" style="left:0;width:1080px;top:1030px;text-align:center;font:600 40px 'DM Sans';letter-spacing:.22em;color:#0f5ced;opacity:0">ATACAMALABS.CL</div>
+</div>
+<div id="fn">Conversación de ejemplo con datos ilustrativos.</div>
+<div id="black"></div>
+</div>
+<script>
+const TM = __TM__;
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const seg = (T, a, b) => clamp((T - a) / (b - a));
+const eio = (t) => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const eout = (t) => 1 - Math.pow(1 - t, 3);
+const pop = (u) => (u <= 0 ? 0 : clamp(1 - Math.exp(-7.5 * u) * Math.cos(12 * u), 0, 1.25));
+const fade = (T, a, b, c, d) => seg(T, a, b) * (1 - seg(T, c, d));
+const slideIn = (el, T, a, b, c, d) => { el.style.opacity = fade(T, a, b, c, d); el.style.transform = 'translateY(' + ((1 - eout(seg(T, a, b))) * 30) + 'px)'; };
+const show = (el, T, t0, dur = 0.3, dy = 16) => { const u = eout(seg(T, t0, t0 + dur)); el.style.opacity = u; el.style.transform = 'translateY(' + ((1 - u) * dy) + 'px) scale(' + (0.96 + 0.04 * u) + ')'; };
+
+const car = (c, w) => '<svg width="' + w + '" viewBox="0 0 200 90"><path d="M10 64 Q10 52 24 50 L52 47 Q64 24 92 22 L134 22 Q154 24 166 47 L182 51 Q192 53 192 65 L192 72 L10 72 Z" fill="' + c + '"/><path d="M62 47 Q70 30 92 29 L106 29 L106 47 Z M114 29 L134 29 Q146 31 154 47 L114 47 Z" fill="rgba(255,255,255,.55)"/><circle cx="54" cy="72" r="15" fill="#16233f"/><circle cx="54" cy="72" r="6" fill="#dbe4f5"/><circle cx="150" cy="72" r="15" fill="#16233f"/><circle cx="150" cy="72" r="6" fill="#dbe4f5"/></svg>';
+const adHtml = '<div class="th">' + car('#0f5ced', 128) + '</div><div><div class="t1">Toyota Corolla 2021</div><div class="t2">88.000 km · Automático</div><div class="t3">$13.990.000</div></div>';
+function mk(parent, cls, html) { const d = document.createElement('div'); d.className = cls; d.innerHTML = html; parent.append(d); return d; }
+
+// ---- chat A (sin respuesta)
+const fA = $('fA'), fB = $('fB');
+const adA = mk(fA, 'ad', adHtml);
+const a1 = mk(fA, 'b c', 'Hola, ¿sigue disponible el Corolla?<small>11:06 p. m.</small>');
+const aChip = mk(fA, 'chip2', '2 DÍAS DESPUÉS');
+const aRed = mk(fA, 'chip2 red', '● SIN RESPONDER');
+// ---- chat B (con agente)
+const adB = mk(fB, 'ad', adHtml);
+const b1 = mk(fB, 'b c', 'Hola, ¿sigue disponible el Corolla?<small>11:06 p. m.</small>');
+const b2 = mk(fB, 'b a', '<span class="tagia">AGENTE IA</span><br>¡Hola Andrés! Sí, está disponible: Corolla 2021, 88.000 km, automático. $13.990.000.<small>11:06 p. m.</small>');
+const tiles = ['#dbe7fb', '#c9dafa', '#d3e1fa', '#bcd0f6'];
+const b3 = mk(fB, 'b a photos', '<div class="ph4">' + tiles.map((c, i) => '<div style="background:' + c + '">' + car(['#0f5ced', '#16233f', '#2a6bf5', '#34476b'][i], 112) + (i === 3 ? '<span class="more">+5</span>' : '') + '</div>').join('') + '</div>');
+const b4 = mk(fB, 'b c', '¿Puedo verlo el sábado a las 11?<small>11:07 p. m.</small>');
+const b5 = mk(fB, 'b a', '<span class="tagia">AGENTE IA</span><br>Listo, Andrés. Dejo tu visita agendada y un asesor te espera.<small>11:07 p. m.</small>');
+const b6 = mk(fB, 'vcard', '<div class="ok"><svg viewBox="0 0 52 52" width="60" height="60"><path d="M14 27 L23 36 L39 17" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><div class="v1">Visita agendada</div><div class="v2">Sáb 11:00 · Corolla 2021</div></div>');
+const BO = [0, 0.5, 1.45, 2.55, 3.8, 4.75, 5.8];
+const BM = [adB, b1, b2, b3, b4, b5, b6].map((el, i) => [el, TM.b0 + BO[i]]);
+let needs = null;
+function layoutNeeds() { const vh = $('chB').offsetHeight; needs = BM.map(([el]) => Math.max(0, el.offsetTop + el.offsetHeight + 30 - vh)); }
+
+// ---- escena 5: bubble
+const clkb = $('clkb'); const cb = mk(clkb, 'b a', '<span class="tagia">AGENTE IA</span><br>¡Hola! Sí, está disponible.<small>11:06 p. m.</small>'); cb.style.opacity = 1;
+
+// ---- escena 6: lista de conversaciones
+const rowsD = [
+  ['Andrés Rojas', '¿Puedo verlo el sábado a las 11?', '#0f5ced', 'ia'],
+  ['Camila Soto', '¿Reciben mi auto en parte de pago?', '#2a6bf5', 'buy'],
+  ['Felipe Mora', '¿Tiene la revisión técnica al día?', '#34476b', 'ia'],
+  ['Daniela Pérez', '¿Cuánto es el pie?', '#16233f', 'ia'],
+  ['José Gregorio', 'Quiero cerrar, ¿cuándo puedo ir?', '#0f5ced', 'buy']
+];
+const rows = rowsD.map((r, i) => {
+  const d = document.createElement('div'); d.className = 'row'; d.style.top = (660 + i * 168) + 'px';
+  d.innerHTML = '<div class="a1" style="background:' + r[2] + '">' + r[0].split(' ').map((w) => w[0]).join('') + '</div><div class="n1">' + r[0] + '</div><div class="p1">' + r[1] + '</div><div class="st"></div>';
+  $('s6').append(d); return { d, st: d.querySelector('.st'), kind: r[3] };
+});
+// ---- escena 7: CRM
+const colsD = [['Nuevo', 90], ['Atendido', 398], ['Visita agendada', 706]];
+colsD.forEach((c) => { const d = document.createElement('div'); d.className = 'col'; d.style.left = c[1] + 'px'; d.innerHTML = '<div class="ct">' + c[0] + '</div>'; $('s7').append(d); });
+const cardsD = [
+  { n: 'Andrés Rojas', s: 'Corolla 2021', x: [102, 410, 718], y: 740, path: true },
+  { n: 'Felipe Mora', s: 'Revisión técnica', x: [410, 410, 410], y: 880 },
+  { n: 'Camila Soto', s: 'Parte de pago', x: [410, 410, 410], y: 1020 },
+  { n: 'José Gregorio', s: 'Quiere cerrar', x: [718, 718, 718], y: 880 }
+];
+const cards = cardsD.map((c) => { const d = document.createElement('div'); d.className = 'cc'; d.innerHTML = '<div class="x1">' + c.n + '</div><div class="x2">' + c.s + '</div>'; $('s7').append(d); return { d, c }; });
+
+function draw(T) {
+  if (!needs) layoutNeeds();
+  $('black').style.opacity = 1 - clamp(T / 0.25);
+  // titulares
+  // frases grandes solas (el gancho primero): entran línea por línea y salen con un leve zoom
+  const big = (el, T, t0, t1, gap, ex = 0.28) => {
+    const out = seg(T, t1 - ex, t1); el.style.opacity = T >= t0 && T < t1 ? 1 : 0;
+    el.style.transform = 'scale(' + (1 + 0.05 * out) + ')'; el.style.filter = out > 0 ? 'blur(' + (out * 6) + 'px)' : 'none'; el.style.opacity = (T >= t0 && T < t1 ? 1 : 0) * (1 - out);
+    Array.from(el.children).forEach((ln, i) => { const u = pop((T - (t0 + i * gap)) / 0.55); ln.style.opacity = T >= t0 + i * gap ? 1 : 0; ln.style.transform = 'translateY(' + ((1 - Math.min(1, u)) * 46) + 'px) scale(' + (0.82 + 0.18 * Math.min(1.08, u)) + ')'; });
+  };
+  big($('g1'), T, TM.g1, TM.dk, 0.22, 0.1);
+  big($('g2'), T, TM.s2, TM.ad0, 0.3, 0.15);
+  big($('g3'), T, TM.s3, TM.s4, 0.28);
+  // P1: titular chico sobre el celular (domingo -> martes)
+  const h1b = $('h1b'); const late = T >= TM.p1 + 1.35; h1b.innerHTML = late ? 'Martes, <b>11:06 p. m.</b>' : 'Domingo, <em>11:06 p. m.</em>';
+  slideIn(h1b, T, TM.p1 + 0.1, TM.p1 + 0.4, TM.s3 - 0.3, TM.s3 - 0.1);
+  // corte a oscuro (silencio) y escena del anuncio
+  $('dk').style.opacity = (T >= TM.dk && T < TM.ad0) ? 1 - seg(T, TM.ad0 - 0.12, TM.ad0) : 0;
+  slideIn($('h0'), T, TM.ad0 + 0.1, TM.ad0 + 0.4, TM.p1 - 0.4, TM.p1 - 0.1);
+  const ax = $('adx'); ax.style.opacity = fade(T, TM.ad0, TM.ad0 + 0.25, TM.p1 - 0.35, TM.p1 - 0.05);
+  const ae = eout(seg(T, TM.ad0, TM.ad0 + 0.5)), ao = eio(seg(T, TM.p1 - 0.35, TM.p1 - 0.05));
+  $('adc').style.transform = 'translateY(' + ((1 - ae) * 70 - ao * 90) + 'px) scale(' + (1 - 0.04 * ao) + ')';
+  const tp = T - (TM.ad0 + 0.95);
+  $('rip').style.opacity = tp > 0 && tp < 0.5 ? 1 - tp / 0.5 : 0; $('rip').style.transform = 'scale(' + (tp > 0 ? 1 + 18 * seg(T, TM.ad0 + 0.95, TM.ad0 + 1.45) : 0) + ')';
+  $('adb').style.background = T >= TM.ad0 + 1.35 ? '#1e9d3d' : (T >= TM.ad0 + 0.95 ? '#0a47b8' : '#0f5ced'); $('adbt').textContent = T >= TM.ad0 + 1.35 ? 'Mensaje enviado ✓' : 'Enviar mensaje';
+  slideIn($('h4'), T, TM.s4, TM.s4 + 0.3, TM.s5 - 0.1, TM.s5 + 0.05);
+  slideIn($('h5'), T, TM.s5, TM.s5 + 0.3, TM.s6 - 0.1, TM.s6 + 0.05);
+  slideIn($('h6'), T, TM.s6, TM.s6 + 0.3, TM.s7 - 0.1, TM.s7 + 0.05);
+  slideIn($('h7'), T, TM.s7, TM.s7 + 0.3, TM.e0 - 0.4, TM.e0 - 0.15);
+  // teléfono
+  const ph = $('ph');
+  const i1 = eout(seg(T, TM.p1, TM.p1 + 0.5)), o1 = seg(T, TM.s3 - 0.3, TM.s3 - 0.02), i2 = eout(seg(T, TM.s4, TM.s4 + 0.5)), o2 = seg(T, TM.s5 - 0.35, TM.s5 - 0.05);
+  const v1 = i1 * (1 - o1), v2 = i2 * (1 - o2);
+  ph.style.opacity = Math.max(v1, v2);
+  ph.style.transform = 'translateY(' + (T < TM.s3 ? ((1 - i1) * 90 + o1 * 40) : ((1 - i2) * 90 - o2 * 30)) + 'px)';
+  const swap = T >= TM.s4 - 0.05 ? 1 : 0;
+  $('chA').style.opacity = 1 - swap; $('chB').style.opacity = swap;
+  // escena A
+  show(adA, T, TM.p1 + 0.3); show(a1, T, TM.p1 + 0.7);
+  show(aChip, T, TM.p1 + 1.35); show(aRed, T, TM.p1 + 1.8);
+  // competidor + vendido
+  const co = $('comp'); const cu = eout(seg(T, TM.s3 + 1.15, TM.s3 + 1.55)) * (1 - seg(T, TM.s4 - 0.28, TM.s4));
+  co.style.opacity = cu; co.style.transform = 'translateY(' + ((1 - cu) * 50) + 'px)';
+  $('stamp').style.opacity = 0;
+  // escena B (chat con agente)
+  BM.forEach(([el, t0], i) => show(el, T, t0, 0.3));
+  let sc = 0; BM.forEach(([el, t0], i) => { sc = Math.max(sc, needs[i] * eio(seg(T, t0, t0 + 0.5))); });
+  fB.style.transform = 'translateY(' + (-sc) + 'px)';
+  const typing = (T >= TM.b0 + 0.8 && T < TM.b0 + 1.45) || (T >= TM.b0 + 4.1 && T < TM.b0 + 4.75);
+  $('sb').textContent = typing ? 'Agente IA escribiendo…' : 'en línea'; $('sb').style.color = typing ? '#0f5ced' : '#5a6b8a';
+  // escena 5: reloj
+  const s5 = $('s5'); s5.style.opacity = fade(T, TM.s5, TM.s5 + 0.25, TM.s6 - 0.25, TM.s6);
+  const kc = pop((T - (TM.s5 + 0.2)) / 0.6); $('clk').style.transform = 'scale(' + (0.7 + 0.3 * Math.min(1.1, kc)) + ')';
+  const ku = pop((T - (TM.s5 + 0.95)) / 0.5); $('fer').style.opacity = T >= TM.s5 + 0.95 ? 1 : 0; $('fer').style.transform = 'translateX(-50%) scale(' + (0.6 + 0.4 * Math.min(1.15, ku)) + ')';
+  clkb.style.opacity = eout(seg(T, TM.s5 + 1.45, TM.s5 + 1.8)); clkb.style.transform = 'translateY(' + ((1 - eout(seg(T, TM.s5 + 1.45, TM.s5 + 1.8))) * 30) + 'px)';
+  // escena 6: lista
+  const s6 = $('s6'); s6.style.opacity = fade(T, TM.s6, TM.s6 + 0.25, TM.s7 - 0.25, TM.s7);
+  rows.forEach((r, i) => {
+    const u = eout(seg(T, TM.s6 + 0.05 + i * 0.08, TM.s6 + 0.4 + i * 0.08)); r.d.style.transform = 'translateY(' + ((1 - u) * 40) + 'px)';
+    const tt = TM.s6 + 1.1 + i * 0.3; const done = T >= tt;
+    const buy = r.kind === 'buy';
+    r.st.textContent = !done ? 'Pendiente' : (buy ? 'Pasa al asesor' : 'IA respondió ✓');
+    r.st.style.background = !done ? '#eef1f7' : (buy ? '#1e9d3d' : '#eaf1fd'); r.st.style.color = !done ? '#7a879f' : (buy ? '#fff' : '#0f5ced');
+    const hl = buy ? 1 + 0.035 * pop((T - (TM.s6 + 2.7)) / 0.5) : 1; r.d.style.transform += ' scale(' + hl + ')';
+    const dm = T >= TM.s6 + 2.7 && !buy ? 0.5 : 1; r.d.style.opacity = dm; r.d.style.borderColor = (buy && T >= TM.s6 + 2.7) ? '#1e9d3d' : '#dbe4f5';
+  });
+  // escena 7: CRM
+  const s7 = $('s7'); s7.style.opacity = fade(T, TM.s7, TM.s7 + 0.25, TM.e0 - 0.4, TM.e0 - 0.15);
+  cards.forEach(({ d, c }, i) => {
+    let x = c.x[0];
+    if (c.path) { x = c.x[0] + (c.x[1] - c.x[0]) * eio(seg(T, TM.s7 + 0.8, TM.s7 + 1.3)); x += (c.x[2] - c.x[1]) * eio(seg(T, TM.s7 + 1.7, TM.s7 + 2.2)); }
+    const u = eout(seg(T, TM.s7 + 0.2 + i * 0.1, TM.s7 + 0.55 + i * 0.1));
+    d.style.left = x + 'px'; d.style.top = (c.y + (1 - u) * 36) + 'px'; d.style.opacity = u;
+    if (c.path) { const ok = T >= TM.s7 + 2.2; d.style.background = ok ? '#eaf6ee' : '#f4f7fe'; d.style.borderColor = ok ? '#1e9d3d' : '#dbe4f5'; d.style.transform = 'scale(' + (1 + 0.06 * pop((T - TM.s7 - 2.2) / 0.5)) + ')'; }
+  });
+  // nota
+  $('fn').style.opacity = fade(T, TM.s4 + 0.3, TM.s4 + 0.6, TM.e0 - 0.4, TM.e0 - 0.15);
+  // cierre fijo de la marca
+  const e0 = TM.e0;
+  const e6 = $('e6'); e6.style.opacity = seg(T, e0 - 0.1, e0 + 0.1);
+  const lu = eout(seg(T, e0 + 0.05, e0 + 0.55)); $('logo').style.opacity = lu; $('logo').style.transform = 'translateY(' + ((1 - lu) * 26) + 'px)';
+  const cu2 = eout(seg(T, e0 + 0.3, e0 + 0.8)); $('slogan').style.opacity = cu2; $('slogan').style.transform = 'translateY(' + ((1 - cu2) * 26) + 'px)';
+  $('ul').style.width = (96 * eout(seg(T, e0 + 0.75, e0 + 1.2))) + '%';
+  $('url').style.opacity = eout(seg(T, e0 + 0.9, e0 + 1.4));
+}
+window.draw = draw;
+</script></body></html>
