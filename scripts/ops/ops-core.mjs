@@ -10,6 +10,7 @@ import { growthResourceRank } from '../content/growth-core.mjs';
 import { rfAuthority } from '../content/resource-factory-core.mjs';
 import { prepSummary } from '../outreach/prep-core.mjs';
 import { mvHealth } from '../outreach/mail-view-core.mjs';
+import { hrRules } from './health-rules.mjs';
 
 export function tzParts(ms, tz) {
   const p = new Intl.DateTimeFormat('en-US', { timeZone: tz || 'America/Santiago', hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', weekday: 'short' }).formatToParts(new Date(ms));
@@ -450,6 +451,8 @@ export function evaluateAlerts(d, existing) {
   for (const m of opsHashMismatches(d.messages || [])) add('hash_mismatch:' + m.id, 'critical', 'Huella no coincide: ' + (m.company_name || 'correo'), (m.status === 'approved' ? 'Un correo APROBADO cambió de texto por fuera del camino normal. Si llega su hora, el envío lo devolverá a borrador (no se cancela). ' : 'El borrador cambió de texto por fuera del camino normal (se volverá a sellar al aprobarlo). ') + 'Revísalo en Prospección y correo antes de aprobar.', false);
   // 6b-2) Salud del correo (v3 §7-9, anexo §G3): rebote ≥ 5 % con ≥ 20 envíos en 7 días → crítica; ≥ 3 % → importante
   { const mh = mvHealth(d.messages || [], Number(d.outreach && d.outreach.daily_cap) || 0, now); if (mh.alert) add('mail_bounce:' + (mh.level === 'critical' ? 'critical' : 'high'), mh.level, 'Rebote de correo alto: ' + mh.rate_pct + ' %', mh.alert + ' Ver Prospección y correo → Salud.', false); }
+  // 6b-3) v3 §8.5 / anexo §H1: cuentas de GHL por vencer, Higgsfield, tope alcanzado, piezas atrasadas, jobs que no corrieron
+  for (const r of hrRules(d)) add(r.key, r.severity, r.title, r.detail, false, r.meta);
   // 6c) Taller (v3 §6.5): una pieza que la producción automática no pudo terminar → importante (se detuvo sin gastar más)
   for (const p of (d.pieces || []).filter((x) => !x.is_test && x.taller_status === 'necesita_ayuda')) add('taller_help:' + p.id, 'high', 'Pieza del Taller necesita ayuda: ' + String(p.topic || '').slice(0, 60), 'La producción automática se detuvo (topes de intentos o créditos). No se gasta más: decide en Redes → Taller.', false);
   // 7) feeds RSS con 3+ fallos seguidos (aviso, no crítico)
@@ -475,7 +478,8 @@ export function evaluateAlerts(d, existing) {
 export function alertsText(notify) {
   if (!notify || !notify.length) return '';
   const sev = { critical: 'CRÍTICO', high: 'IMPORTANTE', info: 'AVISO' };
-  const notices = notify.filter((a) => a.meta && a.meta.notice), alerts = notify.filter((a) => !(a.meta && a.meta.notice));
+  // Las informativas «solo panel» (v3 §8.5) no van a Telegram: se marcan como avisadas y se ven en /ops.
+  const notices = notify.filter((a) => a.meta && a.meta.notice), alerts = notify.filter((a) => !(a.meta && (a.meta.notice || a.meta.panel_only)));
   const blocks = [];
   if (alerts.length) {
     const lines = ['ATACAMA OS · ' + (alerts.length === 1 ? 'alerta' : alerts.length + ' alertas')];

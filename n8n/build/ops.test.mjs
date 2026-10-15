@@ -245,6 +245,14 @@ t('v3 · el panel lee system_state y content_ideas (solo reales)', JSON.stringif
   t('mail_view: arma Hoy, Cola, Respuestas, Seguimientos, Embudo y Salud', mvw && mvw.hoy.cap === 40 && mvw.cola.length === 1 && mvw.embudo.stages[0].count === 2 && mvw.salud.suppression_total === 1 && Array.isArray(mvw.seguimientos.upcoming) && Array.isArray(mvw.respuestas.sent), JSON.stringify(mvw || r.resp).slice(0, 300));
 }
 
+// ---------- v3 · Fase 7: historial, Mi semana y costos (solo lectura)
+{
+  r = await call({ action: 'history_list', now_ms: NOW }, FIX({ growth: { h_audit: [{ id: 'a', actor: 'Christian via /ops', tool: 'ops_email_approve', status: 'executed', created_at: iso(H) }, { id: 'b', actor: 'Christian via /ops', tool: 'ops_email_approve', status: 'executed', created_at: iso(H - 60000) }], h_runs: [], h_msgs: [], h_pieces: [], h_alerts: [] } }));
+  t('history_list: lee 90 días (auditoría, corridas, correos, piezas, alertas) y agrupa; sin escrituras', r.parsed.growth_reads.filter((g) => /^h_/.test(g.key)).length === 5 && r.writes.length === 0 && r.resp.history.lines.length === 1 && /Christian aprobó 2 correos/.test(r.resp.history.lines[0].text) && Array.isArray(r.resp.alerts_open), JSON.stringify(r.resp).slice(0, 300));
+  r = await call({ action: 'week_status', now_ms: NOW }, FIX({ growth: { w_ideas: [], w_meet: [], w_pieces: [{ id: 'p', topic: 'X', taller_status: 'para_revisar', credits_spent: 4 }], content_cfg: [{ id: 1, week_ritual: { lun: ['ideas'], mar: [], mie: [], jue: ['revisar_piezas'], vie: ['cierre'] } }] } }));
+  t('week_status: usa el ritual guardado y entrega costos por pieza; sin escrituras', r.writes.length === 0 && r.resp.week.days[3].tasks[0].id === 'revisar_piezas' && r.resp.week.days[3].tasks[0].done === false && r.resp.costs.pieces[0].credits === 4, JSON.stringify(r.resp).slice(0, 300));
+}
+
 // ---------- v3 · Fase 2: Taller (lectura con URLs firmadas)
 {
   const TP = '11111111-1111-4111-8111-111111111111';

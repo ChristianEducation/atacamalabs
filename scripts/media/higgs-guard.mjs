@@ -34,6 +34,8 @@ async function main() {
   const now = Date.now(); const wk = hgWeekKey(now); const ledger = readLedger(LEDGER);
   if (args[0] === 'status') {
     const bal = balanceOf(); const spent = hgSpent(ledger, wk);
+    // --json: para el reporte de estado de Hermes (alertas §H1: reserva y gasto semanal). Solo lectura, sin gasto.
+    if (args[1] === '--json') { out(JSON.stringify({ balance: bal == null ? null : Number(bal), spent_week: spent, cap: ledger.cap, reserve: ledger.reserve, week: wk, at: new Date(now).toISOString() })); return; }
     out('Higgsfield · saldo de la cuenta: ' + (bal == null ? 'no se pudo leer' : bal) + ' créditos · Atacama OS gastó ' + spent + ' de ' + ledger.cap + ' esta semana (desde el lunes ' + wk + ') · máximo por llamada ' + ledger.per_call + ' · reserva ' + ledger.reserve);
     return;
   }

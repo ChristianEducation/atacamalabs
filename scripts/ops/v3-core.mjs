@@ -61,7 +61,12 @@ export function v3Inbox(x) {
   const find = g('prep_find');
   if (find) items.push({ kind: 'contacto', prio: 5, count: find.count, title: find.count === 1 ? '1 contacto por pegar' : find.count + ' contactos por pegar', from: 'Prospección y correo', age: '', tone: 'fresh', href: '/ops?view=control', examples: find.items.slice(0, 3) });
   const al = (Array.isArray(x && x.alerts) ? x.alerts : []).filter((a) => a.status === 'open' && !String(a.alert_key || '').startsWith('_') && ['critical', 'high'].includes(a.severity));
-  push('alerta', 6, al.length === 1 ? '1 alerta pide tu atención' : al.length + ' alertas piden tu atención', 'Sistema', al, (a) => a.first_seen_at, '/ops?view=sistema', al.map((a) => a.title));
+  push('alerta', 6, al.length === 1 ? '1 alerta pide tu atención' : al.length + ' alertas piden tu atención', 'Sistema', al, (a) => a.first_seen_at, '/ops?view=alertas', al.map((a) => a.title));
+  // Fase 7: reuniones de hoy (reservas del sitio). No son decisiones, pero van arriba para no perderlas.
+  const tz = (x && x.tz) || 'America/Santiago';
+  const today = new Date(now).toLocaleDateString('en-CA', { timeZone: tz });
+  const meet = (Array.isArray(x && x.meetings) ? x.meetings : []).filter((m) => m.meeting_start && new Date(Date.parse(m.meeting_start)).toLocaleDateString('en-CA', { timeZone: tz }) === today);
+  if (meet.length) items.push({ kind: 'reunion', prio: 0, count: meet.length, title: meet.length === 1 ? '1 reunión hoy' : meet.length + ' reuniones hoy', from: 'Reservas del sitio', age: '', tone: 'fresh', href: '/ops?view=hoy#mi-semana', examples: meet.map((m) => new Date(Date.parse(m.meeting_start)).toLocaleTimeString('es-CL', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false }) + ' · ' + ([m.name, m.company].filter(Boolean).join(' · ') || 'Reunión')).slice(0, 3) });
   const ap = (x && x.approvals) || {};
   if (Number(ap.linkedin) > 0) items.push({ kind: 'linkedin', prio: 7, count: Number(ap.linkedin), title: Number(ap.linkedin) === 1 ? '1 alta de LinkedIn por aprobar' : ap.linkedin + ' altas de LinkedIn por aprobar', from: 'Prospección y correo', age: '', tone: 'fresh', href: '/ops?view=aprobaciones&filter=linkedin', examples: [] });
   if (Number(ap.content) > 0) items.push({ kind: 'publicacion', prio: 8, count: Number(ap.content), title: Number(ap.content) === 1 ? '1 publicación en revisión (GHL)' : ap.content + ' publicaciones en revisión (GHL)', from: 'Redes', age: '', tone: 'fresh', href: '/ops?view=aprobaciones&filter=contenido', examples: [] });

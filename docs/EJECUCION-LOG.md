@@ -66,3 +66,10 @@ Orden: F0 ✅ → F1 recortada → F4 → S2+S3 → F2 → F3 → resto F6 → F
 - **Desplegados con respaldo** (`backups/2026-10-14/n8n/`): 25, 29, 21 (vivo = repo salvo el cambio S3 incrustado sin uso), 26. 22/23/24 se regeneraron en el repo pero **no** se desplegaron (regla: 22/23 nunca desde JSON).
 - **Pruebas en vivo (solo lectura):** `mail_view` responde con datos reales: hoy 28/40, 48 enviados en 7 días, **2 rebotes = 4,2 % → alerta «importante»** (correcta según §G3; no es crítica porque < 5 %). Validaciones de escritura cubiertas por pruebas (sin tocar datos reales).
 - Pruebas: 51/51 suites (1561), interfaz 121/121 (la prueba de sesión intermitente pasó al repetir).
+
+## Fase 7 · Sistema y terminaciones (14/15-oct)
+- **Mi semana** en Hoy (ritual por día editable con confirmación → 29 `week_ritual_set`, avance, reuniones de hoy, semáforo del cierre del viernes). Migración aditiva `20261022_os_v3_sistema.sql` (columna `content_config.week_ritual` + índices).
+- **Sistema → Historial** (frases agrupadas, filtros actor/sección/día, 90 días), **Alertas** (abiertas con severidad), **Costos** (saldo/gasto Higgsfield, tope 200, reserva 300). **Redes → Biblioteca** (logos, paleta, fuente, recetas con prompts aprobados; índice generado por `build-library-index.mjs --check`).
+- **Reglas nuevas de salud** (`health-rules.mjs`): vencimiento de cuentas GHL (nodo nuevo `GHL Accounts` en 25), reserva/gasto Higgsfield, tope de correo, piezas atrasadas, Hermes sin correr 3 h.
+- **Desplegados con respaldo** (`backups/2026-10-15/n8n/`): 25 y 29. VPS: `atacama_common.py` y `higgs-guard.mjs` con respaldo `.bak-20261015-*`. Lectura viva: `history_list` y `week_status` OK; saldo Higgsfield 1046,74, gasto de Atacama OS esta semana 0.
+- Pruebas: 55/55 suites (1587), interfaz 129/129, tsc, eslint, next build.

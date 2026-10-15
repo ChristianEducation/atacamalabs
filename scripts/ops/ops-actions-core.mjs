@@ -12,7 +12,7 @@
  */
 
 export function oaActionList() {
-  return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject', 'autosend_set', 'autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release', 'prep_contact', 'pause_set', 'idea_decide', 'idea_mine', 'taller_feedback', 'taller_approve', 'taller_schedule', 'taller_discard', 'taller_duplicate', 'taller_caption', 'taller_add_version', 'mail_config_set', 'mail_outcome'];
+  return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject', 'autosend_set', 'autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release', 'prep_contact', 'pause_set', 'idea_decide', 'idea_mine', 'taller_feedback', 'taller_approve', 'taller_schedule', 'taller_discard', 'taller_duplicate', 'taller_caption', 'taller_add_version', 'mail_config_set', 'mail_outcome', 'week_ritual_set'];
 }
 
 export function oaIsUuid(v) {
@@ -80,6 +80,11 @@ export function oaValidate(b) {
     }
     if (!Object.keys(set).length) return { ok: false, error: 'sin_cambios', message: 'No indicaste ningún cambio.' };
     req.set = set;
+  }
+  if (action === 'week_ritual_set') {
+    const v = wkValidateRitual(x.ritual);
+    if (!v.ok) return { ok: false, error: 'ritual_invalido', message: v.message };
+    req.ritual = v.value;
   }
   if (action === 'mail_outcome') {
     if (!oaIsUuid(x.candidate_id)) return { ok: false, error: 'candidate_id_invalido', message: 'candidate_id (uuid del prospecto) es obligatorio.' };
@@ -177,6 +182,8 @@ export function oaReads(req, sb) {
     add('message', 'outreach_messages?id=eq.' + req.message_id + '&select=*,cand:prospect_candidates(id,company_name,status)&limit=1');
   } else if (req.action === 'autosend_set') {
     add('config', 'outreach_config?id=eq.1&select=autosend_enabled,autosend_min_score');
+  } else if (req.action === 'week_ritual_set') {
+    add('wcfg', 'content_config?id=eq.1&select=week_ritual');
   } else if (req.action === 'mail_outcome') {
     add('candidate', 'prospect_candidates?id=eq.' + req.candidate_id + '&select=id,company_name,status,ghl_stage,ghl_opportunity_id,canonical&limit=1');
   } else if (req.action === 'mail_config_set') {
@@ -404,6 +411,10 @@ export function oaStep(req, R, results, nowMs, env) {
   }
 
   // ---------------------------------------------------------------- envío automático (interruptor): solo Christian, desde /ops
+  if (A === 'week_ritual_set') {
+    return done({ ok: true, status: 'ritual_saved', ritual: req.ritual, message: 'Guardé tu ritual de la semana.' },
+      [{ method: 'PATCH', path: 'content_config?id=eq.1', body: { week_ritual: req.ritual }, prefer: 'return=representation', check_rows: true, check_message: 'No pude guardar el ritual.' }]);
+  }
   if (A === 'mail_outcome') {
     const c = (R.candidate || [])[0];
     if (!c) return fail('prospecto_no_encontrado', 'No encontré ese prospecto.');
@@ -599,11 +610,12 @@ export function oaAudit(req, R, final, nowMs) {
   if (req.candidate_id) { const c = (R.candidate || [])[0]; ent.candidate_id = req.candidate_id; if (c) ent.company = c.company_name; }
   if (req.idea_id) { const i = (R.idea || [])[0]; ent.idea_id = req.idea_id; if (i) { ent.title = i.title; ent.channel = i.channel; ent.week_start = i.week_start; } }
   if (req.action === 'idea_mine') { ent.title = req.title; ent.channel = req.channel; }
+  if (req.action === 'week_ritual_set') { ent.config = 'content_config.week_ritual'; ent.before = ((R.wcfg || [])[0] || {}).week_ritual || null; ent.after = req.ritual; }
   if (req.action === 'mail_config_set') { const c = (R.config || [])[0] || {}; ent.config = 'outreach_config'; ent.before = { daily_cap: c.daily_cap, window_start: c.window_start, window_end: c.window_end, followup_days: c.followup_days, funnel_min_sample: c.funnel_min_sample }; ent.after = req.set; }
   if (req.piece_id && req.action.startsWith('taller_')) { const p = (R.piece || [])[0]; ent.piece_id = req.piece_id; if (p) { ent.topic = p.topic; ent.channel = p.channel; ent.format = p.format; ent.taller_status = p.taller_status; } }
   else if (req.piece_id) { const p = (R.piece || [])[0]; ent.piece_id = req.piece_id; if (p) { ent.topic = p.topic; ent.channel = p.channel; ent.ghl_post_id = p.ghl_post_id; } }
   const type = req.action.split('_')[0];
-  const params = { type, decision: req.action === 'pause_set' ? (req.paused ? 'paused' : 'resumed') : req.action === 'idea_decide' ? req.decision : req.action === 'idea_mine' ? 'mine' : req.action.startsWith('taller_') ? req.action.replace('taller_', '') : req.action === 'mail_config_set' ? 'config' : req.action === 'mail_outcome' ? req.outcome : req.action === 'email_save' && req.paste ? 'paste' : /approve/.test(req.action) ? 'approved' : /reject/.test(req.action) ? 'rejected' : req.action.replace(type + '_', ''), reason: req.reason || null, ...(req.subject ? { subject_len: req.subject.length, body_len: req.body.length } : {}) };
+  const params = { type, decision: req.action === 'pause_set' ? (req.paused ? 'paused' : 'resumed') : req.action === 'idea_decide' ? req.decision : req.action === 'idea_mine' ? 'mine' : req.action.startsWith('taller_') ? req.action.replace('taller_', '') : req.action === 'mail_config_set' || req.action === 'week_ritual_set' ? 'config' : req.action === 'mail_outcome' ? req.outcome : req.action === 'email_save' && req.paste ? 'paste' : /approve/.test(req.action) ? 'approved' : /reject/.test(req.action) ? 'rejected' : req.action.replace(type + '_', ''), reason: req.reason || null, ...(req.subject ? { subject_len: req.subject.length, body_len: req.body.length } : {}) };
   return { request_id: req.request_id + (r.ok ? '' : '~' + Math.floor(nowMs / 1000).toString(36)), actor: 'Christian via /ops', tool: 'ops_' + req.action, level: /approve|autosend_set|pause_set|taller_schedule|mail_config_set/.test(req.action) ? 3 : 2, entity: ent, params,
     status: r.ok ? 'executed' : 'refused', result_summary: String(r.message || '').slice(0, 300), response: { ok: Boolean(r.ok), status: r.status || null, error: r.error || null, message: String(r.message || '').slice(0, 300) } };
 }

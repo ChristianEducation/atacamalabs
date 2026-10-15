@@ -207,3 +207,9 @@ Ver [`CONTACTO-PREPARADO.md`](CONTACTO-PREPARADO.md): salidas de cada Investigad
 - **«Pega tu versión»:** en cada borrador. Marca «editado por Christian» → lo automático (Contact Prep) no lo reemplaza por 72 h.
 - **Pares de aprendizaje (S6):** `outreach_messages.learning_pair = true` (12). Un trigger impide borrarlos.
 - **Revertir:** workflows con los respaldos de `backups/2026-10-14/n8n/` (comando impreso al desplegar).
+
+## 21. Atacama OS v3 · Fase 7 (15-oct-2026): Sistema
+- `/ops?view=historial|alertas|costos|biblioteca`; «Mi semana» en Hoy. Lecturas en 25: `history_list`, `week_status`. Escritura en 29: `week_ritual_set` (auditada).
+- Saldo Higgsfield: `/opt/data/scripts/higgs.sh status --json` → cache `/opt/data/state/higgs-status.json` (1 h), leído por `hermes_state()`.
+- Alertas informativas = solo panel (`meta.panel_only`); críticas/importantes = Telegram.
+- Biblioteca: si cambian `brand/` o recetas, correr `node scripts/ops/build-library-index.mjs` (las pruebas fallan con `--check` si quedó desactualizado).

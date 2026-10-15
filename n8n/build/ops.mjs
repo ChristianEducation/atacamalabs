@@ -21,6 +21,9 @@ import * as v3Core from '../../scripts/ops/v3-core.mjs';
 import * as ideasCore from '../../scripts/content/ideas-core.mjs';
 import * as tallerCore from '../../scripts/content/taller-core.mjs';
 import * as mvCore from '../../scripts/outreach/mail-view-core.mjs';
+import * as hrCore from '../../scripts/ops/health-rules.mjs';
+import * as hiCore from '../../scripts/ops/history-core.mjs';
+import * as wkCore from '../../scripts/ops/week-core.mjs';
 
 const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 export const N8N_BASE = 'https://n8n.srv1650725.hstgr.cloud';
@@ -49,10 +52,10 @@ const sbApply = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRe
     headerParameters: { parameters: [{ name: 'Prefer', value: '={{ $json.prefer || "return=minimal" }}' }] }, sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full() } });
 const GH_HEADERS = [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', value: 'application/json' }];
 
-export const LIB = [...new Map([...Object.values(core), ...['linkedinOverview', 'linkedinView', 'liLabel'].map((k) => liCore[k]), ...Object.values(prepCore), ...Object.values(edCore), ...Object.values(rfCore), growthNorm, growthResourceRank, ...Object.values(v3Core), ...Object.values(ideasCore), ...Object.values(tallerCore), ...Object.values(mvCore)].filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
+export const LIB = [...new Map([...Object.values(core), ...['linkedinOverview', 'linkedinView', 'liLabel'].map((k) => liCore[k]), ...Object.values(prepCore), ...Object.values(edCore), ...Object.values(rfCore), growthNorm, growthResourceRank, ...Object.values(v3Core), ...Object.values(ideasCore), ...Object.values(tallerCore), ...Object.values(mvCore), ...Object.values(hrCore), ...Object.values(hiCore), ...Object.values(wkCore)].filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
 const CFG_JSON = JSON.stringify({ tz: OPS_CFG.tz, stages: OPS_CFG.stages, ignore_opps: OPS_CFG.ignore_opps });
 
-export const ACTIONS = ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'radar_report', 'content_radar_report', 'job_report', 'alerts_poll', 'alerts_ack', 'ideas_list', 'ideas_gate', 'ideas_propose', 'ideas_revise', 'taller_list', 'mail_view'];
+export const ACTIONS = ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'radar_report', 'content_radar_report', 'job_report', 'alerts_poll', 'alerts_ack', 'ideas_list', 'ideas_gate', 'ideas_propose', 'ideas_revise', 'taller_list', 'mail_view', 'history_list', 'week_status'];
 
 export const parseCode = `try {
   const first = $('Ops Webhook').first().json || {};
@@ -62,7 +65,7 @@ export const parseCode = `try {
   if (!ACTIONS.includes(action)) throw new Error('action inválida: usa ' + ACTIONS.join(' | '));
   const dry = b.dry_run === true;
   // la hora solo se puede simular en consultas de lectura o con dry_run (pruebas); las escrituras siempre usan la hora real
-  const now = Number.isFinite(Number(b.now_ms)) && (dry || ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'ideas_list', 'ideas_gate', 'taller_list', 'mail_view'].includes(action)) ? Number(b.now_ms) : Date.now();
+  const now = Number.isFinite(Number(b.now_ms)) && (dry || ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'ideas_list', 'ideas_gate', 'taller_list', 'mail_view', 'history_list', 'week_status'].includes(action)) ? Number(b.now_ms) : Date.now();
   const need = {
     sb: !['alerts_ack'].includes(action) || true,
     ghl: ['daily', 'today', 'urgent', 'stale', 'replies', 'panel'].includes(action),
@@ -70,7 +73,7 @@ export const parseCode = `try {
     deep: (action === 'health' && b.deep === true) || (action === 'alerts_poll' && b.deep_gmail === true) || (action === 'daily' && b.deep === true),
     learn: action === 'content_performance',
     panel: action === 'panel',
-    growth: ['panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'content_performance', 'alerts_poll', 'health', 'ideas_list', 'ideas_gate', 'ideas_propose', 'ideas_revise', 'taller_list', 'mail_view'].includes(action),
+    growth: ['panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'content_performance', 'alerts_poll', 'health', 'ideas_list', 'ideas_gate', 'ideas_propose', 'ideas_revise', 'taller_list', 'mail_view', 'history_list', 'week_status'].includes(action),
   };
   const sb = '${SUPABASE}/rest/v1/', none = '${NONE}';
   const iso = (ms) => new Date(ms).toISOString();
@@ -78,13 +81,14 @@ export const parseCode = `try {
   const u = {
     messages: sb + 'outreach_messages?created_at=gte.' + iso(now - 45 * 86400000) + '&select=id,candidate_id,company_name,kind,direction,status,classification,subject,body,to_email,content_hash,sent_at,created_at,updated_at,metadata,error,edited_by_christian_at,scheduled_for,approved_at,learning_pair&order=created_at.desc&limit=700',
     cands: sb + 'prospect_candidates?status=in.(in_ghl,accepted,contacted)&select=id,company_name,status,band,priority_score,source_name,created_at,ghl_stage,ghl_opportunity_id,ghl_contact_id,next_action_at,channel_state,industry,location,domain,angle:canonical->>outreach_angle,quote:canonical->evidence_quotes->0->>quote,contact:canonical->contact,sflags:canonical->source_flags,extra_emails:canonical->extra_contacts->emails,more_emails:canonical->emails&order=created_at.desc&limit=400',
-    pieces: sb + 'content_pieces?select=id,topic,channel,resource_id,editorial_type:piece->>editorial_type,status,ghl_status,ghl_approval_status,scheduled_at,published_at,is_test,learning,learned_at,created_at,format,category,score,hook:piece->>hook,taller_status,updated_at,motion_language:piece->motion_brief->>language,story_template:piece->story->>template&order=created_at.desc&limit=300',
+    pieces: sb + 'content_pieces?select=id,topic,channel,resource_id,editorial_type:piece->>editorial_type,status,ghl_status,ghl_approval_status,scheduled_at,published_at,is_test,learning,learned_at,created_at,format,category,score,hook:piece->>hook,taller_status,needs_by,updated_at,motion_language:piece->motion_brief->>language,story_template:piece->story->>template&order=created_at.desc&limit=300',
     metrics: sb + 'content_metrics?captured_at=gte.' + iso(now - 30 * 86400000) + '&select=content_piece_id,metric_window,status,likes,comments,shares,captured_at&order=captured_at.desc&limit=200',
     signals: sb + 'content_sources?signal_status=eq.candidate&select=id,title,created_at,signal_type,signal_score,angle:signal->>angle&order=created_at.desc&limit=200',
     review: need.panel ? sb + 'content_pieces?is_test=eq.false&status=in.(in_review,drafted,scored,scheduled,approved)&select=id,status,score,rationale,ghl_post_id,scheduled_at,piece,cta_mode,resource:content_resources(name,url)&order=created_at.desc&limit=10' : none,
     alerts: sb + 'ops_alerts?select=*&order=last_seen_at.desc&limit=200',
     runs: sb + 'ops_runs?select=*&order=created_at.desc&limit=40',
-    config: sb + 'outreach_config?id=eq.1&select=mode,paused,send_allowlist,daily_cap,linkedin_mode,linkedin_daily_cap,autosend_enabled,autosend_min_score,autosend_updated_at',
+    config: sb + 'outreach_config?id=eq.1&select=mode,paused,send_allowlist,daily_cap,linkedin_mode,linkedin_daily_cap,autosend_enabled,autosend_min_score,autosend_updated_at,tz,window_start,window_end',
+    accounts: ['alerts_poll', 'health', 'panel'].includes(action) ? '${GHL}/social-media-posting/${OPS_CFG.locationId}/accounts' : none,
     opps: need.ghl ? '${GHL}/opportunities/search?location_id=${OPS_CFG.locationId}&pipeline_id=${OPS_CFG.pipelineId}&status=open&limit=100' : none,
     tasks: need.ghl ? '${GHL}/locations/${OPS_CFG.locationId}/tasks/search' : none,
     wfs: need.n8n ? n8n + 'workflows?limit=100' : none,
@@ -121,6 +125,16 @@ export const parseCode = `try {
     { key: 'mail_supp', url: sb + 'outreach_suppression?select=email,reason,created_at&order=created_at.desc&limit=500' },
     { key: 'mail_cfg', url: sb + 'outreach_config?id=eq.1&select=mode,paused,daily_cap,window_start,window_end,tz,followup_days,legal_footer,autosend_enabled,autosend_min_score,funnel_min_sample,config_updated_by,updated_at' },
     { key: 'mail_cands', url: sb + 'prospect_candidates?select=id,company_name,status,industry,ghl_stage&limit=2000' });
+  // v3 · Fase 7: historial legible (90 días) y «Mi semana» (solo lectura)
+  if (action === 'panel') growth_reads.push({ key: 'meet_today', url: sb + 'lead_submissions?meeting_start=gte.' + iso(now - 86400000) + '&meeting_start=lte.' + iso(now + 86400000) + '&select=meeting_start,name,company&order=meeting_start.asc&limit=20' });
+  if (action === 'history_list') growth_reads.push({ key: 'h_audit', url: sb + 'operator_audit_log?created_at=gte.' + iso(now - 90 * 86400000) + '&select=id,actor,tool,status,entity,params,created_at&order=created_at.desc&limit=3000' },
+    { key: 'h_runs', url: sb + 'ops_runs?created_at=gte.' + iso(now - 90 * 86400000) + '&select=id,kind,status,summary,created_at&order=created_at.desc&limit=1000' },
+    { key: 'h_msgs', url: sb + 'outreach_messages?updated_at=gte.' + iso(now - 90 * 86400000) + '&select=direction,status,classification,error,company_name,sent_at,created_at,updated_at&order=updated_at.desc&limit=3000' },
+    { key: 'h_pieces', url: sb + 'content_pieces?published_at=gte.' + iso(now - 90 * 86400000) + '&select=id,topic,published_at,is_test&limit=500' },
+    { key: 'h_alerts', url: sb + 'ops_alerts?severity=in.(critical,high)&first_seen_at=gte.' + iso(now - 90 * 86400000) + '&select=alert_key,severity,title,status,first_seen_at,resolved_at,meta&order=first_seen_at.desc&limit=800' });
+  if (action === 'week_status') growth_reads.push({ key: 'w_ideas', url: sb + 'content_ideas?week_start=gte.' + day(now - 7 * 86400000) + '&select=week_start,status,is_test&limit=500' },
+    { key: 'w_meet', url: sb + 'lead_submissions?meeting_start=gte.' + iso(now - 8 * 86400000) + '&meeting_start=lte.' + iso(now + 8 * 86400000) + '&select=meeting_start,name,company&order=meeting_start.asc&limit=100' },
+    { key: 'w_pieces', url: sb + 'content_pieces?taller_status=not.is.null&is_test=eq.false&select=id,topic,taller_status,status,needs_by,credits_spent,is_test&limit=500' });
   if (action === 'ideas_gate') growth_reads.push({ key: 'sources_verified', url: sb + 'content_sources?verified=eq.true&created_at=gte.' + iso(now - 21 * 86400000) + '&select=id,title,url,kind,signal_type,source_date,created_at&order=created_at.desc&limit=60' });
   if (['ideas_propose', 'ideas_revise'].includes(action)) {
     const evs = (action === 'ideas_propose' ? ((P.proposal || {}).ideas || []) : [P.idea || {}]).flatMap((i) => (i && Array.isArray(i.evidence) ? i.evidence : []));
@@ -178,7 +192,8 @@ if (p.growth_reads && p.growth_reads.length) { const gi = $('Expand Growth').all
 const gb = (n) => { const x = node(n); return (x.statusCode || 0) < 300 && x.body && typeof x.body === 'object' ? x.body : null; };
 const gmail = p.need.deep ? { w22: gb('Gmail Check 22'), w23: gb('Gmail Check 23') } : null;
 const oppBody = node('GHL Opps').body, taskBody = node('GHL Tasks').body;
-const d = { now: p.now, cfg: CFG, opps: p.need.ghl && oppBody && Array.isArray(oppBody.opportunities) ? oppBody.opportunities : [], tasks: p.need.ghl && taskBody && Array.isArray(taskBody.tasks) ? taskBody.tasks : [],
+const accBody = node('GHL Accounts').body;
+const d = { now: p.now, ghl_accounts: accBody && accBody.results && Array.isArray(accBody.results.accounts) ? accBody.results.accounts : [], cfg: CFG, opps: p.need.ghl && oppBody && Array.isArray(oppBody.opportunities) ? oppBody.opportunities : [], tasks: p.need.ghl && taskBody && Array.isArray(taskBody.tasks) ? taskBody.tasks : [],
   messages: arr('SB Messages'), candidates: arr('SB Candidates'), pieces: arr('SB Pieces'), metrics: arr('SB Metrics'), signals_candidate: arr('SB Signals').length, signals_list: arr('SB Signals'), review_pieces: arr('SB Review Pieces'), alerts: arr('SB Alerts'), runs: arr('SB Runs'), outreach: arr('SB Config')[0] || null,
   workflows, execs, errors24h, hermes: p.hermes, gmail, missing,
   content_cfg: (G.content_cfg || [])[0] || null, feeds: G.feeds || [], feed_new: G.feed_new || [], intel: (G.intel || [])[0] || null, resources: G.resources || [], story_proposals: G.story_props || [], leads: G.leads || [], resource_use: G.resource_use || [], interviews: G.interviews || [], system_state: (G.sys_state || [])[0] || null, ideas: G.ideas || [] };
@@ -186,7 +201,7 @@ const A = p.action, writes = [], nowIso = new Date(p.now).toISOString();
 if (!d.hermes) { const hs = d.alerts.find((a) => a.alert_key === '_state:hermes'); if (hs && hs.meta && Array.isArray(hs.meta.jobs)) { d.hermes = hs.meta; d.hermes_age_ms = Math.max(0, p.now - Date.parse(hs.last_seen_at)); } }
 let out;
 if (A === 'daily') { const r = composeDaily(d); const br = composeBrief(d); out = { text: r.text, brief: br.text, action_count: r.action_count, review_count: r.review_count }; }
-else if (A === 'panel') { const pn = composePanel(d); pn.v3 = { pause: v3Pause(d.system_state), nav_v2: !(d.content_cfg && d.content_cfg.ops_nav_v2 === false), inbox: v3Inbox({ now: p.now, messages: d.messages, ideas: d.ideas, pieces: d.pieces, alerts: d.alerts, attention: pn.attention, approvals: pn.approvals }) }; out = { panel: pn }; }
+else if (A === 'panel') { const pn = composePanel(d); pn.v3 = { pause: v3Pause(d.system_state), nav_v2: !(d.content_cfg && d.content_cfg.ops_nav_v2 === false), inbox: v3Inbox({ now: p.now, tz: CFG.tz, messages: d.messages, ideas: d.ideas, pieces: d.pieces, alerts: d.alerts, attention: pn.attention, approvals: pn.approvals, meetings: G.meet_today || [] }) }; out = { panel: pn }; }
 else if (A === 'today') { out = composeToday(d); }
 else if (A === 'urgent') { out = composeUrgent(d); }
 else if (A === 'health') { const h = healthReport(d); out = { text: healthText(h) + (errors24h.length ? '\\nEjecuciones fallidas en 24 h: ' + errors24h.slice(0, 6).map((e) => e.name + ' (' + e.count + ')').join(', ') : '') + (missing.length ? '\\n⚠ ' + missingNotes(d).join(' ') : ''), overall: h.overall, components: h.components, errors24h }; }
@@ -216,6 +231,8 @@ else if (A === 'taller_list') {
   out = { taller: tallerListView({ include_test: (p.params || {}).test === true, now: p.now, pieces: G.tpieces || [], versions: G.tversions || [], feedback: G.tfeedback || [], ideas: G.tideas || [], taken: G.ttaken || [], cfg: d.content_cfg || {}, signed }) };
 }
 else if (A === 'mail_view') { if (!G.mail_cfg) missing.push('configuración de correo'); out = { mail: mailView({ now: p.now, tz: CFG.tz, cfg: (G.mail_cfg || [])[0] || {}, msgs: G.mail_msgs || [], supp: G.mail_supp || [], cands: G.mail_cands || [], pause: v3Pause(d.system_state) }) }; }
+else if (A === 'history_list') { out = { history: historyView({ now: p.now, tz: CFG.tz, audit: G.h_audit || [], runs: G.h_runs || [], msgs: G.h_msgs || [], pieces: G.h_pieces || [], alerts: G.h_alerts || [] }), alerts_open: d.alerts.filter((a) => a.status === 'open' && !/^_state:/.test(a.alert_key || '') && !(a.meta && a.meta.notice)).slice(0, 100).map((a) => ({ key: a.alert_key, severity: a.severity, title: a.title, detail: a.detail || '', since: a.first_seen_at, last: a.last_seen_at, panel_only: Boolean(a.meta && a.meta.panel_only) })) }; ['h_audit', 'h_runs', 'h_msgs'].forEach((k) => { if (!G[k]) missing.push(k); }); }
+else if (A === 'week_status') { out = { week: weekView({ now: p.now, tz: CFG.tz, ritual: d.content_cfg && d.content_cfg.week_ritual, ideas: G.w_ideas || [], messages: d.messages, meetings: G.w_meet || [], intel_at: d.intel && d.intel.created_at, pieces: G.w_pieces || [] }), costs: costsView({ higgs: d.hermes && d.hermes.higgs, pieces: G.w_pieces || [] }) }; }
 else if (A === 'ideas_list') { out = { ideas: ideasListView(G.ideas_rows || [], G.idea_batches || [], p.now, CFG.tz) }; }
 else if (A === 'ideas_gate') { out = ideasGateView({ now: p.now, tz: CFG.tz, content_cfg: d.content_cfg, system_state: d.system_state, ideas_all: G.ideas_all || [], pieces: d.pieces, sources_verified: G.sources_verified || [], resources: d.resources, intel: d.intel }); out.text = 'Ideas: ' + out.mode + ' — ' + out.reason; }
 else if (A === 'ideas_propose' || A === 'ideas_revise') {
@@ -303,6 +320,7 @@ export function buildOps() {
     get('GHL Opps', u('opps'), GHL_CRED, 'ghl', [2200, 0], { headers: GH_HEADERS }),
     { id: uuid(), name: 'GHL Tasks', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [2400, 0], credentials: GHL_CRED, continueOnFail: true, alwaysOutputData: true,
       parameters: { method: 'POST', url: u('tasks'), authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth', sendHeaders: true, headerParameters: { parameters: GH_HEADERS }, sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify({ completed: false, limit: 100 }) }}', options: full() } },
+    get('GHL Accounts', u('accounts'), GHL_CRED, 'ghl', [2500, 0], { headers: GH_HEADERS }),
     get('N8N Workflows', u('wfs'), N8N_CRED, 'n8n', [2600, 0]),
     get('N8N Errors', u('errors'), N8N_CRED, 'n8n', [2800, 0]),
     code('Expand Execs', expandExecsCode, [3000, 0]),
@@ -326,7 +344,7 @@ export function buildOps() {
   // Learnings se llama con la clave de ingesta (misma credencial que los demás webhooks internos)
   const c = { 'Ops Webhook': { main: [to('Parse')] }, 'Parse': { main: [to('Valid?')] }, 'Valid?': { main: [to('SB Messages'), to('Respond Error')] },
     'SB Messages': { main: [to('SB Candidates')] }, 'SB Candidates': { main: [to('SB Pieces')] }, 'SB Pieces': { main: [to('SB Metrics')] }, 'SB Metrics': { main: [to('SB Signals')] }, 'SB Signals': { main: [to('SB Review Pieces')] }, 'SB Review Pieces': { main: [to('SB Alerts')] },
-    'SB Alerts': { main: [to('SB Runs')] }, 'SB Runs': { main: [to('SB Config')] }, 'SB Config': { main: [to('GHL Opps')] }, 'GHL Opps': { main: [to('GHL Tasks')] }, 'GHL Tasks': { main: [to('N8N Workflows')] },
+    'SB Alerts': { main: [to('SB Runs')] }, 'SB Runs': { main: [to('SB Config')] }, 'SB Config': { main: [to('GHL Opps')] }, 'GHL Opps': { main: [to('GHL Tasks')] }, 'GHL Tasks': { main: [to('GHL Accounts')] }, 'GHL Accounts': { main: [to('N8N Workflows')] },
     'N8N Workflows': { main: [to('N8N Errors')] }, 'N8N Errors': { main: [to('Expand Execs')] }, 'Expand Execs': { main: [to('N8N Execs')] }, 'N8N Execs': { main: [to('Gmail Check 22')] },
     'Gmail Check 22': { main: [to('Gmail Check 23')] }, 'Gmail Check 23': { main: [to('Learnings')] }, 'Learnings': { main: [to('Expand Growth')] }, 'Expand Growth': { main: [to('SB Growth')] }, 'SB Growth': { main: [to('Sign Prep')] }, 'Sign Prep': { main: [to('SB Sign')] }, 'SB Sign': { main: [to('Compute')] }, 'Compute': { main: [to('Expand Writes')] }, 'Expand Writes': { main: [to('Apply Writes')] }, 'Apply Writes': { main: [to('Respond')] } };
   return { name: 'Atacama Labs - 25 Atacama Ops', nodes, connections: c, settings: { executionOrder: 'v1' } };

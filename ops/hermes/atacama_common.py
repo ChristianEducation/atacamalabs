@@ -3,6 +3,8 @@ Solo habla con n8n (webhook `atacama-ops`) usando la clave de ingesta que ya viv
 import json
 import os
 import shutil
+import subprocess
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -80,7 +82,29 @@ def hermes_state():
         st["disk_pct"] = round(u.used * 100 / u.total)
     except Exception:
         pass
+    st["higgs"] = higgs_state()
     return st
+
+
+HIGGS_CACHE = "/opt/data/state/higgs-status.json"
+
+
+def higgs_state():
+    """Saldo de Higgsfield y gasto semanal de Atacama OS (alertas v3 §H1). Consulta sin gasto, como mucho una vez por hora."""
+    try:
+        if os.path.exists(HIGGS_CACHE) and time.time() - os.path.getmtime(HIGGS_CACHE) < 3600:
+            with open(HIGGS_CACHE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        r = subprocess.run(["/opt/data/scripts/higgs.sh", "status", "--json"], capture_output=True, text=True, timeout=60)
+        line = [l for l in (r.stdout or "").splitlines() if l.strip().startswith("{")]
+        if not line:
+            return None
+        d = json.loads(line[-1])
+        with open(HIGGS_CACHE, "w", encoding="utf-8") as f:
+            json.dump(d, f)
+        return d
+    except Exception:
+        return None
 
 
 def linkedin_url(env=None):

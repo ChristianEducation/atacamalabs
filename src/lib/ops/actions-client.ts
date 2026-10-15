@@ -48,7 +48,7 @@ export async function getOverview(): Promise<OverviewResult> {
   }
 }
 
-const ACTIONS = new Set(["email_save", "email_approve", "email_reject", "email_reopen", "linkedin_approve", "linkedin_reject", "content_approve", "content_reject", "autosend_set", "autosend_sweep", "prep_li_sent", "prep_hold", "prep_release", "prep_contact", "pause_set", "idea_decide", "idea_mine", "taller_feedback", "taller_approve", "taller_schedule", "taller_discard", "taller_duplicate", "taller_caption", "mail_config_set", "mail_outcome"]);
+const ACTIONS = new Set(["email_save", "email_approve", "email_reject", "email_reopen", "linkedin_approve", "linkedin_reject", "content_approve", "content_reject", "autosend_set", "autosend_sweep", "prep_li_sent", "prep_hold", "prep_release", "prep_contact", "pause_set", "idea_decide", "idea_mine", "taller_feedback", "taller_approve", "taller_schedule", "taller_discard", "taller_duplicate", "taller_caption", "mail_config_set", "mail_outcome", "week_ritual_set"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Valida la solicitud antes de salir del servidor (lista cerrada de acciones; nada genérico). */
@@ -81,6 +81,7 @@ export function checkInput(i: OpsActionInput): string | null {
   if (i.followup_days !== undefined && (!Array.isArray(i.followup_days) || i.followup_days.length !== 2 || i.followup_days.some((d) => !Number.isInteger(d) || d < 1 || d > 30))) return "Días de seguimiento inválidos.";
   if (i.funnel_min_sample !== undefined && (!Number.isInteger(i.funnel_min_sample) || i.funnel_min_sample < 5 || i.funnel_min_sample > 200)) return "Muestra mínima inválida.";
   if (i.action === "mail_config_set" && [i.daily_cap, i.window_start, i.followup_days, i.funnel_min_sample].every((v) => v === undefined)) return "No indicaste ningún cambio.";
+  if (i.action === "week_ritual_set" && (!i.ritual || typeof i.ritual !== "object" || Object.entries(i.ritual).some(([k, v]) => !["lun", "mar", "mie", "jue", "vie"].includes(k) || !Array.isArray(v) || v.length > 4 || v.some((t) => typeof t !== "string" || t.length > 30)))) return "Ritual inválido.";
   if (i.action === "mail_outcome" && (!UUID.test(i.candidate_id ?? "") || !["reunion", "perdido"].includes(i.outcome ?? ""))) return "Resultado inválido.";
   return null;
 }

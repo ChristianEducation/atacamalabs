@@ -84,7 +84,7 @@ const mock = http.createServer((req, res) => {
     if (req.url === '/__reset') { state.calls = []; state.mode = 'ok'; state.cards = CARDS; state.autosend = false; state.paused = false; state.navV2 = true; state.tpieces = [TPIECE(1), TPIECE(2, { status: 'en_cola', status_label: 'En cola', current_version: null, versions: [], feedback: [], thumb: null, channel: 'linkedin_page', channel_label: 'LinkedIn · página', format: 'texto' })]; state.ideas = [IDEA(1), IDEA(2, { channel: 'linkedin_page', channel_label: 'LinkedIn · página', format: 'texto' }), IDEA(15, { score: 72, title: 'Idea débil plegada' })]; return send(200, {}); }
     if (req.url === '/__nav') { state.navV2 = j.v2 !== false; return send(200, {}); }
     if (req.url === '/__mode') { state.mode = j.mode; return send(200, {}); }
-    if (req.url === '/webhook/atacama-ops') { state.opsHits++; if (req.headers['x-atacama-key'] !== INGEST_KEY) return send(403, {}); return j.action === 'taller_list' ? send(200, { ok: true, taller: tallerView() }) : j.action === 'ideas_list' ? send(200, { ok: true, ideas: ideasView() }) : j.action === 'mail_view' ? send(200, { ok: true, mail: mailView() }) : send(200, { ok: true, panel: panel() }); }
+    if (req.url === '/webhook/atacama-ops') { state.opsHits++; if (req.headers['x-atacama-key'] !== INGEST_KEY) return send(403, {}); return j.action === 'taller_list' ? send(200, { ok: true, taller: tallerView() }) : j.action === 'ideas_list' ? send(200, { ok: true, ideas: ideasView() }) : j.action === 'mail_view' ? send(200, { ok: true, mail: mailView() }) : j.action === 'history_list' ? send(200, { ok: true, ...historyData() }) : j.action === 'week_status' ? send(200, { ok: true, ...weekData() }) : send(200, { ok: true, panel: panel() }); }
     if (req.url === '/webhook/atacama-ops-actions') {
       if (req.headers['x-ops-approval'] !== OPS_KEY) return send(403, { message: 'Authorization data is wrong!' });
       if (j.action === 'overview') return send(200, overview());
@@ -114,6 +114,23 @@ function mailView() {
     seguimientos: { drafts: [], upcoming: [{ candidate_id: UID(506), company: 'Empresa 6', n: 1, label: 'Seguimiento 1', due: '2026-10-20', overdue: false }] },
     embudo: { stages: ['Investigado', 'Preparado', 'Aprobado', 'Enviado', 'Respondió', 'Reunión', 'Cliente'].map((s, i) => ({ stage: s, count: 10 - i })), min_sample: 20, by_industry: [{ key: 'Salud', sent: 8, replied: 1, rate_pct: null, enough: false }], by_angle: [] },
     salud: { sent7: 48, bounces7: 2, unsubs7: 0, complaints7: 0, rate_pct: 4.2, level: 'high', alert: 'Rebote de 4.2 % en 7 días (2 de 48): vigila la calidad de los correos encontrados.', suggestion: { from: 40, to: null, text: 'Aún no conviene subir el tope: hacen falta al menos 50 envíos en 7 días para juzgar (van 48).' }, suppression_total: 1, suppression: [{ email: 'x@y.cl', reason: 'bounce', at }], pace: [{ day: '2026-10-14', sent: 12, cap: 40 }], last_sent_at: at } };
+}
+
+/** Fase 7: historial, alertas, Mi semana y costos simulados. */
+function historyData() {
+  const at = new Date().toISOString(), day = at.slice(0, 10);
+  return { history: { generated_at: at, retention_days: 90, actors: ['Christian', 'Hermes'], sections: ['correo'], days: [day],
+    lines: [{ at, day, time: '09:56–10:07', actor: 'Hermes', section: 'correo', count: 12, text: 'Hermes guardó 12 borradores (09:56–10:07)', who: ['Empresa 1'], href: '/ops?view=aprobaciones&filter=correos' }, { at, day, time: '11:00', actor: 'Christian', section: 'correo', count: 3, text: 'Christian aprobó 3 correos (11:00)', who: [], href: '/ops?view=cola' }] },
+    alerts_open: [{ key: 'mail_bounce:high', severity: 'high', title: 'Rebote de correo alto: 4.2 %', detail: 'vigila la calidad', since: at, last: at, panel_only: false }] };
+}
+function weekData() {
+  const at = new Date().toISOString();
+  return { week: { generated_at: at, week: '2026-10-12', friday: '2026-10-16', ritual: { lun: ['ideas', 'correos'], mar: ['reuniones'], mie: ['competencia'], jue: ['revisar_piezas'], vie: ['cierre'] },
+    days: [{ key: 'lun', label: 'Lunes', date: '2026-10-12', today: false, tasks: [{ id: 'ideas', label: 'Decidir las ideas de la semana (2026-10-19)', done: false, detail: '2 por decidir', href: '/ops?view=ideas' }, { id: 'correos', label: 'Revisar los borradores de correo', done: true, detail: 'sin borradores', href: null }] },
+      { key: 'mar', label: 'Martes', date: '2026-10-13', today: false, tasks: [] }, { key: 'mie', label: 'Miércoles', date: '2026-10-14', today: true, tasks: [{ id: 'competencia', label: 'Leer el informe de competencia', done: true, detail: 'listo', href: null }] },
+      { key: 'jue', label: 'Jueves', date: '2026-10-15', today: false, tasks: [] }, { key: 'vie', label: 'Viernes', date: '2026-10-16', today: false, tasks: [{ id: 'cierre', label: 'Cierre: semana siguiente programada 1 de 3', done: false, detail: '2 por programar', href: '/ops?view=taller', light: 'rojo' }] }],
+    progress: { done: 2, total: 4 }, meetings_today: [{ at, day: at.slice(0, 10), who: 'Ana · Clínica X' }], close: { scheduled: 1, total: 3, light: 'rojo' } },
+    costs: { higgs: { balance: 1052.74, spent_week: 0, cap: 200, reserve: 300, week: '2026-10-12', at }, pieces: [], total_pieces: 0, note: 'Solo cuenta lo que Atacama OS gastó.' } };
 }
 
 async function startApp() {
@@ -314,6 +331,28 @@ async function main() {
     await waitCall('mail_outcome');
     const oc = (await calls()).slice(nb3).filter((c) => c.action === 'mail_outcome');
     t('F6 Respuestas: «Reunión» pide confirmación y llama mail_outcome una vez', oc.length === 1 && oc[0].outcome === 'reunion' && oc[0].candidate_id === UID(505), JSON.stringify(oc));
+    // ---------------------------------------------------------------- Fase 7: Mi semana, Historial, Alertas, Costos, Biblioteca
+    await page.goto(APP + '/ops?view=hoy'); await page.waitForSelector('[data-testid="week-days"]');
+    t('F7 Hoy: «Mi semana» con avance, reuniones de hoy y semáforo del cierre', /2 de 4/.test(await page.locator('#ops-main').innerText()) && /Ana · Clínica X/.test(await page.locator('#ops-main').innerText()) && (await page.locator('[data-testid="week-days"] .ops-pill-fallo').count()) === 1);
+    await page.locator('summary', { hasText: 'Mover el ritual de un día' }).click();
+    await page.locator('#rt-competencia').selectOption('jue');
+    const nb7 = (await calls()).length;
+    await page.locator('[data-testid="ritual-editor"]').getByRole('button', { name: 'Guardar ritual' }).click();
+    await waitCall('week_ritual_set');
+    const rc = (await calls()).slice(nb7).filter((c) => c.action === 'week_ritual_set');
+    t('F7 Mi semana: mover «competencia» al jueves envía el ritual completo una vez', rc.length === 1 && JSON.stringify(rc[0].ritual.jue) === '["competencia","revisar_piezas"]' && JSON.stringify(rc[0].ritual.mie) === '[]', JSON.stringify(rc));
+    await page.goto(APP + '/ops?view=historial'); await page.waitForSelector('[data-testid="history-lines"]');
+    t('F7 Historial: frases en español agrupadas, con filtros por actor', /Hermes guardó 12 borradores/.test(await page.locator('#ops-main').innerText()) && (await page.locator('nav[aria-label="Filtrar por actor"] a').count()) === 3);
+    await page.goto(APP + '/ops?view=historial&actor=Christian'); await page.waitForSelector('[data-testid="history-lines"]');
+    t('F7 Historial: el filtro por actor deja solo sus líneas', !/Hermes guardó/.test(await page.locator('[data-testid="history-lines"]').innerText()) && /Christian aprobó 3 correos/.test(await page.locator('[data-testid="history-lines"]').innerText()));
+    await page.goto(APP + '/ops?view=alertas'); await page.waitForSelector('[data-testid="alerts-open"]');
+    t('F7 Alertas: lista las abiertas con su severidad', /Importante/.test(await page.locator('[data-testid="alerts-open"]').innerText()) && /Rebote de correo alto/.test(await page.locator('[data-testid="alerts-open"]').innerText()));
+    await page.goto(APP + '/ops?view=costos'); await page.waitForSelector('#ops-main h1');
+    t('F7 Costos: saldo, gasto semanal y reserva de Higgsfield', /1052\.74/.test(await page.locator('#ops-main').innerText()) && /0 \/ 200/.test(await page.locator('#ops-main').innerText()));
+    await page.goto(APP + '/ops?view=biblioteca'); await page.waitForSelector('[data-testid="library-logos"]');
+    t('F7 Biblioteca: logos oficiales, receta del carrusel ilustrado y paleta', (await page.locator('[data-testid="library-logos"] img').count()) >= 10 && /DM Sans/.test(await page.locator('#ops-main').innerText()) && /prompts aprobados/.test(await page.locator('#ops-main').innerText()));
+    await page.goto(APP + '/ops?view=sistema'); await page.waitForSelector('.ops-sec-tabs');
+    t('F7: Sistema muestra Salud, Historial, Alertas, Costos y Controles', (await page.locator('.ops-sec-tabs a').allInnerTexts()).join('|') === 'Salud|Historial|Alertas|Costos|Controles');
     await page.goto(APP + '/ops?view=outreach'); await page.waitForSelector('#ops-main h1');
     t('F6: «outreach» sin pestaña abre LinkedIn (la pestaña de correo sigue en ?tab=email)', (await page.locator('nav[aria-label="Canal"] a.ops-tab-on').innerText()) === 'LinkedIn');
     await page.goto(APP + '/ops?view=outreach&tab=email'); await page.waitForSelector('.ops-ap');
@@ -596,7 +635,7 @@ async function main() {
       await mp.waitForSelector('.ops-ap');
       await shot(mp, `movil-${w}-aprobaciones`);
       t(`móvil ${w}: sin scroll horizontal en Aprobaciones`, await mp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
-      for (const v of ['hoy', 'inicio', 'ideas', 'taller', 'taller&pieza=' + UID(801), 'resultados', 'controles', 'control', 'outreach', 'contenido', 'sistema', 'prospeccion', 'correo', 'cola', 'respuestas', 'seguimientos', 'embudo', 'salud']) {
+      for (const v of ['hoy', 'inicio', 'ideas', 'taller', 'taller&pieza=' + UID(801), 'resultados', 'controles', 'control', 'outreach', 'contenido', 'sistema', 'prospeccion', 'correo', 'cola', 'respuestas', 'seguimientos', 'embudo', 'salud', 'historial', 'alertas', 'costos', 'biblioteca']) {
         await mp.goto(`${APP}/ops?view=${v}`);
         await mp.waitForSelector('h1');
         if (!(await mp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1))) { t(`móvil ${w}: sin scroll horizontal en ${v}`, false); break; }

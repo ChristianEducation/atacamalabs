@@ -84,4 +84,10 @@ ok('v3PausePlan: idempotente (ya pausado / ya funcionando) y sin estado no hace 
   assert.equal(v3.v3PausePlan({ paused: true }, null, {}, NOW, 'C').error, 'sin_estado');
 });
 
+ok("Fase 7: reuniones de hoy arriba en «Hoy» (con hora de Chile); las de otro día no", () => {
+  const now = Date.parse("2026-10-21T15:00:00Z");
+  const r = v3.v3Inbox({ now, meetings: [{ meeting_start: "2026-10-21T18:30:00Z", name: "Ana", company: "Clínica X" }, { meeting_start: "2026-10-22T18:30:00Z", name: "Otro" }] });
+  assert.equal(r.items[0].kind, "reunion"); assert.equal(r.items[0].count, 1); assert.equal(r.items[0].examples[0], "15:30 · Ana · Clínica X");
+});
+
 console.log(n + ' ok');

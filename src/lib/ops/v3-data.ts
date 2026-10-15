@@ -1,5 +1,5 @@
 import "server-only";
-import type { DnsCheck, IdeasView, MailView, TallerView } from "./types";
+import type { DnsCheck, HistoryData, IdeasView, MailView, TallerView, WeekData } from "./types";
 import { swr } from "./swr";
 
 /**
@@ -44,6 +44,16 @@ const mailCache = swr<MailView>(() => read("mail_view", (j) => {
   return v && v.hoy && Array.isArray(v.cola) ? v : null;
 }), { freshMs: 20_000, maxStaleMs: 10 * 60_000 });
 
+const historyCache = swr<HistoryData>(() => read("history_list", (j) => {
+  const h = j.history as HistoryData["history"] | undefined;
+  return h && Array.isArray(h.lines) ? { history: h, alerts_open: Array.isArray(j.alerts_open) ? (j.alerts_open as HistoryData["alerts_open"]) : [] } : null;
+}), { freshMs: 30_000, maxStaleMs: 10 * 60_000 });
+
+const weekCache = swr<WeekData>(() => read("week_status", (j) => {
+  const w = j.week as WeekData["week"] | undefined;
+  return w && Array.isArray(w.days) ? { week: w, costs: (j.costs as WeekData["costs"]) ?? { higgs: null, pieces: [], total_pieces: 0, note: "" } } : null;
+}), { freshMs: 30_000, maxStaleMs: 10 * 60_000 });
+
 /**
  * SPF / DKIM / DMARC del dominio de envío (spec §7-9). Consulta pública por DNS sobre HTTPS (sin claves), una vez al día como mucho.
  * DKIM se busca en el selector de Google Workspace («google»), que es el que usa el envío por Gmail.
@@ -85,6 +95,16 @@ export async function getMail(): Promise<V3Result<MailView>> {
   try { return { ok: true, value: (await mailCache.get()).value }; } catch { return { ok: false, reason: "unreachable" }; }
 }
 
+export async function getHistory(): Promise<V3Result<HistoryData>> {
+  if (!config()) return { ok: false, reason: "not_configured" };
+  try { return { ok: true, value: (await historyCache.get()).value }; } catch { return { ok: false, reason: "unreachable" }; }
+}
+
+export async function getWeek(): Promise<V3Result<WeekData>> {
+  if (!config()) return { ok: false, reason: "not_configured" };
+  try { return { ok: true, value: (await weekCache.get()).value }; } catch { return { ok: false, reason: "unreachable" }; }
+}
+
 export async function getDns(): Promise<DnsCheck | null> {
   try { return (await dnsCache.get()).value; } catch { return null; }
 }
@@ -94,4 +114,6 @@ export function invalidateV3(): void {
   ideasCache.drop();
   tallerCache.drop();
   mailCache.drop();
+  historyCache.drop();
+  weekCache.drop();
 }

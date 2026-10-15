@@ -10,7 +10,8 @@ import { ControlCenter } from "./Control";
 import { PauseCard } from "./Pause";
 import { IdeasBoard } from "./Ideas";
 import { TallerBoard } from "./Taller";
-import { getDns, getIdeas, getMail, getTaller } from "@/lib/ops/v3-data";
+import { getDns, getHistory, getIdeas, getMail, getTaller, getWeek } from "@/lib/ops/v3-data";
+import { AlertsView, CostsView, HistoryView, LibraryView, WeekCard } from "./SystemViews";
 import { parseView, sectionOf, viewHref, type ViewId } from "./views";
 import { MailSection, type MailTab } from "./Mail";
 
@@ -178,7 +179,7 @@ function InboxList({ items }: { items: InboxItem[] }) {
   );
 }
 
-function Hoy({ panel, fetchedAt, stale }: { panel: Panel; fetchedAt: number; stale: boolean }) {
+function Hoy({ panel, fetchedAt, stale, wP }: { panel: Panel; fetchedAt: number; stale: boolean; wP: ReturnType<typeof getWeek> }) {
   const v3 = panel.v3;
   const items = v3?.inbox.items ?? [];
   const paused = v3?.pause.paused === true;
@@ -191,6 +192,7 @@ function Hoy({ panel, fetchedAt, stale }: { panel: Panel; fetchedAt: number; sta
           : items.length ? <InboxList items={items} />
           : <Empty>Nada espera tu decisión ahora. Lo nuevo aparecerá aquí apenas llegue.</Empty>}
       </Section>
+      <WeekCard wP={wP} />
       <Inicio panel={panel} fetchedAt={fetchedAt} stale={stale} embedded />
       {!paused && v3 ? <PauseCard pause={v3.pause} scheduled={panel.content.scheduled} /> : null}
     </>
@@ -509,14 +511,16 @@ function SectionTabs({ view }: { view: ViewId }) {
 }
 
 /** Marco + vista elegida. `sp` = parámetros de la URL (?view=…&filter=…&tab=…). */
-export async function PanelView({ sp }: { sp: { view?: string | string[]; filter?: string | string[]; tab?: string | string[]; pieza?: string | string[] } }) {
+export async function PanelView({ sp }: { sp: { view?: string | string[]; filter?: string | string[]; tab?: string | string[]; pieza?: string | string[]; actor?: string | string[]; sec?: string | string[]; dia?: string | string[] } }) {
   const asked = parseView(sp.view);
   // Las aprobaciones se piden EN PARALELO con el panel (antes iban una tras otra) y solo en las vistas que las usan.
   const ovP = asked === "aprobaciones" || asked === "outreach" ? getOverview() : Promise.resolve<Awaited<ReturnType<typeof getOverview>>>({ ok: false, reason: "not_configured" });
   const tlP = asked === "taller" ? getTaller() : Promise.resolve<Awaited<ReturnType<typeof getTaller>>>({ ok: false, reason: "not_configured" });
-  const idP = asked === "ideas" ? getIdeas() : Promise.resolve<Awaited<ReturnType<typeof getIdeas>>>({ ok: false, reason: "not_configured" });
+  const idP = asked === "ideas" || asked === "biblioteca" ? getIdeas() : Promise.resolve<Awaited<ReturnType<typeof getIdeas>>>({ ok: false, reason: "not_configured" });
   const mP = asked && MAIL_TABS.includes(asked) ? getMail() : Promise.resolve<Awaited<ReturnType<typeof getMail>>>({ ok: false, reason: "not_configured" });
   const dnsP = asked === "salud" ? getDns() : Promise.resolve(null);
+  const hP = asked === "historial" || asked === "alertas" ? getHistory() : Promise.resolve<Awaited<ReturnType<typeof getHistory>>>({ ok: false, reason: "not_configured" });
+  const wP = !asked || asked === "hoy" || asked === "inicio" || asked === "costos" ? getWeek() : Promise.resolve<Awaited<ReturnType<typeof getWeek>>>({ ok: false, reason: "not_configured" });
   const r = await getPanel();
   // Navegación v2 (spec §5) salvo que content_config.ops_nav_v2 = false. Sin vista en la URL: «Hoy» (v2) o «Inicio» (v1).
   const v2 = !(r.ok && r.panel.v3 && r.panel.v3.nav_v2 === false);
@@ -544,7 +548,7 @@ export async function PanelView({ sp }: { sp: { view?: string | string[]; filter
   return (
     <Shell view={view} badges={badges} v2={v2} paused={panel.v3?.pause.paused === true}>
       {v2 ? <SectionTabs view={view} /> : null}
-      {view === "hoy" || (v2 && view === "inicio") ? <Hoy panel={panel} fetchedAt={fetchedAt} stale={stale} />
+      {view === "hoy" || (v2 && view === "inicio") ? <Hoy panel={panel} fetchedAt={fetchedAt} stale={stale} wP={wP} />
         : view === "inicio" ? <Inicio panel={panel} fetchedAt={fetchedAt} stale={stale} />
         : view === "ideas" ? <Ideas fetchedAt={fetchedAt} stale={stale} idP={idP} />
         : view === "taller" ? <Taller fetchedAt={fetchedAt} stale={stale} tlP={tlP} pieza={/^[0-9a-f-]{36}$/i.test(one(sp.pieza) ?? "") ? (one(sp.pieza) as string) : null} />
@@ -555,6 +559,10 @@ export async function PanelView({ sp }: { sp: { view?: string | string[]; filter
         : view === "prospeccion" ? <Prospeccion panel={panel} fetchedAt={fetchedAt} stale={stale} />
         : view === "outreach" ? <Outreach panel={panel} fetchedAt={fetchedAt} stale={stale} tab={tab} ovP={ovP} />
         : view === "contenido" ? <Contenido panel={panel} fetchedAt={fetchedAt} stale={stale} />
+        : view === "historial" ? <HistoryView hP={hP} fetchedAt={fetchedAt} stale={stale} actor={one(sp.actor) ?? null} sec={one(sp.sec) ?? null} dia={/^\d{4}-\d{2}-\d{2}$/.test(one(sp.dia) ?? "") ? (one(sp.dia) as string) : null} />
+        : view === "alertas" ? <AlertsView hP={hP} fetchedAt={fetchedAt} stale={stale} />
+        : view === "costos" ? <CostsView wP={wP} fetchedAt={fetchedAt} stale={stale} />
+        : view === "biblioteca" ? <LibraryView panel={panel} idP={idP} fetchedAt={fetchedAt} stale={stale} />
         : MAIL_TABS.includes(view) ? <MailSection tab={view as MailTab} mP={mP} dnsP={dnsP} panel={panel} fetchedAt={fetchedAt} stale={stale} />
         : <Sistema panel={panel} fetchedAt={fetchedAt} stale={stale} />}
     </Shell>

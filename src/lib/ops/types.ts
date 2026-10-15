@@ -126,6 +126,17 @@ export type MailView = {
   salud: { sent7: number; bounces7: number; unsubs7: number; complaints7: number; rate_pct: number; level: "ok" | "high" | "critical"; alert: string | null; suggestion: { from: number; to: number | null; text: string };
     suppression_total: number; suppression: { email: string; reason: string | null; at: string | null }[]; pace: { day: string; sent: number; cap: number }[]; last_sent_at: string | null };
 };
+/** Fase 7: historial, alertas abiertas, Mi semana, costos, biblioteca. */
+export type HistoryLine = { at: string; day: string; time: string; actor: string; section: string; count: number; text: string; who: string[]; href: string | null };
+export type OpenAlert = { key: string; severity: string; title: string; detail: string; since: string; last: string; panel_only: boolean };
+export type HistoryData = { history: { generated_at: string; lines: HistoryLine[]; actors: string[]; sections: string[]; days: string[]; retention_days: number }; alerts_open: OpenAlert[] };
+export type WeekTask = { id: string; label: string; done: boolean; detail: string; href: string | null; light?: string; meetings?: { at: string; day: string; who: string }[] };
+export type WeekData = {
+  week: { generated_at: string; week: string; friday: string; ritual: Record<string, string[]>; days: { key: string; label: string; date: string; today: boolean; tasks: WeekTask[] }[]; progress: { done: number; total: number };
+    meetings_today: { at: string; day: string; who: string }[]; close: { scheduled: number; total: number; light: string } };
+  costs: { higgs: { balance: number | null; spent_week: number; cap: number; reserve: number; week: string | null; at: string | null } | null; pieces: { id: string; topic: string; credits: number; status: string | null }[]; total_pieces: number; note: string };
+};
+export type LibraryIndex = { font: string; palette: { name: string; hex: string }[]; brand: { name: string; url: string; kind: string }[]; mascot: { name: string; path: string }[]; recipes: { slug: string; title: string; path: string; receta: string; prompts: { name: string; text: string }[] }[] };
 export type DnsCheck = { domain: string; checked_at: string; spf: boolean | null; dkim: boolean | null; dmarc: boolean | null; detail: string[] };
 export type PanelV3 = { pause: PauseState; nav_v2: boolean; inbox: { items: InboxItem[]; total: number } };
 
@@ -212,6 +223,6 @@ export type Overview = {
 };
 export type OverviewResult = { ok: true; overview: Overview } | { ok: false; reason: "not_configured" | "unreachable" | "bad_response" };
 
-export type OpsActionName = "email_save" | "email_approve" | "email_reject" | "email_reopen" | "linkedin_approve" | "linkedin_reject" | "content_approve" | "content_reject" | "autosend_set" | "autosend_sweep" | "prep_li_sent" | "prep_hold" | "prep_release" | "prep_contact" | "pause_set" | "idea_decide" | "idea_mine" | "taller_feedback" | "taller_approve" | "taller_schedule" | "taller_discard" | "taller_duplicate" | "taller_caption" | "mail_config_set" | "mail_outcome";
-export type OpsActionInput = { paste?: boolean; daily_cap?: number; window_start?: string; window_end?: string; followup_days?: number[]; funnel_min_sample?: number; outcome?: "reunion" | "perdido"; action: OpsActionName; request_id: string; message_id?: string; candidate_id?: string; piece_id?: string; subject?: string; body?: string; expected_hash?: string; reason?: string; enabled?: boolean; min_score?: number; kind?: string; text?: string; email?: string; linkedin?: string; paused?: boolean; resume_at?: string; idea_id?: string; decision?: string; chips?: string[]; title?: string; channel?: string; format?: string; week_start?: string; scope?: string; schedule_at?: string; caption?: string };
+export type OpsActionName = "email_save" | "email_approve" | "email_reject" | "email_reopen" | "linkedin_approve" | "linkedin_reject" | "content_approve" | "content_reject" | "autosend_set" | "autosend_sweep" | "prep_li_sent" | "prep_hold" | "prep_release" | "prep_contact" | "pause_set" | "idea_decide" | "idea_mine" | "taller_feedback" | "taller_approve" | "taller_schedule" | "taller_discard" | "taller_duplicate" | "taller_caption" | "mail_config_set" | "mail_outcome" | "week_ritual_set";
+export type OpsActionInput = { ritual?: Record<string, string[]>; paste?: boolean; daily_cap?: number; window_start?: string; window_end?: string; followup_days?: number[]; funnel_min_sample?: number; outcome?: "reunion" | "perdido"; action: OpsActionName; request_id: string; message_id?: string; candidate_id?: string; piece_id?: string; subject?: string; body?: string; expected_hash?: string; reason?: string; enabled?: boolean; min_score?: number; kind?: string; text?: string; email?: string; linkedin?: string; paused?: boolean; resume_at?: string; idea_id?: string; decision?: string; chips?: string[]; title?: string; channel?: string; format?: string; week_start?: string; scope?: string; schedule_at?: string; caption?: string };
 export type OpsActionState = { ok: boolean; message: string; status?: string; hash?: string | null; needsGhl?: boolean; replayed?: boolean; ghlPostId?: string | null };

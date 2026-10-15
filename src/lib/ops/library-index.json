@@ -1,0 +1,190 @@
+{
+ "font": "DM Sans",
+ "palette": [
+  {
+   "name": "Azul Atacama",
+   "hex": "#0F5CED"
+  },
+  {
+   "name": "Tinta",
+   "hex": "#121A2B"
+  },
+  {
+   "name": "Noche",
+   "hex": "#041228"
+  },
+  {
+   "name": "Papel",
+   "hex": "#F5F4F0"
+  },
+  {
+   "name": "Línea",
+   "hex": "#DDD9D1"
+  }
+ ],
+ "brand": [
+  {
+   "name": "app-icon-claro",
+   "url": "/brand/app-icon-claro.svg",
+   "kind": "icono"
+  },
+  {
+   "name": "app-icon-oscuro",
+   "url": "/brand/app-icon-oscuro.svg",
+   "kind": "icono"
+  },
+  {
+   "name": "favicon",
+   "url": "/brand/favicon.svg",
+   "kind": "icono"
+  },
+  {
+   "name": "glifo-a",
+   "url": "/brand/glifo-a.svg",
+   "kind": "isotipo"
+  },
+  {
+   "name": "glifo-b",
+   "url": "/brand/glifo-b.svg",
+   "kind": "isotipo"
+  },
+  {
+   "name": "glifo-s",
+   "url": "/brand/glifo-s.svg",
+   "kind": "isotipo"
+  },
+  {
+   "name": "isotipo-azul",
+   "url": "/brand/isotipo-azul.svg",
+   "kind": "isotipo"
+  },
+  {
+   "name": "isotipo-blanco",
+   "url": "/brand/isotipo-blanco.svg",
+   "kind": "isotipo"
+  },
+  {
+   "name": "isotipo-negro",
+   "url": "/brand/isotipo-negro.svg",
+   "kind": "isotipo"
+  },
+  {
+   "name": "isotipo-tinta",
+   "url": "/brand/isotipo-tinta.svg",
+   "kind": "isotipo"
+  },
+  {
+   "name": "logo-horizontal-blanco",
+   "url": "/brand/logo-horizontal-blanco.svg",
+   "kind": "logo"
+  },
+  {
+   "name": "logo-horizontal-fondo-oscuro",
+   "url": "/brand/logo-horizontal-fondo-oscuro.svg",
+   "kind": "logo"
+  },
+  {
+   "name": "logo-horizontal-negro",
+   "url": "/brand/logo-horizontal-negro.svg",
+   "kind": "logo"
+  },
+  {
+   "name": "logo-horizontal",
+   "url": "/brand/logo-horizontal.svg",
+   "kind": "logo"
+  },
+  {
+   "name": "logo-vertical-blanco",
+   "url": "/brand/logo-vertical-blanco.svg",
+   "kind": "logo"
+  },
+  {
+   "name": "logo-vertical-fondo-oscuro",
+   "url": "/brand/logo-vertical-fondo-oscuro.svg",
+   "kind": "logo"
+  },
+  {
+   "name": "logo-vertical-negro",
+   "url": "/brand/logo-vertical-negro.svg",
+   "kind": "logo"
+  },
+  {
+   "name": "logo-vertical",
+   "url": "/brand/logo-vertical.svg",
+   "kind": "logo"
+  },
+  {
+   "name": "og-share",
+   "url": "/brand/og-share.png",
+   "kind": "otro"
+  },
+  {
+   "name": "social-avatar-1024",
+   "url": "/brand/social-avatar-1024.png",
+   "kind": "icono"
+  },
+  {
+   "name": "wordmark-blanco",
+   "url": "/brand/wordmark-blanco.svg",
+   "kind": "logo"
+  },
+  {
+   "name": "wordmark-negro",
+   "url": "/brand/wordmark-negro.svg",
+   "kind": "logo"
+  },
+  {
+   "name": "wordmark",
+   "url": "/brand/wordmark.svg",
+   "kind": "logo"
+  }
+ ],
+ "mascot": [
+  {
+   "name": "emociones.png",
+   "path": "brand/content/mascot/emociones.png"
+  },
+  {
+   "name": "poses.png",
+   "path": "brand/content/mascot/poses.png"
+  }
+ ],
+ "recipes": [
+  {
+   "slug": "carrusel-ilustrado",
+   "title": "Receta · carrusel ilustrado (producción automática en la VPS, Atacama OS v3 §6.5)",
+   "path": "brand/content/recetas/carrusel-ilustrado",
+   "receta": "# Receta · carrusel ilustrado (producción automática en la VPS, Atacama OS v3 §6.5)\n\nFuente: `docs/ESTRATEGIA-CARRUSELES-ILUSTRADOS.md` (lo aprendido con el carrusel de Flows). Esto es el **método**, no una plantilla:\ncada carrusel compone su propia disposición según su historia.\n\n## Reparto de trabajo\n- **El modelo** (Higgsfield · GPT Image 2.5) dibuja SOLO lo visual de cada lámina: objeto o escena sobre **fondo liso uniforme** (#E8EDF6), con los textos exactos que deben verse DENTRO de la escena (chats, formularios). Nunca titulares, logos ni contadores.\n- **El sistema** (`scripts/content/carousel-composer.mjs`) pone titular con énfasis azul, texto de apoyo, pill, pasos, logo oficial, contador «NN / TT», fondo con la cuadrícula de marca y el cierre. Recorte del fondo en local (`scripts/media/cutout.py`, solo Pillow).\n- **Control de calidad** (`scripts/content/taller-producer-core.mjs`): 1080×1350, texto exacto leído con la visión de Hermes (≤ 1 diferencia de tilde/mayúscula por línea), logo y cuadrícula presentes, sin marcos ni chips; crítica visual de la hoja de contacto.\n- **Lámina de prueba primero**; máx. 3 intentos por lámina, 30 créditos por pieza, 200 por semana → si se agota: «necesita ayuda».\n\n## Especificación que escribe Hermes (`taller_produce`)\n```json\n{ \"caption\": \"Texto de la publicación (incluye la palabra clave si la idea la lleva)\",\n  \"slides\": [\n    { \"layout\": \"portada\", \"pill\": \"NUEVO COBRO DESDE EL 1 DE OCTUBRE\", \"title\": \"¿Agendar una hora en 8 mensajes?\", \"emph\": \"Bastan 3 toques.\",\n      \"art\": { \"scene\": \"Close-up of a hand holding a phone… plain flat light blue-grey background\", \"texts\": [\"Clínica Dental Sonrisa\", \"Limpieza dental\"], \"cutout\": true } },\n    { \"layout\": \"arte_texto\", \"title\": \"Pedir cada dato por separado|*alarga la conversación.*\", \"body\": \"Texto de apoyo con **una idea** fuerte.\", \"art\": { \"scene\": \"…\", \"cutout\": true } },\n    { \"layout\": \"pasos\", \"title\": \"Y nosotros lo dejamos *configurado.*\", \"steps\": [\"Revisamos tu *proceso*\", \"Configuramos el *agente*\", \"Lo *probamos contigo*\"], \"art\": { \"scene\": \"…\" } },\n    { \"layout\": \"texto\", \"title\": \"Una idea fuerte\", \"body\": \"Texto breve.\" },\n    { \"layout\": \"cierre\", \"title\": \"¿Hoy agendas *por WhatsApp?*\", \"body\": \"Escríbenos y lo revisamos contigo.\" } ] }\n```\nLayouts: `portada · arte_texto · pasos · texto · cierre` (la última lámina de un carrusel SIEMPRE es `cierre`). `*así*` = énfasis azul. `|` separa líneas del título.\n\n## Errores ya conocidos (no repetirlos)\n- La **llamita** oficial: bípeda, 4 patas (2 brazos + 2 piernas), lana crema, manos y pezuñas cafés, SIN bufanda ni ropa. Usar las poses oficiales de `brand/content/mascot/` como referencia; si sale con 6 patas o deforme, se rehace.\n- **Verde = empresa / blanco = cliente** en todos los chats; no cambiar de punto de vista entre láminas. Negocio ficticio y coherente en todas las láminas.\n- **Pantallas realistas** (aspecto de WhatsApp sin su logo), manos reales; nada de render de juguete.\n- **Encuadre cercano**: el objeto principal ocupa ≥ 60 % del ancho; máximo 4–5 mensajes o tarjetas; texto grande y legible en un celular.\n- **Fondo liso** para recortar; nunca cuadrícula, mesa ni sombra proyectada en el fondo del arte (la cuadrícula la pone el compositor).\n- Prohibido: robots, hologramas, neón, circuitos, brillo excesivo, logos inventados, esquinas decorativas o «marcos».\n- Toda corrección que Christian repite se convierte en **regla propuesta** (`tpRuleCandidates`) para que él la apruebe.\n\n## Prompts aprobados (referencia, carrusel de Flows)\nEn `prompts/`: portada con formulario, portada de lado, chat en mano, tres celulares, llamita con panel. Se reutiliza su estructura (estilo, fondo, sujeto, textos exactos, encuadre), nunca su contenido.",
+   "prompts": [
+    {
+     "name": "lamina-01-portada-formulario",
+     "text": "Photorealistic vertical 4:5 product photo, soft diffused studio light, natural skin texture, crisp glass reflections.\nSubject: a person's hand (no face, neutral skin tone, short clean nails) holding a modern smartphone upright, screen facing the viewer, very slightly tilted; the phone is large, about 65% of the canvas width, held from the lower part; the hand and the lower end of the phone may be cropped by the bottom of the canvas. Leave the top 14% of the canvas empty.\nBackground: a perfectly flat, uniform, seamless light blue-grey (#E8EDF6) background with no pattern, no grid, no table, no objects and no cast background shadow, so the subject can be cut out cleanly.\nThe phone screen shows a realistic in-chat booking form of a popular green messaging app (no logo), light mode: the chat is dimmed behind a white bottom sheet that fills most of the screen. Sheet header: a small \"X\" at the left and the business name \"Clínica Dental Sonrisa\". Sheet content, large and perfectly legible, written EXACTLY in Spanish: a bold title \"Agenda tu hora\"; three form fields with a small label above each value: \"Servicio\" with value \"Limpieza dental\"; \"Día\" with value \"Martes 20\"; \"Hora\" with value \"10:30\". A wide green button at the bottom: \"Confirmar\". No other text, no logos, no watermark."
+    },
+    {
+     "name": "lamina-01-portada-v2-lado",
+     "text": "Photorealistic vertical 4:5 lifestyle product photo, soft natural daylight, shallow depth of field, natural skin texture, crisp glass reflections.\nSubject: a person's hand (no face, neutral skin tone, short clean nails) holding a modern smartphone with a soft light rose-beige silicone case, seen from a three-quarter SIDE angle: the phone is tilted about 35 degrees, its top pointing to the upper right of the frame, the hand enters from the bottom-left and the thumb hovers just above the screen about to tap it. The phone is large, about 75% of the canvas width. The hand and the lower part of the phone are cropped by the bottom edge of the canvas. Leave the top 30% of the canvas completely empty.\nBackground: a perfectly flat, uniform, seamless light blue-grey (#E8EDF6) background with no pattern, no grid, no table, no objects and no cast background shadow, so the subject can be cut out cleanly.\nThe phone screen, seen in perspective, shows a realistic in-chat booking form of a popular green messaging app (no logo), light mode: the chat is dimmed behind a white bottom sheet that covers most of the screen. Sheet header: a small \"X\" at the left and the business name \"Clínica Dental Sonrisa\". Sheet content, large and legible even in perspective, written EXACTLY in Spanish: a bold title \"Agenda tu hora\"; two form fields with a small label above each value: \"Servicio\" with value \"Limpieza dental\"; \"Día\" with value \"Martes 20\". A wide green button at the bottom: \"Confirmar\". No other text, no logos, no watermark."
+    },
+    {
+     "name": "lamina-02-chat-en-mano",
+     "text": "Photorealistic vertical 4:5 product photo, shot on a modern smartphone camera look, soft diffused studio light, natural skin texture, crisp glass reflections.\nSubject: a person's hand (no face, no other body parts, neutral skin tone, short clean nails) holding a modern smartphone upright, screen facing the viewer, very slightly tilted. The phone is large in frame, filling about 65% of the canvas width, held from the lower part so most of the phone is visible; the hand and the lower edge of the phone may be cropped by the bottom of the canvas.\nBackground: a perfectly flat, uniform, seamless very light grey-white (#F3F6FB), no pattern, no grid, no objects, no table, soft contact-free lighting so the phone and hand can be cut out cleanly. Leave the top 16% of the canvas empty.\nThe phone screen shows a realistic messaging chat screen in light mode in the style of a popular green messaging app, without any logo: a top bar with a small round avatar, the contact name \"Clínica Dental Sonrisa\" and the word \"en línea\"; a pale beige chat wallpaper; exactly EIGHT short message bubbles stacked from top to bottom, each with a tiny time stamp at its bottom right. The four customer messages are white bubbles aligned to the left. The four business replies are light green bubbles aligned to the right, each with two small blue read-check marks next to the time. Bubble text must be large and perfectly legible and written EXACTLY, in Spanish, in this order:\n1) customer: \"Hola, quiero hora\" — 10:02\n2) business: \"¿Para qué servicio?\" — 10:02\n3) customer: \"Limpieza dental\" — 10:03\n4) business: \"¿Qué día te acomoda?\" — 10:03\n5) customer: \"El martes\" — 10:04\n6) business: \"¿Mañana o tarde?\" — 10:04\n7) customer: \"Mañana\" — 10:05\n8) business: \"¿Tu nombre y RUT?\" — 10:05\nNo other text anywhere. No app logo, no brand logos, no watermark."
+    },
+    {
+     "name": "lamina-03-celular-1",
+     "text": "Photorealistic vertical 9:16 product photo of ONE modern smartphone floating upright, screen facing the viewer, no hand, very slightly tilted, soft diffused studio light, crisp glass reflections, filling about 78% of the canvas width. Background: a perfectly flat, uniform, seamless light blue-grey (#E8EDF6) background with no pattern, no grid, no table, no objects and no cast background shadow, so the subject can be cut out cleanly.\nThe screen shows a realistic chat of a popular green messaging app (no logo), light mode, pale beige wallpaper, seen from the BUSINESS's phone: top bar with a round avatar, the name \"Clínica Dental Sonrisa\" and \"en línea\". Two message bubbles near the top, large and perfectly legible, written EXACTLY in Spanish: first, a WHITE incoming bubble aligned to the left (the customer): \"Hola, quiero hora\" with time \"10:00\". Second, a LIGHT GREEN outgoing bubble aligned to the right (the business): \"Claro, completa este formulario para agendar\" with time \"10:00\" and two blue read-check marks, and directly under it a light green full-width action button row with the text \"Agendar hora\". The rest of the chat below is empty wallpaper. No other text, no logos, no watermark."
+    },
+    {
+     "name": "lamina-03-celular-2",
+     "text": "Photorealistic vertical 9:16 product photo of ONE modern smartphone floating upright, screen facing the viewer, no hand, very slightly tilted, soft diffused studio light, crisp glass reflections, filling about 70% of the canvas width. Background: a perfectly flat, uniform, seamless light blue-grey (#E8EDF6) background with no pattern, no grid, no table, no objects and no cast background shadow, so the subject can be cut out cleanly.\nThe screen shows a realistic in-chat booking form of a popular green messaging app (no logo), light mode: a white bottom sheet fills most of the screen over a dimmed chat. Header: a small \"X\" at the left and \"Clínica Dental Sonrisa\". Content, large and perfectly legible, written EXACTLY in Spanish: bold title \"Agenda tu hora\"; three fields with a small label above each value: \"Servicio\" / \"Limpieza dental\"; \"Día\" / \"Martes 20\"; \"Hora\" / \"10:30\". A wide green button at the bottom: \"Confirmar\". No other text, no logos, no watermark."
+    },
+    {
+     "name": "lamina-03-celular-3",
+     "text": "Photorealistic vertical 9:16 product photo of ONE modern smartphone floating upright, screen facing the viewer, no hand, very slightly tilted, soft diffused studio light, crisp glass reflections, filling about 78% of the canvas width. Background: a perfectly flat, uniform, seamless light blue-grey (#E8EDF6) background with no pattern, no grid, no table, no objects and no cast background shadow, so the subject can be cut out cleanly.\nThe screen shows a realistic chat of a popular green messaging app (no logo), light mode, pale beige wallpaper, seen from the BUSINESS's phone: top bar with a round avatar, the name \"Clínica Dental Sonrisa\" and \"en línea\". Exactly FIVE stacked bubbles filling the chat area from the top, large and perfectly legible, written EXACTLY in Spanish, in this order. Customer messages are WHITE bubbles aligned to the left; business messages are LIGHT GREEN bubbles aligned to the right with two blue read-check marks next to the time:\n1) white left bubble (customer): \"Hola, quiero hora\" — 10:00.\n2) light green right bubble (business): \"Claro, completa este formulario para agendar\" — 10:00, with a light green action button row under it: \"Agendar hora\".\n3) white left bubble (customer, the submitted form) with two short lines: \"Agenda tu hora\" (bold) and \"Limpieza dental · Martes 20 · 10:30\" — 10:01.\n4) light green right bubble (business): \"Tu hora quedó confirmada: martes 20 · 10:30\" — 10:01.\n5) light green right bubble (business): \"Te enviaremos un recordatorio el lunes.\" — 10:01.\nNo other text, no logos, no watermark."
+    },
+    {
+     "name": "lamina-04-llamita-con-panel",
+     "text": "Premium 3D render, vertical 4:5, soft studio light, gentle shadows, clean modern marketing style. Background: a perfectly flat, uniform, seamless light blue-grey (#E8EDF6) background with no pattern, no grid, no table, no objects and no cast background shadow, so the subject can be cut out cleanly.\nSubject: the cute plush alpaca mascot EXACTLY as in the reference images (same fluffy cream wool, same small face with big dark glossy eyes and tiny smile, brown ears, brown hands and hooves, chubby upright body walking on two legs with two arms, NO scarf, NO clothes), standing on the left holding a smartphone in one hand and tapping it with the other, with a calm, pleased expression, looking at the large floating settings card at its right. Correct anatomy: exactly two arms, two legs, one head, two ears.\nOn the right, a large floating frosted-glass white settings card with exactly FOUR rows, each with a blue switch turned ON on the right side, text large and perfectly legible, written EXACTLY in Spanish: \"Conversa primero\"; \"Formulario si ahorra pasos\"; \"Revisa disponibilidad\"; \"Confirma y avisa\". The alpaca and the card together fill about 90% of the canvas width. Leave the top 14% empty. No other text, no logos, no watermark, no robots, no neon."
+    }
+   ]
+  }
+ ]
+}
