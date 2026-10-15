@@ -1,0 +1,173 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><style>
+@font-face{font-family:"DM Sans";src:url("__FONT__") format("woff2");font-weight:100 1000}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#eef3fe}
+body{font-family:"DM Sans",sans-serif;-webkit-font-smoothing:antialiased;color:#0b1e3f}
+#stage{position:absolute;left:0;top:0;width:1080px;height:1920px;overflow:hidden}
+#bg{position:absolute;inset:0;background:radial-gradient(62% 36% at 50% 46%,rgba(15,92,237,.17),rgba(15,92,237,0) 72%),linear-gradient(180deg,#eef3fe,#e3ecfc)}
+#grid{position:absolute;inset:0;background-image:linear-gradient(rgba(15,92,237,.12) 2px,transparent 2px),linear-gradient(90deg,rgba(15,92,237,.12) 2px,transparent 2px),linear-gradient(rgba(15,92,237,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(15,92,237,.055) 1px,transparent 1px);background-size:120px 120px,120px 120px,40px 40px,40px 40px}
+.abs{position:absolute}
+.pill{position:absolute;left:50%;top:268px;transform:translateX(-50%);height:62px;padding:0 34px;border-radius:40px;font-weight:700;font-size:28px;letter-spacing:.08em;display:flex;align-items:center;white-space:nowrap}
+.pill.dark{background:#16233f;color:#fff;box-shadow:0 12px 26px rgba(22,35,63,.35)}
+.pill.blue{background:#0f5ced;color:#fff;box-shadow:0 12px 26px rgba(15,92,237,.4)}
+.h{position:absolute;left:90px;width:900px;top:360px;text-align:center;font-weight:700;font-size:76px;line-height:1.04;letter-spacing:-.035em;color:#0b1e3f}
+.h em{font-style:normal;color:#0f5ced}.h b{font-weight:700;color:#e5484d}
+.sc{position:absolute;left:0;top:0;width:1080px;height:1920px}
+.dot{position:absolute;width:46px;height:46px;border-radius:50%;background:#0f5ced;box-shadow:0 6px 12px rgba(15,92,237,.28)}
+#cnt{position:absolute;left:0;width:1080px;top:1210px;text-align:center;font-weight:800;font-size:210px;line-height:1;letter-spacing:-.05em}
+#cntl{position:absolute;left:0;width:1080px;top:1432px;text-align:center;font-weight:600;font-size:44px;color:#34476b}
+.chip{position:absolute;left:150px;font-weight:600;font-size:40px;display:flex;align-items:center;gap:18px;white-space:nowrap}
+.chip i{display:block;width:30px;height:30px;border-radius:50%}
+.card{position:absolute;left:90px;width:900px;height:290px;border-radius:44px;background:#fff;border:3px solid #dbe4f5;box-shadow:0 26px 54px rgba(11,30,63,.16)}
+.card .t{position:absolute;left:190px;top:34px;font-weight:700;font-size:40px;letter-spacing:-.01em;color:#34476b}
+.card .n{position:absolute;left:190px;top:84px;font-weight:800;font-size:150px;line-height:1;letter-spacing:-.05em}
+.card .ic{position:absolute;left:40px;top:84px;width:118px;height:118px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.ck{position:absolute;right:-18px;top:-22px;width:80px;height:80px;border-radius:50%;background:#1e9d3d;border:6px solid #fff;box-shadow:0 10px 20px rgba(30,157,61,.4)}
+.bar{position:absolute;width:220px;border-radius:30px 30px 8px 8px;bottom:540px}
+.bn{position:absolute;width:300px;text-align:center;font-weight:800;font-size:120px;letter-spacing:-.05em;line-height:1}
+.bl{position:absolute;width:300px;text-align:center;font-weight:600;font-size:38px;color:#34476b}
+#fn{position:absolute;left:90px;width:900px;top:1530px;text-align:center;font-weight:500;font-size:30px;line-height:1.3;color:#5a6b8a;opacity:0}
+#black{position:absolute;inset:0;background:#fff;pointer-events:none}
+</style></head><body><div id="stage">
+<div id="bg"></div><div id="grid"></div>
+<div id="pH" class="pill dark">AGENTE HUMANO</div><div id="pA" class="pill blue">AGENTE DE IA</div>
+<div id="h1" class="h">De cada 100 llamadas, <b>62 se pierden.</b></div>
+<div id="h2" class="h">Con un agente de IA, <em>menos de 3.</em></div>
+<div id="h3" class="h">Horas atendiendo <em>al día</em></div>
+<div id="h4" class="h">¿Cuánto tarda <em>en responder?</em></div>
+<div id="h5" class="h">Contactos que <em>se vuelven clientes</em></div>
+
+<div id="s1" class="sc"><div id="dots"></div><div id="cnt">62%</div><div id="cntl">de las llamadas se pierden</div></div>
+
+<div id="s3" class="sc">
+ <svg class="abs" style="left:0;top:560px" width="1080" height="700" viewBox="0 560 1080 700">
+  <g transform="translate(540 900)">
+   <circle r="270" fill="none" stroke="#dbe4f5" stroke-width="38"/><circle r="215" fill="none" stroke="#dbe4f5" stroke-width="38"/>
+   <circle id="aH" r="215" fill="none" stroke="#16233f" stroke-width="38" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100" transform="rotate(-90)"/>
+   <circle id="aA" r="270" fill="none" stroke="#0f5ced" stroke-width="38" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100" transform="rotate(-90)"/>
+   <g font-family="DM Sans" font-weight="600" font-size="30" fill="#5a6b8a" text-anchor="middle"><text x="0" y="-318">0 h</text><text x="318" y="10">6 h</text><text x="0" y="338">12 h</text><text x="-318" y="10">18 h</text></g>
+  </g>
+ </svg>
+ <div id="mid" class="abs" style="left:290px;width:500px;top:810px;text-align:center;font-weight:800;font-size:150px;letter-spacing:-.05em;line-height:1">8 h</div>
+ <div id="c1" class="chip" style="top:1290px"><i style="background:#16233f"></i><span>Agente humano · <b>8 h al día</b></span></div>
+ <div id="c2" class="chip" style="top:1366px"><i style="background:#0f5ced"></i><span>Agente de IA · <b style="color:#0f5ced">24/7</b></span></div>
+</div>
+
+<div id="s4" class="sc">
+ <div id="k1" class="card" style="top:590px"><div class="ic" style="background:#eef1f7"><svg width="70" height="70" viewBox="0 0 24 24" fill="none" stroke="#16233f" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="14" r="7.5"/><path d="M12 14 V9.5 M9.5 3.5 H14.5 M12 3.5 V6.5"/></svg></div><div class="t">Agente humano</div><div id="n1" class="n" style="color:#16233f">0 min</div></div>
+ <div id="k2" class="card" style="top:930px;border-color:#0f5ced"><div class="ic" style="background:#eaf1fd"><svg width="70" height="70" viewBox="0 0 24 24" fill="none" stroke="#0f5ced" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="14" r="7.5"/><path d="M12 14 V9.5 M9.5 3.5 H14.5 M12 3.5 V6.5"/></svg></div><div class="t" style="color:#0f5ced">Agente de IA</div><div id="n2" class="n" style="color:#0f5ced">0 s</div>
+  <div id="ck" class="ck"><svg viewBox="0 0 52 52" width="68" height="68" style="position:absolute;left:0;top:0"><path d="M14 27 L23 36 L39 17" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+</div>
+
+<div id="s5" class="sc">
+ <div id="b1" class="bar" style="left:250px;background:#16233f"></div><div id="b2" class="bar" style="left:610px;background:linear-gradient(180deg,#2a6bf5,#0f5ced)"></div>
+ <div id="bn1" class="bn" style="left:210px;color:#16233f">23%</div><div id="bn2" class="bn" style="left:570px;color:#0f5ced">48%</div>
+ <div class="bl" style="left:210px;top:1400px">Agente humano</div><div class="bl" style="left:570px;top:1400px;color:#0f5ced">Agente de IA</div>
+ <div id="x2" class="abs" style="left:205px;top:800px;padding:10px 30px 14px;border-radius:40px;background:#1e9d3d;color:#fff;font-weight:800;font-size:56px;letter-spacing:-.02em;box-shadow:0 16px 34px rgba(30,157,61,.4)">más del doble</div>
+</div>
+
+<div id="s6" class="sc">
+ <img id="logo" src="__LOGO__" class="abs" style="left:150px;top:660px;width:780px">
+ <div id="slogan" class="abs" style="left:0;width:1080px;top:850px;text-align:center;font:500 100px 'DM Sans';letter-spacing:-.03em;color:#16233f">Agentes que <span style="position:relative;font-weight:700;color:#0f5ced">trabajan.<i id="ul" style="position:absolute;left:2%;bottom:-4px;height:7px;width:0;background:#0f5ced;border-radius:4px"></i></span></div>
+ <div id="url" class="abs" style="left:0;width:1080px;top:1030px;text-align:center;font:600 40px 'DM Sans';letter-spacing:.22em;color:#0f5ced;opacity:0">ATACAMALABS.CL</div>
+</div>
+<div id="fn">Cifras de referencia de HighLevel (GHL). Los resultados varían según cada negocio.</div>
+<div id="black"></div>
+</div>
+<script>
+const TM = __TM__;
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const seg = (T, a, b) => clamp((T - a) / (b - a));
+const eio = (t) => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const eout = (t) => 1 - Math.pow(1 - t, 3);
+const pop = (u) => (u <= 0 ? 0 : clamp(1 - Math.exp(-7.5 * u) * Math.cos(12 * u), 0, 1.25));
+function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+// 100 puntos: 62 se pierden (orden aleatorio fijo)
+const rr = mulberry(21); const order = Array.from({ length: 100 }, (_, i) => i);
+for (let i = 99; i > 0; i--) { const j = Math.floor(rr() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+const rank = new Array(100).fill(-1); for (let r = 0; r < 62; r++) rank[order[r]] = r;
+const dots = [];
+for (let i = 0; i < 100; i++) { const d = document.createElement('div'); d.className = 'dot'; d.style.left = (247 + (i % 10) * 60) + 'px'; d.style.top = (590 + Math.floor(i / 10) * 60) + 'px'; $('dots').append(d); dots.push(d); }
+const fade = (T, a, b, c, d) => seg(T, a, b) * (1 - seg(T, c, d));
+const slideIn = (el, T, a, b, c, d) => { const o = fade(T, a, b, c, d); el.style.opacity = o; el.style.transform = 'translateY(' + ((1 - eout(seg(T, a, b))) * 30) + 'px)'; };
+const pad = (n) => String(n);
+
+const OLDK = [0.0, 0.1, 2.12, 2.13, 2.2, 3.3, 3.31, 3.55, 4.13, 4.14, 4.9, 4.91, 5.15, 6.4, 6.41, 6.75, 7.95, 7.96, 8.25], NEWK = [0.0, 0.1, 2.8876, 3.8876, 3.9842, 5.3702, 6.3702, 6.6726, 7.6151, 8.6151, 9.8501, 10.8501, 11.2401, 13.2714, 14.2714, 14.8239, 16.9035, 17.9035, 18.406];
+function warp(t) {
+  for (let k = 0; k < NEWK.length - 1; k++) if (t < NEWK[k + 1]) return OLDK[k] + (t - NEWK[k]) * (OLDK[k + 1] - OLDK[k]) / (NEWK[k + 1] - NEWK[k]);
+  return OLDK[OLDK.length - 1] + (t - NEWK[NEWK.length - 1]);
+}
+function draw(T) {
+  const T0 = T; T = warp(T0);
+  $('black').style.opacity = 1 - clamp(T / 0.25);
+  // pills + titulares
+  const p1 = fade(T, TM.s1, TM.s1 + 0.2, TM.s2 - 0.05, TM.s2 + 0.1); $('pH').style.opacity = p1;
+  $('pA').style.opacity = fade(T, TM.s2 + 0.05, TM.s2 + 0.25, TM.s3 - 0.15, TM.s3 + 0.05);
+  slideIn($('h1'), T, TM.s1, TM.s1 + 0.3, TM.s2 - 0.05, TM.s2 + 0.1);
+  slideIn($('h2'), T, TM.s2 + 0.05, TM.s2 + 0.35, TM.s3 - 0.15, TM.s3 + 0.05);
+  slideIn($('h3'), T, TM.s3, TM.s3 + 0.3, TM.s4 - 0.15, TM.s4 + 0.05);
+  slideIn($('h4'), T, TM.s4, TM.s4 + 0.3, TM.s5 - 0.15, TM.s5 + 0.05);
+  slideIn($('h5'), T, TM.s5, TM.s5 + 0.3, TM.s6 - 0.15, TM.s6 + 0.05);
+  // ---- escena 1-2: puntos ----
+  const s1 = $('s1'); s1.style.opacity = fade(T, 0.05, 0.2, TM.s3 - 0.2, TM.s3 + 0.05);
+  let lost = 0;
+  for (let i = 0; i < 100; i++) {
+    const d = dots[i]; const col = i % 10, row = Math.floor(i / 10);
+    const ta = 0.12 + 0.5 * ((col + row) / 18); let sc = pop((T - ta) / 0.45); let isRed = false; let flash = 0;
+    const r = rank[i];
+    if (r >= 0) {
+      const tl = TM.lose0 + (TM.lose1 - TM.lose0) * Math.pow(r / 62, 1.4);
+      const tr = r >= 3 ? TM.back0 + (TM.back1 - TM.back0) * Math.pow((61 - r) / 58, 1.2) : 99;
+      if (T >= tl && T < tr) { isRed = true; lost++; flash = Math.exp(-(T - tl) * 12); }
+      if (T >= tr) { flash = Math.exp(-(T - tr) * 12) * 0.8; }
+      if (T < tl) { /* azul */ } else if (T >= tr) { /* azul de nuevo */ }
+      if (T >= tr || T < tl) isRed = false;
+      if (T >= tl && T < tr) isRed = true;
+    }
+    d.style.background = isRed ? '#e5484d' : '#0f5ced';
+    d.style.boxShadow = isRed ? '0 6px 12px rgba(229,72,77,.35)' : '0 6px 12px rgba(15,92,237,.28)';
+    d.style.transform = 'scale(' + (Math.min(1.1, sc) * (1 + 0.35 * flash)) + ')';
+    d.style.opacity = T >= ta ? 1 : 0;
+  }
+  const done = T >= TM.back1 + 0.05;
+  const cn = $('cnt'); cn.textContent = done ? '<3%' : lost + '%';
+  cn.style.color = (T >= TM.s2 + 0.1) ? '#0f5ced' : '#e5484d';
+  const cp = T >= TM.back1 ? 1 + 0.12 * Math.sin(clamp((T - TM.back1) / 0.3) * Math.PI) : 1; cn.style.transform = 'scale(' + cp + ')';
+  cn.style.opacity = T > 0.6 ? 1 : 0;
+  $('cntl').style.opacity = T > 0.6 ? 1 : 0;
+  // ---- escena 3: horas ----
+  const s3 = $('s3'); s3.style.opacity = fade(T, TM.s3, TM.s3 + 0.25, TM.s4 - 0.2, TM.s4);
+  $('aH').setAttribute('stroke-dasharray', (33.33 * eio(seg(T, TM.s3 + 0.15, TM.s3 + 0.55))) + ' 100');
+  $('aA').setAttribute('stroke-dasharray', (100 * eio(seg(T, TM.s3 + 0.6, TM.s3 + 1.05))) + ' 100');
+  const mid = $('mid'); const aiDone = T >= TM.s3 + 1.05;
+  mid.textContent = aiDone ? '24/7' : '8 h'; mid.style.color = aiDone ? '#0f5ced' : '#16233f';
+  mid.style.transform = 'scale(' + (aiDone ? 1 + 0.12 * Math.sin(clamp((T - TM.s3 - 1.05) / 0.3) * Math.PI) : 1) + ')';
+  mid.style.opacity = T >= TM.s3 + 0.3 ? 1 : 0;
+  $('c1').style.opacity = seg(T, TM.s3 + 0.3, TM.s3 + 0.5); $('c2').style.opacity = seg(T, TM.s3 + 1.05, TM.s3 + 1.3);
+  // ---- escena 4: cronómetros ----
+  const s4 = $('s4'); s4.style.opacity = fade(T, TM.s4, TM.s4 + 0.25, TM.s5 - 0.2, TM.s5);
+  const hu = eio(seg(T, TM.s4 + 0.15, TM.s4 + 0.95)); const hv = Math.floor(34 * hu);
+  $('n1').textContent = hu >= 1 ? '~34 min' : hv + ' min';
+  const aiAt = TM.s4 + 0.3; $('n2').textContent = T >= aiAt ? '<1 s' : '0 s'; $('n2').style.transform = 'scale(' + (T >= aiAt ? 1 + 0.18 * Math.exp(-(T - aiAt) * 9) : 1) + ')';
+  $('ck').style.opacity = T >= aiAt + 0.1 ? 1 : 0; $('ck').style.transform = 'scale(' + Math.min(1.15, pop(T - aiAt - 0.1)) + ')';
+  $('k1').style.transform = 'translateY(' + ((1 - eout(seg(T, TM.s4 + 0.05, TM.s4 + 0.4))) * 40) + 'px)';
+  $('k2').style.transform = 'translateY(' + ((1 - eout(seg(T, TM.s4 + 0.15, TM.s4 + 0.5))) * 40) + 'px)';
+  // ---- escena 5: barras ----
+  const s5 = $('s5'); s5.style.opacity = fade(T, TM.s5, TM.s5 + 0.25, TM.s6 - 0.2, TM.s6);
+  const g1 = eio(seg(T, TM.s5 + 0.15, TM.s5 + 0.7)); const g2 = eio(seg(T, TM.s5 + 0.25, TM.s5 + 0.8));
+  $('b1').style.height = (23 * 12.9 * g1) + 'px'; $('b2').style.height = (48 * 12.9 * g2) + 'px';
+  $('bn1').textContent = Math.round(23 * g1) + '%'; $('bn2').textContent = Math.round(48 * g2) + '%';
+  $('bn1').style.bottom = ''; $('bn1').style.top = (1380 - 23 * 12.9 * g1 - 135) + 'px'; $('bn2').style.top = (1380 - 48 * 12.9 * g2 - 135) + 'px';
+  const x2 = $('x2'); const xu = pop(T - (TM.s5 + 0.85)); x2.style.opacity = T >= TM.s5 + 0.85 ? 1 : 0; x2.style.transform = 'rotate(-4deg) scale(' + (0.6 + 0.4 * Math.min(1.2, xu)) + ')';
+  // ---- cierre fijo de la marca ----
+  const e0 = TM.e0;
+  const s6 = $('s6'); s6.style.opacity = seg(T0, e0 - 0.1, e0 + 0.1);
+  const lu = eout(seg(T0, e0 + 0.1, e0 + 0.65)); $('logo').style.opacity = lu; $('logo').style.transform = 'translateY(' + ((1 - lu) * 26) + 'px)';
+  const cu = eout(seg(T0, e0 + 0.4, e0 + 0.95)); $('slogan').style.opacity = cu; $('slogan').style.transform = 'translateY(' + ((1 - cu) * 26) + 'px)';
+  $('ul').style.width = (96 * eout(seg(T0, e0 + 1.0, e0 + 1.5))) + '%';
+  $('url').style.opacity = eout(seg(T0, e0 + 1.2, e0 + 1.7));
+}
+window.draw = draw;
+</script></body></html>

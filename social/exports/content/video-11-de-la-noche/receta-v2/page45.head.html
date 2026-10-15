@@ -1,0 +1,203 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><style>
+@font-face{font-family:"DM Sans";src:url("__FONT__") format("woff2");font-weight:100 1000}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1350px;overflow:hidden;background:#000}
+body{font-family:"DM Sans",sans-serif;-webkit-font-smoothing:antialiased;color:#0b1e3f}
+#stage{position:absolute;left:0;top:0;width:1080px;height:1350px;overflow:hidden;background:#eef3fe}
+#bg{position:absolute;inset:0;background:radial-gradient(62% 40% at 50% 50%,rgba(15,92,237,.17),rgba(15,92,237,0) 72%),linear-gradient(180deg,#eef3fe,#e3ecfc)}
+#grid{position:absolute;inset:0;background-image:linear-gradient(rgba(15,92,237,.12) 2px,transparent 2px),linear-gradient(90deg,rgba(15,92,237,.12) 2px,transparent 2px),linear-gradient(rgba(15,92,237,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(15,92,237,.055) 1px,transparent 1px);background-size:120px 120px,120px 120px,40px 40px,40px 40px}
+.abs{position:absolute}
+.pill{position:absolute;left:30px;top:56px;height:58px;padding:0 28px;border-radius:40px;font-weight:700;font-size:26px;letter-spacing:.06em;display:flex;align-items:center;white-space:nowrap}
+.pill.blue{background:#0f5ced;color:#fff;box-shadow:0 10px 24px rgba(15,92,237,.35)}
+.pill.dark{background:#2b1a0b;color:#f1dfbd;border:2px solid #7c5a30;font-family:"Courier New",monospace;font-weight:700;letter-spacing:.1em}
+/* ---------- panel derecho ---------- */
+#right{position:absolute;left:540px;top:0;width:540px;height:1350px;overflow:hidden}
+#rClock{position:absolute;left:34px;top:130px;font-weight:700;font-size:40px;letter-spacing:-.01em;color:#0b1e3f}
+#dots .d{position:absolute;top:129px;width:54px;height:54px;border-radius:50%;border:4px solid #0f5ced;background:#fff;color:#0f5ced;font-weight:700;font-size:28px;display:flex;align-items:center;justify-content:center}
+#dotline{position:absolute;left:327px;top:154px;width:140px;height:5px;background:rgba(15,92,237,.3);border-radius:3px}
+#card{position:absolute;left:30px;top:190px;width:480px;height:1100px;border-radius:44px;background:#e9f0fc;box-shadow:0 30px 60px rgba(11,30,63,.2);overflow:hidden}
+#hdr{position:absolute;left:0;top:0;width:480px;height:100px;background:#fff;border-bottom:2px solid #dbe4f5}
+#hdr .av{position:absolute;left:24px;top:20px;width:60px;height:60px;border-radius:50%;background:#fff;border:2px solid #dbe4f5;overflow:hidden}
+#hdr .av img{position:absolute;left:10px;top:10px;width:40px;height:40px}
+#hdr .t1{position:absolute;left:100px;top:16px;font-weight:700;font-size:30px}
+#hdr .t2{position:absolute;left:100px;top:56px;font-weight:500;font-size:22px;color:#1e9d3d}
+.bub{position:absolute;padding:18px 22px 16px;border-radius:26px;font-size:30px;line-height:1.22;font-weight:500;box-shadow:0 3px 8px rgba(11,30,63,.1)}
+.bub .tm{display:block;text-align:right;font-size:18px;color:#7a869b;margin-top:6px;font-weight:500}
+#b1{left:22px;top:118px;width:340px;background:#fff;border-top-left-radius:6px;transform-origin:0 0}
+#b2{right:22px;top:250px;width:370px;background:#d9fdd3;border-top-right-radius:6px;transform-origin:100% 0}
+#b3{right:22px;top:380px;width:390px;background:#d9fdd3;border-top-right-radius:6px;transform-origin:100% 0}
+#typing{position:absolute;right:22px;top:250px;width:130px;height:68px;border-radius:26px;background:#d9fdd3;border-top-right-radius:6px;display:flex;align-items:center;justify-content:center;gap:10px}
+#typing i{display:block;width:14px;height:14px;border-radius:50%;background:#6b8a6e}
+#sheet{position:absolute;left:0;top:400px;width:480px;height:700px;background:#fff;border-radius:44px 44px 0 0;box-shadow:0 -16px 40px rgba(11,30,63,.18)}
+#sheet .grab{position:absolute;left:200px;top:14px;width:80px;height:7px;border-radius:4px;background:#d3dcee}
+#sheet .ttl{position:absolute;left:30px;top:34px;font-weight:700;font-size:34px}
+#sheet .prog{position:absolute;left:30px;top:90px;width:420px;height:8px;border-radius:4px;background:#e1e9f8}
+#sheet .prog i{position:absolute;left:0;top:0;height:8px;border-radius:4px;background:#1e9d3d}
+.step{position:absolute;left:0;top:100px;width:480px;height:590px}
+.step h4{position:absolute;left:30px;top:0px;font-size:32px;font-weight:700;color:#0b1e3f}
+.row{position:absolute;left:30px;width:420px;height:76px;border-radius:22px;border:3px solid #dbe4f5;background:#fff;font-size:32px;font-weight:500;display:flex;align-items:center;padding-left:78px}
+.row .rd{position:absolute;left:24px;top:20px;width:30px;height:30px;border-radius:50%;border:3px solid #b8c5de}
+.row .rd i{position:absolute;left:5px;top:5px;width:14px;height:14px;border-radius:50%;background:#0f5ced;opacity:0}
+.btn{position:absolute;left:30px;top:470px;width:420px;height:76px;border-radius:50px;background:#1e9d3d;color:#fff;font-weight:700;font-size:32px;display:flex;align-items:center;justify-content:center}
+.sum{position:absolute;left:30px;top:56px;width:420px;height:260px;border-radius:26px;background:#f2f6fe;border:3px solid #dbe4f5;padding:26px 28px;font-size:30px;line-height:1.35}
+.sum b{display:block;font-size:22px;letter-spacing:.08em;color:#6b7a96;font-weight:600;margin-top:12px}
+.sum span{font-weight:700;font-size:34px}
+.tap{position:absolute;width:110px;height:110px;margin:-55px 0 0 -55px;border-radius:50%;border:6px solid #0f5ced;background:rgba(15,92,237,.28);opacity:0;z-index:20}
+#cap2{position:absolute;left:0;top:690px;width:480px;text-align:center;font-weight:700;font-size:48px;line-height:1.1;letter-spacing:-.02em;color:#0f5ced}
+.res{position:absolute;left:30px;width:480px;height:190px;border-radius:36px;background:#fff;box-shadow:0 22px 44px rgba(11,30,63,.16);border:2px solid #dbe4f5}
+.res svg{position:absolute;left:26px;top:35px}
+.res .a{position:absolute;left:170px;top:38px;font-weight:700;font-size:38px;letter-spacing:-.01em}
+.res .b{position:absolute;left:170px;top:90px;width:290px;font-weight:500;font-size:27px;line-height:1.2;color:#44546f}
+.res .ck{position:absolute;right:-14px;top:-18px;width:62px;height:62px;border-radius:50%;background:#1e9d3d;border:5px solid #fff;box-shadow:0 8px 16px rgba(30,157,61,.4)}
+#win{position:absolute;left:30px;top:880px;width:480px;font-weight:700;font-size:92px;line-height:.98;letter-spacing:-.04em;color:#0b1e3f}
+#win em{font-style:normal;color:#0f5ced}
+/* ---------- panel izquierdo ---------- */
+#left{position:absolute;left:0;top:0;width:1080px;height:1350px;overflow:hidden;background:#0b0704;box-shadow:12px 0 40px rgba(0,0,0,.35)}
+#world{position:absolute;left:0;top:0;width:1520px;height:2688px;transform-origin:0 0}
+#world>*{position:absolute}
+#oficina{left:0;top:0;width:1520px;height:2688px}
+#dust{left:0;top:0}
+#glow{left:0;top:0;width:1520px;height:2688px;mix-blend-mode:screen}
+#dawn{left:0;top:0;width:1520px;height:2688px;mix-blend-mode:screen}
+#sun{left:1110px;top:-79px;width:520px;height:520px;border-radius:50%;background:radial-gradient(circle,rgba(255,252,232,1) 0,rgba(255,250,225,1) 26%,rgba(255,236,170,.8) 40%,rgba(255,222,140,0) 70%);mix-blend-mode:screen;opacity:0}
+#beams{left:1000px;top:300px;width:1000px;height:2200px;mix-blend-mode:screen;opacity:0}
+.beam{position:absolute;top:0;height:2200px;background:linear-gradient(90deg,rgba(255,236,170,0),rgba(255,236,170,.6),rgba(255,236,170,0));transform-origin:50% 0;transform:rotate(36deg)}
+#phSh{background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,.65),rgba(0,0,0,0) 70%)}
+#ph{height:300px;transform-origin:50% 100%}
+.wave{border:7px solid rgba(240,222,180,.75);border-radius:50%}
+#vig{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 48%,rgba(0,0,0,0) 42%,rgba(8,4,0,.62) 100%)}
+#grain{position:absolute;inset:-60px;background-image:url(__GRAIN__);background-size:256px 256px;opacity:.13;mix-blend-mode:overlay}
+#lUI{position:absolute;left:0;top:0;width:540px;height:1350px}
+#lClock{position:absolute;left:36px;top:130px;font-family:"Courier New",monospace;font-weight:700;font-size:42px;color:#f1dfbd;text-shadow:0 2px 8px #000}
+#capBand{position:absolute;left:0;top:500px;width:540px;height:560px;background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.62) 28%,rgba(0,0,0,.62) 72%,rgba(0,0,0,0))}
+#caps{position:absolute;left:30px;top:600px;width:490px}
+.cap{min-height:64px;font-family:"Courier New",monospace;font-weight:700;font-size:50px;line-height:1.15;color:#f6e7c8;text-shadow:0 3px 12px rgba(0,0,0,.95),0 0 3px #000}
+#note{position:absolute;left:36px;top:520px;width:470px;padding:34px 30px 34px;background:#efe0bd;border:2px solid #b89a63;border-radius:6px;box-shadow:0 22px 40px rgba(0,0,0,.55);font-family:"Courier New",monospace;color:#2d1c0a;transform:rotate(-2.5deg);background-image:repeating-linear-gradient(0deg,rgba(120,85,40,.14) 0 2px,transparent 2px 46px)}
+#note .n1{font-size:28px;font-weight:700;letter-spacing:.08em;color:#7c5a30}
+#note .n2{font-size:44px;font-weight:700;line-height:1.12;margin-top:14px}
+#note .pin{position:absolute;left:218px;top:-18px;width:34px;height:34px;border-radius:50%;background:#a3271c;box-shadow:0 6px 10px rgba(0,0,0,.5)}
+#divider{position:absolute;left:537px;top:0;width:6px;height:1350px;background:#0f5ced;box-shadow:0 0 26px rgba(15,92,237,.85);transform-origin:50% 0;opacity:0}
+/* ---------- hub y cierre ---------- */
+#hub{position:absolute;left:0;top:0;overflow:visible}
+.sh{filter:drop-shadow(0 8px 12px rgba(11,30,63,.28))}
+#endcard{position:absolute;left:0;top:0;width:1080px;height:1350px;opacity:0}
+/* ---------- gancho ---------- */
+#hook{position:absolute;left:0;top:0;width:1080px;height:1350px}
+#scrim{position:absolute;inset:0;background:linear-gradient(rgba(0,0,0,.6),rgba(0,0,0,.05) 32%,rgba(0,0,0,.05) 58%,rgba(0,0,0,.7))}
+#hTitle{position:absolute;left:0;width:1080px;top:330px;text-align:center;font-weight:700;font-size:132px;line-height:1.0;letter-spacing:-.04em;color:#f6e7c8;text-shadow:0 6px 30px rgba(0,0,0,.8)}
+#notif{position:absolute;left:70px;top:700px;width:940px;height:236px;border-radius:50px;background:rgba(250,250,252,.96);box-shadow:0 30px 70px rgba(0,0,0,.6)}
+#notif .ic{position:absolute;left:34px;top:34px;width:112px;height:112px}
+#notif .nt{position:absolute;left:176px;top:30px;font-weight:600;font-size:30px;color:#6c7488;letter-spacing:.02em}
+#notif .nn{position:absolute;left:176px;top:68px;font-weight:700;font-size:46px;color:#0b1e3f}
+#notif .nm{position:absolute;left:176px;top:130px;width:740px;font-weight:500;font-size:46px;color:#25314a;white-space:nowrap}
+#hL1{position:absolute;left:0;width:1080px;top:1000px;text-align:center;font-weight:700;font-size:74px;letter-spacing:-.03em;color:#fff;text-shadow:0 4px 20px rgba(0,0,0,.7)}
+#hL2{position:absolute;left:0;width:1080px;top:1090px;text-align:center}
+#hL2 span{display:inline-block;background:#0f5ced;color:#fff;font-weight:800;font-size:130px;letter-spacing:-.04em;padding:6px 52px 18px;border-radius:30px;box-shadow:0 20px 50px rgba(15,92,237,.55)}
+#big{position:absolute;inset:0;opacity:0;background:radial-gradient(60% 50% at 50% 50%,rgba(0,0,0,.5),rgba(0,0,0,.15))}
+#black{position:absolute;inset:0;background:#000;pointer-events:none}
+</style></head><body><div id="stage">
+<div id="bg"></div><div id="grid"></div>
+
+<div id="right">
+ <div id="rPill" class="pill blue">CON AGENTE DE ATACAMA</div>
+ <div id="rClock">23:00</div>
+ <div id="dotline"></div>
+ <div id="dots"><div class="d" style="left:300px">1</div><div class="d" style="left:373px">2</div><div class="d" style="left:446px">3</div></div>
+ <div id="card">
+  <div id="hdr"><div class="av"><img src="__ISO__"></div><div class="t1">Tu negocio</div><div class="t2">● en línea · agente de IA</div></div>
+  <div id="b1" class="bub">Hola, ¿tienen hora para mañana?<span class="tm">23:00</span></div>
+  <div id="typing"><i></i><i></i><i></i></div>
+  <div id="b2" class="bub">¡Hola! Agenda tu hora en 3 toques.<span class="tm">23:00</span></div>
+  <div id="b3" class="bub">Listo, te esperamos el martes 20 a las 10:30 <span style="color:#1e9d3d;font-weight:700">✓✓</span><span class="tm">23:01</span></div>
+  <div id="cap2">Responde en segundos.</div>
+  <div id="sheet"><div class="grab"></div><div class="ttl">Agendar hora</div><div class="prog"><i id="progf"></i></div>
+   <div id="s1" class="step"><h4>¿Qué necesitas?</h4>
+    <div class="row" id="s1r0" style="top:56px"><span class="rd"><i></i></span>Primera visita</div>
+    <div class="row" style="top:146px"><span class="rd"><i></i></span>Control</div>
+    <div class="row" style="top:236px"><span class="rd"><i></i></span>Otro motivo</div>
+    <div class="btn" style="background:#b9dcc2">Continuar</div></div>
+   <div id="s2" class="step"><h4>¿Cuándo te acomoda?</h4>
+    <div class="row" id="s2r0" style="top:56px"><span class="rd"><i></i></span>Mar 20 · 10:30</div>
+    <div class="row" style="top:146px"><span class="rd"><i></i></span>Mar 20 · 11:30</div>
+    <div class="row" style="top:236px"><span class="rd"><i></i></span>Mié 21 · 09:00</div>
+    <div class="btn" style="background:#b9dcc2">Continuar</div></div>
+   <div id="s3" class="step"><h4>Confirma tu hora</h4>
+    <div class="sum"><b>SERVICIO</b><span>Primera visita</span><b>CUÁNDO</b><span>Martes 20 · 10:30</span></div>
+    <div class="btn" id="s3b">Confirmar</div></div>
+  </div>
+ </div>
+  <div id="res">
+  <div class="res" style="top:205px"><svg width="120" height="120" viewBox="-6 -6 172 172" id="ri0"></svg><div class="a">Agenda</div><div class="b">Mar 20 · 10:30 · cliente nuevo</div><div class="ck"><svg viewBox="0 0 52 52" width="52" height="52" style="position:absolute;left:0;top:0"><path d="M14 27 L23 36 L39 17" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+  <div class="res" style="top:415px"><svg width="120" height="120" viewBox="-6 -6 172 172" id="ri1"></svg><div class="a">Planilla</div><div class="b">Cliente agregado a tu base</div><div class="ck"><svg viewBox="0 0 52 52" width="52" height="52" style="position:absolute;left:0;top:0"><path d="M14 27 L23 36 L39 17" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+  <div class="res" style="top:625px"><svg width="120" height="120" viewBox="-6 -6 172 172" id="ri2"></svg><div class="a">Correo</div><div class="b">Confirmación enviada al cliente</div><div class="ck"><svg viewBox="0 0 52 52" width="52" height="52" style="position:absolute;left:0;top:0"><path d="M14 27 L23 36 L39 17" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+ </div>
+ <div id="win">Agendado mientras <em>dormías.</em></div>
+ <div class="tap" id="tp1" style="left:270px;top:784px"></div>
+ <div class="tap" id="tp2" style="left:270px;top:784px"></div>
+ <div class="tap" id="tp3" style="left:270px;top:1198px"></div>
+</div>
+
+<svg id="hub" width="1080" height="1350" viewBox="0 0 1080 1350">
+ <g id="lines" fill="none" stroke="#1747d9" stroke-width="7" stroke-linecap="round"></g>
+ <g id="nodes"></g><g id="pulses"></g><g id="center" class="sh"></g>
+</svg>
+
+<div id="left">
+ <div id="world">
+  <img id="oficina" src="__OFICINA__">
+  <canvas id="dust" width="1520" height="2688"></canvas>
+  <div id="glow"></div><div id="dawn"></div>
+  <div id="sun"></div><div id="beams"><div class="beam" style="left:0;width:150px"></div><div class="beam" style="left:210px;width:230px"></div><div class="beam" style="left:520px;width:130px"></div><div class="beam" style="left:760px;width:200px"></div></div>
+  <div id="phSh"></div>
+  <img id="ph" src="__TEL__">
+  <div class="wave" id="w0"></div><div class="wave" id="w1"></div><div class="wave" id="w2"></div>
+ </div>
+ <div id="vig"></div><div id="grain"></div>
+ <div id="lUI">
+  <div id="lPill" class="pill dark">SIN AGENTE</div>
+  <div id="lClock">23:00</div>
+  <div id="note"><div class="pin"></div><div class="n1" id="n1">ANOCHE · 23:00</div><div class="n2" id="n2"></div></div>
+  <div id="capBand"></div>
+  <div id="caps"><div class="cap" id="c1"></div><div class="cap" id="c2"></div><div class="cap" id="c3"></div></div>
+ </div>
+</div>
+<div id="divider"></div>
+
+<div id="endcard">
+ <img src="__LOGO__" style="position:absolute;left:150px;top:415px;width:780px">
+ <div style="position:absolute;left:0;width:1080px;top:605px;text-align:center;font:500 100px 'DM Sans';letter-spacing:-.03em;color:#16233f">Agentes que <span style="position:relative;font-weight:700;color:#0f5ced">trabajan.<i id="ul" style="position:absolute;left:2%;bottom:-4px;height:7px;width:0;background:#0f5ced;border-radius:4px"></i></span></div>
+ <div id="tag2" style="position:absolute;left:0;width:1080px;top:765px;text-align:center;font:600 56px 'DM Sans';letter-spacing:-.02em;color:#16233f;opacity:0">También a las <span style="color:#0f5ced;font-weight:700">11 de la noche.</span></div>
+ <div id="url" style="position:absolute;left:0;width:1080px;top:905px;text-align:center;font:600 38px 'DM Sans';letter-spacing:.22em;color:#0f5ced;opacity:0">ATACAMALABS.CL</div>
+</div>
+
+<div id="hook">
+ <div id="scrim"></div>
+ <svg id="hClk" class="abs" style="left:440px;top:108px" width="200" height="200" viewBox="-100 -100 200 200">
+  <circle r="88" fill="rgba(20,10,0,.55)" stroke="#f6e7c8" stroke-width="8"/>
+  <g stroke="#f6e7c8" stroke-width="6" stroke-linecap="round" id="hTicks"></g>
+  <line x1="0" y1="0" x2="0" y2="-66" stroke="#f6e7c8" stroke-width="7" stroke-linecap="round"/>
+  <line x1="0" y1="0" x2="-27" y2="-47" stroke="#f6e7c8" stroke-width="10" stroke-linecap="round"/>
+  <circle r="8" fill="#f6e7c8"/>
+ </svg>
+ <div id="hTitle">Son las 11<br>de la noche.</div>
+ <div id="notif">
+  <svg class="ic" viewBox="0 0 160 160" id="hIcon"></svg>
+  <div class="nt">WHATSAPP · ahora</div><div class="nn">Cliente nuevo</div>
+  <div class="nm">Hola, ¿tienen hora para mañana?</div>
+ </div>
+ <div id="hL1">Tu cliente quiere agendar.</div>
+ <div id="hL2"><span>Ahora.</span></div>
+</div>
+<div id="big">
+ <svg id="bigSun" class="abs" style="left:440px;top:120px" width="200" height="200" viewBox="-100 -100 200 200"><g id="rays" stroke="#f5a623" stroke-width="9" stroke-linecap="round"></g><circle r="40" fill="#ffc83d" stroke="#f5a623" stroke-width="6"/></svg>
+ <svg id="bigClk" class="abs" style="left:290px;top:300px" width="500" height="500" viewBox="-100 -100 200 200">
+  <circle r="96" fill="rgba(255,255,255,.97)" stroke="#0f5ced" stroke-width="7"/>
+  <g stroke="#0b1e3f" stroke-width="3.5" stroke-linecap="round" id="bTicks"></g>
+  <line id="bHour" x1="0" y1="0" x2="0" y2="-46" stroke="#0b1e3f" stroke-width="8" stroke-linecap="round"/>
+  <line id="bMin" x1="0" y1="0" x2="0" y2="-70" stroke="#0f5ced" stroke-width="5" stroke-linecap="round"/>
+  <circle r="7" fill="#0f5ced"/>
+ </svg>
+ <div id="bigLabel" class="abs" style="left:0;width:1080px;top:830px;text-align:center;font-weight:700;font-size:110px;letter-spacing:-.03em;color:#fff;text-shadow:0 6px 30px rgba(0,0,0,.7)"></div>
+</div>
+<div id="black"></div>
+</div>

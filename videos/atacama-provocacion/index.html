@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>Atacama Labs — ¿Quién contesta?</title>
+    <script src="assets/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "DM Sans"; src: url("assets/fonts/DMSans-latin-wght.woff2") format("woff2"); font-weight: 100 1000; font-style: normal; }
+      /* solo colores de marca y la cuadrícula Atacama, sin texturas ni imágenes generadas */
+      :root { --real: #1a3c8e; --blue: #0f5ced; --sky: #58a6ff; --mist: #f3f6fd; --ink: #0b1e3f; --white: #ffffff; --line: rgba(15, 92, 237, 0.10); }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #ffffff; }
+      #main { position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--white); font-family: "DM Sans", sans-serif; -webkit-font-smoothing: antialiased; }
+      .layer { position: absolute; inset: 0; }
+
+      /* escenario de cierre */
+      #grid { background-image: linear-gradient(var(--line) 2px, transparent 2px), linear-gradient(90deg, var(--line) 2px, transparent 2px); background-size: 120px 120px; top: -120px; bottom: 0; }
+      #glow { background: radial-gradient(ellipse 70% 26% at 50% 50%, rgba(15, 92, 237, 0.16), rgba(15, 92, 237, 0) 70%); }
+      #logoWrap { position: absolute; left: 150px; top: 836px; width: 780px; height: 80px; overflow: hidden; opacity: 0; }
+      #close-logo { position: absolute; left: 0; top: 0; width: 780px; }
+      #sweep { position: absolute; top: -20px; bottom: -20px; left: -200px; width: 140px; background: linear-gradient(100deg, rgba(255,255,255,0), rgba(255,255,255,0.95), rgba(255,255,255,0)); transform: skewX(-18deg); }
+      #tag { opacity: 0; position: absolute; left: 0; width: 1080px; top: 950px; text-align: center; font-size: 78px; font-weight: 400; letter-spacing: -0.02em; color: var(--ink); white-space: nowrap; }
+      #tag .ln { display: inline-block; }
+      #tag b { position: relative; font-weight: 600; color: var(--blue); }
+      #tag .ul { position: absolute; left: 0; right: 0; bottom: -4px; height: 5px; background: var(--blue); transform-origin: left center; border-radius: 3px; }
+      #url { position: absolute; left: 0; width: 1080px; top: 1096px; text-align: center; font-size: 40px; font-weight: 500; letter-spacing: 0.14em; color: var(--blue); opacity: 0; }
+
+      /* paneles: arriba y abajo, la frase se parte en la costura (y = 960) */
+      .pan { position: absolute; left: 0; width: 1080px; height: 960px; overflow: hidden; clip-path: inset(100% 0% 0% 0%); }
+      .top { top: 0; }
+      .bot { top: 960px; }
+      .real { background: var(--real); --gl: rgba(255, 255, 255, 0.13); }
+      .brand { background: var(--blue); --gl: rgba(255, 255, 255, 0.16); }
+      .sky { background: var(--sky); --gl: rgba(255, 255, 255, 0.34); }
+      .mist { background: var(--mist); --gl: rgba(15, 92, 237, 0.12); }
+      .c-real { color: var(--real); } .c-brand { color: var(--blue); } .c-sky { color: var(--sky); } .c-mist { color: var(--mist); }
+      /* cuadrícula de marca dentro de cada panel; alineada entre panel de arriba y de abajo (960 = 8 × 120) */
+      .gd { position: absolute; left: 0; top: -120px; width: 1080px; height: 1080px; background-image: linear-gradient(var(--gl) 2px, transparent 2px), linear-gradient(90deg, var(--gl) 2px, transparent 2px); background-size: 120px 120px; }
+
+      .txt { position: absolute; left: 84px; right: 64px; font-size: 132px; font-weight: 500; line-height: 1.02; letter-spacing: -0.032em; }
+      .txt.big { font-size: 156px; }
+      .top .txt { bottom: 76px; }
+      .bot .txt { top: 76px; }
+      .ln { display: block; overflow: hidden; padding: 0.04em 0 0.16em; margin-bottom: -0.16em; }
+      .ln i { display: block; font-style: normal; }
+      .plogo { position: absolute; left: 84px; top: 80px; width: 300px; height: 29px; background-repeat: no-repeat; background-size: contain; background-position: left center; }
+      .plogo.dk { background-image: url("assets/logo-dark.svg"); }
+      .plogo.lt { background-image: url("assets/logo-light.svg"); }
+      #b1t, #b1b { z-index: 1; }
+      #b2t, #b2b { z-index: 2; }
+      #b3t, #b3b { z-index: 3; }
+
+      /* costura con profundidad: filo de luz y sombra suave que cae sobre la mitad de abajo */
+      #seamShadow { z-index: 20; position: absolute; left: 0; width: 1080px; top: 960px; height: 70px; background: linear-gradient(180deg, rgba(5, 18, 60, 0.22), rgba(5, 18, 60, 0)); opacity: 0; pointer-events: none; }
+      .edge { position: absolute; left: 0; width: 1080px; height: 5px; z-index: 40; opacity: 0; pointer-events: none; }
+      #e2b { top: 1920px; background: #ffffff; }
+      #e2t { top: 960px; background: var(--blue); }
+      #seam { z-index: 21; position: absolute; left: 0; width: 1080px; top: 959px; height: 2px; background: rgba(255, 255, 255, 0.45); opacity: 0; pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <div id="main" data-composition-id="main" data-start="0" data-duration="8.3" data-width="1080" data-height="1920" data-fps="30">
+      <div id="grid" class="layer"></div>
+      <div id="glow" class="layer"></div>
+      <div id="logoWrap" data-layout-allow-overflow><img id="close-logo" src="assets/logo-light.svg" alt="Atacama Labs" /><div id="sweep" data-layout-allow-overflow></div></div>
+      <div id="tag" data-layout-allow-overflow data-layout-allow-occlusion><span class="ln" data-layout-allow-overflow><i>Agentes que <b>trabajan.<span class="ul"></span></b></i></span></div>
+      <div id="url">ATACAMALABS.CL</div>
+
+      <div id="b1t" class="pan top mist" data-layout-allow-overflow><div class="gd"></div><div class="plogo lt"></div>
+        <div class="txt c-brand" id="t1a"><span class="ln"><i>¿Quién</i></span><span class="ln"><i>contesta</i></span></div></div>
+      <div id="b1b" class="pan bot brand" data-layout-allow-overflow><div class="gd"></div>
+        <div class="txt c-mist" id="t1b"><span class="ln"><i>cuando tú</i></span><span class="ln"><i>no puedes?</i></span></div></div>
+
+      <div id="b2t" class="pan top mist" data-layout-allow-overflow><div class="gd"></div><div class="plogo lt"></div>
+        <div class="txt c-brand" id="t2a"><span class="ln"><i>¿Quién hace</i></span><span class="ln"><i>el seguimiento</i></span></div></div>
+      <div id="b2b" class="pan bot brand" data-layout-allow-overflow><div class="gd"></div>
+        <div class="txt c-mist" id="t2b"><span class="ln"><i>que queda</i></span><span class="ln"><i>para mañana?</i></span></div></div>
+
+      <div id="b3t" class="pan top real" data-layout-allow-overflow><div class="gd"></div><div class="plogo dk"></div>
+        <div class="txt big c-mist" id="t3a"><span class="ln"><i>Alguien</i></span></div></div>
+      <div id="b3b" class="pan bot mist" data-layout-allow-overflow><div class="gd"></div>
+        <div class="txt big c-real" id="t3b"><span class="ln"><i>tiene que</i></span><span class="ln"><i>hacerlo</i></span></div></div>
+
+      <div id="seamShadow"></div>
+      <div id="seam"></div>
+      <div id="e2b" class="edge" data-layout-allow-overflow></div>
+      <div id="e2t" class="edge" data-layout-allow-overflow></div>
+      <audio id="sfx" src="assets/audio-musica.wav" data-start="0" data-duration="8.3" data-track-index="9"></audio>
+    </div>
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      const SHOW = "inset(0% 0% 0% 0%)";
+      const up = (sel, t, dur = 0.72, ease = "expo.inOut") =>
+        tl.fromTo(sel, { clipPath: "inset(100% 0% 0% 0%)" }, { clipPath: SHOW, duration: dur, ease }, t);
+      // entrada lateral de un panel (crece desde el borde izquierdo o derecho) y deslizamiento lateral de sus líneas
+      const sideIn = (sel, t, from, dur = 0.72, ease = "expo.inOut") =>
+        tl.fromTo(sel, { clipPath: from === "left" ? "inset(0% 100% 0% 0%)" : "inset(0% 0% 0% 100%)" }, { clipPath: SHOW, duration: dur, ease }, t);
+      const slide = (id, t, xp, st = 0.1) =>
+        tl.fromTo(id + " .ln i", { xPercent: xp }, { xPercent: 0, duration: 0.85, ease: "expo.out", stagger: st }, t);
+      // cada línea sube desde una máscara; las líneas de una misma mitad se escalonan
+      const lines = (id, t, st = 0.1) =>
+        tl.fromTo(id + " .ln i", { yPercent: 118 }, { yPercent: 0, duration: 0.85, ease: "expo.out", stagger: st }, t);
+
+      // Todo el video sigue el pulso del audio (empieza en 0): pulsos en 0,1 · 1,74 · 3,98 y golpe grave en 5,75.
+      // la cuadrícula avanza un cuadro completo (120 px) durante el video, igual en todos los paneles y en el cierre
+      tl.fromTo(".gd", { y: 0 }, { y: 120, duration: 8.3, ease: "none" }, 0);
+      tl.fromTo("#grid", { y: 0 }, { y: 120, duration: 8.3, ease: "none" }, 0);
+
+      // 1 · LATERAL: el panel de arriba entra desde la izquierda y el de abajo desde la derecha
+      sideIn("#b1t", 0, "left", 0.75, "expo.out");
+      sideIn("#b1b", 0.06, "right", 0.75, "expo.out");
+      tl.fromTo("#seam", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 0.3);
+      tl.fromTo("#seamShadow", { opacity: 0 }, { opacity: 1, duration: 0.6 }, 0.3);
+      slide("#t1a", 0.12, -108); slide("#t1b", 0.3, 108);
+
+      // 2 · ARRIBA: barrido hacia arriba, primero la mitad de abajo y un instante después la de arriba; un filo de luz marca el borde
+      up("#b2b", 1.74); up("#b2t", 1.82);
+      tl.set("#e2b", { opacity: 1 }, 1.74); tl.fromTo("#e2b", { y: 0 }, { y: -960, duration: 0.72, ease: "expo.inOut" }, 1.74); tl.set("#e2b", { opacity: 0 }, 2.46);
+      tl.set("#e2t", { opacity: 1 }, 1.82); tl.fromTo("#e2t", { y: 0 }, { y: -960, duration: 0.72, ease: "expo.inOut" }, 1.82); tl.set("#e2t", { opacity: 0 }, 2.54);
+      lines("#t2a", 2.14); lines("#t2b", 2.28);
+      tl.set(["#b1t", "#b1b"], { autoAlpha: 0 }, 2.6);
+
+      // 3 · LATERAL, al revés que la apertura: «alguien | tiene que hacerlo», cada mitad lleva el color de la otra
+      sideIn("#b3b", 3.98, "left"); sideIn("#b3t", 4.06, "right");
+      slide("#t3a", 4.44, 108, 0.12); slide("#t3b", 4.62, -108, 0.14);
+      tl.set(["#b2t", "#b2b"], { autoAlpha: 0 }, 4.8);
+
+      // 4 · las dos mitades se abren como puertas justo con el golpe grave (5,75 s) y descubren el logo
+      tl.to(["#seam", "#seamShadow"], { opacity: 0, duration: 0.25 }, 5.68);
+      tl.to("#b3t", { y: -960, duration: 0.9, ease: "expo.inOut" }, 5.75);
+      tl.to("#b3b", { y: 960, duration: 0.9, ease: "expo.inOut" }, 5.75);
+      tl.fromTo("#logoWrap", { opacity: 0, scale: 0.94, filter: "blur(14px)" }, { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.8, ease: "expo.out", transformOrigin: "50% 50%" }, 6.25);
+      tl.fromTo("#sweep", { x: 0 }, { x: 1150, duration: 1.0, ease: "power2.inOut" }, 6.75);
+      tl.fromTo("#tag", { opacity: 0 }, { opacity: 1, duration: 0.01 }, 6.64);
+      tl.fromTo("#tag .ln i", { yPercent: 118 }, { yPercent: 0, duration: 0.8, ease: "expo.out" }, 6.65);
+      tl.fromTo("#tag .ul", { scaleX: 0 }, { scaleX: 1, duration: 0.7, ease: "expo.inOut" }, 7.15);
+      tl.fromTo("#url", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }, 7.4);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

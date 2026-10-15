@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "channel": "instagram",
+  "format": "carrusel",
+  "category": "Educativo",
+  "topic": "Agendar una hora en 8 mensajes o en 3 toques (WhatsApp Flows y el nuevo cobro)",
+  "angle": "Desde el 1 de octubre los mensajes de servicio de WhatsApp tienen costo: un formulario dentro del chat reemplaza las preguntas una por una (carrusel 13-oct, primera versión híbrida)",
+  "editorial_type": "educational",
+  "visual": {
+    "need": "carousel",
+    "rationale": "Cada lámina lleva una ilustración con el celular en primer plano; el texto de marca lo pone el sistema",
+    "composition": "carrusel-ilustrado"
+  },
+  "audience": "Dueños y gerentes de pymes que atienden y agendan clientes por WhatsApp",
+  "sources": [
+    {
+      "kind": "hermes_research",
+      "title": "Precios en la plataforma de WhatsApp Business (Meta, actualizado 30-sep-2026)",
+      "url": "https://developers.facebook.com/documentation/business-messaging/whatsapp/pricing/",
+      "verified": true,
+      "evidence": []
+    }
+  ],
+  "claims": [
+    {
+      "text": "Desde el 1 de octubre de 2026 Meta vuelve a cobrar los mensajes de servicio enviados dentro de la ventana de 24 horas; cada número de teléfono de la empresa tiene 1.000 mensajes de servicio gratis al mes y los mensajes que escribe el cliente no se cobran",
+      "external": true,
+      "source_url": "https://developers.facebook.com/documentation/business-messaging/whatsapp/pricing/"
+    }
+  ],
+  "factors": {
+    "relevance": {
+      "value": 9,
+      "note": "Cambio de cobro vigente desde el 1 de octubre que afecta a quien atiende por WhatsApp."
+    },
+    "audience_fit": {
+      "value": 9,
+      "note": "Agendar horas por WhatsApp es el caso diario de clínicas, talleres y servicios."
+    },
+    "novelty": {
+      "value": 8,
+      "note": "Une el cobro nuevo con el formulario dentro del chat, ángulo poco tratado."
+    },
+    "evidence": {
+      "value": 8,
+      "note": "Regla leída en la página oficial de Meta (actualizada el 30-sep-2026); sin cifras de conversión."
+    },
+    "utility": {
+      "value": 8,
+      "note": "Muestra cuántos mensajes paga la empresa y cómo reducirlos."
+    },
+    "clarity": {
+      "value": 9,
+      "note": "Una idea por lámina: problema, cobro, solución, configuración."
+    },
+    "conversation": {
+      "value": 7,
+      "note": "Pregunta final sobre cuántos mensajes tiene hoy su proceso de agendar."
+    },
+    "differentiation": {
+      "value": 7,
+      "note": "Enfoca el trámite completo y la configuración, no solo la novedad del cobro."
+    },
+    "non_repetition": {
+      "value": 9,
+      "note": "Primer carrusel ilustrado con celulares y chat real de agenda."
+    }
+  },
+  "rationale": "Aprovecha un cambio real y reciente de WhatsApp para mostrar, con un caso concreto, por qué un formulario dentro del chat reduce mensajes; sin prometer ahorros ni cifras de conversión.",
+  "hook": "¿Agendar una hora en 8 mensajes? Bastan 3 toques.",
+  "body": "Agendar una hora por WhatsApp suele tomar unos 8 mensajes, 4 de ellos de tu empresa. Desde el 1 de octubre, lo que tu empresa responde dentro de las 24 horas se cobra una vez superados los 1.000 mensajes gratis al mes por número; lo que escribe el cliente, no.\n\nUn formulario dentro del chat (WhatsApp Flows) reemplaza las preguntas una por una. Nosotros lo dejamos configurado.\n\n¿Cuántos mensajes tiene hoy tu proceso de agendar? Cuéntanos.",
+  "slides": [
+    {
+      "layout": "cover",
+      "title": "¿Agendar una hora en 8 mensajes?\n*Bastan 3 toques.*",
+      "pill": "NUEVO COBRO DESDE EL 1 DE OCTUBRE"
+    },
+    {
+      "layout": "content",
+      "title": "Agendar una hora son 8 mensajes.\n*4 los pagas tú.*",
+      "body": "Desde el 1 de octubre, lo que tu empresa responde dentro de las 24 h tiene costo, pasados los 1.000 gratis al mes por número. Lo que escribe el cliente, no."
+    },
+    {
+      "layout": "content",
+      "title": "El mismo trámite en *3 toques.*",
+      "body": "Un formulario dentro del chat (WhatsApp Flows) reemplaza las preguntas una por una. Menos idas y vueltas."
+    },
+    {
+      "layout": "content",
+      "title": "Y nosotros lo dejamos *configurado.*",
+      "body": "1. Revisamos tu proceso de agenda\n2. Configuramos el agente y el formulario\n3. Lo conectamos a tu agenda y lo probamos contigo"
+    },
+    {
+      "layout": "cta",
+      "title": "Agentes que *trabajan.*",
+      "cta_label": "atacamalabs.cl"
+    }
+  ],
+  "cta": {
+    "type": "none"
+  },
+  "hashtags": [
+    "#WhatsAppBusiness",
+    "#AgentesDeIA",
+    "#Automatización"
+  ],
+  "evidence_urls": [
+    "https://developers.facebook.com/documentation/business-messaging/whatsapp/pricing/"
+  ],
+  "visual_direction": "Láminas con fotos y pantallas generadas por GPT Image 2.5, recortadas y compuestas sobre la cuadrícula de marca; titulares, logo, contador y cierre puestos por el sistema; llamita oficial en la lámina 4.",
+  "schedule_suggestion": "2026-10-13T15:00:00-03:00",
+  "media": []
+}

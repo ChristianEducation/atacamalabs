@@ -1,0 +1,37 @@
+{
+ "hookNotif": 0.9,
+ "hookText": 1.45,
+ "splitStart": 2,
+ "splitEnd": 2.7,
+ "rings": [
+  4.4,
+  6,
+  7.6,
+  9.2
+ ],
+ "ringDur": 1,
+ "cust": 2.9,
+ "agent": 5,
+ "sheet": 5.5,
+ "tap1": 6.9,
+ "step2": 7.6,
+ "tap2": 8.8,
+ "step3": 9.5,
+ "tap3": 10.3,
+ "done": 10.9,
+ "morning": 12,
+ "walk0": 12.3,
+ "walk1": 14.3,
+ "cards": [
+  12.45,
+  13.1,
+  13.75
+ ],
+ "note": 14.7,
+ "win": 15.1,
+ "lost": 16,
+ "wipe": 16.9,
+ "hub0": 17.3,
+ "tag2": 22.9,
+ "end": 26
+}

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="es">
+  <head><meta charset="UTF-8" /></head>
+  <body>
+    <template>
+      <style>
+        @font-face { font-family: "DM Sans"; src: url("assets/fonts/DMSans-latin-wght.woff2") format("woff2"); font-weight: 100 1000; font-style: normal; }
+        
+              :root {
+                --blue: #0f5ced;
+                --blue-on-dark: #2e74f5;
+                --deep: #041228;
+                --mist: #f3f6fd;
+                --white: #ffffff;
+                --line: rgba(15, 92, 237, 0.14);
+              }
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              img { display: block; }
+        
+              .logo { position: absolute; left: 96px; top: 104px; width: 270px; }
+              .kicker { position: absolute; left: 96px; font-size: 32px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--blue); white-space: nowrap; }
+              .dark .kicker, .kicker.on-dark { color: var(--blue-on-dark); }
+              .big { position: absolute; left: 96px; white-space: nowrap; font-weight: 300; letter-spacing: -0.03em; line-height: 1; will-change: transform, opacity, filter; }
+              .big.k { color: var(--blue); font-weight: 500; }
+              .white { color: var(--white); }
+              .sub { position: absolute; left: 190px; font-size: 40px; font-weight: 300; color: rgba(255,255,255,0.78); white-space: nowrap; }
+        
+              /* S2 · puestos */
+              #role-stack { position: absolute; left: 96px; top: 330px; width: 888px; height: 190px; }
+              .role { position: absolute; left: 0; top: 0; font-size: 156px; font-weight: 300; letter-spacing: -0.035em; white-space: nowrap; line-height: 1; will-change: transform, opacity, filter; }
+              .role b { font-weight: 500; color: var(--blue); }
+              #card { position: absolute; left: 96px; top: 640px; width: 888px; height: 860px; border-radius: 48px; overflow: hidden; }
+              .vig { position: absolute; inset: 0; padding: 64px 64px; }
+              .row { position: absolute; left: 64px; right: 64px; display: flex; align-items: center; gap: 28px; font-size: 42px; font-weight: 400; }
+              .tick { flex: none; width: 56px; height: 56px; border-radius: 28px; background: var(--blue); display: flex; align-items: center; justify-content: center; }
+              .tick svg { width: 30px; height: 30px; }
+              .lab { color: rgba(4, 18, 40, 0.56); font-weight: 300; }
+              .val { margin-left: auto; font-weight: 500; }
+              .bubble { position: absolute; left: 64px; top: 70px; max-width: 700px; padding: 34px 40px; border-radius: 40px 40px 40px 10px; background: #eef3fd; font-size: 44px; font-weight: 400; line-height: 1.3; }
+              .pill { position: absolute; left: 64px; bottom: 64px; padding: 26px 44px; border-radius: 60px; background: var(--blue); color: var(--white); font-size: 42px; font-weight: 500; }
+              .chip { position: absolute; left: 64px; display: flex; align-items: center; gap: 24px; padding: 22px 34px; border-radius: 22px; border: 3px solid #dfe8f8; background: var(--white); font-size: 42px; font-weight: 400; }
+              .chip em { font-style: normal; color: var(--blue); font-weight: 500; }
+              .days { position: absolute; left: 64px; right: 64px; top: 80px; display: flex; gap: 20px; }
+              .day { flex: 1; height: 150px; border-radius: 28px; border: 3px solid #dfe8f8; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 36px; font-weight: 400; color: rgba(4,18,40,.6); }
+              .day b { font-size: 56px; font-weight: 400; color: var(--deep); }
+              .day.on { background: var(--blue); border-color: var(--blue); color: rgba(255,255,255,.85); }
+              .day.on b { color: var(--white); font-weight: 500; }
+              .slot { position: absolute; left: 64px; right: 64px; height: 110px; border-radius: 28px; border: 3px solid #dfe8f8; display: flex; align-items: center; padding: 0 40px; font-size: 46px; font-weight: 400; }
+              .slot.on { border-color: var(--blue); background: #eef3fd; font-weight: 500; }
+              #pager { position: absolute; left: 96px; top: 1570px; width: 888px; display: flex; gap: 16px; }
+              #pager i { flex: 1; height: 8px; border-radius: 4px; background: rgba(15, 92, 237, 0.16); display: block; position: relative; overflow: hidden; }
+              #pager i u { position: absolute; inset: 0; background: var(--blue); transform-origin: left center; display: block; }
+              #pagerLab { position: absolute; left: 96px; top: 1610px; font-size: 34px; font-weight: 400; color: rgba(4,18,40,.6); letter-spacing: .04em; white-space: nowrap; }
+        
+              /* S3 · cómo trabaja */
+              #rail { position: absolute; left: 118px; top: 400px; width: 6px; height: 760px; background: rgba(255,255,255,0.14); border-radius: 3px; }
+              #railFill { position: absolute; left: 0; top: 0; width: 6px; height: 760px; background: var(--blue-on-dark); border-radius: 3px; transform-origin: top center; }
+              .node { position: absolute; left: 96px; width: 50px; height: 50px; border-radius: 25px; border: 6px solid var(--blue-on-dark); background: var(--deep); }
+              .node i { position: absolute; inset: 8px; border-radius: 50%; background: var(--blue-on-dark); display: block; }
+              #summary { position: absolute; left: 96px; top: 1330px; width: 888px; font-size: 76px; font-weight: 300; line-height: 1.12; letter-spacing: -0.025em; color: var(--white); }
+              #summary em { font-style: normal; color: var(--blue-on-dark); font-weight: 500; }
+        
+              /* S4 */
+              #strike { position: absolute; left: 96px; top: 868px; width: 560px; height: 10px; background: var(--blue-on-dark); transform-origin: left center; border-radius: 5px; }
+        
+              /* S5 */
+              #close-logo { position: absolute; left: 150px; top: 640px; width: 780px; }
+              #ask { position: absolute; left: 0; width: 1080px; top: 1090px; text-align: center; font-size: 54px; font-weight: 400; color: rgba(4,18,40,.78); white-space: nowrap; }
+                #tag { position: absolute; left: 0; width: 1080px; top: 880px; text-align: center; font-size: 104px; font-weight: 300; letter-spacing: -0.03em; white-space: nowrap; }
+              #tag em { font-style: normal; font-weight: 500; color: var(--blue); }
+              #url { position: absolute; left: 0; width: 1080px; top: 1230px; text-align: center; font-size: 46px; font-weight: 500; letter-spacing: .12em; color: var(--blue); }
+            
+        #root { position: absolute; inset: 0; overflow: hidden; font-family: "DM Sans", sans-serif; color: var(--deep); }
+      </style>
+      <div id="root" data-composition-id="s4" data-width="1080" data-height="1920">
+
+        <div id="c1" class="big white" style="top: 620px; font-size: 156px">No es un</div>
+        <div id="c2" data-layout-allow-occlusion class="big white" style="top: 790px; font-size: 156px">chatbot.</div>
+        <div id="strike" style="top: 868px"></div>
+        <div id="c3" class="big white" style="top: 1060px; font-size: 156px">Es un <b style="font-weight:500;color:var(--blue-on-dark)">puesto</b></div>
+        <div id="c4" class="big white" style="top: 1230px; font-size: 156px">de <b style="font-weight:500;color:var(--blue-on-dark)">trabajo.</b></div>
+      
+      </div>
+      <script>
+        const B = 0.6;
+        const A = (t) => t - 14.4; // las posiciones se escriben en tiempo del video y se pasan a tiempo local
+        const tl = gsap.timeline({ paused: true });
+
+    tl.fromTo("#c1", { opacity: 0, y: 130, filter: "blur(18px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.55, ease: "expo.out" }, A(14.5));
+    tl.fromTo("#c2", { opacity: 0, y: 130, filter: "blur(18px)" }, { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.55, ease: "expo.out" }, A(14.7));
+    tl.fromTo("#strike", { scaleX: 0 }, { scaleX: 1, duration: 0.3, ease: "power4.out" }, A(15.3));
+    tl.to(["#c1", "#c2"], { opacity: 0.38, duration: 0.3 }, A(15.3));
+    tl.fromTo("#c3", { opacity: 0, scale: 1.3, filter: "blur(22px)" }, { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.55, ease: "power4.out", transformOrigin: "0% 50%" }, A(15.6));
+    tl.fromTo("#c4", { opacity: 0, scale: 1.3, filter: "blur(22px)" }, { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.55, ease: "power4.out", transformOrigin: "0% 50%" }, A(15.9));
+    tl.to(["#c1", "#c2", "#strike", "#c3", "#c4"], { opacity: 0, y: -90, filter: "blur(14px)", duration: 0.35, ease: "power3.in", stagger: 0.03 }, A(16.6));
+        window.__timelines["s4"] = tl;
+      </script>
+    </template>
+  </body>
+</html>
