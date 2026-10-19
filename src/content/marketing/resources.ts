@@ -41,11 +41,11 @@ export const RESOURCES: readonly Resource[] = [
     title: "Qué proceso de tu empresa automatizar primero",
     seoTitle: "Qué proceso de tu empresa automatizar primero | Atacama Labs",
     description:
-      "Checklist de cinco criterios para elegir el primer proceso a automatizar en una pyme: frecuencia, reglas claras, herramientas, riesgo de error y forma de medirlo.",
+      "Checklist de cinco criterios para elegir el primer proceso a automatizar en una pyme: frecuencia, reglas claras, datos que se pasan a mano, impacto y forma de medirlo.",
     intro:
       "Casi todas las empresas tienen diez procesos que podrían automatizarse y ninguna razón clara para partir por uno. Este checklist sirve para elegir el primero con cinco criterios simples. Toma unos diez minutos y se hace con lápiz y papel.",
     readingTime: "10 minutos",
-    updated: "8 de octubre de 2026",
+    updated: "19 de octubre de 2026",
     sections: [
       {
         id: "como-usarlo",
@@ -70,19 +70,19 @@ export const RESOURCES: readonly Resource[] = [
             good: "Si hoy solo lo resuelve una persona «porque sabe», primero hay que ordenarlo. Un agente o una automatización necesitan reglas que se puedan explicar.",
           },
           {
-            title: "3. Usa pocas herramientas",
-            question: "¿Pasa por dos o tres sistemas conocidos (WhatsApp, correo, planilla, CRM) y no por diez?",
-            good: "Mientras menos piezas, más fácil conectarlo y más fácil encontrar qué falló cuando algo no sale como esperabas.",
+            title: "3. Mueves datos a mano",
+            question: "¿Hoy pasas información a mano de un programa a otro (por ejemplo, de WhatsApp a una planilla o del correo al sistema)?",
+            good: "Copiar y pegar entre herramientas es una de las primeras señales de que algo se puede automatizar: ahorra tiempo y evita errores de tipeo. Si además pasa por pocos sistemas conocidos, será más fácil de conectar y de revisar.",
           },
           {
-            title: "4. Un error se corrige fácil",
-            question: "¿Se puede revisar el resultado antes de que llegue al cliente, o corregirlo rápido si sale mal?",
-            good: "Conviene partir donde una persona pueda supervisar al inicio. Los procesos donde un error es caro o irreversible se dejan para después.",
+            title: "4. Cuesta tiempo o genera errores",
+            question: "¿Le quita horas a tu equipo, genera errores o hace esperar a tus clientes?",
+            good: "Es el criterio del impacto. Los equipos suelen automatizar lo más fácil, no lo que más pesa. Parte por el proceso que más tiempo consume o que más afecta a tus clientes cuando falla.",
           },
           {
-            title: "5. Se puede medir",
-            question: "¿Puedes saber si mejoró? Por ejemplo, tiempo de respuesta, consultas sin contestar o horas semanales.",
-            good: "Si no puedes medir el antes, no sabrás si funcionó. Anota hoy cómo está, aunque sea una estimación honesta.",
+            title: "5. Se puede medir y revisar",
+            question: "¿Puedes saber si mejoró (tiempo de respuesta, consultas sin contestar, horas semanales) y revisar el resultado antes de que llegue al cliente?",
+            good: "Si no puedes medir el antes, no sabrás si funcionó; anota hoy cómo está, aunque sea una estimación honesta. Y si una persona puede supervisar al inicio, un error se corrige a tiempo.",
           },
         ],
       },
