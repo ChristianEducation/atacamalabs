@@ -5,7 +5,11 @@ const env = Object.fromEntries(fs.readFileSync(ROOT + '/.env.local', 'utf8').spl
 const LOC = 'pxHuOsiz2i3lM6BtC9IM'; const APPROVER = 'OjkAjHMdUjnblO7W1kBZ';
 const LI_PAGE = '6ac4fabe3356d12d204557ea_pxHuOsiz2i3lM6BtC9IM_145278681_page';
 const H = { Authorization: 'Bearer ' + env.GHL_PRIVATE_INTEGRATION_TOKEN2, Version: '2021-07-28', Accept: 'application/json', 'Content-Type': 'application/json' };
-const medias = JSON.parse(fs.readFileSync(ROOT + '/brand/content/historias/ghl-media-urls.json', 'utf8'));
+const medias = JSON.parse(fs.readFileSync(ROOT + '/brand/content/historias/ghl-media-urls.json', 'utf8')).slice(0, 6);
+// Lámina 7 propia de LinkedIn (mensaje directo en vez de «comenta PROCESO»)
+{ const fd = new FormData(); fd.append('file', new Blob([fs.readFileSync(ROOT + '/brand/content/historias/out/c7-mensaje-directo.png')], { type: 'image/png' }), 'atacama-linkedin-c7-mensaje-directo.png'); fd.append('hosted', 'false');
+  const uj = await (await fetch('https://services.leadconnectorhq.com/medias/upload-file', { method: 'POST', headers: { Authorization: H.Authorization, Version: H.Version, Accept: H.Accept }, body: fd })).json();
+  if (!uj.url) { console.error('subida falló', JSON.stringify(uj).slice(0, 200)); process.exit(2); } medias.push({ url: uj.url, type: 'image/png' }); }
 const summary = fs.readFileSync(ROOT + '/brand/content/historias/carrusel-linkedin-caption.txt', 'utf8').trim();
 const body = { accountIds: [LI_PAGE], summary, type: 'post', status: 'in_review', userId: APPROVER, media: medias, scheduleDate: '2026-10-21T13:00:00.000Z', postApprovalDetails: { approver: APPROVER } };
 const base = 'https://services.leadconnectorhq.com/social-media-posting/' + LOC + '/posts';

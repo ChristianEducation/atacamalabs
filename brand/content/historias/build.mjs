@@ -319,6 +319,19 @@ Object.assign(PIECES, {
   `),
   'c2-se-repite': () => carSlide(0), 'c3-reglas-claras': () => carSlide(1), 'c4-datos-a-mano': () => carSlide(2, CAR4B), 'c5-tiempo-errores': () => carSlide(3), 'c6-medir-revisar': () => carSlide(4),
   'c7-comenta-proceso': () => carCierre('¿Cuál de tus procesos cumple los 5?', 'PROCESO', 'Comenta <span style="color:' + AMBER + '">PROCESO</span> y te ayudamos a diagnosticar el tuyo.'),
+  // Versión LinkedIn del cierre (20-oct): sin «comenta PROCESO» (LinkedIn no tiene respuesta automática) → mensaje directo
+  'c7-mensaje-directo': () => shell(1080, 1350, `
+    <div style="position:absolute;inset:0;background:linear-gradient(160deg,#0f5ced 0%,#1a3c8e 100%)"></div>
+    <div class="grid" style="--gl:rgba(255,255,255,.10)"></div>
+    <div style="position:absolute;left:-200px;top:760px;width:900px;height:900px;border-radius:50%;background:radial-gradient(circle,rgba(88,166,255,.5),rgba(88,166,255,0) 70%)"></div>
+    <div class="h" style="left:90px;top:150px;width:900px;font-size:104px;color:#fff;font-weight:600">¿Cuál de tus procesos cumple los 5?</div>
+    <div style="position:absolute;left:90px;top:610px;width:900px;background:#fff;border-radius:44px;padding:40px 48px 48px;box-shadow:0 30px 70px rgba(5,18,60,.35)">
+      <div style="display:flex;align-items:center;gap:20px"><div style="width:64px;height:64px;border-radius:50%;background:#d5e0f6"></div><div style="font-size:32px;color:#5f7094;font-weight:600">Mensaje directo a Atacama Labs</div></div>
+      <div style="font-size:76px;font-weight:700;letter-spacing:-.03em;color:var(--blue);margin-top:22px;line-height:1.08">Quiero revisar mi proceso</div>
+    </div>
+    <div class="body" style="left:90px;width:900px;top:1015px;font-size:52px;color:#fff;font-weight:600;line-height:1.25">Escríbenos por <span style="color:${AMBER}">mensaje directo</span> y lo revisamos contigo.</div>
+    <img class="logo" src="${LOGO_DARK}" style="left:90px;transform:none;bottom:70px;width:340px">
+  `),
 });
 
 // ── Semana 21–24 oct: historias de solo imagen + imagen del miércoles ──
