@@ -1,0 +1,42 @@
+[
+  {
+    "created_at": "2026-10-20T02:30:33.297556Z",
+    "display_name": "Eleven v4",
+    "id": "35baea68-c968-499e-815d-bc9c6ba84fbf",
+    "job_type": "elevenlabs_v4",
+    "min_result_url": null,
+    "params": {
+      "batch_size": 1,
+      "dialogue": [
+        {
+          "text": "Agenda una demo en atacama labs punto cl.",
+          "voice_id": "95429266-c0ac-4137-a209-63b8812b0f23",
+          "voice_type": "preset"
+        }
+      ],
+      "prompt": "Agenda una demo en atacama labs punto cl.",
+      "similarity_boost": null,
+      "stability": null,
+      "voices": [
+        {
+          "age": "young",
+          "gender": "male",
+          "id": "95429266-c0ac-4137-a209-63b8812b0f23",
+          "name": "Julian",
+          "source": "https://d1xarpci4ikg0w.cloudfront.net/audio_voice_preset/preview/6d53a63c-d1a3-44e2-a6a7-62777b97aa34.mp3",
+          "supported_models": [
+            "elevenlabs",
+            "minimax",
+            "seed_speech",
+            "qwen_audio"
+          ],
+          "thumbnail_url": "https://d1xarpci4ikg0w.cloudfront.net/audio_voice/thumbnail/c0cd67eb-773b-4bb4-9353-7a01af6966d6.webp",
+          "type": "preset",
+          "waveform_url": "https://d1xarpci4ikg0w.cloudfront.net/waveform/b0ea0c60-f5f1-4217-b71d-0cd076c3ac1c.json"
+        }
+      ]
+    },
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3EbqVNfY8krnXzjJxDYBMWhIUwo/hf_20261020_023033_35baea68-c968-499e-815d-bc9c6ba84fbf.mp3",
+    "status": "completed"
+  }
+]

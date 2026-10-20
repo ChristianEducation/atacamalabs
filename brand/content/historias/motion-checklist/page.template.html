@@ -1,0 +1,53 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><style>
+@font-face{font-family:"DM Sans";src:url("__FONT__") format("woff2");font-weight:100 1000}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#a0b9d9}
+body{font-family:"DM Sans",sans-serif;-webkit-font-smoothing:antialiased;color:#0b1e3f}
+#stage{position:absolute;left:0;top:0;width:1080px;height:1920px;overflow:hidden;background:linear-gradient(180deg,#9fb8d9,#a6bcda)}
+#bg{position:absolute;left:0;top:220px;width:1080px;height:1935px;background:url("__IMG__") center top/100% 100% no-repeat;transform-origin:50% 100%}
+#shade{position:absolute;left:0;top:0;width:1080px;height:560px;background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0))}
+.hd{position:absolute;left:70px;width:940px;top:255px;text-align:center;font-weight:700;font-size:88px;line-height:1.02;letter-spacing:-.04em;color:#0b1e3f}
+.hd em{font-style:normal;color:#0f5ced}.hd .w{display:inline-block;opacity:0;white-space:pre}
+#cd{position:absolute;left:90px;top:500px;width:900px;height:512px;border-radius:52px;background:rgba(255,255,255,.88);border:3px solid rgba(255,255,255,.95);box-shadow:0 40px 90px rgba(11,30,63,.28);opacity:0;backdrop-filter:blur(8px)}
+#cd .tt{position:absolute;left:52px;top:34px;font-size:26px;font-weight:700;letter-spacing:.14em;color:#0f5ced}
+.row{position:absolute;left:52px;right:52px;height:80px;display:flex;align-items:center;gap:26px;opacity:0}
+.row .n{width:56px;height:56px;border-radius:50%;border:5px solid #c7d6f2;color:#9fb0d3;font-weight:700;font-size:30px;display:flex;align-items:center;justify-content:center;flex:none;position:relative;background:#fff}
+.row .t{font-size:44px;font-weight:600;letter-spacing:-.01em}
+.row.on .n{background:#0f5ced;border-color:#0f5ced;color:#fff}
+#pill{position:absolute;left:50%;top:1046px;transform:translateX(-50%);background:#0f5ced;color:#fff;font-weight:700;font-size:44px;white-space:nowrap;padding:26px 58px;border-radius:70px;box-shadow:0 16px 40px rgba(15,92,237,.4);opacity:0}
+#brand{position:absolute;left:560px;top:1730px;width:470px;height:120px;border-radius:40px;background:rgba(255,255,255,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+#brand img{width:300px}#brand div{font-weight:500;font-size:22px;letter-spacing:.14em;color:#0f5ced}
+</style></head><body><div id="stage">
+<div id="bg"></div><div id="shade"></div>
+<div id="h" class="hd"><span class="w">Antes de </span><span class="w">automatizar,</span><br><span class="w"><em>elige bien.</em></span></div>
+<div id="cd"><div class="tt">CHECKLIST · 10 MINUTOS</div></div>
+<div id="pill">__PILL__</div>
+<div id="brand"><img src="__LOGO__"><div>ATACAMALABS.CL</div></div>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const seg = (T, a, b) => clamp((T - a) / (b - a));
+const eout = (t) => 1 - Math.pow(1 - t, 3);
+const back = (t, s = 1.7) => { t = clamp(t); const c3 = s + 1; return 1 + c3 * Math.pow(t - 1, 3) + s * Math.pow(t - 1, 2); };
+const ROWS = ['Se repite', 'Tiene reglas claras', 'Usa pocas herramientas', 'Un error se corrige fácil', 'Se puede medir'];
+const rows = ROWS.map((t, i) => { const d = document.createElement('div'); d.className = 'row'; d.style.top = (90 + i * 80) + 'px'; d.innerHTML = '<div class="n">' + (i + 1) + '</div><div class="t">' + t + '</div>'; $('cd').append(d); return d; });
+const CHECK = '<svg viewBox="0 0 52 52" width="40" height="40" style="position:absolute;left:3px;top:3px"><path d="M14 27 L23 36 L39 17" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function draw(T) {
+  // fondo: empuje lento de cámara
+  $('bg').style.transform = 'scale(' + (1 + 0.07 * seg(T, 0, 8)) + ')';
+  // titular palabra por palabra
+  Array.from($('h').querySelectorAll('.w')).forEach((w, i) => { const u = seg(T, 0.25 + i * 0.22, 0.25 + i * 0.22 + 0.45), s = back(u, 1.6); w.style.opacity = clamp(u * 2.5); w.style.transform = 'translateY(' + ((1 - s) * 40) + 'px)'; w.style.filter = u < 1 ? 'blur(' + ((1 - u) * 8) + 'px)' : 'none'; });
+  // tarjeta
+  const cd = $('cd'); const cu = back(seg(T, 0.9, 1.5), 1.5); cd.style.opacity = clamp(cu * 3); cd.style.transform = 'translateY(' + ((1 - cu) * 120) + 'px) scale(' + (0.94 + 0.06 * cu) + ')';
+  rows.forEach((r, i) => {
+    const t0 = 1.6 + i * 0.75; const u = seg(T, t0, t0 + 0.4), s = back(u, 1.6);
+    r.style.opacity = clamp(u * 3); r.style.transform = 'translateX(' + ((1 - s) * 70) + 'px)';
+    const on = T >= t0 + 0.4; r.className = 'row' + (on ? ' on' : ''); const n = r.querySelector('.n'); n.innerHTML = on ? CHECK : String(i + 1);
+    n.style.transform = 'scale(' + (on ? 1 + 0.3 * Math.sin(seg(T, t0 + 0.4, t0 + 0.75) * Math.PI) : 1) + ')';
+  });
+  // pastilla final
+  const pu = back(seg(T, 5.6, 6.2), 1.8); $('pill').style.opacity = clamp(pu * 3); $('pill').style.transform = 'translateX(-50%) translateY(' + ((1 - pu) * 40) + 'px) scale(' + (0.85 + 0.15 * pu) + ')';
+}
+window.draw = draw;
+</script></body></html>

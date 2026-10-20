@@ -1,0 +1,56 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><style>
+@font-face{font-family:"DM Sans";src:url("__FONT__") format("woff2");font-weight:100 1000}
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--blue:#0f5ced;--ink:#0b1e3f;--amber:#ffc53d;--green:#1e9d3d}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#f3f6fd}
+body{font-family:"DM Sans",sans-serif;-webkit-font-smoothing:antialiased;color:#0b1e3f}
+#st{position:absolute;inset:0;overflow:hidden;background:#f3f6fd}
+.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(15,92,237,.10) 2px,transparent 2px),linear-gradient(90deg,rgba(15,92,237,.10) 2px,transparent 2px);background-size:120px 120px}
+#glow{position:absolute;left:-220px;top:1000px;width:1000px;height:1000px;border-radius:50%;background:radial-gradient(circle,rgba(88,166,255,.30),rgba(88,166,255,0) 68%)}
+#lab{position:absolute;left:90px;top:270px;background:var(--amber);color:#10224f;font-weight:700;font-size:30px;letter-spacing:.12em;padding:14px 30px;border-radius:50px;opacity:0}
+.h{position:absolute;left:90px;top:370px;width:900px;font-size:96px;font-weight:600;letter-spacing:-.035em;line-height:1.04}
+.h .w{display:inline-block;opacity:0;white-space:pre}.h em{font-style:normal;color:#0f5ced}
+.bar{position:absolute;bottom:420px;width:340px;border-radius:36px 36px 0 0;height:0}
+#b1{left:140px;background:#16233f}#b2{left:600px;background:var(--blue)}
+.val{position:absolute;width:340px;text-align:center;font-size:130px;font-weight:700;letter-spacing:-.04em;opacity:0}
+#v1{left:140px;color:#16233f}#v2{left:600px;color:var(--blue)}
+.lbl{position:absolute;bottom:330px;width:340px;text-align:center;font-size:40px;font-weight:700;opacity:0}
+#l1{left:140px;color:#16233f}#l2{left:600px;color:var(--blue)}
+#base{position:absolute;left:100px;width:880px;bottom:416px;height:6px;background:rgba(11,30,63,.35);border-radius:4px;opacity:0}
+#x2{position:absolute;left:0;width:100%;top:640px;text-align:center;opacity:0}
+#x2 span{display:inline-block;background:var(--green);color:#fff;font-weight:700;font-size:64px;padding:22px 60px;border-radius:70px;box-shadow:0 16px 34px rgba(30,157,61,.45)}
+#foot{position:absolute;left:90px;width:900px;top:1700px;font-size:25px;line-height:1.3;color:#5f7094;opacity:0}
+#logo{position:absolute;left:50%;top:1790px;width:360px;transform:translateX(-50%);opacity:0}
+</style></head><body><div id="st"><div class="grid" id="g"></div><div id="glow"></div>
+<div id="lab">AGENTE HUMANO VS. AGENTE DE IA</div>
+<div class="h" id="h"><span class="w">Contactos </span><span class="w">que</span><br><span class="w"><em>se vuelven clientes</em></span></div>
+<div id="x2"><span>más del doble</span></div>
+<div class="bar" id="b1"></div><div class="bar" id="b2"></div><div id="base"></div>
+<div class="val" id="v1">0%</div><div class="val" id="v2">0%</div>
+<div class="lbl" id="l1">Humano</div><div class="lbl" id="l2">Agente de IA</div>
+<div id="foot">Cifras de referencia de HighLevel (GHL). Los resultados varían según cada negocio.</div>
+<img id="logo" src="__LOGO__">
+</div><script>
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const seg = (T, a, b) => clamp((T - a) / (b - a));
+const eout = (t) => 1 - Math.pow(1 - t, 3);
+const back = (t, s = 1.7) => { t = clamp(t); const c3 = s + 1; return 1 + c3 * Math.pow(t - 1, 3) + s * Math.pow(t - 1, 2); };
+const BASE = 1920 - 420, PX = 11; // 1% = 11 px de alto
+function draw(T) {
+  $('g').style.backgroundPosition = (T * 10) + 'px ' + (-T * 8) + 'px';
+  const l = back(seg(T, 0.1, 0.6), 1.8); $('lab').style.opacity = clamp(l * 3); $('lab').style.transform = 'scale(' + (0.7 + 0.3 * l) + ')';
+  Array.from($('h').querySelectorAll('.w')).forEach((w, i) => { const u = seg(T, 0.3 + i * 0.17, 0.3 + i * 0.17 + 0.45), s = back(u, 1.6); w.style.opacity = clamp(u * 2.5); w.style.transform = 'translateY(' + ((1 - s) * 40) + 'px)'; });
+  $('base').style.opacity = eout(seg(T, 0.9, 1.3));
+  const a = eout(seg(T, 1.3, 2.7)), b = eout(seg(T, 2.9, 4.3));
+  $('b1').style.height = (23 * PX * a) + 'px'; $('b2').style.height = (48 * PX * b) + 'px';
+  $('v1').textContent = Math.round(23 * a) + '%'; $('v2').textContent = Math.round(48 * b) + '%';
+  $('v1').style.bottom = (420 + 23 * PX * a + 20) + 'px'; $('v2').style.bottom = (420 + 48 * PX * b + 20) + 'px';
+  $('v1').style.opacity = clamp(a * 4); $('v2').style.opacity = clamp(b * 4);
+  $('l1').style.opacity = eout(seg(T, 1.3, 1.8)); $('l2').style.opacity = eout(seg(T, 2.9, 3.4));
+  const x = back(seg(T, 4.4, 5.0), 2.0); $('x2').style.opacity = clamp(x * 3); $('x2').style.transform = 'scale(' + (0.6 + 0.4 * x) + ') rotate(' + ((1 - x) * -6) + 'deg)';
+  $('foot').style.opacity = eout(seg(T, 0.6, 1.2));
+  const lg = back(seg(T, 5.4, 6.0), 1.5); $('logo').style.opacity = clamp(lg * 3); $('logo').style.transform = 'translateX(-50%) translateY(' + ((1 - lg) * 30) + 'px)';
+}
+window.draw = draw;
+</script></body></html>

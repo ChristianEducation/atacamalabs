@@ -59,7 +59,7 @@ t('Ola A: inteligencia orgánica es solo fuentes públicas, no copia, páginas l
 {
   const skill3 = fs.readFileSync(new URL('./skills/atacama-ops/SKILL.md', import.meta.url), 'utf8');
   const mcp = fs.readFileSync(new URL('./atacama_ops_mcp.py', import.meta.url), 'utf8');
-  t('Ola B: el job autónomo no genera visuales (solo texto) y deriva el visual a request_visual', /SOLO escribe piezas de texto/.test(pcs) && /request_visual/.test(pcs) && /imágenes generativas están apagadas/.test(pcs));
+  t('Ola B: el job autónomo escribe texto por defecto y SOLO una imagen simple del renderer (sin costo) cuando una estructura clara lo amerita; lo demás va a request_visual y las imágenes generativas siguen apagadas', /Por defecto la pieza es de TEXTO/.test(pcs) && /EXCEPCIÓN \(máximo 1 pieza por corrida\)/.test(pcs) && /process_flow \| comparison \| checklist/.test(pcs) && /request_visual/.test(pcs) && /imágenes generativas siguen apagadas/.test(pcs));
   t('Ola B: la skill obliga a decir el estado real del visual (cola/unavailable) y declara apagado lo generativo', /visual_status/.test(skill3) && /APAGADOS y NO probados/.test(skill3) && /nunca digas que el visual existe si está en cola o unavailable/.test(skill3));
   t('Ola B: request_visual/visual_status existen, validan la marca, no publican y solo hablan con el Media Gateway', /def request_visual\(/.test(mcp) && /def visual_status\(/.test(mcp) && /atacama-media-gateway/.test(mcp) && /APAGADOS y sin verificar/.test(mcp) && !/def (publish|approve)_visual/.test(mcp));
 }

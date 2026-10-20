@@ -1,0 +1,84 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><style>
+@font-face{font-family:"DM Sans";src:url("__FONT__") format("woff2");font-weight:100 1000}
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--real:#1a3c8e;--blue:#0f5ced;--sky:#58a6ff;--mist:#f3f6fd;--ink:#0b1e3f;--amber:#ffc53d;--teal:#00a99b;--grey:#c7d6f2}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#f3f6fd}
+body{font-family:"DM Sans",sans-serif;-webkit-font-smoothing:antialiased;color:var(--ink)}
+#st{position:absolute;left:0;top:0;width:1080px;height:1920px;overflow:hidden;background:var(--mist)}
+.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(15,92,237,.10) 2px,transparent 2px),linear-gradient(90deg,rgba(15,92,237,.10) 2px,transparent 2px);background-size:120px 120px}
+#glow{position:absolute;left:100px;top:700px;width:900px;height:900px;border-radius:50%;background:radial-gradient(circle,rgba(88,166,255,.30),rgba(88,166,255,0) 66%)}
+#scene{position:absolute;inset:0}
+.h{position:absolute;left:90px;top:330px;width:900px;font-size:96px;font-weight:700;letter-spacing:-.035em;line-height:1.02;color:var(--ink)}
+.h .w{display:inline-block;opacity:0;white-space:pre}.h em{font-style:normal;color:var(--blue)}
+#msg{position:absolute;left:90px;top:560px;width:900px;background:#fff;border:3px solid #d5e0f6;border-radius:44px;padding:30px 38px;box-shadow:0 26px 60px rgba(26,60,142,.16);opacity:0}
+#msg .hd{display:flex;align-items:center;gap:20px;margin-bottom:18px}
+#msg .nm{font-size:30px;font-weight:600;color:#5f7094;flex:1}#msg .tm{font-size:28px;color:#8a99b8}
+#msg .bb{background:#f1f5fd;border-radius:30px 30px 30px 8px;padding:22px 30px;font-size:42px;line-height:1.25;font-weight:500;display:inline-block}
+.card{position:absolute;left:90px;width:900px;height:175px;border-radius:44px;background:#fff;border:5px solid var(--grey);display:flex;align-items:center;gap:34px;padding:0 44px;opacity:0;box-shadow:0 22px 50px rgba(26,60,142,.12)}
+.card .ic{width:100px;height:100px;border-radius:50%;flex:none;background:var(--grey);position:relative;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:62px}
+.card .t{font-size:60px;font-weight:700;letter-spacing:-.02em}.card .s{font-size:34px;color:#5f7094;margin-top:4px}
+.tag{position:absolute;right:30px;top:-24px;background:var(--amber);color:#10224f;font-weight:700;font-size:26px;letter-spacing:.1em;padding:10px 24px;border-radius:40px;opacity:0;white-space:nowrap}
+#q{position:absolute;left:90px;width:900px;top:1500px;font-size:92px;font-weight:700;letter-spacing:-.035em;line-height:1.02;opacity:0;color:var(--blue)}
+#sol{position:absolute;left:90px;width:900px;top:1500px;font-size:92px;font-weight:700;letter-spacing:-.035em;line-height:1.02;opacity:0;color:var(--ink)}
+#sol em{font-style:normal;color:var(--teal)}
+#end{position:absolute;inset:0;opacity:0}
+#box{position:absolute;left:160px;top:700px;width:760px;height:340px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+#box .k{position:absolute;width:64px;height:64px}
+#box .k.a{left:0;top:0;border-left:7px solid var(--blue);border-top:7px solid var(--blue)}
+#box .k.b{right:0;top:0;border-right:7px solid var(--blue);border-top:7px solid var(--blue)}
+#box .k.c{left:0;bottom:0;border-left:7px solid var(--blue);border-bottom:7px solid var(--blue)}
+#box .k.d{right:0;bottom:0;border-right:7px solid var(--blue);border-bottom:7px solid var(--blue)}
+#box img{width:520px}#box .tg{font-size:46px;font-weight:700;color:var(--ink);letter-spacing:.01em}#box .u{font-size:32px;font-weight:600;color:var(--blue);letter-spacing:.16em}
+#cta{position:absolute;left:50%;top:1150px;transform:translateX(-50%);background:var(--blue);color:#fff;font-weight:700;font-size:60px;white-space:nowrap;padding:34px 80px;border-radius:90px;box-shadow:0 20px 50px rgba(15,92,237,.45);opacity:0}
+</style></head><body><div id="st">
+<div class="grid" id="g"></div><div id="glow"></div>
+<div id="scene">
+ <div class="h" id="h"><span class="w">El </span><span class="w">pedido </span><span class="w">llegó</span><br><span class="w">al </span><span class="w"><em>WhatsApp.</em></span></div>
+ <div id="msg"><div class="hd"><svg viewBox="0 0 48 48" width="76" height="76"><rect width="48" height="48" rx="12" fill="#25d366"/><circle cx="24" cy="23" r="12" fill="none" stroke="#fff" stroke-width="3"/><path d="M13 37l3-7 5 4z" fill="#fff"/><path d="M19.5 18.5c0 5 4.5 9.5 9.5 9.5l1.8-2.3-3.2-1.6-1.4 1.2c-1.6-.7-3.3-2.4-4-4l1.2-1.4-1.6-3.2z" fill="#fff"/></svg><div class="nm">Cliente · Pedido de almuerzos</div><div class="tm">13:05</div></div><div class="bb">Hola, ¿pueden dejar listos 2 almuerzos para mañana al mediodía?</div></div>
+ <div class="card" id="c1" style="top:880px"><div class="ic" id="i1"></div><div><div class="t">Recibido</div><div class="s">El mensaje llegó al WhatsApp</div></div></div>
+ <div class="card" id="c2" style="top:1080px"><div class="ic" id="i2"></div><div><div class="t">Confirmado</div><div class="s" id="s2">¿Alguien tomó el pedido?</div></div><div class="tag" id="tg">AGENTE DE IA</div></div>
+ <div class="card" id="c3" style="top:1280px"><div class="ic" id="i3"></div><div><div class="t">Preparado</div><div class="s" id="s3">Todavía nadie lo sabe</div></div></div>
+ <div id="q">¿Pero alguien lo confirmó?</div>
+ <div id="sol">Con un agente, <em>sí.</em></div>
+</div>
+<div id="end"><div id="box"><div class="k a"></div><div class="k b"></div><div class="k c"></div><div class="k d"></div><img src="__LOGO__"><div class="tg">Agentes que trabajan.</div><div class="u">ATACAMALABS.CL</div></div><div id="cta">Agenda una demo</div></div>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const seg = (T, a, b) => clamp((T - a) / (b - a));
+const eout = (t) => 1 - Math.pow(1 - t, 3);
+const back = (t, s = 1.7) => { t = clamp(t); const c3 = s + 1; return 1 + c3 * Math.pow(t - 1, 3) + s * Math.pow(t - 1, 2); };
+const CK = (off) => '<svg viewBox="0 0 52 52" width="64" height="64"><path d="M14 27 L23 36 L39 17" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="40" stroke-dashoffset="' + off + '"/></svg>';
+function setCard(el, ic, T, t0) { const u = back(seg(T, t0, t0 + 0.5), 1.5); el.style.opacity = clamp(u * 3); el.style.transform = 'translateX(' + ((1 - u) * 140) + 'px)'; }
+function draw(T) {
+  $('g').style.backgroundPosition = (T * 10) + 'px ' + (-T * 8) + 'px';
+  $('glow').style.transform = 'translate(' + (Math.sin(T * 0.8) * 30) + 'px,' + (Math.cos(T * 0.8) * 24) + 'px)';
+  Array.from($('h').querySelectorAll('.w')).forEach((w, i) => { const u = seg(T, 0.15 + i * 0.14, 0.15 + i * 0.14 + 0.45), s = back(u, 1.6); w.style.opacity = clamp(u * 2.5); w.style.transform = 'translateY(' + ((1 - s) * 44) + 'px)'; w.style.filter = u < 1 ? 'blur(' + ((1 - u) * 8) + 'px)' : 'none'; });
+  const m = back(seg(T, 0.7, 1.35), 1.5); $('msg').style.opacity = clamp(m * 3); $('msg').style.transform = 'translateY(' + ((1 - m) * 70) + 'px) scale(' + (0.92 + 0.08 * m) + ')';
+  setCard($('c1'), 0, T, 1.5); setCard($('c2'), 0, T, 1.9); setCard($('c3'), 0, T, 2.3);
+  // 1: recibido ✓ se dibuja
+  const k1 = seg(T, 1.95, 2.4); $('i1').style.background = k1 > 0 ? 'var(--teal)' : 'var(--grey)'; $('i1').innerHTML = k1 > 0 ? CK(40 * (1 - eout(k1))) : ''; $('c1').style.borderColor = k1 > 0 ? 'var(--teal)' : 'var(--grey)';
+  // 2: «?» ámbar que late
+  const r2 = seg(T, 4.35, 4.85); const on2 = T >= 4.6;
+  if (!on2) { $('i2').style.background = T > 2.3 ? 'var(--amber)' : 'var(--grey)'; $('i2').innerHTML = T > 2.3 ? '?' : ''; $('c2').style.borderColor = T > 2.3 ? 'var(--amber)' : 'var(--grey)'; $('s2').textContent = '¿Alguien tomó el pedido?'; }
+  else { $('i2').style.background = 'var(--teal)'; $('i2').innerHTML = CK(40 * (1 - eout(seg(T, 4.6, 5.0)))); $('c2').style.borderColor = 'var(--teal)'; $('s2').textContent = 'Lo registra el agente'; }
+  const pulse = (T > 2.6 && T < 4.3) ? 1 + 0.05 * Math.sin((T - 2.6) * 9) : (r2 > 0 && r2 < 1 ? 1 + 0.12 * Math.sin(r2 * Math.PI) : 1);
+  const wig = (T > 3.2 && T < 4.2) ? Math.sin((T - 3.2) * 28) * 6 : 0;
+  $('i2').style.transform = 'scale(' + pulse + ')'; $('c2').style.transform = $('c2').style.transform.split(' rotate')[0] + ' rotate(' + (wig * 0.35) + 'deg)';
+  const tg = back(seg(T, 4.6, 5.1), 2.2); $('tg').style.opacity = clamp(tg * 3); $('tg').style.transform = 'scale(' + (0.5 + 0.5 * tg) + ') rotate(' + ((1 - tg) * -10) + 'deg)';
+  // 3: preparado ✓
+  const on3 = T >= 5.05; const k3 = seg(T, 5.05, 5.45);
+  $('i3').style.background = on3 ? 'var(--teal)' : 'var(--grey)'; $('i3').innerHTML = on3 ? CK(40 * (1 - eout(k3))) : '–'; $('c3').style.borderColor = on3 ? 'var(--teal)' : 'var(--grey)'; $('s3').textContent = on3 ? 'Tu equipo ya lo sabe' : 'Todavía nadie lo sabe';
+  // pregunta → solución
+  const q = back(seg(T, 3.1, 3.7), 1.7), qo = 1 - seg(T, 4.4, 4.7);
+  $('q').style.opacity = clamp(q * 3) * qo; $('q').style.transform = 'translateY(' + ((1 - q) * 40) + 'px) scale(' + (0.92 + 0.08 * q) + ')';
+  const so = back(seg(T, 4.7, 5.3), 1.7); $('sol').style.opacity = clamp(so * 3); $('sol').style.transform = 'translateY(' + ((1 - so) * 40) + 'px) scale(' + (0.92 + 0.08 * so) + ')';
+  // salida de la escena y cierre de marca
+  const ex = eout(seg(T, 5.95, 6.45)); $('scene').style.opacity = 1 - ex; $('scene').style.transform = 'scale(' + (1 - 0.05 * ex) + ')';
+  $('end').style.opacity = seg(T, 6.0, 6.2);
+  const b = back(seg(T, 6.1, 6.75), 1.6); $('box').style.transform = 'scale(' + (0.85 + 0.15 * b) + ')'; $('box').style.opacity = clamp(b * 3);
+  const c = back(seg(T, 6.6, 7.1), 1.9); $('cta').style.opacity = clamp(c * 3); $('cta').style.transform = 'translateX(-50%) scale(' + ((0.8 + 0.2 * c) * (T > 7.1 ? 1 + 0.025 * Math.sin((T - 7.1) * 8) : 1)) + ')';
+}
+window.draw = draw;
+</script></body></html>

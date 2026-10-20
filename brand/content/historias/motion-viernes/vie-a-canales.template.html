@@ -1,0 +1,46 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><style>
+@font-face{font-family:"DM Sans";src:url("__FONT__") format("woff2");font-weight:100 1000}
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--blue:#0f5ced;--ink:#0b1e3f;--amber:#ffc53d}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#f3f6fd}
+body{font-family:"DM Sans",sans-serif;-webkit-font-smoothing:antialiased;color:var(--ink)}
+#st{position:absolute;inset:0;overflow:hidden;background:#f3f6fd}
+.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(15,92,237,.10) 2px,transparent 2px),linear-gradient(90deg,rgba(15,92,237,.10) 2px,transparent 2px);background-size:120px 120px}
+#glow{position:absolute;left:100px;top:700px;width:900px;height:900px;border-radius:50%;background:radial-gradient(circle,rgba(88,166,255,.30),rgba(88,166,255,0) 66%)}
+.h{position:absolute;left:90px;top:320px;width:900px;font-size:100px;font-weight:700;letter-spacing:-.035em;line-height:1.03}
+.h .w{display:inline-block;opacity:0;white-space:pre}.h em{font-style:normal;color:var(--blue)}
+#chips{position:absolute;left:60px;top:830px;width:960px;display:flex;flex-wrap:wrap;gap:24px 20px;justify-content:center}
+.chip{display:flex;align-items:center;gap:18px;color:#fff;font-size:54px;font-weight:700;padding:18px 40px 18px 22px;border-radius:80px;opacity:0}
+.chip svg{width:78px;height:78px;flex:none;background:#fff;border-radius:50%;padding:8px}
+#box{position:absolute;left:90px;top:1280px;width:900px;background:#fff;border:3px solid #d5e0f6;border-radius:44px;padding:36px 50px;box-shadow:0 26px 60px rgba(26,60,142,.18);opacity:0}
+#box div{font-size:66px;font-weight:700;letter-spacing:-.025em;line-height:1.1}#box span{color:var(--blue)}
+#logo{position:absolute;left:50%;top:1640px;width:440px;transform:translateX(-50%);opacity:0}
+</style></head><body><div id="st"><div class="grid" id="g"></div><div id="glow"></div>
+<div class="h" id="h"><span class="w">Tus </span><span class="w">clientes </span><span class="w">no </span><span class="w">te </span><span class="w">escriben</span><br><span class="w"><em>solo por WhatsApp.</em></span></div>
+<div id="chips"></div>
+<div id="box"><div>Un agente.<br><span>Una sola bandeja.</span></div></div>
+<img id="logo" src="__LOGO__">
+</div><script>
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const seg = (T, a, b) => clamp((T - a) / (b - a));
+const eout = (t) => 1 - Math.pow(1 - t, 3);
+const back = (t, s = 1.7) => { t = clamp(t); const c3 = s + 1; return 1 + c3 * Math.pow(t - 1, 3) + s * Math.pow(t - 1, 2); };
+const IC = {
+ w: '<svg viewBox="0 0 48 48"><rect width="48" height="48" rx="12" fill="#25d366"/><circle cx="24" cy="23" r="12" fill="none" stroke="#fff" stroke-width="3"/><path d="M13 37l3-7 5 4z" fill="#fff"/><path d="M19.5 18.5c0 5 4.5 9.5 9.5 9.5l1.8-2.3-3.2-1.6-1.4 1.2c-1.6-.7-3.3-2.4-4-4l1.2-1.4-1.6-3.2z" fill="#fff"/></svg>',
+ i: '<svg viewBox="0 0 48 48"><defs><linearGradient id="ig" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#feda75"/><stop offset=".4" stop-color="#d62976"/><stop offset="1" stop-color="#4f5bd5"/></linearGradient></defs><rect width="48" height="48" rx="12" fill="url(#ig)"/><rect x="11" y="11" width="26" height="26" rx="8" fill="none" stroke="#fff" stroke-width="3"/><circle cx="24" cy="24" r="6" fill="none" stroke="#fff" stroke-width="3"/><circle cx="32" cy="16" r="2" fill="#fff"/></svg>',
+ f: '<svg viewBox="0 0 48 48"><rect width="48" height="48" rx="12" fill="#1877f2"/><path d="M26.5 40V27h4.3l.7-5h-5v-3.2c0-1.5.5-2.5 2.6-2.5h2.6v-4.5c-.4-.1-1.9-.2-3.4-.2-3.7 0-6.2 2.2-6.2 6.4V22H18v5h4.2v13z" fill="#fff"/></svg>',
+ c: '<svg viewBox="0 0 48 48"><rect width="48" height="48" rx="12" fill="#fff" stroke="#dfe5ee" stroke-width="2"/><rect x="10" y="14" width="28" height="20" rx="3" fill="none" stroke="#ea4335" stroke-width="3"/><path d="M11 16l13 11 13-11" fill="none" stroke="#ea4335" stroke-width="3" stroke-linejoin="round"/></svg>',
+ e: '<svg viewBox="0 0 48 48"><rect width="48" height="48" rx="12" fill="#7c5cff"/><path d="M14 20h20l-1.5 16h-17z" fill="none" stroke="#fff" stroke-width="3" stroke-linejoin="round"/><path d="M19 20v-3a5 5 0 0 1 10 0v3" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>' };
+const CH = [['WhatsApp', '#25d366', 'w', -2], ['Instagram', '#e1306c', 'i', 2], ['Facebook', '#1877f2', 'f', 1], ['Correo', '#f5a524', 'c', -2], ['Tu ecommerce', '#7c5cff', 'e', 2]];
+const els = CH.map(([t, c, k, r]) => { const d = document.createElement('div'); d.className = 'chip'; d.style.background = c; d.style.boxShadow = '0 16px 36px ' + c + '66'; d.innerHTML = IC[k] + '<span>' + t + '</span>'; $('chips').append(d); return d; });
+function draw(T) {
+  $('g').style.backgroundPosition = (T * 10) + 'px ' + (-T * 8) + 'px';
+  $('glow').style.transform = 'translate(' + (Math.sin(T * 0.8) * 30) + 'px,' + (Math.cos(T * 0.8) * 24) + 'px)';
+  Array.from($('h').querySelectorAll('.w')).forEach((w, i) => { const u = seg(T, 0.15 + i * 0.1, 0.15 + i * 0.1 + 0.45), s = back(u, 1.6); w.style.opacity = clamp(u * 2.5); w.style.transform = 'translateY(' + ((1 - s) * 44) + 'px)'; w.style.filter = u < 1 ? 'blur(' + ((1 - u) * 8) + 'px)' : 'none'; });
+  els.forEach((el, i) => { const t0 = 1.5 + i * 0.35; const u = back(seg(T, t0, t0 + 0.5), 2.0); const fl = T > t0 + 0.8 ? Math.sin(T * 2 + i) * 4 : 0; el.style.opacity = clamp(u * 3); el.style.transform = 'translateY(' + ((1 - u) * 70 + fl) + 'px) scale(' + (0.7 + 0.3 * u) + ') rotate(' + (CH[i][3] * u) + 'deg)'; });
+  const b = back(seg(T, 3.9, 4.6), 1.6); $('box').style.opacity = clamp(b * 3); $('box').style.transform = 'translateY(' + ((1 - b) * 70) + 'px) scale(' + (0.92 + 0.08 * b) + ')';
+  const lg = back(seg(T, 5.1, 5.8), 1.5); $('logo').style.opacity = clamp(lg * 3); $('logo').style.transform = 'translateX(-50%) translateY(' + ((1 - lg) * 40) + 'px) scale(' + (0.9 + 0.1 * lg) + ')';
+}
+window.draw = draw;
+</script></body></html>

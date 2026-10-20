@@ -1,0 +1,62 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><style>
+@font-face{font-family:"DM Sans";src:url("__FONT__") format("woff2");font-weight:100 1000}
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--real:#1a3c8e;--blue:#0f5ced;--sky:#58a6ff;--mist:#f3f6fd;--ink:#0b1e3f}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#f3f6fd}
+body{font-family:"DM Sans",sans-serif;-webkit-font-smoothing:antialiased;color:var(--ink)}
+#st{position:absolute;left:0;top:0;width:1080px;height:1920px;overflow:hidden;background:var(--mist)}
+.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(15,92,237,.10) 2px,transparent 2px),linear-gradient(90deg,rgba(15,92,237,.10) 2px,transparent 2px);background-size:120px 120px}
+#top{position:absolute;left:0;top:-560px;width:1080px;height:560px;background:var(--real);overflow:hidden}
+#top .grid{background-image:linear-gradient(rgba(255,255,255,.13) 2px,transparent 2px),linear-gradient(90deg,rgba(255,255,255,.13) 2px,transparent 2px)}
+#glow{position:absolute;left:-200px;top:-200px;width:700px;height:700px;border-radius:50%;background:radial-gradient(circle,rgba(88,166,255,.45),rgba(88,166,255,0) 70%)}
+.h{position:absolute;left:90px;top:262px;width:900px;font-size:92px;font-weight:600;letter-spacing:-.032em;line-height:1.04;color:#fff}
+.h em{font-style:normal;color:var(--sky)}.h .w{display:inline-block;opacity:0;white-space:pre}
+.card{position:absolute;left:90px;height:230px;border-radius:52px;box-shadow:0 26px 60px rgba(5,18,60,.25);opacity:0}
+.card .nm{position:absolute;left:46px;top:34px;font-size:70px;font-weight:600;letter-spacing:-.02em}
+.card .sb{position:absolute;left:46px;top:130px;font-size:40px;font-weight:500;opacity:.92}
+.card .dots{position:absolute;right:40px;top:58px;display:flex;gap:14px}
+.dot{width:46px;height:46px;border-radius:50%;background:#fff;opacity:0}
+.tag{position:absolute;right:30px;top:-24px;background:#ffc53d;color:#10224f;font-weight:700;font-size:28px;letter-spacing:.1em;padding:12px 28px;border-radius:40px;opacity:0;white-space:nowrap}
+#pill{position:absolute;left:50%;top:1545px;background:#ffc53d;color:#10224f;font-weight:700;font-size:36px;padding:22px 54px;border-radius:70px;white-space:nowrap;box-shadow:0 14px 34px rgba(255,197,61,.35);opacity:0}
+#logo{position:absolute;left:50%;top:1700px;width:380px;transform:translateX(-50%);opacity:0}
+</style></head><body><div id="st">
+<div class="grid" id="g0"></div>
+<div id="top"><div class="grid" id="g1"></div><div id="glow"></div>
+ <div class="h" id="h"><span class="w">Elige </span><span class="w">el </span><span class="w">tamaño</span><br><span class="w">de </span><span class="w">tu </span><span class="w"><em>operación.</em></span></div>
+</div>
+<div id="pill">Beneficio octubre · hasta el 31/10</div>
+<img id="logo" src="__LOGO__">
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const seg = (T, a, b) => clamp((T - a) / (b - a));
+const eout = (t) => 1 - Math.pow(1 - t, 3);
+const back = (t, s = 1.7) => { t = clamp(t); const c3 = s + 1; return 1 + c3 * Math.pow(t - 1, 3) + s * Math.pow(t - 1, 2); };
+const CARDS = [
+  { top: 640, w: 700, bg: '#58a6ff', ink: '#0b1e3f', nm: 'Esencial', sb: '1 agente', n: 1, tag: '' },
+  { top: 895, w: 820, bg: '#0f5ced', ink: '#fff', nm: 'Operación', sb: 'Hasta 3 agentes', n: 3, tag: 'RECOMENDADO' },
+  { top: 1150, w: 900, bg: '#1a3c8e', ink: '#fff', nm: 'Escala', sb: 'Hasta 5 agentes', n: 5, tag: '' },
+];
+const els = CARDS.map((c) => {
+  const d = document.createElement('div'); d.className = 'card'; d.style.top = c.top + 'px'; d.style.width = c.w + 'px'; d.style.background = c.bg; d.style.color = c.ink;
+  d.innerHTML = '<div class="nm">' + c.nm + '</div><div class="sb">' + c.sb + '</div><div class="dots">' + Array.from({ length: c.n }, () => '<div class="dot"></div>').join('') + '</div>' + (c.tag ? '<div class="tag">' + c.tag + '</div>' : '');
+  $('st').insertBefore(d, $('pill')); return d;
+});
+function draw(T) {
+  const tu = back(seg(T, 0.0, 0.7), 1.2); $('top').style.top = (-560 + 560 * tu) + 'px';
+  $('g1').style.backgroundPosition = (-T * 14) + 'px ' + (T * 10) + 'px'; $('g0').style.backgroundPosition = (T * 8) + 'px ' + (-T * 6) + 'px';
+  $('glow').style.transform = 'translate(' + (T * 36) + 'px,' + (T * 14) + 'px)';
+  Array.from($('h').querySelectorAll('.w')).forEach((w, i) => { const u = seg(T, 0.45 + i * 0.17, 0.45 + i * 0.17 + 0.5), s = back(u, 1.6); w.style.opacity = clamp(u * 2.5); w.style.transform = 'translateY(' + ((1 - s) * 44) + 'px)'; w.style.filter = u < 1 ? 'blur(' + ((1 - u) * 8) + 'px)' : 'none'; });
+  els.forEach((el, i) => {
+    const t0 = 1.7 + i * 0.7; const u = seg(T, t0, t0 + 0.65), s = back(u, 1.5);
+    const fl = T > t0 + 0.9 ? Math.sin((T - t0) * 2.4 + i) * 4 : 0;
+    el.style.opacity = clamp(u * 3); el.style.transform = 'translateY(' + ((1 - s) * 280 + fl) + 'px) scale(' + (0.92 + 0.08 * s) + ')';
+    Array.from(el.querySelectorAll('.dot')).forEach((d, j) => { const k = back(seg(T, t0 + 0.5 + j * 0.13, t0 + 0.5 + j * 0.13 + 0.35), 2.2); d.style.opacity = clamp(k * 3); d.style.transform = 'scale(' + k + ')'; });
+    const tg = el.querySelector('.tag'); if (tg) { const k = back(seg(T, t0 + 0.9, t0 + 1.4), 2.4); tg.style.opacity = clamp(k * 3); tg.style.transform = 'scale(' + (0.5 + 0.5 * k) + ') rotate(' + ((1 - k) * -10) + 'deg)'; }
+  });
+  const pu = back(seg(T, 4.5, 5.2), 1.8); $('pill').style.opacity = clamp(pu * 3); $('pill').style.transform = 'translateX(-50%) translateY(' + ((1 - pu) * 40) + 'px) scale(' + (0.85 + 0.15 * pu) + ')';
+  const lu = back(seg(T, 5.4, 6.1), 1.5); $('logo').style.opacity = clamp(lu * 3); $('logo').style.transform = 'translateX(-50%) translateY(' + ((1 - lu) * 40) + 'px) scale(' + (0.9 + 0.1 * lu) + ')';
+}
+window.draw = draw;
+</script></body></html>
