@@ -287,6 +287,8 @@ export function planDraft(req, ctx) {
   const inbound = inboundMsg;
   const v = validateDraft({ to_email: to, subject, body }, { suppression: ctx.suppression, allowed_emails: published, override_to: req.override_to === true });
   if (!v.ok) return { response: { ok: false, status: 'invalid_draft', error: 'borrador_invalido', message: 'El borrador no se puede guardar: ' + v.errors.join('; ') + '.', errors: v.errors }, writes: [] };
+  // Un primer correo a un dominio sin registros MX rebota seguro (3 de los 5 rebotes de octubre). ctx.mx = { domain, status, n } lo trae el motor desde DNS-over-HTTPS; si no llegó, no bloquea.
+  if (kind === 'initial' && ctx.mx && ctx.mx.domain && ctx.mx.domain === emailDomain(to) && ctx.mx.n === 0 && (ctx.mx.status === 0 || ctx.mx.status === 3) && req.skip_mx !== true) return { response: { ok: false, status: 'invalid_draft', error: 'dominio_sin_mx', message: 'El dominio de ' + to + ' no tiene servidor de correo (sin registros MX): el correo rebotaría. Busca otro contacto de la empresa.', errors: ['dominio sin servidor de correo (MX)'] }, writes: [] };
   const isCold = kind !== 'reply';
   const cold = cmNormCold(req.cold);
   let lint = null;

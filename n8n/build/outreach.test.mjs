@@ -25,7 +25,8 @@ for (const [k, wf] of Object.entries(WF)) {
   t(`${k}: los nodos HTTP toleran fallos`, wf.nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest').every((n) => n.continueOnFail === true));
 }
 t('21: webhook con clave de cabecera y ruta propia', WF.engine.nodes[0].parameters.authentication === 'headerAuth' && WF.engine.nodes[0].parameters.path === 'atacama-outreach-engine');
-t('21: el motor NUNCA llama a Gmail ni al Gateway (solo Supabase)', WF.engine.nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest').every((n) => /supabase/i.test(JSON.stringify(n.credentials)) ));
+t('21: el nodo DNS MX solo consulta al guardar un borrador (en otras acciones cae en localhost.invalid)', /action === \"draft\"/.test(WF.engine.nodes.find((n) => n.name === 'DNS MX').parameters.url) && /localhost\.invalid/.test(WF.engine.nodes.find((n) => n.name === 'DNS MX').parameters.url));
+t('21: el motor NUNCA llama a Gmail ni al Gateway (solo Supabase; la única consulta externa es el MX público por DNS-over-HTTPS, sin credenciales)', WF.engine.nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest').every((n) => /supabase/i.test(JSON.stringify(n.credentials)) || (n.name === 'DNS MX' && !n.credentials && /dns\.google\/resolve/.test(n.parameters.url))));
 t('22: Gmail solo se llama en modo live (la URL cae en localhost.invalid en otro caso) y solo con un mensaje reclamado', /go_live/.test(WF.sender.nodes.find((n) => n.name === 'Gmail Send').parameters.url) && /localhost\.invalid/.test(WF.sender.nodes.find((n) => n.name === 'Gmail Send').parameters.url) && /length === 1/.test(WF.sender.nodes.find((n) => n.name === 'Gmail Send').parameters.url));
 t('22/23: sin GMAIL_CRED_ID no hay credenciales de Gmail en los nodos (con el id real quedan conectadas: ver la prueba de gmail_check)', process.env.GMAIL_CRED_ID ? true : (!JSON.stringify(WF.sender).includes('gmailOAuth2":{') && !JSON.stringify(WF.sync).includes('gmailOAuth2":{')));
 t('22: el envío usa un candado (claim approved→sending con Prefer return=representation)', JSON.stringify(WF.sender.nodes.find((n) => n.name === 'Claim').parameters).includes('return=representation') && /status=eq\.approved/.test(code('sender', 'Claim Plan')));
@@ -40,6 +41,7 @@ async function engine(body, st = {}) {
   store['Load Suppression'] = ok200(st.suppression || []);
   store['Load Config'] = ok200([st.config || CFG({ mode: 'live' })]);
   store['Load Peers'] = ok200(st.peers || []);
+  if (st.dns) store['DNS MX'] = st.dns; // respuesta simulada de DNS-over-HTTPS
   const dec = (await run('engine', 'Decide', store))[0].json; store.Decide = dec;
   const ex = (await run('engine', 'Expand Writes', store)).map((x) => x.json);
   store['Apply Writes'] = ok200({}); const lists = { 'Apply Writes': ex.map(() => ({ statusCode: st.writeStatus || 201, body: {} })) };
@@ -58,6 +60,15 @@ r = await engine({ action: 'draft', candidate_id: CAND.id, kind: 'initial' }, { 
 t('21 draft: prospecto no guardado → error y 0 escrituras', r.resp.ok === false && r.resp.error === 'candidato_no_encontrado' && r.ex[0].skip === true);
 r = await engine({ action: 'draft', candidate_id: CAND.id, kind: 'initial', body: 'x' });
 t('21 draft: cuerpo inválido → no guarda', r.resp.error === 'borrador_invalido');
+const dnsRes = (status, answers) => ({ statusCode: 200, body: { Status: status, Question: [{ name: 'clinicarica-test.invalid.', type: 15 }], ...(answers ? { Answer: answers } : {}) } });
+r = await engine({ action: 'draft', candidate_id: CAND.id, kind: 'initial' }, { dns: dnsRes(0, null) });
+t('21 draft: el dominio sin registros MX no se guarda (rebotaría) y no escribe nada', r.resp.error === 'dominio_sin_mx' && r.resp.ok === false && r.ex[0].skip === true);
+r = await engine({ action: 'draft', candidate_id: CAND.id, kind: 'initial' }, { dns: dnsRes(3, null) });
+t('21 draft: dominio inexistente (NXDOMAIN) tampoco se guarda', r.resp.error === 'dominio_sin_mx');
+r = await engine({ action: 'draft', candidate_id: CAND.id, kind: 'initial' }, { dns: dnsRes(0, [{ type: 15, data: '10 mx.clinicarica-test.invalid.' }]) });
+t('21 draft: dominio con MX se guarda normal', r.resp.status === 'created');
+r = await engine({ action: 'draft', candidate_id: CAND.id, kind: 'initial' }, { dns: { statusCode: 500, body: {} } });
+t('21 draft: si el DNS falla o no responde, NO bloquea el borrador', r.resp.status === 'created');
 const GOODB = "Estimada Andrea,\n\nCuando una paciente escribe por WhatsApp preguntando por una limpieza, en clínicas con más de una sede suele haber un trabajo previo: averiguar en cuál hay hora, qué tratamiento corresponde y qué datos faltan antes de agendar.\n\nSoy Christian, de Atacama Labs. Armamos agentes que pueden hacerse cargo de esa primera parte, dejar cada consulta con sede y tratamiento definidos y derivarla a recepción cuando realmente necesita a una persona.\n\n¿Te haría sentido conversar sobre cómo automatizar esta primera etapa u otro proceso que hoy les esté quitando tiempo?";
 const WEAKB = "Estimado equipo de Clínica TEST Rica,\n\nTrabajamos con empresas de su rubro para que su negocio funcione mejor, más ordenado, más rápido y con mejores resultados en todos sus procesos internos, comerciales y de atención de clientes. Nuestra experiencia nos permite colaborar con equipos de distintos tamaños en múltiples áreas de su organización y acompañarlos con soluciones personalizadas. Nuestra experiencia nos permite colaborar con equipos de distintos tamaños en múltiples áreas de su organización y acompañarlos con soluciones personalizadas. \n\nSomos una agencia que ofrece soluciones a medida y una transformación digital con sinergia.\n\nQuedamos atentos.";
 const OLDB = 'Hola, equipo,\n\nVi que atienden en dos sucursales y reciben solicitudes por formularios y WhatsApp. Mi hipótesis (no lo he visto por dentro) es que recepción repite preguntas sobre tratamiento y horarios antes de convertir la consulta en hora.\n\nEn Atacama Labs armamos agentes que identifican tratamiento y sucursal. ¿Te parece si lo vemos en 15 minutos?';

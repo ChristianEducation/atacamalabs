@@ -34,6 +34,9 @@ const sbGet = (name, urlExpr, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base
 const sbApply = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: pos, credentials: SUPABASE_CRED, continueOnFail: true, alwaysOutputData: true,
   parameters: { method: '={{ $json.method || "POST" }}', url: `={{ $json.skip ? "${NONE}" : "${SUPABASE}/rest/v1/" + $json.path }}`, authentication: 'predefinedCredentialType', nodeCredentialType: 'supabaseApi', sendHeaders: true,
     headerParameters: { parameters: [{ name: 'Prefer', value: '={{ $json.prefer || "return=minimal" }}' }] }, sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full() } });
+/** Consulta pública de MX por DNS-over-HTTPS (solo lectura, sin credenciales ni datos del prospecto más allá del dominio). Solo se llama al guardar un borrador. */
+const dohMx = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: pos, continueOnFail: true, alwaysOutputData: true,
+  parameters: { method: 'GET', url: `={{ $("Parse").first().json.action === "draft" ? "https://dns.google/resolve?type=MX&name=" + encodeURIComponent(String(($("Parse").first().json.to_email || ((((($("Load Candidate").first().json.body || [])[0] || {}).canonical || {}).contact || {}).email) || "")).split("@").pop() || "invalid") : "${NONE}" }}`, options: full(8000) } });
 const ifNode = (name, expr, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.if', typeVersion: 2.2, position: pos,
   parameters: { conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'loose' }, combinator: 'and', conditions: [{ leftValue: `={{ (${expr}) ? "yes" : "no" }}`, rightValue: 'yes', operator: { type: 'string', operation: 'equals' } }] }, options: {} } });
 const to = (n) => [{ node: n, type: 'main', index: 0 }];
@@ -98,7 +101,9 @@ const history = arr('Load History');
 const suppression = arr('Load Suppression');
 const config = arr('Load Config')[0] || { mode: 'off', daily_cap: 10, window_start: '09:00', window_end: '17:30', tz: 'America/Santiago' };
 const peers = arr('Load Peers');
-const ctx = { now: req.now, candidate, history, suppression, config, peers, new_id: newId() };
+let mx = null;
+try { const d = $('DNS MX').first().json || {}; const q = (d.body && d.body.Question && d.body.Question[0] && d.body.Question[0].name) || ''; if ((d.statusCode || 0) === 200 && d.body && typeof d.body.Status === 'number' && q) mx = { domain: String(q).replace(/\\.$/, '').toLowerCase(), status: d.body.Status, n: (d.body.Answer || []).filter((a) => a.type === 15).length }; } catch (e) { mx = null; }
+const ctx = { now: req.now, candidate, history, suppression, config, peers, mx, new_id: newId() };
 let out;
 if (req.action === 'draft') out = planDraft(req, ctx);
 else if (req.action === 'lint') out = planLint(req, ctx);
@@ -145,13 +150,14 @@ export function buildEngine() {
     sbGet('Load Suppression', `${SUPABASE}/rest/v1/outreach_suppression?select=email,domain,reason&limit=1000`, [960, 0]),
     sbGet('Load Config', `${SUPABASE}/rest/v1/outreach_config?id=eq.1&select=*`, [1200, 0]),
     sbGet('Load Peers', '={{ $("Parse").first().json.peers_url }}', [1320, 0]),
+    dohMx('DNS MX', [1380, 0]),
     code('Decide', engineDecideCode, [1440, 0]),
     code('Expand Writes', expandCode('$("Decide").first().json.writes'), [1680, 0]),
     sbApply('Apply Writes', [1920, 0]),
     code('Respond', engineRespondCode, [2160, 0]),
   ];
   const c = { 'Engine Webhook': { main: [to('Parse')] }, 'Parse': { main: [to('Valid?')] }, 'Valid?': { main: [to('Load Candidate'), to('Respond Error')] }, 'Load Candidate': { main: [to('Load History')] }, 'Load History': { main: [to('Load Suppression')] },
-    'Load Suppression': { main: [to('Load Config')] }, 'Load Config': { main: [to('Load Peers')] }, 'Load Peers': { main: [to('Decide')] }, 'Decide': { main: [to('Expand Writes')] }, 'Expand Writes': { main: [to('Apply Writes')] }, 'Apply Writes': { main: [to('Respond')] } };
+    'Load Suppression': { main: [to('Load Config')] }, 'Load Config': { main: [to('Load Peers')] }, 'Load Peers': { main: [to('DNS MX')] }, 'DNS MX': { main: [to('Decide')] }, 'Decide': { main: [to('Expand Writes')] }, 'Expand Writes': { main: [to('Apply Writes')] }, 'Apply Writes': { main: [to('Respond')] } };
   return { name: 'Atacama Labs - 21 Outreach Engine', nodes, connections: c, settings: { executionOrder: 'v1' } };
 }
 

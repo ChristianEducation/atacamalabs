@@ -386,6 +386,17 @@ ok('followupOverview: estado por prospecto para Hermes', () => {
   assert.equal(v[0].company, 'Clínica Rica'); assert.equal(v[0].followup_1.due_now, true); assert.equal(v[0].followup_1.message.status, 'draft'); assert.equal(v[0].followup_2.due_now, false); assert.equal(v[0].followup_3.due_now, false); assert.equal(v[0].replied, false);
 });
 
+ok('MX: un primer correo a un dominio SIN servidor de correo no se guarda; con MX, sin dato de DNS o en seguimientos sí', () => {
+  const base = { now: WED, candidate: cand(), history: [], suppression: [], new_id: 'mx-1', config: CFG };
+  const dom = (oc.emailDomain || ((e) => e.split('@').pop()))(cand().canonical.contact.email);
+  const sin = oc.planDraft({ kind: 'initial' }, { ...base, mx: { domain: dom, status: 0, n: 0 } });
+  assert.equal(sin.response.error, 'dominio_sin_mx'); assert.equal(sin.response.ok, false); assert.equal(sin.writes.length, 0);
+  assert.equal(oc.planDraft({ kind: 'initial' }, { ...base, mx: { domain: dom, status: 3, n: 0 } }).response.error, 'dominio_sin_mx', 'NXDOMAIN también');
+  assert.equal(oc.planDraft({ kind: 'initial' }, { ...base, mx: { domain: dom, status: 0, n: 2 } }).response.status, 'created');
+  assert.equal(oc.planDraft({ kind: 'initial' }, base).response.status, 'created', 'sin dato de DNS no bloquea');
+  assert.equal(oc.planDraft({ kind: 'initial' }, { ...base, mx: { domain: 'otro.cl', status: 0, n: 0 } }).response.status, 'created', 'el dato de otro dominio no aplica');
+  assert.equal(oc.planDraft({ kind: 'initial', skip_mx: true }, { ...base, mx: { domain: dom, status: 0, n: 0 } }).response.status, 'created', 'Christian puede forzarlo');
+});
 ok('asuntos: primera letra en mayúscula en correos iniciales (guardar y editar); seguimientos conservan el original', () => {
   assert.equal(oc.capSubject('datos para cotizar un arriendo'), 'Datos para cotizar un arriendo');
   assert.equal(oc.capSubject('  ¿qué proceso se repite más?'), '¿Qué proceso se repite más?');
