@@ -175,6 +175,7 @@ export function planLinkedinApprove(req, ctx) {
   const st = cand.channel_state || {};
   const prev = st.linkedin || null;
   if (prev && ['en_lista', 'en_campana', 'conexion', 'mensaje', 'followup', 'respondio'].includes(prev.state)) return fail('ya_en_linkedin', 'Ese prospecto ya está en LinkedIn (' + liLabel(prev.state) + '). No se vuelve a insertar.', 'already_done');
+  if (cand.last_contact_channel === 'linkedin' && !(prev && prev.state)) return fail('ya_contactado_linkedin', 'Ese prospecto ya fue contactado por LinkedIn (a mano): no se vuelve a insertar en Waalaxy.', 'already_done');
   if (ctx.emailActive && !ctx.emailSequenceDone) return fail('canal_email_activo', 'Ya hay un correo aprobado, en envío o enviado a este prospecto y su ciclo de seguimientos no terminó: no se contacta por LinkedIn al mismo tiempo.', 'channel_conflict');
   const rec = recommendChannel(cand, { suppressedEmails: ctx.suppressedEmails, emailSequenceDone: ctx.emailSequenceDone });
   const c = (cand.canonical && cand.canonical.contact) || {};

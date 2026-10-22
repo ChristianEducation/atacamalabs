@@ -79,6 +79,11 @@ ok('LinkedIn secuencial: solo cuando el ciclo de correo terminó sin respuesta (
   const ok2 = li.planLinkedinApprove({}, { now: NOW, candidate: c, config: CFG_LIVE, emailActive: true, emailSequenceDone: true, rnd });
   assert.equal(ok2.response.status, 'confirmation_required', 'pide el código de Christian, no importa solo'); assert.equal(ok2.response.summary.will_contact, true);
 });
+ok('ya contactado a mano por LinkedIn: no se propone ni se inserta en Waalaxy', () => {
+  const c = cand({ status: 'contacted', last_contact_channel: 'linkedin' });
+  assert.equal(li.planLinkedinApprove({}, { now: NOW, candidate: c, config: CFG_LIVE }).response.error, 'ya_contactado_linkedin');
+  assert.equal(li.planLinkedinApprove({}, { now: NOW, candidate: cand(), config: CFG_LIVE, rnd }).response.status, 'confirmation_required', 'un prospecto sin contacto previo sigue pidiendo confirmación');
+});
 ok('búsqueda de candidato: id, dominio, nombre y ambigüedad', () => {
   const list = [cand(), cand({ id: 'c-2', company_name: 'Otra Empresa', domain: 'otra.cl', canonical: { contact: {} } }), cand({ id: 'c-3', company_name: 'Otra Empresa Dos', domain: 'dos.cl', canonical: { contact: {} } })];
   assert.equal(li.findCandidate(list, 'c-2').cand.id, 'c-2'); assert.equal(li.findCandidate(list, 'prueba.cl').cand.id, 'c-1'); assert.equal(li.findCandidate(list, 'empresa prueba spa').cand.id, 'c-1');
