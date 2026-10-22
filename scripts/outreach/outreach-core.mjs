@@ -604,6 +604,7 @@ export function planFollowups(ctx) {
     // Ciclos que ya tenían tareas f1/f2 (secuencia anterior de 3 correos): se agrega solo la tarea del 3.er seguimiento (cierre).
     if (meta.followup_tasks && !meta.followup_tasks.f3 && cand && cand.ghl_contact_id && slots[2]) {
       const s3 = slots[2], title3 = followupTitle(3, co);
+      setMeta(m, { followup_tasks: { ...meta.followup_tasks } }); // base: el metadata COMPLETO del mensaje (finalizeFollowups lo reescribe entero)
       ghl_ops.push({ kind: 'task_create', msg_id: m.id, slot: 'f3', method: 'POST', url: ghl.base + '/contacts/' + cand.ghl_contact_id + '/tasks',
         body: { title: title3, body: 'Cierre del hilo con ' + co + ' (día ' + s3.days + ' hábil desde el primer correo, sin respuesta). El borrador queda listo para tu aprobación en /ops. La tarea se cancela sola si responde, rebota, se da de baja o se descarta.', dueDate: new Date(s3.due).toISOString(), completed: false, assignedTo: ghl.userId } });
     }
@@ -646,7 +647,8 @@ export function finalizeFollowups(plan, results, ctx) {
     const res = (results || [])[i] || {};
     const ok = (res.statusCode || 0) > 0 && (res.statusCode || 0) < 300;
     if (!op.msg_id) { if (!ok) errors.push({ kind: op.kind, slot: op.slot, status: res.statusCode || 0 }); return; }
-    const cur = meta[op.msg_id] || (meta[op.msg_id] = {});
+    if (!meta[op.msg_id]) { errors.push({ kind: op.kind, slot: op.slot, status: -1, why: 'sin base de metadata: no se escribe para no borrar datos' }); return; }
+    const cur = meta[op.msg_id];
     if (!ok) { errors.push({ kind: op.kind, slot: op.slot, status: res.statusCode || 0 }); if (op.kind === 'task_create' && cur.followup_tasks) { const ft = { ...cur.followup_tasks }; delete ft[op.slot]; cur.followup_tasks = ft; } return; }
     if (op.kind === 'task_create') { const t = (res.body && (res.body.task || res.body)) || {}; cur.followup_tasks = { ...(cur.followup_tasks || {}), [op.slot]: { id: t.id || t._id, due: op.body.dueDate } }; }
     if (op.kind === 'task_delete') { const ft = { ...(cur.followup_tasks || {}) }; if (ft[op.slot]) ft[op.slot] = { ...ft[op.slot], deleted: true }; cur.followup_tasks = ft; }

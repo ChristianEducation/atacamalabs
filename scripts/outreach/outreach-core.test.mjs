@@ -344,6 +344,22 @@ ok('se detiene si responde / rechaza / se da de baja / rebota / se descarta / Wo
   const again = oc.planFollowups(fctx(now, { initial: initialMsg({ metadata: { ...meta, followup_state: 'stopped:respondio' } }), others: [inb('reply')] }));
   assert.equal(again.writes.length + again.ghl_ops.length, 0);
 });
+ok('finalizeFollowups NUNCA borra el resto del metadata: al agregar la tarea f3 a un ciclo antiguo conserva estado, tareas f1/f2, historial y lint', () => {
+  const full = { followup_state: 'active', followup_started_at: '2026-10-09T12:00:00Z', followup_tasks: { f1: { id: 'a', due: 'x' }, f2: { id: 'b', due: 'y' } }, cold: { score: 90 }, history: [{ by: 'Christian · /ops', subject: 'viejo' }], sent_via: 'gmail', mode: 'live' };
+  const plan = oc.planFollowups(fctx(T0 + 3600000, { initial: initialMsg({ metadata: full }) }));
+  assert.deepEqual(plan.ghl_ops.map((o) => o.slot), ['f3']);
+  const fin = oc.finalizeFollowups(plan, [{ statusCode: 201, body: { id: 'tc' } }], { now: T0 });
+  const md = fin.writes.find((w) => w.path === 'outreach_messages?id=eq.i-1').body.metadata;
+  assert.equal(md.followup_state, 'active'); assert.equal(md.followup_tasks.f1.id, 'a'); assert.equal(md.followup_tasks.f2.id, 'b'); assert.equal(md.followup_tasks.f3.id, 'tc');
+  assert.deepEqual(md.cold, { score: 90 }); assert.equal(md.history.length, 1); assert.equal(md.sent_via, 'gmail'); assert.equal(md.mode, 'live');
+  // si el GHL falla, el resto igual se conserva y no se registra una tarea inexistente
+  const bad = oc.finalizeFollowups(plan, [{ statusCode: 500, body: {} }], { now: T0 });
+  const mb = bad.writes.find((w) => w.path === 'outreach_messages?id=eq.i-1').body.metadata;
+  assert.ok(!mb.followup_tasks.f3 && mb.followup_tasks.f1 && mb.cold && mb.history.length === 1); assert.equal(bad.errors.length, 1);
+  // defensa: una operación con msg_id sin base de metadata se rechaza, no se escribe
+  const guard = oc.finalizeFollowups({ ghl_ops: [{ kind: 'task_create', msg_id: 'zzz', slot: 'f3', body: { dueDate: 'd' } }], writes: [], actions: [], meta_updates: {} }, [{ statusCode: 201, body: { id: 't' } }], { now: T0 });
+  assert.equal(guard.writes.length, 0); assert.equal(guard.errors.length, 1);
+});
 ok('finalizeFollowups: guarda los ids de las tareas creadas, marca borradas, y un fallo de GHL no registra una tarea inexistente', () => {
   const plan = oc.planFollowups(fctx(T0 + 3600000));
   const fin = oc.finalizeFollowups(plan, [{ statusCode: 201, body: { task: { id: 'ta' } } }, { statusCode: 201, body: { id: 'tb' } }, { statusCode: 201, body: { id: 'tc' } }], { now: T0 });
