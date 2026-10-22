@@ -186,7 +186,7 @@ ok('regenerar mantiene el MISMO registro, destinatario y estado draft; guarda la
   assert.equal(r.response.ok, true); assert.equal(r.response.status, 'updated');
   assert.equal(r.writes.length, 1); assert.equal(r.writes[0].method, 'PATCH'); assert.equal(r.writes[0].path, 'outreach_messages?id=eq.m-1');
   const b = r.writes[0].body;
-  assert.equal(b.to_email, 'contacto@dentaline.cl'); assert.equal(b.status, 'draft'); assert.equal(b.approved_at, null); assert.equal(b.subject, GOOD_A.subject);
+  assert.equal(b.to_email, 'contacto@dentaline.cl'); assert.equal(b.status, 'draft'); assert.equal(b.approved_at, null); assert.equal(b.subject, 'Consultas entre sedes antes de agendar', 'el asunto del correo inicial se guarda con mayúscula inicial');
   assert.equal(b.metadata.history.length, 1); assert.equal(b.metadata.history[0].subject, 'Una idea para Dentaline'); assert.ok(/Vi que/.test(b.metadata.history[0].body)); assert.equal(b.metadata.history[0].reason, 'Playbook v1.0');
   assert.ok(b.metadata.cold.score >= 80); assert.equal(b.metadata.cold.evidence.length, 2);
   assert.equal(r.response.safety, undefined); assert.ok(!r.writes.some((w) => w.method === 'POST'));

@@ -120,8 +120,18 @@ export function findPlaceholders(text) {
   return hits;
 }
 
+/** Asunto con la primera letra en mayúscula (decisión de Christian, 22-oct): «datos para cotizar un arriendo» → «Datos para cotizar un arriendo». También tras «Re: ». El resto no se toca. */
+export function capSubject(subject) {
+  const s = String(subject == null ? '' : subject).trim();
+  const m = s.match(/^((?:re|rv|fwd?):\s*)?(.*)$/is);
+  const head = m[1] ? m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase() : '';
+  const rest = m[2];
+  const k = rest.match(/^([¿¡«"'“(\s]*)([a-záéíóúüñ])/);
+  return head + (k ? k[1] + k[2].toUpperCase() + rest.slice(k[0].length) : rest);
+}
+
 /** Quita del cuerpo la despedida/firma (el sistema agrega la suya al enviar) y separa un «Asunto:» incrustado. */
-export function cleanDraftText(subject, body) {
+export function cleanDraftText(subject, body, opts) {
   let b = String(body == null ? '' : body).replace(/\r/g, '').trim();
   let sub = subject == null ? null : String(subject).trim();
   const m = b.match(/^asunto:\s*([^\n]+)\n+/i);
@@ -134,7 +144,8 @@ export function cleanDraftText(subject, body) {
     if (/^(saludos|atentamente|cordialmente|un abrazo|un saludo|cari[ñn]os|gracias)[,.!]?$/i.test(last) || /^christian( wevar)?\s*([·|,\-–—].*)?$/i.test(last) || /^atacama labs\s*([·|,\-–—].*)?$/i.test(last) || /^(https?:\/\/)?(www\.)?atacamalabs\.cl\/?$/i.test(last)) { lines.pop(); continue; }
     break;
   }
-  return { subject: sub, body: lines.join('\n').trim() };
+  // Solo los correos iniciales: seguimientos y respuestas conservan el asunto original tal cual para no romper el hilo.
+  return { subject: sub == null || !(opts && opts.capitalize) ? sub : capSubject(sub), body: lines.join('\n').trim() };
 }
 
 /** Valida un borrador antes de guardarlo o aprobarlo. */
@@ -166,7 +177,7 @@ export function validateDraft(d, ctx) {
  */
 export function followupTemplate(kind, cand, firstSubject) {
   const co = (cand && cand.company_name) || 'su empresa';
-  const subj = 'Re: ' + String(firstSubject || 'Atacama Labs').replace(/^re:\s*/i, '');
+  const subj = 'Re: ' + String(firstSubject || 'Atacama Labs').replace(/^re:\s*/i, ''); // exacto como el original: así el hilo no se rompe
   const greet = 'Estimado equipo de ' + co + ',\n\n';
   if (kind === 'followup_2') return { subject: subj, body: greet + 'Cierro el hilo por acá para no insistir. Si en algún momento quieren revisar esta u otra parte del proceso que siga siendo repetitiva, encantado de conversarlo.\n\nSaludos,' };
   return { subject: subj, body: greet + 'Retomo esto por si quedó abajo en la bandeja.\n\n¿Ese trabajo previo hoy les quita tiempo, o es una parte que ya tienen bastante resuelta?' };
@@ -271,7 +282,7 @@ export function planDraft(req, ctx) {
     else if (kind === 'reply') { if (subject == null) subject = 'Re: ' + String((inboundMsg && inboundMsg.subject) || (initialSent && initialSent.subject) || 'Atacama Labs').replace(/^re:s*/i, ''); }
     else { const t = followupTemplate(kind, cand, initialSent && initialSent.subject); subject = subject != null ? subject : t.subject; body = body != null ? body : t.body; }
   }
-  if (subject != null || body != null) { const cl = cleanDraftText(subject, body); subject = cl.subject; body = cl.body; }
+  if (subject != null || body != null) { const cl = cleanDraftText(subject, body, { capitalize: kind === 'initial' }); subject = cl.subject; body = cl.body; }
   if (subject == null || body == null) return fail('sin_contenido', kind === 'reply' ? 'Redacta la respuesta (body) para guardarla como borrador.' : 'No hay borrador base: indica subject y body.');
   const inbound = inboundMsg;
   const v = validateDraft({ to_email: to, subject, body }, { suppression: ctx.suppression, allowed_emails: published, override_to: req.override_to === true });

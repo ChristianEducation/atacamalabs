@@ -344,6 +344,25 @@ ok('followupOverview: estado por prospecto para Hermes', () => {
   assert.equal(v[0].company, 'Clínica Rica'); assert.equal(v[0].followup_1.due_now, true); assert.equal(v[0].followup_1.message.status, 'draft'); assert.equal(v[0].followup_2.due_now, false); assert.equal(v[0].replied, false);
 });
 
+ok('asuntos: primera letra en mayúscula en correos iniciales (guardar y editar); seguimientos conservan el original', () => {
+  assert.equal(oc.capSubject('datos para cotizar un arriendo'), 'Datos para cotizar un arriendo');
+  assert.equal(oc.capSubject('  ¿qué proceso se repite más?'), '¿Qué proceso se repite más?');
+  assert.equal(oc.capSubject('Ya viene bien Escrito'), 'Ya viene bien Escrito');
+  assert.equal(oc.capSubject('re: solicitudes técnicas'), 'Re: Solicitudes técnicas');
+  assert.equal(oc.capSubject('éxito en cotizaciones'), 'Éxito en cotizaciones');
+  assert.equal(oc.capSubject('24 horas sin respuesta'), '24 horas sin respuesta', 'si empieza con número no se toca');
+  assert.equal(oc.capSubject(''), '');
+  // el resto del asunto NO se toca (no es Title Case)
+  assert.equal(oc.capSubject('datos para Cotizar un arriendo'), 'Datos para Cotizar un arriendo');
+  // guardado de un borrador inicial: se capitaliza antes de calcular la huella (el motor y el Sender ven el mismo texto)
+  const d = oc.planDraft({ kind: 'initial', subject: 'datos para cotizar un arriendo', body: BODY }, { now: WED, candidate: cand(), history: [], suppression: [], new_id: 'cap-1', config: CFG });
+  assert.equal(d.message.subject, 'Datos para cotizar un arriendo');
+  assert.equal(d.message.content_hash, oc.contentHash(d.message.to_email, 'Datos para cotizar un arriendo', d.message.body));
+  // un seguimiento conserva el asunto del correo ya enviado (mismo hilo), aunque ese original esté en minúscula
+  const first = { id: 'f0', kind: 'initial', direction: 'outbound', status: 'sent', to_email: d.message.to_email, subject: 'solicitudes técnicas', body: BODY, sent_at: new Date(WED - 20 * 86400000).toISOString(), candidate_id: 'k1', metadata: {} };
+  const f = oc.planDraft({ kind: 'followup_1' }, { now: WED, candidate: cand(), history: [first], suppression: [], new_id: 'f-cap', config: CFG });
+  if (f.message) assert.equal(f.message.subject, 'Re: solicitudes técnicas');
+});
 ok('cleanDraftText: quita firma/despedida duplicada y separa «Asunto:» incrustado', () => {
   const a = oc.cleanDraftText(null, 'Asunto: Una idea para X\nHola, equipo de X,\n\nTexto del correo con una pregunta final. ¿Te muestro?\n\nChristian Wevar · Atacama Labs · atacamalabs.cl');
   assert.equal(a.subject, 'Una idea para X'); assert.ok(a.body.startsWith('Hola, equipo de X')); assert.ok(a.body.endsWith('¿Te muestro?'));

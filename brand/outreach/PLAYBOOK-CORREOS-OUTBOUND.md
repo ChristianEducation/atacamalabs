@@ -325,14 +325,16 @@ El asunto debe parecer un correo real, no una campaña.
 
 Preferir 3–7 palabras aproximadamente.
 
+**Mayúscula inicial (decisión de Christian, 22-oct-2026):** el asunto empieza con mayúscula y el resto va en minúsculas naturales, como una frase (no Title Case). El sistema lo corrige solo al guardar un correo inicial; los seguimientos y respuestas conservan el asunto original para no romper el hilo.
+
 Ejemplos:
 
-- `solicitudes de arriendo antes de cotizar`
-- `consultas antes de coordinar una visita`
-- `primer filtro de solicitudes técnicas`
-- `coordinación de exámenes ocupacionales`
-- `la etapa previa al expediente`
-- `datos para cotizar un flete`
+- `Solicitudes de arriendo antes de cotizar`
+- `Consultas antes de coordinar una visita`
+- `Primer filtro de solicitudes técnicas`
+- `Coordinación de exámenes ocupacionales`
+- `La etapa previa al expediente`
+- `Datos para cotizar un flete`
 
 Evitar:
 
