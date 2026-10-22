@@ -631,4 +631,20 @@ ok('v3 · aviso «ideas listas»: una vez por corrida real con ideas; nada si no
   assert.ok(ev.notify.some((x) => x.key === 'run:r9' && /3 ideas listas/.test(x.meta.notice)));
 });
 
+ok('pieza descartada con ghl_status=failed ya no cuenta como falla de publicación (ni pone Content Engine en rojo ni alerta)', () => {
+  const dead = { id: 'dx', topic: 'Descartada', channel: 'linkedin_page', status: 'discarded', ghl_status: 'failed', ghl_approval_status: 'approved', scheduled_at: iso(8 * D) };
+  const live = { id: 'fx', topic: 'Falló de verdad', channel: 'linkedin_page', status: 'failed', ghl_status: 'failed', scheduled_at: iso(2 * H) };
+  assert.equal(oc.publishFailed(dead), false);
+  assert.equal(oc.publishFailed({ ...dead, status: 'rejected' }), false);
+  assert.equal(oc.publishFailed(live), true);
+  assert.equal(oc.publishFailed({ id: 'gx', status: 'scheduled', ghl_status: 'failed' }), true);
+  assert.deepEqual(oc.summarizeContent(base({ pieces: [dead] })).failed, []);
+  assert.equal(oc.summarizeContent(base({ pieces: [dead, live] })).failed.length, 1);
+  const ce = (pieces) => oc.healthReport(base({ pieces })).components.find((c) => c.name === 'Content Engine');
+  assert.notEqual(ce([dead]).status, 'fallo');
+  assert.equal(ce([live]).status, 'fallo');
+  assert.ok(!oc.evaluateAlerts(base({ pieces: [dead] }), []).notify.some((x) => x.key === 'publish_failed:dx'));
+  assert.ok(oc.evaluateAlerts(base({ pieces: [live] }), []).notify.some((x) => x.key === 'publish_failed:fx'));
+});
+
 console.log(n + ' ok');

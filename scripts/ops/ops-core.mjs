@@ -161,6 +161,12 @@ export function summarizeCommercial(d) {
     outreach: { mode: (d.outreach && d.outreach.mode) || 'desconocido', approved_pending: approved.length, drafts_initial: drafts.length } };
 }
 
+/** Una pieza falló al publicarse. Una pieza ya descartada/rechazada es una decisión tomada, no una falla: GHL deja el post en «failed» y esa marca no debe mantener el sistema en rojo. */
+export function publishFailed(p) {
+  if (['discarded', 'rejected'].includes(p.status)) return false;
+  return p.status === 'failed' || p.ghl_status === 'failed';
+}
+
 /** Todo lo de contenido. */
 export function summarizeContent(d) {
   const now = d.now, tz = (d.cfg && d.cfg.tz) || 'America/Santiago';
@@ -170,7 +176,7 @@ export function summarizeContent(d) {
   const pending = pcs.filter((p) => p.status === 'in_review' || (p.ghl_status === 'in_review' && p.ghl_approval_status !== 'approved'));
   const scheduled = pcs.filter((p) => p.status === 'scheduled' && p.scheduled_at).map((p) => ({ label: lab(p), at: p.scheduled_at, in_h: Math.round((Date.parse(p.scheduled_at) - now) / 3600000) })).sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
   const late = pcs.filter((p) => ['scheduled', 'approved'].includes(p.status) && p.scheduled_at && now - Date.parse(p.scheduled_at) > 60 * 60000 && !p.published_at);
-  const failed = pcs.filter((p) => p.status === 'failed' || p.ghl_status === 'failed');
+  const failed = pcs.filter(publishFailed);
   const published = pcs.filter((p) => p.status === 'published' && p.published_at && now - Date.parse(p.published_at) <= 72 * 3600000).map((p) => ({ label: lab(p), at: p.published_at }));
   const snaps = (d.metrics || []).filter((m) => now - Date.parse(m.captured_at) <= 26 * 3600000 && m.status !== 'error').map((m) => {
     const p = pcs.find((x) => x.id === m.content_piece_id);
@@ -432,7 +438,7 @@ export function evaluateAlerts(d, existing) {
   }
   // 4) publicación aprobada que no salió / fallida
   const cont = summarizeContent(d);
-  (d.pieces || []).filter((p) => !p.is_test && (p.status === 'failed' || p.ghl_status === 'failed' || (['scheduled', 'approved'].includes(p.status) && p.scheduled_at && now - Date.parse(p.scheduled_at) > 60 * 60000 && !p.published_at))).forEach((p) => add('publish_failed:' + p.id, 'high', 'Publicación sin salir: «' + String(p.topic || '').slice(0, 60) + '»', 'Estaba programada para ' + (p.scheduled_at ? fmtDateTime(Date.parse(p.scheduled_at), tz) : 's/f') + ' y no figura publicada.', false));
+  (d.pieces || []).filter((p) => !p.is_test && (publishFailed(p) || (['scheduled', 'approved'].includes(p.status) && p.scheduled_at && now - Date.parse(p.scheduled_at) > 60 * 60000 && !p.published_at))).forEach((p) => add('publish_failed:' + p.id, 'high', 'Publicación sin salir: «' + String(p.topic || '').slice(0, 60) + '»', 'Estaba programada para ' + (p.scheduled_at ? fmtDateTime(Date.parse(p.scheduled_at), tz) : 's/f') + ' y no figura publicada.', false));
   // 5) jobs de Hermes con fallos repetidos
   for (const j of hermesJobChecks(d.hermes, now).filter((x) => x.status === 'fallo' && !x.paused)) add('hermes_job:' + j.id, 'high', 'Job de Hermes con fallos: ' + j.name, j.reason, false);
   for (const m of (d.messages || []).filter((x) => x.direction === 'outbound' && x.status === 'sending' && x.updated_at && now - Date.parse(x.updated_at) > 15 * 60000)) add('sending_stuck:' + m.id, 'high', 'Correo colgado en «enviando» hace ' + ageText(now - Date.parse(m.updated_at)) + ': ' + (m.company_name || 'prospecto'), 'El envío no terminó ni falló: revisa Gmail Sender antes de aprobar otro correo a esa empresa.', false);
