@@ -79,6 +79,14 @@ r = await call({ action: 'approve', target: 'prueba.cl', confirmation_code: code
 t('approve: error de Waalaxy (plan/permisos) → estado error visible y mensaje útil', r.resp.state === 'error' && r.resp.ok === false && /permisos/.test(r.resp.message) && r.writes.some((w) => w.body.channel_state && w.body.channel_state.linkedin.state === 'error'));
 r = await call({ action: 'approve', target: 'prueba.cl' }, { ...fxTest, msgs: [{ candidate_id: 'k1', status: 'sent' }] });
 t('approve con correo ya enviado/aprobado: bloquea el segundo canal', r.resp.error === 'canal_email_activo' && !r.importCalled);
+{ // secuencial: correo inicial + seguimiento 2 enviados hace días, ciclo cerrado sin respuesta → ya no bloquea (pide el código de Christian)
+  const DAY = 86400000, ago = (d) => new Date(Date.now() - d * DAY).toISOString();
+  const seqMsgs = [{ candidate_id: 'k1', status: 'sent', kind: 'initial', sent_at: ago(15), metadata: { followup_state: 'done', followup_done_at: ago(3) } }, { candidate_id: 'k1', status: 'sent', kind: 'followup_2', sent_at: ago(3), metadata: {} }];
+  r = await call({ action: 'approve', target: 'prueba.cl' }, { ...fxTest, msgs: seqMsgs });
+  t('approve secuencial: ciclo de correo terminado sin respuesta → no bloquea y pide la confirmación de Christian', r.resp.error !== 'canal_email_activo' && r.resp.status === 'confirmation_required' && !r.importCalled);
+  r = await call({ action: 'approve', target: 'prueba.cl' }, { ...fxTest, msgs: [seqMsgs[0]] });
+  t('approve secuencial: sin seguimiento 2 enviado sigue bloqueado', r.resp.error === 'canal_email_activo');
+}
 r = await call({ action: 'approve', target: 'prueba.cl' }, { ...fxTest, cands: [CAND({ canonical: { company_name: 'X', contact: { name: 'Pedro Soto', role: 'Gerente', linkedin: 'https://www.linkedin.com/in/pedro-soto', linkedin_source_url: 'x' } } })] });
 t('approve (test) con un perfil fuera de la lista blanca: rechaza', r.resp.error === 'fuera_de_allowlist' && !r.importCalled);
 

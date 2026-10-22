@@ -56,8 +56,8 @@ export const parseCode = `try {
     cands: sb + 'prospect_candidates?status=in.(in_ghl,accepted,contacted,discarded)&select=${CAND_SELECT}&order=priority_score.desc&limit=500',
     pmsgs: prepAct ? sb + 'outreach_messages?direction=eq.outbound&created_at=gte.' + new Date(Date.now() - 120 * 86400000).toISOString() + '&select=id,candidate_id,company_name,direction,kind,status,to_email,subject,body,sent_at,created_at,updated_at,approved_by,approved_at,content_hash,metadata,error,edited_by_christian_at&order=created_at.desc&limit=900' : '${NONE}',
     inbound: prepAct ? sb + 'outreach_messages?direction=eq.inbound&created_at=gte.' + new Date(Date.now() - 45 * 86400000).toISOString() + '&select=id,candidate_id,direction,classification,created_at&limit=500' : '${NONE}',
-    msgs: ['list', 'approve', 'recommend'].includes(action) ? sb + 'outreach_messages?direction=eq.outbound&status=in.(approved,sending,sent)&select=candidate_id,status&limit=500' : '${NONE}',
-    sup: ['list', 'approve', 'recommend'].includes(action) ? sb + 'outreach_suppression?select=email&limit=2000' : '${NONE}',
+    msgs: ['list', 'approve', 'recommend', 'status'].includes(action) ? sb + 'outreach_messages?direction=eq.outbound&status=in.(approved,sending,sent)&select=candidate_id,status,kind,sent_at,metadata&limit=1000' : '${NONE}',
+    sup: ['list', 'approve', 'recommend', 'status'].includes(action) ? sb + 'outreach_suppression?select=email&limit=2000' : '${NONE}',
     wa_lists: action === 'lists' ? 'prospectLists/getProspectLists' : '',
     wa_campaigns: action === 'lists' ? 'campaigns/getAll' : '',
     wa_test: action === 'test' ? 'integrations/test' : '',
@@ -74,6 +74,7 @@ const nowMs = Date.now(), nowIso = new Date(nowMs).toISOString();
 const cfg = arr('SB Config')[0] || {};
 const cands = arr('SB Candidates');
 const msgs = arr('SB Messages');
+const seqDone = new Set(emailSequenceDoneIds(msgs, nowMs, 2));
 const pmsgs = arr('SB Prep Messages');
 const inboundRows = arr('SB Inbound');
 const inboundMap = {}; inboundRows.forEach((r) => { if (['reply', 'decline'].includes(r.classification)) inboundMap[r.candidate_id] = true; });
@@ -109,9 +110,9 @@ if (!resp) {
   else if (A === 'autosweep') { const r = prepPlanAutosweep({ now: nowMs, config: cfg, messages: pmsgs, candidates: cands, suppressed: sup, inbound: inboundMap }); resp = r.response; out.writes = r.writes; if ((r.approved || []).length || (r.reverted || []).length) out.audit = { tool: 'prep_autosweep', level: 3 }; }
   else if (A === 'list') {
     const ov = linkedinOverview(cands, nowMs);
-    const open = cands.filter((c) => c.status === 'in_ghl' && c.ghl_stage === 'investigado' && !((c.channel_state || {}).linkedin));
+    const open = cands.filter((c) => ((c.status === 'in_ghl' && c.ghl_stage === 'investigado') || (seqDone.has(c.id) && c.status !== 'discarded')) && !((c.channel_state || {}).linkedin));
     const emailActive = new Set(msgs.map((m) => m.candidate_id));
-    const recs = open.map((c) => ({ c, r: recommendChannel(c, { suppressedEmails: sup }) }));
+    const recs = open.map((c) => ({ c, r: recommendChannel(c, { suppressedEmails: sup, emailSequenceDone: seqDone.has(c.id) }) }));
     const pick = (ch) => recs.filter((x) => x.r.channel === ch);
     const row = (x) => ({ id: x.c.id, company: x.c.company_name, score: x.c.priority_score, band: x.c.band, channel: x.r.channel, confidence: x.r.confidence, reason: x.r.reason, person: x.r.person, role: x.r.role, url: x.r.linkedin_url, missing: x.r.missing });
     const ready = pick('linkedin').map(row);
@@ -126,16 +127,16 @@ if (!resp) {
     resp = { ok: true, status: 'list', text: lines.join('\\n'), counts: ov.counts, ready_for_linkedin: ready, email_ready: pick('email').length, needs_research: pick('none').length, in_linkedin: pending, mode: safeCfg.linkedin_mode, email_active: emailActive.size };
   }
   else if (A === 'status') {
-    const rec = recommendChannel(cand, { suppressedEmails: sup });
+    const rec = recommendChannel(cand, { suppressedEmails: sup, emailSequenceDone: seqDone.has(cand.id) });
     const v = linkedinView(cand);
     resp = { ok: true, status: 'status', company: cand.company_name, ghl_stage: cand.ghl_stage, recommendation: { channel: rec.channel, confidence: rec.confidence, reason: rec.reason, missing: rec.missing }, state: v.state, state_label: v.state_label, person: v.person || rec.person, role: v.role || rec.role, url: v.url || rec.linkedin_url,
       last_event: v.last_event, last_event_at: v.last_event_at, next_action: v.next_action, reply: v.reply, import_code: v.import_code, campaign_code: v.campaign_code, approved_channel: v.approved_channel,
       text: cand.company_name + ': ' + (v.state ? 'LinkedIn · ' + v.state_label + (v.next_action ? ' — próxima acción: ' + v.next_action : '') : 'sin canal elegido; recomendado: ' + (rec.channel === 'none' ? 'investigar más' : rec.channel)) + '. ' + rec.reason };
   }
-  else if (A === 'recommend') { const r = planRecommend({}, { now: nowMs, candidate: cand, suppressedEmails: sup }); resp = r.response; out.writes = r.writes; out.audit = { tool: 'linkedin_recommend', level: 1 }; }
+  else if (A === 'recommend') { const r = planRecommend({}, { now: nowMs, candidate: cand, suppressedEmails: sup, emailSequenceDone: seqDone.has(cand.id) }); resp = r.response; out.writes = r.writes; out.audit = { tool: 'linkedin_recommend', level: 1 }; }
   else if (A === 'approve') {
     const emailActive = msgs.some((m) => m.candidate_id === cand.id);
-    const r = planLinkedinApprove({ confirmation_code: p.confirmation_code, order_text: p.order_text, by: p.by }, { now: nowMs, candidate: cand, config: cfg, suppressedEmails: sup, emailActive, importedToday });
+    const r = planLinkedinApprove({ confirmation_code: p.confirmation_code, order_text: p.order_text, by: p.by }, { now: nowMs, candidate: cand, config: cfg, suppressedEmails: sup, emailActive, emailSequenceDone: seqDone.has(cand.id), importedToday });
     resp = r.response; out.writes = r.writes; out.effects = r.effects;
     if (r.waalaxy) out.waalaxy = { skip: false, wx: r.waalaxy, body: r.waalaxy.body };
     out.audit = { tool: 'linkedin_approve', level: 3 };

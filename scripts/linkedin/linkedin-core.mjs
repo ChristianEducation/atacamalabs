@@ -44,6 +44,24 @@ export function splitName(name) {
 }
 
 /**
+ * Prospectos cuyo ciclo de correo terminó SIN respuesta: el correo inicial enviado quedó con followup_state='done' Y existe un seguimiento 2 realmente ENVIADO
+ * hace al menos `minDays` días (el planificador marca 'done' también si el borrador del 2 se canceló, por eso no basta el estado) y no queda ningún correo aprobado/en envío. Si respondió, rebotó o se dio de baja el estado es 'stopped:*' y NO entra.
+ * Es la señal para abrir LinkedIn de forma secuencial (nunca al mismo tiempo que el correo). `msgs` = correos salientes con metadata.
+ */
+export function emailSequenceDoneIds(msgs, nowMs, minDays) {
+  const gap = (minDays == null ? 2 : Number(minDays)) * 86400000;
+  const live = new Set(), done = new Set(), f2At = {};
+  (Array.isArray(msgs) ? msgs : []).forEach((m) => {
+    if (!m || !m.candidate_id) return;
+    if (['approved', 'sending'].includes(m.status)) live.add(m.candidate_id);
+    const meta = m.metadata || {};
+    if (m.kind === 'followup_2' && m.status === 'sent') { const t = Date.parse(m.sent_at || ''); if (Number.isFinite(t)) f2At[m.candidate_id] = Math.max(f2At[m.candidate_id] || 0, t); }
+    if (m.kind === 'initial' && m.status === 'sent' && meta.followup_state === 'done') done.add(m.candidate_id);
+  });
+  return [...done].filter((id) => !live.has(id) && f2At[id] && nowMs - f2At[id] >= gap);
+}
+
+/**
  * Qué canal conviene para un prospecto: email | linkedin | none (investigar más), con motivo y lo que falta.
  * Reglas (nunca se contacta por los dos canales a la vez):
  *  - LinkedIn listo = perfil personal verificable + persona con nombre y apellido + cargo confiable + evidencia pública de dónde salió.
@@ -71,6 +89,8 @@ export function recommendChannel(cand, ctx) {
   const out = (channel, confidence, reason, extra) => ({ channel, confidence, reason, missing: extra || [], email_ready: emailOk, linkedin_ready: liReady, linkedin_url: li, person: named ? String(c.name).trim() : null, role: role ? String(c.role || c.job_title).trim() : null });
   if (cand && (cand.status === 'discarded')) return out('none', 'alta', 'El prospecto está descartado.');
   const last = cand && cand.last_contact_channel;
+  // Secuencial: el ciclo de correo (inicial + 2 seguimientos) terminó sin respuesta y hay una persona verificable → conexión simple por LinkedIn.
+  if (last === 'email' && liReady && ctx && ctx.emailSequenceDone) return out('linkedin', 'media', 'El correo y sus 2 seguimientos terminaron sin respuesta: conexión simple por LinkedIn con ' + String(c.name).trim() + ' (' + String(c.role || c.job_title).trim() + '), sin repetir el pitch del correo.');
   if (last && ['email', 'linkedin'].includes(last)) return out(last, 'alta', 'Ya se contactó por ' + last + ': no se abre un segundo canal sin una decisión explícita.');
   if (liReady && (!emailOk || generic)) return out('linkedin', emailOk ? 'media' : 'alta', 'Hay una persona identificada (' + String(c.name).trim() + ', ' + String(c.role || c.job_title).trim() + ') con perfil de LinkedIn verificable' + (emailOk ? ' y el único correo público es genérico (' + email + '): una persona con nombre tiene más probabilidad de respuesta.' : ' y no hay correo público utilizable.'));
   if (emailOk) return out('email', generic ? 'media' : 'alta', generic ? 'Correo público de la empresa (' + email + ', genérico): es el único canal confiable hoy' + (missing.length ? '; para LinkedIn falta ' + missing.join(', ') + '.' : '.') : 'Correo publicado por la empresa y utilizable (' + email + ').');
@@ -133,7 +153,7 @@ export function planRecommend(req, ctx) {
   const now = new Date(ctx.now).toISOString();
   const cand = ctx.candidate;
   if (!cand) return { response: { ok: false, status: 'error', error: 'sin_candidato', message: 'No encontré ese prospecto.' }, writes: [], effects: [] };
-  const rec = recommendChannel(cand, { suppressedEmails: ctx.suppressedEmails });
+  const rec = recommendChannel(cand, { suppressedEmails: ctx.suppressedEmails, emailSequenceDone: ctx.emailSequenceDone });
   const st = cand.channel_state || {};
   const nextRec = { channel: rec.channel, confidence: rec.confidence, reason: rec.reason, missing: rec.missing, email_ready: rec.email_ready, linkedin_ready: rec.linkedin_ready, linkedin_url: rec.linkedin_url, person: rec.person, role: rec.role, at: now };
   const patch = { ...st, recommended: nextRec };
@@ -155,8 +175,8 @@ export function planLinkedinApprove(req, ctx) {
   const st = cand.channel_state || {};
   const prev = st.linkedin || null;
   if (prev && ['en_lista', 'en_campana', 'conexion', 'mensaje', 'followup', 'respondio'].includes(prev.state)) return fail('ya_en_linkedin', 'Ese prospecto ya está en LinkedIn (' + liLabel(prev.state) + '). No se vuelve a insertar.', 'already_done');
-  if (ctx.emailActive) return fail('canal_email_activo', 'Ya hay un correo aprobado, en envío o enviado a este prospecto: no se contacta por LinkedIn al mismo tiempo (decisión explícita futura).', 'channel_conflict');
-  const rec = recommendChannel(cand, { suppressedEmails: ctx.suppressedEmails });
+  if (ctx.emailActive && !ctx.emailSequenceDone) return fail('canal_email_activo', 'Ya hay un correo aprobado, en envío o enviado a este prospecto y su ciclo de seguimientos no terminó: no se contacta por LinkedIn al mismo tiempo.', 'channel_conflict');
+  const rec = recommendChannel(cand, { suppressedEmails: ctx.suppressedEmails, emailSequenceDone: ctx.emailSequenceDone });
   const c = (cand.canonical && cand.canonical.contact) || {};
   const url = normLinkedInUrl(c.linkedin || c.linkedin_url);
   if (!rec.linkedin_ready) return fail('linkedin_no_listo', 'Todavía no hay datos suficientes para LinkedIn: falta ' + (rec.missing.join(', ') || 'un perfil verificable') + '.', 'not_ready');

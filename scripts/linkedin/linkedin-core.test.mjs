@@ -54,6 +54,31 @@ ok('evidencia del perfil: basta que el propio perfil figure en las URLs de evide
   assert.ok(li.isReliableRole('Fundador'));
   assert.ok(!li.isNamedPerson('Perfil de Prime Consultores de Seguros (persona sin identificar)'));
 });
+ok('LinkedIn secuencial: solo cuando el ciclo de correo terminó sin respuesta (nunca durante, nunca si respondió/rebotó)', () => {
+  const D = 86400000;
+  const init = (id, state, o) => ({ candidate_id: id, kind: 'initial', status: 'sent', sent_at: new Date(NOW - 14 * D).toISOString(), metadata: { followup_state: state, followup_done_at: new Date(NOW - 3 * D).toISOString() }, ...(o || {}) });
+  const f2 = (id, daysAgo, st) => ({ candidate_id: id, kind: 'followup_2', status: st || 'sent', sent_at: new Date(NOW - daysAgo * D).toISOString(), metadata: {} });
+  // ciclo terminado (seguimiento 2 ENVIADO hace 3 días) → entra; hace 1 día → todavía no; el 2 nunca enviado (cancelado) → no; activo / detenido por respuesta o rebote → no
+  assert.deepEqual(li.emailSequenceDoneIds([init('a', 'done'), f2('a', 3)], NOW), ['a']);
+  assert.deepEqual(li.emailSequenceDoneIds([init('a', 'done'), f2('a', 1)], NOW), []);
+  assert.deepEqual(li.emailSequenceDoneIds([init('a', 'done')], NOW), [], 'sin seguimiento 2 enviado no cuenta');
+  assert.deepEqual(li.emailSequenceDoneIds([init('a', 'done'), f2('a', 3, 'cancelled')], NOW), []);
+  assert.deepEqual(li.emailSequenceDoneIds([init('a', 'active'), init('b', 'stopped:respondio'), init('c', 'stopped:rebote'), f2('a', 3), f2('b', 3), f2('c', 3)], NOW), []);
+  // un correo vivo (aprobado/en envío) lo saca; los seguimientos no cuentan como «inicial»
+  assert.deepEqual(li.emailSequenceDoneIds([init('a', 'done'), f2('a', 3), { candidate_id: 'a', kind: 'followup_2', status: 'approved', metadata: {} }], NOW), []);
+  assert.deepEqual(li.emailSequenceDoneIds([init('a', 'done', { kind: 'followup_1' }), f2('a', 3)], NOW), []);
+  // recomendación: contactado por correo + ciclo terminado + persona verificable → LinkedIn; sin lo segundo, se queda en correo
+  const c = cand({ status: 'contacted', last_contact_channel: 'email', canonical: { contact: { name: 'Daniel Colodro Ebner', role: 'Gerente Comercial', email: 'daniel@prueba.cl', linkedin: URL1, linkedin_source_url: 'x', public: true } } });
+  let r = li.recommendChannel(c, { emailSequenceDone: true }); assert.equal(r.channel, 'linkedin'); assert.match(r.reason, /terminaron sin respuesta/);
+  r = li.recommendChannel(c, {}); assert.equal(r.channel, 'email'); assert.match(r.reason, /segundo canal/);
+  const sinPerfil = cand({ status: 'contacted', last_contact_channel: 'email', canonical: { contact: { name: 'Daniel Colodro Ebner', role: 'Gerente Comercial', email: 'daniel@prueba.cl', public: true } } });
+  assert.equal(li.recommendChannel(sinPerfil, { emailSequenceDone: true }).channel, 'email', 'sin perfil verificable no se abre LinkedIn');
+  assert.equal(li.recommendChannel({ ...c, status: 'discarded' }, { emailSequenceDone: true }).channel, 'none');
+  // aprobación: con correo enviado se bloquea salvo que el ciclo haya terminado
+  assert.equal(li.planLinkedinApprove({}, { now: NOW, candidate: c, config: CFG_LIVE, emailActive: true }).response.error, 'canal_email_activo');
+  const ok2 = li.planLinkedinApprove({}, { now: NOW, candidate: c, config: CFG_LIVE, emailActive: true, emailSequenceDone: true, rnd });
+  assert.equal(ok2.response.status, 'confirmation_required', 'pide el código de Christian, no importa solo'); assert.equal(ok2.response.summary.will_contact, true);
+});
 ok('búsqueda de candidato: id, dominio, nombre y ambigüedad', () => {
   const list = [cand(), cand({ id: 'c-2', company_name: 'Otra Empresa', domain: 'otra.cl', canonical: { contact: {} } }), cand({ id: 'c-3', company_name: 'Otra Empresa Dos', domain: 'dos.cl', canonical: { contact: {} } })];
   assert.equal(li.findCandidate(list, 'c-2').cand.id, 'c-2'); assert.equal(li.findCandidate(list, 'prueba.cl').cand.id, 'c-1'); assert.equal(li.findCandidate(list, 'empresa prueba spa').cand.id, 'c-1');

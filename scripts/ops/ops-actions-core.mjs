@@ -186,6 +186,8 @@ export function oaReads(req, sb) {
   if (req.action === 'overview') {
     add('messages', 'outreach_messages?direction=eq.outbound&select=id,candidate_id,company_name,kind,to_email,subject,body,status,content_hash,created_at,updated_at,approved_by,approved_at,scheduled_for,sent_at,error,metadata,edited_by_christian_at&order=created_at.desc&limit=150');
     add('candidates', 'prospect_candidates?status=in.(in_ghl,accepted,contacted,discarded)&select=id,company_name,status,band,priority_score,ghl_stage,last_contact_channel,channel_state,domain,contact:canonical->contact,evidence_urls:canonical->evidence_urls,angle:canonical->>outreach_angle,quote:canonical->evidence_quotes->0->>quote&order=priority_score.desc&limit=400');
+    add('seqdone', 'outreach_messages?direction=eq.outbound&kind=eq.initial&status=eq.sent&metadata-%3E%3Efollowup_state=eq.done&select=candidate_id,kind,status,sent_at,metadata&limit=500');
+    add('seqf2', 'outreach_messages?direction=eq.outbound&kind=eq.followup_2&status=eq.sent&select=candidate_id,kind,status,sent_at&limit=500');
     add('suppression', 'outreach_suppression?select=email&limit=2000');
     add('config', 'outreach_config?id=eq.1&select=mode,paused,daily_cap,window_start,window_end,tz,linkedin_mode,linkedin_list_id,linkedin_campaign_id,linkedin_daily_cap');
   } else if (req.action.startsWith('email_')) {
@@ -268,7 +270,8 @@ export function oaEmailCards(messages, cands, suppression) {
 }
 
 /** LinkedIn para /ops: quién está listo para aprobar y qué fue enviado a Waalaxy (solo hechos con registro en Atacama OS). */
-export function oaLinkedinData(cands, cfg, nowMs) {
+export function oaLinkedinData(cands, cfg, nowMs, seqDoneIds) {
+  const seqDone = new Set(seqDoneIds || []);
   const tz = (cfg && cfg.tz) || 'America/Santiago';
   const today = oaDay(nowMs, tz);
   const ready = [], sent = [];
@@ -290,7 +293,7 @@ export function oaLinkedinData(cands, cfg, nowMs) {
       return;
     }
     if (declined) return;
-    const rec = recommendChannel({ status: c.status, last_contact_channel: c.last_contact_channel, contact: c.contact || {}, evidence_urls: c.evidence_urls || [] }, { suppressedEmails: [] });
+    const rec = recommendChannel({ status: c.status, last_contact_channel: c.last_contact_channel, contact: c.contact || {}, evidence_urls: c.evidence_urls || [] }, { suppressedEmails: [], emailSequenceDone: seqDone.has(c.id) });
     if (rec.channel === 'linkedin' && rec.linkedin_ready) {
       ready.push({ candidate_id: c.id, company: c.company_name, person: rec.person, role: rec.role, url: rec.linkedin_url, score: c.priority_score != null ? c.priority_score : null, band: c.band || null, angle: c.angle || null, fact: c.quote || null, reason: rec.reason,
         list_id: (cfg && cfg.linkedin_list_id) || null, campaign_id: (cfg && cfg.linkedin_campaign_id) || null, source: ((c.contact || {}).linkedin_source_url) || (c.evidence_urls || []).find((u) => /linkedin\.com\/in\//i.test(u)) || null });
@@ -309,7 +312,7 @@ export function oaOverview(R, nowMs) {
   const messages = R.messages || [];
   const emailToday = messages.filter((m) => m.status === 'sent' && m.sent_at && oaDay(Date.parse(m.sent_at), tz) === today).length;
   return { ok: true, action: 'overview', generated_at: new Date(nowMs).toISOString(), email: { mode: cfg.mode || 'off', paused: cfg.paused === true, cap: Number(cfg.daily_cap) || 0, sent_today: emailToday, window: (cfg.window_start || '09:00') + '–' + (cfg.window_end || '17:30'), cards: oaEmailCards(messages, R.candidates, R.suppression) },
-    linkedin: oaLinkedinData(R.candidates, cfg, nowMs) };
+    linkedin: oaLinkedinData(R.candidates, cfg, nowMs, emailSequenceDoneIds((R.seqdone || []).concat(R.seqf2 || [], R.messages || []), nowMs, 2)) };
 }
 
 /** El mismo error que devuelve el motor real, sin éxito falso. */
