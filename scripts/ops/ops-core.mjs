@@ -621,7 +621,8 @@ export function contentGate(d) {
   const runs = (d.runs || []).filter((r) => r.kind === 'content_radar' && r.status === 'ok');
   const last = runs[0] ? Date.parse(runs[0].created_at) : null;
   const base = { pending_review: ct.pending_review.length, max_pending_in_review: g.queue.max, candidate_signals: ct.candidate_signals, pieces_allowed: !g.queue.full };
-  if (last && now - last < 5 * 86400000) return { mode: 'skip', reason: 'ya corrió hace ' + ageText(now - last) + ' (cadencia semanal)', ...base };
+  // 3 días y no 5: el job corre los lunes; con 5 días una corrida manual del miércoles (4,9 días antes) hacía saltar el lunes siguiente y se perdía la semana.
+  if (last && now - last < 3 * 86400000) return { mode: 'skip', reason: 'ya corrió hace ' + ageText(now - last) + ' (cadencia semanal)', ...base };
   // Content Queue Governor: con la cola llena el radar SIGUE recolectando señales, pero no se crean piezas por cuenta propia.
   if (ct.candidate_signals >= 12) return { mode: 'skip', reason: 'ya hay ' + ct.candidate_signals + ' señales candidatas sin convertir en pieza', ...base };
   return { mode: 'run', max_signals: 5, reason: 'ok (' + ct.pending_review.length + '/' + g.queue.max + ' piezas en revisión' + (g.queue.full ? ': cola llena, solo recolecta señales' : '') + ', ' + ct.candidate_signals + ' señales candidatas)', ...base };

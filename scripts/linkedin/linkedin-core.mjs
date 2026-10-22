@@ -27,7 +27,7 @@ export function normLinkedInUrl(u) {
 export function isNamedPerson(name) {
   const n = String(name == null ? '' : name).replace(/\s+/g, ' ').trim();
   if (n.length < 5) return false;
-  if (/no encontrad|desconocid|\bequipo\b|contacto|atenci[oó]n|soporte|ventas|comercial|administraci|servicio|capacitaci|info\b|\binc\b|ltda|\bspa\b/i.test(liStrip(n))) return false;
+  if (/no encontrad|desconocid|\bequipo\b|contacto|atenci[oó]n|soporte|ventas|comercial|administraci|servicio|capacitaci|info\b|\binc\b|ltda|\bspa\b|sin identificar|\bperfil de\b/i.test(liStrip(n))) return false;
   const words = n.split(' ').filter((w) => /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ.'-]{2,}$/.test(w));
   return words.length >= 2;
 }
@@ -35,7 +35,7 @@ export function isNamedPerson(name) {
 /** Cargo utilizable: existe y no es una suposición del radar («NO ENCONTRADO», «inferencia», «probable»). */
 export function isReliableRole(role) {
   const r = String(role == null ? '' : role).trim();
-  return r.length >= 3 && !/no encontrad|inferencia|probable|posible|\?/i.test(r);
+  return r.length >= 3 && !/no encontrad|inferencia|probable|posible|no verificad|no visible|sin cargo|sin comprobar|sin verificar|sin identificar|parcial|por confirmar|por validar|ultima experiencia|\?/i.test(liStrip(r));
 }
 
 export function splitName(name) {
@@ -59,7 +59,9 @@ export function recommendChannel(cand, ctx) {
   const li = normLinkedInUrl(c.linkedin || c.linkedin_url);
   const named = isNamedPerson(c.name);
   const role = isReliableRole(c.role || c.job_title);
-  const evid = Boolean(String(c.linkedin_source_url || '').trim());
+  // Evidencia pública del perfil: la fuente declarada o, si no, que el propio perfil figure entre las URLs de evidencia del prospecto (linkedin_source_url casi nunca se llenaba: 0 de 68 prospectos).
+  const evUrls = [].concat((cand && cand.canonical && cand.canonical.evidence_urls) || (cand && cand.evidence_urls) || []);
+  const evid = Boolean(String(c.linkedin_source_url || '').trim()) || (Boolean(li) && evUrls.some((u) => normLinkedInUrl(u) === li));
   const liReady = Boolean(li) && named && role && evid;
   const missing = [];
   if (!li) missing.push('URL de LinkedIn de una persona');

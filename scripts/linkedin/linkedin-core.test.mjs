@@ -39,6 +39,21 @@ ok('canal recomendado: descartado, ya contactado y correo suprimido', () => {
   const r = li.recommendChannel(cand({ last_contact_channel: 'email' })); assert.equal(r.channel, 'email'); assert.match(r.reason, /segundo canal/);
   const s = li.recommendChannel(cand({ canonical: { contact: { name: 'Equipo X', role: 'Ventas', email: 'ventas@prueba.cl', public: true } } }), { suppressedEmails: ['ventas@prueba.cl'] }); assert.equal(s.channel, 'none');
 });
+ok('evidencia del perfil: basta que el propio perfil figure en las URLs de evidencia; cargos dudosos no cuentan', () => {
+  const p = { name: 'Alonso Chein', role: 'Gerente de Operaciones', linkedin: URL1 };
+  // sin linkedin_source_url pero con el perfil entre las evidencias (subdominio regional incluido) → listo
+  let r = li.recommendChannel(cand({ canonical: { contact: p, evidence_urls: ['https://cl.linkedin.com/in/daniel-colodro-ebner-46498527'] } }));
+  assert.ok(r.linkedin_ready, 'el perfil figura como evidencia'); assert.equal(r.channel, 'linkedin');
+  // evidencia de OTRO perfil o una oferta de trabajo no sirve
+  r = li.recommendChannel(cand({ canonical: { contact: p, evidence_urls: ['https://cl.linkedin.com/in/otra-persona-1', 'https://cl.linkedin.com/jobs/view/agente-123'] } }));
+  assert.ok(!r.linkedin_ready); assert.match(r.missing.join(' '), /evidencia/);
+  // forma plana usada por /ops (evidence_urls fuera de canonical)
+  r = li.recommendChannel({ status: 'in_ghl', contact: p, evidence_urls: [URL1] }); assert.ok(r.linkedin_ready);
+  // cargos y nombres sin verificar no son confiables
+  ['Cargo no visible', 'Sin cargo visible', 'Liderazgo visible (cargo exacto sin comprobar)', 'Cargo actual no verificado', 'Sin identificar', 'Asesora inmobiliaria (identidad parcial)', 'Comercio exterior (última experiencia visible: X, hasta mayo 2025)'].forEach((x) => assert.ok(!li.isReliableRole(x), x));
+  assert.ok(li.isReliableRole('Fundador'));
+  assert.ok(!li.isNamedPerson('Perfil de Prime Consultores de Seguros (persona sin identificar)'));
+});
 ok('búsqueda de candidato: id, dominio, nombre y ambigüedad', () => {
   const list = [cand(), cand({ id: 'c-2', company_name: 'Otra Empresa', domain: 'otra.cl', canonical: { contact: {} } }), cand({ id: 'c-3', company_name: 'Otra Empresa Dos', domain: 'dos.cl', canonical: { contact: {} } })];
   assert.equal(li.findCandidate(list, 'c-2').cand.id, 'c-2'); assert.equal(li.findCandidate(list, 'prueba.cl').cand.id, 'c-1'); assert.equal(li.findCandidate(list, 'empresa prueba spa').cand.id, 'c-1');

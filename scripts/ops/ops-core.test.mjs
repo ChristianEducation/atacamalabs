@@ -242,6 +242,7 @@ ok('compuerta del Content Radar: corre, o se salta por cadencia / revisión pend
   let g = oc.contentGate(base()); assert.equal(g.mode, 'run'); assert.equal(g.max_signals, 5);
   g = oc.contentGate(base({ runs: [{ kind: 'content_radar', status: 'ok', created_at: iso(2 * D) }] })); assert.equal(g.mode, 'skip'); assert.match(g.reason, /ya corrió/);
   g = oc.contentGate(base({ runs: [{ kind: 'content_radar', status: 'skipped', created_at: iso(1 * D) }] })); assert.equal(g.mode, 'run');
+  g = oc.contentGate(base({ runs: [{ kind: 'content_radar', status: 'ok', created_at: iso(4.9 * D) }] })); assert.equal(g.mode, 'run', 'una corrida manual de hace ~5 días no debe saltar el lunes siguiente');
   // Ola A · Governor: con piezas pendientes el radar SIGUE recolectando; solo avisa si se pueden crear piezas (tope configurable, 6 por defecto)
   g = oc.contentGate(base({ pieces: [piece(1), piece(2), piece(3)] })); assert.equal(g.mode, 'run'); assert.equal(g.pieces_allowed, true); assert.equal(g.max_pending_in_review, 6);
   g = oc.contentGate(base({ pieces: [1, 2, 3, 4, 5, 6].map(piece) })); assert.equal(g.mode, 'run'); assert.equal(g.pieces_allowed, false); assert.match(g.reason, /cola llena/);
