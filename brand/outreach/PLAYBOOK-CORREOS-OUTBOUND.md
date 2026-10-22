@@ -554,60 +554,37 @@ Si alguna respuesta genera dudas, reescribe antes de entregar.
 
 ---
 
-## 17. Follow-ups outbound
+## 17. Follow-ups outbound (revisión 22-oct-2026: secuencia de 4 correos)
 
-Los seguimientos no deben volver a vender ni prometer demos, ejemplos, videos, propuestas o reuniones que no estén realmente preparados.
+Los seguimientos no deben prometer demos, ejemplos, videos, propuestas, precios ni reuniones que no estén realmente preparados. Siguen siendo borradores: nunca se envían sin la aprobación de Christian.
 
-Principio general: **Follow-up 1 valida el dolor. Follow-up 2 cierra el hilo y deja la puerta abierta.**
+**Secuencia (días hábiles desde el primer envío, mismo hilo con el asunto original y «Re:»):**
 
-### Follow-up 1
+| Correo | Día | Qué es | Largo |
+|---|---|---|---|
+| 1 | 0 | Primer correo (secciones anteriores) | 70–120 palabras |
+| 2 (seguimiento 1) | 4 | **El dolor del rubro**: contexto concreto de cómo se rompe el proceso y qué hace el agente, sin vender más de la cuenta | 100–170 |
+| 3 (seguimiento 2) | 9 | **Valor práctico**: algo útil aunque no cambien nada (checklist, cuenta simple, patrón del rubro) y una pregunta fácil | 100–170 |
+| 4 (seguimiento 3) | 18 | **Cierre del hilo**: sin presión, puerta abierta, pide indicar con quién conviene hablar si no corresponde | 40–70 |
 
-**Objetivo:** validar si el problema planteado en el primer correo realmente existe.
+Reglas de los seguimientos 1 y 2:
 
-Debe:
+- Cada toque trae algo nuevo. Prohibido el «solo para saber si viste mi correo» / «retomo por si quedó abajo» como contenido único.
+- El dolor se plantea como patrón del rubro («suele ocurrir…», «en los casinos donde…»), nunca como algo observado o afirmado de esa empresa.
+- Una sola pregunta, conversacional y de baja presión. Las cuentas de ejemplo usan números ilustrativos («por ejemplo»), nunca porcentajes ni resultados prometidos.
+- El «por ejemplo» que ilustra una cuenta NO es ofrecer un ejemplo; ofrecer «te mando un ejemplo / una demo / una propuesta» sigue prohibido.
+- El correo 4 no vuelve a presentar la solución ni hace preguntas.
+- Las plantillas por rubro (corredoras, clínicas/salud, casinos de colegios, casinos de empresas y genérico) viven en `scripts/outreach/followup-templates.mjs` y el humano las edita antes de aprobar.
 
-- retomar el hilo brevemente;
-- evitar repetir toda la propuesta;
-- hacer una pregunta simple y fácil de responder;
-- permitir que el prospecto diga tanto «sí» como «no, eso ya lo tenemos resuelto».
+### Foco comercial de 2 semanas (23-oct a 6-nov-2026)
 
-Ejemplo explícito:
-
-> Estimado equipo de Rentalin,
->
-> Retomo esto por si quedó abajo en la bandeja.
->
-> ¿Ese trabajo previo a cotizar hoy les quita tiempo, o es una parte que ya tienen bastante resuelta?
-
-Usar este ejemplo como referencia de tono y lógica, no como plantilla literal. Adaptar la pregunta al proceso específico del prospecto.
-
-### Follow-up 2
-
-**Objetivo:** cerrar el hilo con educación y sin presión.
-
-Debe:
-
-- dejar claro que no seguiremos insistiendo;
-- no volver a presentar la solución;
-- mantener abierta la posibilidad de conversar más adelante;
-- permitir que la conversación se abra también hacia otro proceso repetitivo de la empresa.
-
-Ejemplo explícito:
-
-> Estimado equipo de Rentalin,
->
-> Cierro el hilo por acá para no insistir. Si en algún momento quieren revisar esta u otra parte del proceso que siga siendo repetitiva, encantado de conversarlo.
->
-> Saludos,
-> Christian
-
-Usar este ejemplo como referencia de tono y lógica, no como plantilla rígida.
+Solo tres rubros y solo la Región de Antofagasta: corredoras de propiedades (postulaciones y su evaluación contra requisitos), clínicas/consultas dentales, veterinarias y profesionales de la salud independientes (agenda, seguimiento y confirmación para bajar el no-show) y casinos/servicios de alimentación (colegios que aún publican datos de transferencia; empresas de alimentación para minería, retail o corporativo). Meta: 15 prospectos nuevos por día hábil (5 por rubro). El primer correo abre con el patrón del rubro (opción B: «En los casinos donde las familias pagan por transferencia y mandan el comprobante, suele aparecer un trabajo repetido…»), sin «vi que» y sin precios.
 
 ### Nota de implementación
 
-- La firma («Christian Wevar | Atacama Labs») la agrega el sistema al enviar; en el cuerpo basta con «Saludos,».
-- Los seguimientos siguen siendo borradores: nunca se envían sin la aprobación de Christian.
-- La plantilla automática anterior de seguimiento (que ofrecía «un ejemplo concreto») queda reemplazada por estas reglas.
+- La firma («Christian Wevar | Atacama Labs») la agrega el sistema al enviar.
+- Los asuntos de los correos iniciales llevan mayúscula inicial; los seguimientos conservan el asunto original para no romper el hilo.
+- La plantilla anterior (seguimiento 1 «Retomo esto por si quedó abajo…» y seguimiento 2 «Cierro el hilo…») queda reemplazada por esta secuencia.
 
 ---
 

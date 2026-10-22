@@ -249,44 +249,53 @@ const fctx = (nowMs, o) => {
   let n = 0;
   return { now: nowMs, config: { ...CFG, from_email: 'x@atacamalabs.cl' }, initials: [init], byCandidate: { 'c-1': [init, ...others] }, candidates: { 'c-1': (o && o.cand) || cand() }, suppression: (o && o.suppression) || [], closed: (o && o.closed) || {}, contactTasks: (o && o.contactTasks) || {}, ghl: GH, newId: () => 'new-' + (++n) };
 };
-ok('followupSlots: +3 y +7 días hábiles desde el primer envío (10:00 Chile)', () => {
+ok('followupSlots: +4, +9 y +18 días hábiles desde el primer envío (10:00 Chile)', () => {
   const s = oc.followupSlots(T0, CFG);
-  assert.equal(new Date(s[0].due).toISOString(), '2026-10-12T13:00:00.000Z'); assert.equal(new Date(s[1].due).toISOString(), '2026-10-16T13:00:00.000Z');
-  assert.equal(s[0].kind, 'followup_1'); assert.equal(s[1].kind, 'followup_2');
-  const fri = oc.followupSlots(Date.parse('2026-10-09T20:00:00Z'), CFG);   // viernes tarde: +3 háb = miércoles
-  assert.equal(new Date(fri[0].due).toISOString().slice(0, 10), '2026-10-14');
+  assert.equal(s.length, 3);
+  assert.equal(new Date(s[0].due).toISOString(), '2026-10-13T13:00:00.000Z'); assert.equal(new Date(s[1].due).toISOString(), '2026-10-20T13:00:00.000Z'); assert.equal(new Date(s[2].due).toISOString(), '2026-11-02T13:00:00.000Z');
+  assert.deepEqual(s.map((x) => x.kind), ['followup_1', 'followup_2', 'followup_3']);
+  const fri = oc.followupSlots(Date.parse('2026-10-09T20:00:00Z'), CFG);   // viernes tarde: +4 háb = jueves
+  assert.equal(new Date(fri[0].due).toISOString().slice(0, 10), '2026-10-15');
+  // configurable desde /ops; con menos de 3 valores usa el calendario por defecto
+  const custom = oc.followupSlots(T0, { ...CFG, followup_days: [3, 7, 14] }); assert.deepEqual(custom.map((x) => x.days), [3, 7, 14]);
+  assert.deepEqual(oc.followupSlots(T0, { ...CFG, followup_days: [3, 7] }).map((x) => x.days), [4, 9, 18]);
 });
-ok('antes de la fecha: crea las 2 tareas (+3 y +7), registra next_action y NO crea borradores', () => {
+ok('antes de la fecha: crea las 3 tareas (+4, +9 y +18), registra next_action y NO crea borradores', () => {
   const p = oc.planFollowups(fctx(T0 + 3600000));
-  assert.equal(p.ghl_ops.length, 2); assert.deepEqual(p.ghl_ops.map((o) => o.slot), ['f1', 'f2']);
-  assert.equal(p.ghl_ops[0].url, 'https://ghl.test/contacts/G1/tasks'); assert.equal(p.ghl_ops[0].body.title, 'Seguimiento 1 · Clínica Rica'); assert.equal(p.ghl_ops[0].body.dueDate, '2026-10-12T13:00:00.000Z'); assert.equal(p.ghl_ops[1].body.dueDate, '2026-10-16T13:00:00.000Z'); assert.equal(p.ghl_ops[0].body.assignedTo, 'USR');
+  assert.equal(p.ghl_ops.length, 3); assert.deepEqual(p.ghl_ops.map((o) => o.slot), ['f1', 'f2', 'f3']);
+  assert.equal(p.ghl_ops[0].url, 'https://ghl.test/contacts/G1/tasks'); assert.equal(p.ghl_ops[0].body.title, 'Seguimiento 1 · Clínica Rica'); assert.equal(p.ghl_ops[0].body.dueDate, '2026-10-13T13:00:00.000Z'); assert.equal(p.ghl_ops[1].body.dueDate, '2026-10-20T13:00:00.000Z'); assert.equal(p.ghl_ops[2].body.dueDate, '2026-11-02T13:00:00.000Z'); assert.equal(p.ghl_ops[0].body.assignedTo, 'USR');
   assert.ok(!p.writes.some((w) => w.path === 'outreach_messages' && w.method === 'POST'));
-  assert.ok(p.writes.some((w) => w.path.startsWith('prospect_candidates') && w.body.next_action_at === '2026-10-12T13:00:00.000Z'));
+  assert.ok(p.writes.some((w) => w.path.startsWith('prospect_candidates') && w.body.next_action_at === '2026-10-13T13:00:00.000Z'));
   assert.equal(p.meta_updates['i-1'].followup_state, 'active');
 });
-ok('sin duplicados: reutiliza las tareas que ya existen en el contacto y no recrea las ya registradas', () => {
+ok('sin duplicados: reutiliza las tareas que ya existen en el contacto; a los ciclos anteriores solo les agrega la del 3.er seguimiento', () => {
   const p = oc.planFollowups(fctx(T0 + 3600000, { contactTasks: { G1: [{ id: 't-a', title: 'Seguimiento 1 · Clínica Rica' }] } }));
-  assert.equal(p.ghl_ops.length, 1); assert.equal(p.ghl_ops[0].slot, 'f2'); assert.equal(p.meta_updates['i-1'].followup_tasks.f1.id, 't-a');
-  const done = oc.planFollowups(fctx(T0 + 3600000, { initial: initialMsg({ metadata: { followup_state: 'active', followup_tasks: { f1: { id: 'a' }, f2: { id: 'b' } } } }) }));
+  assert.equal(p.ghl_ops.length, 2); assert.deepEqual(p.ghl_ops.map((o) => o.slot), ['f2', 'f3']); assert.equal(p.meta_updates['i-1'].followup_tasks.f1.id, 't-a');
+  const done = oc.planFollowups(fctx(T0 + 3600000, { initial: initialMsg({ metadata: { followup_state: 'active', followup_tasks: { f1: { id: 'a' }, f2: { id: 'b' }, f3: { id: 'c' } } } }) }));
   assert.equal(done.ghl_ops.length, 0);
+  const old = oc.planFollowups(fctx(T0 + 3600000, { initial: initialMsg({ metadata: { followup_state: 'active', followup_tasks: { f1: { id: 'a' }, f2: { id: 'b' } } } }) }));
+  assert.deepEqual(old.ghl_ops.map((o) => o.slot), ['f3'], 'ciclo de la secuencia anterior: solo se agrega la tarea de cierre');
+  assert.equal(old.ghl_ops[0].body.title, 'Seguimiento 3 · Clínica Rica');
   assert.deepEqual(oc.followupsNeedingTaskCheck(fctx(T0)), [{ contact_id: 'G1', msg_id: 'i-1' }]);
   assert.deepEqual(oc.followupsNeedingTaskCheck(fctx(T0, { initial: initialMsg({ metadata: { followup_tasks: {} } }) })), []);
 });
-ok('llegado el +3: crea UN borrador followup_1 (draft, nunca aprobado) y no lo repite', () => {
-  const now = Date.parse('2026-10-12T14:00:00Z');
-  const base = { initial: initialMsg({ metadata: { followup_state: 'active', followup_tasks: { f1: { id: 'a' }, f2: { id: 'b' } } } }) };
+const TASKS3 = { f1: { id: 'a' }, f2: { id: 'b' }, f3: { id: 'c' } };
+ok('llegado el +4: crea UN borrador followup_1 (draft, nunca aprobado) y no lo repite', () => {
+  const now = Date.parse('2026-10-13T14:00:00Z');
+  const base = { initial: initialMsg({ metadata: { followup_state: 'active', followup_tasks: TASKS3 } }) };
   const p = oc.planFollowups(fctx(now, base));
   const ins = p.writes.filter((w) => w.path === 'outreach_messages' && w.method === 'POST');
   assert.equal(ins.length, 1); assert.equal(ins[0].body.kind, 'followup_1'); assert.equal(ins[0].body.status, 'draft'); assert.equal(ins[0].body.approved_at, null); assert.match(ins[0].body.subject, /^Re: /); assert.equal(ins[0].body.gmail_thread_id, 'T1');
+  assert.ok(p.writes.some((w) => w.path.startsWith('prospect_candidates') && w.body.next_action_at === '2026-10-20T13:00:00.000Z'));
   const existing = { id: 'f-1', kind: 'followup_1', direction: 'outbound', status: 'draft', candidate_id: 'c-1' };
   const again = oc.planFollowups(fctx(now, { ...base, others: [existing] }));
   assert.equal(again.writes.filter((w) => w.path === 'outreach_messages' && w.method === 'POST').length, 0);
   const cancelledOne = oc.planFollowups(fctx(now, { ...base, others: [{ ...existing, status: 'cancelled' }] }));
   assert.equal(cancelledOne.writes.filter((w) => w.path === 'outreach_messages' && w.method === 'POST').length, 0);
 });
-ok('llegado el +7: prepara el followup_2; si el 1 sigue sin aprobar lo caduca; si está aprobado espera; después parar', () => {
-  const now = Date.parse('2026-10-16T14:00:00Z');
-  const meta = { followup_state: 'active', followup_tasks: { f1: { id: 'a' }, f2: { id: 'b' } } };
+ok('llegado el +9: prepara el followup_2; si el 1 sigue sin aprobar lo caduca; si está aprobado espera; todavía no termina', () => {
+  const now = Date.parse('2026-10-20T14:00:00Z');
+  const meta = { followup_state: 'active', followup_tasks: TASKS3 };
   const f1sent = { id: 'f-1', kind: 'followup_1', direction: 'outbound', status: 'sent', candidate_id: 'c-1', to_email: 'dra@clinicarica.cl', subject: 'Re: x' };
   let p = oc.planFollowups(fctx(now, { initial: initialMsg({ metadata: meta }), others: [f1sent] }));
   assert.equal(p.writes.filter((w) => w.method === 'POST' && w.body.kind === 'followup_2').length, 1);
@@ -295,21 +304,38 @@ ok('llegado el +7: prepara el followup_2; si el 1 sigue sin aprobar lo caduca; s
   p = oc.planFollowups(fctx(now, { initial: initialMsg({ metadata: meta }), others: [{ ...f1sent, status: 'approved' }] }));
   assert.equal(p.writes.filter((w) => w.method === 'POST').length, 0);
   p = oc.planFollowups(fctx(now, { initial: initialMsg({ metadata: meta }), others: [f1sent, { ...f1sent, id: 'f-2', kind: 'followup_2', status: 'sent' }] }));
+  assert.ok(!p.meta_updates['i-1'] || p.meta_updates['i-1'].followup_state !== 'done', 'con el 2 enviado todavía falta el cierre');
+  assert.equal(p.writes.filter((w) => w.method === 'POST').length, 0);
+  assert.ok(p.writes.some((w) => w.path.startsWith('prospect_candidates') && w.body.next_action_at === '2026-11-02T13:00:00.000Z'));
+});
+ok('llegado el +18: prepara el cierre (followup_3); terminado el ciclo marca done y después parar', () => {
+  const now = Date.parse('2026-11-02T14:00:00Z');
+  const meta = { followup_state: 'active', followup_tasks: TASKS3 };
+  const mk = (id, kind, status) => ({ id, kind, direction: 'outbound', status, candidate_id: 'c-1', to_email: 'dra@clinicarica.cl', subject: 'Re: x' });
+  const sent12 = [mk('f-1', 'followup_1', 'sent'), mk('f-2', 'followup_2', 'sent')];
+  let p = oc.planFollowups(fctx(now, { initial: initialMsg({ metadata: meta }), others: sent12 }));
+  const ins = p.writes.filter((w) => w.method === 'POST' && w.body.kind === 'followup_3'); assert.equal(ins.length, 1); assert.match(ins[0].body.body, /Cierro el hilo/);
+  p = oc.planFollowups(fctx(now, { initial: initialMsg({ metadata: meta }), others: [...sent12, mk('f-3', 'followup_3', 'draft')] }));
+  assert.equal(p.writes.filter((w) => w.method === 'POST').length, 0); assert.ok(!p.meta_updates['i-1'] || p.meta_updates['i-1'].followup_state !== 'done', 'el cierre sigue pendiente de aprobación');
+  p = oc.planFollowups(fctx(now, { initial: initialMsg({ metadata: meta }), others: [...sent12, mk('f-3', 'followup_3', 'sent')] }));
   assert.equal(p.meta_updates['i-1'].followup_state, 'done'); assert.equal(p.writes.filter((w) => w.method === 'POST').length, 0);
   const after = oc.planFollowups(fctx(now + 86400000 * 5, { initial: initialMsg({ metadata: { ...meta, followup_state: 'done' } }) }));
   assert.equal(after.writes.length + after.ghl_ops.length, 0);
+  // si el correo 2 venció hace tiempo y no hubo borradores intermedios, solo se prepara el vigente
+  const late = oc.planFollowups(fctx(now, { initial: initialMsg({ metadata: meta }) }));
+  assert.deepEqual(late.writes.filter((w) => w.method === 'POST').map((w) => w.body.kind), ['followup_3']);
 });
 ok('se detiene si responde / rechaza / se da de baja / rebota / se descarta / Won-Lost / suprimido: cancela borradores y aprobados, borra tareas, no deja nada vivo', () => {
   const now = Date.parse('2026-10-13T14:00:00Z');
-  const meta = { followup_state: 'active', followup_tasks: { f1: { id: 'tk1' }, f2: { id: 'tk2' } } };
-  const live = [{ id: 'f-1', kind: 'followup_1', direction: 'outbound', status: 'approved', candidate_id: 'c-1' }, { id: 'f-2', kind: 'followup_2', direction: 'outbound', status: 'draft', candidate_id: 'c-1' }];
+  const meta = { followup_state: 'active', followup_tasks: { f1: { id: 'tk1' }, f2: { id: 'tk2' }, f3: { id: 'tk3' } } };
+  const live = [{ id: 'f-1', kind: 'followup_1', direction: 'outbound', status: 'approved', candidate_id: 'c-1' }, { id: 'f-2', kind: 'followup_2', direction: 'outbound', status: 'draft', candidate_id: 'c-1' }, { id: 'f-3', kind: 'followup_3', direction: 'outbound', status: 'draft', candidate_id: 'c-1' }];
   const inb = (cls) => ({ id: 'in-1', direction: 'inbound', classification: cls, candidate_id: 'c-1' });
   const cases = [['respondio', { others: [...live, inb('reply')] }], ['rechazo', { others: [...live, inb('decline')] }], ['baja', { others: [...live, inb('unsubscribe')] }], ['rebote', { others: [...live, inb('bounce')] }], ['descartado', { others: live, cand: cand({ status: 'discarded' }) }], ['oportunidad_won', { others: live, closed: { O1: 'won' } }], ['oportunidad_lost', { others: live, closed: { O1: 'lost' } }], ['suprimido', { others: live, suppression: [{ email: 'dra@clinicarica.cl', reason: 'do_not_contact' }] }]];
   for (const [why, o] of cases) {
     const p = oc.planFollowups(fctx(now, { initial: initialMsg({ metadata: meta }), ...o }));
     assert.equal(p.meta_updates['i-1'].followup_state, 'stopped:' + why, why);
-    assert.equal(p.writes.filter((w) => w.method === 'PATCH' && w.body.status === 'cancelled').length, 2, why);
-    assert.deepEqual(p.ghl_ops.map((x) => x.kind + ':' + x.url.split('/').pop()), ['task_delete:tk1', 'task_delete:tk2'], why);
+    assert.equal(p.writes.filter((w) => w.method === 'PATCH' && w.body.status === 'cancelled').length, 3, why);
+    assert.deepEqual(p.ghl_ops.map((x) => x.kind + ':' + x.url.split('/').pop()), ['task_delete:tk1', 'task_delete:tk2', 'task_delete:tk3'], why);
     assert.equal(p.writes.filter((w) => w.method === 'POST').length, 0, why);
     assert.ok(p.writes.some((w) => w.path.startsWith('prospect_candidates') && w.body.next_action_at === null), why);
   }
@@ -320,16 +346,16 @@ ok('se detiene si responde / rechaza / se da de baja / rebota / se descarta / Wo
 });
 ok('finalizeFollowups: guarda los ids de las tareas creadas, marca borradas, y un fallo de GHL no registra una tarea inexistente', () => {
   const plan = oc.planFollowups(fctx(T0 + 3600000));
-  const fin = oc.finalizeFollowups(plan, [{ statusCode: 201, body: { task: { id: 'ta' } } }, { statusCode: 201, body: { id: 'tb' } }], { now: T0 });
+  const fin = oc.finalizeFollowups(plan, [{ statusCode: 201, body: { task: { id: 'ta' } } }, { statusCode: 201, body: { id: 'tb' } }, { statusCode: 201, body: { id: 'tc' } }], { now: T0 });
   const mw = fin.writes.find((w) => w.path === 'outreach_messages?id=eq.i-1');
-  assert.equal(mw.body.metadata.followup_tasks.f1.id, 'ta'); assert.equal(mw.body.metadata.followup_tasks.f2.id, 'tb'); assert.equal(mw.body.metadata.followup_state, 'active'); assert.equal(fin.errors.length, 0);
-  const bad = oc.finalizeFollowups(plan, [{ statusCode: 201, body: { task: { id: 'ta' } } }, { statusCode: 500, body: {} }], { now: T0 });
+  assert.equal(mw.body.metadata.followup_tasks.f1.id, 'ta'); assert.equal(mw.body.metadata.followup_tasks.f2.id, 'tb'); assert.equal(mw.body.metadata.followup_tasks.f3.id, 'tc'); assert.equal(mw.body.metadata.followup_state, 'active'); assert.equal(fin.errors.length, 0);
+  const bad = oc.finalizeFollowups(plan, [{ statusCode: 201, body: { task: { id: 'ta' } } }, { statusCode: 500, body: {} }, { statusCode: 201, body: { id: 'tc' } }], { now: T0 });
   const mb = bad.writes.find((w) => w.path === 'outreach_messages?id=eq.i-1');
-  assert.ok(mb.body.metadata.followup_tasks.f1 && !mb.body.metadata.followup_tasks.f2); assert.equal(bad.errors.length, 1);
-  const stop = oc.planFollowups(fctx(T0 + 86400000, { initial: initialMsg({ metadata: { followup_state: 'active', followup_tasks: { f1: { id: 'tk1' }, f2: { id: 'tk2' } } } }), others: [{ id: 'in', direction: 'inbound', classification: 'reply', candidate_id: 'c-1' }] }));
-  const fs2 = oc.finalizeFollowups(stop, [{ statusCode: 200, body: {} }, { statusCode: 200, body: {} }], { now: T0 });
+  assert.ok(mb.body.metadata.followup_tasks.f1 && !mb.body.metadata.followup_tasks.f2 && mb.body.metadata.followup_tasks.f3); assert.equal(bad.errors.length, 1);
+  const stop = oc.planFollowups(fctx(T0 + 86400000, { initial: initialMsg({ metadata: { followup_state: 'active', followup_tasks: TASKS3 } }), others: [{ id: 'in', direction: 'inbound', classification: 'reply', candidate_id: 'c-1' }] }));
+  const fs2 = oc.finalizeFollowups(stop, [{ statusCode: 200, body: {} }, { statusCode: 200, body: {} }, { statusCode: 200, body: {} }], { now: T0 });
   const ms = fs2.writes.find((w) => w.path === 'outreach_messages?id=eq.i-1');
-  assert.ok(ms.body.metadata.followup_tasks.f1.deleted && ms.body.metadata.followup_tasks.f2.deleted); assert.equal(ms.body.metadata.followup_state, 'stopped:respondio');
+  assert.ok(ms.body.metadata.followup_tasks.f1.deleted && ms.body.metadata.followup_tasks.f2.deleted && ms.body.metadata.followup_tasks.f3.deleted); assert.equal(ms.body.metadata.followup_state, 'stopped:respondio');
 });
 ok('pickDue: un seguimiento no sale si hubo otro correo al mismo prospecto hace menos de 48 h (los demás tipos no se ven afectados)', () => {
   const cb = { 'c-1': cand() };
@@ -341,7 +367,7 @@ ok('pickDue: un seguimiento no sale si hubo otro correo al mismo prospecto hace 
 ok('followupOverview: estado por prospecto para Hermes', () => {
   const init = initialMsg({ metadata: { followup_state: 'active' } });
   const v = oc.followupOverview([init], { 'c-1': [init, { id: 'f-1', kind: 'followup_1', direction: 'outbound', status: 'draft' }] }, { 'c-1': cand() }, CFG, Date.parse('2026-10-13T14:00:00Z'));
-  assert.equal(v[0].company, 'Clínica Rica'); assert.equal(v[0].followup_1.due_now, true); assert.equal(v[0].followup_1.message.status, 'draft'); assert.equal(v[0].followup_2.due_now, false); assert.equal(v[0].replied, false);
+  assert.equal(v[0].company, 'Clínica Rica'); assert.equal(v[0].followup_1.due_now, true); assert.equal(v[0].followup_1.message.status, 'draft'); assert.equal(v[0].followup_2.due_now, false); assert.equal(v[0].followup_3.due_now, false); assert.equal(v[0].replied, false);
 });
 
 ok('asuntos: primera letra en mayúscula en correos iniciales (guardar y editar); seguimientos conservan el original', () => {

@@ -632,6 +632,23 @@ ok('v3 · aviso «ideas listas»: una vez por corrida real con ideas; nada si no
   assert.ok(ev.notify.some((x) => x.key === 'run:r9' && /3 ideas listas/.test(x.meta.notice)));
 });
 
+ok('compuerta del Radar: meta diaria por rubro (5 corredoras, 5 clínicas, 5 casinos); descuenta lo que el radar ya trajo hoy y se salta al cumplirla', () => {
+  const nuevo = (name, industry, i) => ({ id: 'n' + name + i, company_name: name + i, industry, source_name: 'Prospect Radar v2', status: 'contacted', ghl_stage: 'contactado', created_at: iso(2 * H) });
+  const many = (k, name, industry) => Array.from({ length: k }, (_, i) => nuevo(name, industry, i));
+  let g = oc.radarGate(base({ candidates: [] }));
+  assert.equal(g.mode, 'import'); assert.deepEqual(g.need, { corredoras: 5, clinicas: 5, casinos: 5 }); assert.equal(g.max_imports, 5);
+  g = oc.radarGate(base({ candidates: [...many(5, 'Corredora ', 'corredoras'), ...many(3, 'Clinica ', 'clinicas'), ...many(1, 'Casino ', 'casinos_colegios')] }));
+  assert.deepEqual(g.need, { corredoras: 0, clinicas: 2, casinos: 4 }); assert.match(g.reason, /faltan hoy: corredoras 0, clínicas 2, casinos 4/);
+  g = oc.radarGate(base({ candidates: [...many(5, 'Corredora ', 'corredoras'), ...many(5, 'Clinica ', 'clinicas'), ...many(4, 'Casino ', 'casinos_empresas')] }));
+  assert.equal(g.max_imports, 1, 'solo queda 1 por traer'); assert.equal(g.need.casinos, 1);
+  g = oc.radarGate(base({ candidates: [...many(5, 'Corredora ', 'corredoras'), ...many(5, 'Clinica ', 'clinicas'), ...many(2, 'Casino ', 'casinos_colegios'), ...many(3, 'Alimentos ', 'casinos_empresas')] }));
+  assert.equal(g.mode, 'skip'); assert.match(g.reason, /meta del día cumplida/);
+  // lo de otras fuentes o de otros días no cuenta; los rubros fuera de foco tampoco
+  const viejo = { ...nuevo('Corredora ', 'corredoras', 'v'), created_at: iso(3 * D) };
+  const otraFuente = { ...nuevo('Clinica ', 'clinicas', 'o'), source_name: 'Leads Pro' };
+  const fuera = nuevo('Transportes ', 'Transporte de carga', 'f');
+  g = oc.radarGate(base({ candidates: [viejo, otraFuente, fuera] })); assert.deepEqual(g.need, { corredoras: 5, clinicas: 5, casinos: 5 });
+});
 ok('pieza descartada con ghl_status=failed ya no cuenta como falla de publicación (ni pone Content Engine en rojo ni alerta)', () => {
   const dead = { id: 'dx', topic: 'Descartada', channel: 'linkedin_page', status: 'discarded', ghl_status: 'failed', ghl_approval_status: 'approved', scheduled_at: iso(8 * D) };
   const live = { id: 'fx', topic: 'Falló de verdad', channel: 'linkedin_page', status: 'failed', ghl_status: 'failed', scheduled_at: iso(2 * H) };

@@ -70,7 +70,7 @@ export function oaValidate(b) {
     }
     if (x.followup_days != null) {
       const d = Array.isArray(x.followup_days) ? x.followup_days.map(Number) : [];
-      if (d.length !== 2 || !d.every((v) => Number.isInteger(v) && v >= 1 && v <= 30) || d[0] >= d[1]) return { ok: false, error: 'dias_invalidos', message: 'Los seguimientos son 2 números de días hábiles, el segundo mayor (ej.: 3 y 7), entre 1 y 30.' };
+      if (d.length !== 3 || !d.every((v) => Number.isInteger(v) && v >= 1 && v <= 40) || d[0] >= d[1] || d[1] >= d[2]) return { ok: false, error: 'dias_invalidos', message: 'Los seguimientos son 3 números de días hábiles, cada uno mayor que el anterior (ej.: 4, 9 y 18), entre 1 y 40.' };
       set.followup_days = d;
     }
     if (x.funnel_min_sample != null) {
@@ -187,7 +187,7 @@ export function oaReads(req, sb) {
     add('messages', 'outreach_messages?direction=eq.outbound&select=id,candidate_id,company_name,kind,to_email,subject,body,status,content_hash,created_at,updated_at,approved_by,approved_at,scheduled_for,sent_at,error,metadata,edited_by_christian_at&order=created_at.desc&limit=150');
     add('candidates', 'prospect_candidates?status=in.(in_ghl,accepted,contacted,discarded)&select=id,company_name,status,band,priority_score,ghl_stage,last_contact_channel,channel_state,domain,contact:canonical->contact,evidence_urls:canonical->evidence_urls,angle:canonical->>outreach_angle,quote:canonical->evidence_quotes->0->>quote&order=priority_score.desc&limit=400');
     add('seqdone', 'outreach_messages?direction=eq.outbound&kind=eq.initial&status=eq.sent&metadata-%3E%3Efollowup_state=eq.done&select=candidate_id,kind,status,sent_at,metadata&limit=500');
-    add('seqf2', 'outreach_messages?direction=eq.outbound&kind=eq.followup_2&status=eq.sent&select=candidate_id,kind,status,sent_at&limit=500');
+    add('seqf3', 'outreach_messages?direction=eq.outbound&kind=eq.followup_3&status=eq.sent&select=candidate_id,kind,status,sent_at&limit=500');
     add('suppression', 'outreach_suppression?select=email&limit=2000');
     add('config', 'outreach_config?id=eq.1&select=mode,paused,daily_cap,window_start,window_end,tz,linkedin_mode,linkedin_list_id,linkedin_campaign_id,linkedin_daily_cap');
   } else if (req.action.startsWith('email_')) {
@@ -312,7 +312,7 @@ export function oaOverview(R, nowMs) {
   const messages = R.messages || [];
   const emailToday = messages.filter((m) => m.status === 'sent' && m.sent_at && oaDay(Date.parse(m.sent_at), tz) === today).length;
   return { ok: true, action: 'overview', generated_at: new Date(nowMs).toISOString(), email: { mode: cfg.mode || 'off', paused: cfg.paused === true, cap: Number(cfg.daily_cap) || 0, sent_today: emailToday, window: (cfg.window_start || '09:00') + '–' + (cfg.window_end || '17:30'), cards: oaEmailCards(messages, R.candidates, R.suppression) },
-    linkedin: oaLinkedinData(R.candidates, cfg, nowMs, emailSequenceDoneIds((R.seqdone || []).concat(R.seqf2 || [], R.messages || []), nowMs, 2)) };
+    linkedin: oaLinkedinData(R.candidates, cfg, nowMs, emailSequenceDoneIds((R.seqdone || []).concat(R.seqf3 || [], R.messages || []), nowMs, 2)) };
 }
 
 /** El mismo error que devuelve el motor real, sin éxito falso. */
@@ -485,7 +485,7 @@ export function oaStep(req, R, results, nowMs, env) {
     const notes = [];
     if (s.daily_cap != null) notes.push('tope ' + (cur.daily_cap != null ? cur.daily_cap + ' → ' : '') + s.daily_cap + ' correos/día');
     if (s.window_start) notes.push('ventana ' + s.window_start + '–' + s.window_end);
-    if (s.followup_days) notes.push('seguimientos a +' + s.followup_days[0] + ' y +' + s.followup_days[1] + ' días hábiles');
+    if (s.followup_days) notes.push('seguimientos a +' + s.followup_days.join(', +') + ' días hábiles');
     if (s.funnel_min_sample != null) notes.push('muestra mínima del embudo ' + s.funnel_min_sample);
     const up = s.daily_cap != null && Number(cur.daily_cap) > 0 && s.daily_cap > Number(cur.daily_cap);
     return done({ ok: true, status: 'mail_config_saved', set: s, previous: { daily_cap: cur.daily_cap != null ? cur.daily_cap : null, window_start: cur.window_start || null, window_end: cur.window_end || null, followup_days: cur.followup_days || null },

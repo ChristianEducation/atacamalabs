@@ -6,6 +6,7 @@
  */
 
 import { cmNormCold, coldLint, coldSummary, coldHistory } from './coldmail-core.mjs';
+import { verticalOf, followupBody } from './followup-templates.mjs';
 
 export function stripAcc(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, ''); }
 export function normEmail(e) { return String(e == null ? '' : e).trim().toLowerCase().replace(/^mailto:/, ''); }
@@ -170,17 +171,16 @@ export function validateDraft(d, ctx) {
 }
 
 /**
- * Plantilla de seguimiento según Playbook §17 (el humano la edita y aprueba; nunca se envía sola).
- * Seguimiento 1 valida el dolor con una pregunta simple; seguimiento 2 cierra el hilo y deja la puerta abierta.
- * No promete demos, ejemplos, videos, propuestas ni reuniones. La firma la agrega el sistema al enviar.
- * El seguimiento 1 es una base genérica: conviene adaptar la pregunta al proceso del prospecto.
+ * Plantilla de seguimiento por rubro (foco octubre 2026, Playbook §17 revisado). Secuencia: seguimiento 1 = el dolor del rubro, 2 = valor práctico, 3 = cierre del hilo.
+ * Se escribe en el MISMO hilo (asunto original con «Re:»), el humano la edita y aprueba; nunca se envía sola. No promete demos, ejemplos, propuestas, precios ni reuniones.
+ * La firma la agrega el sistema al enviar. Los textos viven en followup-templates.mjs (verticalOf + followupBody).
  */
 export function followupTemplate(kind, cand, firstSubject) {
   const co = (cand && cand.company_name) || 'su empresa';
   const subj = 'Re: ' + String(firstSubject || 'Atacama Labs').replace(/^re:\s*/i, ''); // exacto como el original: así el hilo no se rompe
   const greet = 'Estimado equipo de ' + co + ',\n\n';
-  if (kind === 'followup_2') return { subject: subj, body: greet + 'Cierro el hilo por acá para no insistir. Si en algún momento quieren revisar esta u otra parte del proceso que siga siendo repetitiva, encantado de conversarlo.\n\nSaludos,' };
-  return { subject: subj, body: greet + 'Retomo esto por si quedó abajo en la bandeja.\n\n¿Ese trabajo previo hoy les quita tiempo, o es una parte que ya tienen bastante resuelta?' };
+  const k = ['followup_1', 'followup_2', 'followup_3'].includes(kind) ? kind : 'followup_1';
+  return { subject: subj, body: greet + followupBody(k, verticalOf(cand)) };
 }
 
 export function escapeHtml(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
@@ -252,7 +252,7 @@ export function preview(m) { return { id: m.id, kind: m.kind, to: m.to_email, su
 export function planDraft(req, ctx) {
   const now = new Date(ctx.now).toISOString();
   const cand = ctx.candidate;
-  const kind = ['initial', 'followup_1', 'followup_2', 'reply'].includes(req.kind) ? req.kind : 'initial';
+  const kind = ['initial', 'followup_1', 'followup_2', 'followup_3', 'reply'].includes(req.kind) ? req.kind : 'initial';
   const fail = (code, message) => ({ response: { ok: false, status: 'error', error: code, message }, writes: [] });
   if (!cand) return fail('candidato_no_encontrado', 'El prospecto no está guardado en Atacama OS: impórtalo primero.');
   if (cand.status === 'discarded') return fail('descartado', 'El prospecto está descartado: no se le escribe.');
@@ -519,14 +519,14 @@ export function planSuppress(req, ctx) {
 
 // =====================================================================================================================
 // Follow-up comercial (Bloque 1, parte 2)
-// Reglas: 1er seguimiento a +3 días hábiles y 2º a +7 días hábiles desde el PRIMER envío; después parar. Cada seguimiento es un borrador
+// Reglas: seguimientos a +4, +9 y +18 días hábiles desde el PRIMER envío (dolor → valor → cierre del hilo); después parar. Cada seguimiento es un borrador
 // que Christian aprueba (nunca se autoenvía) + una tarea en GHL. Se cancela todo si hay respuesta, rebote, baja, descarte o Won/Lost.
 // =====================================================================================================================
 
 export function followupSlots(sentMs, cfg) {
-  const d = (cfg && Array.isArray(cfg.followup_days) && cfg.followup_days.length >= 2 ? cfg.followup_days : [3, 7]).map(Number);
+  const d = (cfg && Array.isArray(cfg.followup_days) && cfg.followup_days.length >= 3 ? cfg.followup_days : [4, 9, 18]).map(Number);
   const tz = (cfg && cfg.tz) || 'America/Santiago';
-  return [{ kind: 'followup_1', n: 1, days: d[0], due: Date.parse(addBusinessDaysIso(sentMs, d[0], tz)) }, { kind: 'followup_2', n: 2, days: d[1], due: Date.parse(addBusinessDaysIso(sentMs, d[1], tz)) }];
+  return [1, 2, 3].map((n) => ({ kind: 'followup_' + n, n, days: d[n - 1], due: Date.parse(addBusinessDaysIso(sentMs, d[n - 1], tz)) }));
 }
 
 /** Por qué se detiene la secuencia de un candidato (o null si sigue). */
@@ -580,9 +580,9 @@ export function planFollowups(ctx) {
     if (!Number.isFinite(sentMs)) continue;
     const reason = followupStopReason(cand, m.to_email, msgs, ctx.suppression, ctx.closed);
     if (reason) {
-      msgs.filter((x) => x.direction === 'outbound' && ['followup_1', 'followup_2'].includes(x.kind) && ['draft', 'approved'].includes(x.status)).forEach((x) => writes.push({ method: 'PATCH', path: 'outreach_messages?id=eq.' + x.id + '&status=in.(draft,approved)', body: { status: 'cancelled', confirm_code: null, error: 'Seguimiento detenido: ' + reason, updated_at: iso } }));
+      msgs.filter((x) => x.direction === 'outbound' && ['followup_1', 'followup_2', 'followup_3'].includes(x.kind) && ['draft', 'approved'].includes(x.status)).forEach((x) => writes.push({ method: 'PATCH', path: 'outreach_messages?id=eq.' + x.id + '&status=in.(draft,approved)', body: { status: 'cancelled', confirm_code: null, error: 'Seguimiento detenido: ' + reason, updated_at: iso } }));
       const tasks = meta.followup_tasks || {};
-      ['f1', 'f2'].forEach((k) => { if (tasks[k] && tasks[k].id && !tasks[k].deleted) ghl_ops.push({ kind: 'task_delete', msg_id: m.id, slot: k, method: 'DELETE', url: ghl.base + '/locations/' + ghl.locationId + '/tasks/' + tasks[k].id, body: null }); });
+      ['f1', 'f2', 'f3'].forEach((k) => { if (tasks[k] && tasks[k].id && !tasks[k].deleted) ghl_ops.push({ kind: 'task_delete', msg_id: m.id, slot: k, method: 'DELETE', url: ghl.base + '/locations/' + ghl.locationId + '/tasks/' + tasks[k].id, body: null }); });
       setMeta(m, { followup_state: 'stopped:' + reason, followup_stopped_at: iso });
       if (cand) writes.push({ method: 'PATCH', path: 'prospect_candidates?id=eq.' + cand.id, body: { next_action_at: null, updated_at: iso } });
       actions.push({ company: co, action: 'detenido', reason });
@@ -601,8 +601,15 @@ export function planFollowups(ctx) {
       });
       setMeta(m, { followup_tasks: tasks, ...(meta.followup_state ? {} : { followup_state: 'active', followup_started_at: iso }) });
     } else if (!meta.followup_state) setMeta(m, { followup_state: 'active', followup_started_at: iso });
+    // Ciclos que ya tenían tareas f1/f2 (secuencia anterior de 3 correos): se agrega solo la tarea del 3.er seguimiento (cierre).
+    if (meta.followup_tasks && !meta.followup_tasks.f3 && cand && cand.ghl_contact_id && slots[2]) {
+      const s3 = slots[2], title3 = followupTitle(3, co);
+      ghl_ops.push({ kind: 'task_create', msg_id: m.id, slot: 'f3', method: 'POST', url: ghl.base + '/contacts/' + cand.ghl_contact_id + '/tasks',
+        body: { title: title3, body: 'Cierre del hilo con ' + co + ' (día ' + s3.days + ' hábil desde el primer correo, sin respuesta). El borrador queda listo para tu aprobación en /ops. La tarea se cancela sola si responde, rebota, se da de baja o se descarta.', dueDate: new Date(s3.due).toISOString(), completed: false, assignedTo: ghl.userId } });
+    }
     const byKind = (k) => msgs.filter((x) => x.direction === 'outbound' && x.kind === k);
-    const f1 = byKind('followup_1'), f2 = byKind('followup_2');
+    const KINDS = ['followup_1', 'followup_2', 'followup_3'];
+    const by = KINDS.map(byKind);
     const live = (arr) => arr.find((x) => ['draft', 'approved', 'sending'].includes(x.status));
     const draftFor = (kind, history) => {
       const r = planDraft({ kind, by: 'Atacama OS · seguimiento' }, { now, candidate: cand, history, suppression: ctx.suppression, new_id: ctx.newId(), config: cfg });
@@ -610,21 +617,21 @@ export function planFollowups(ctx) {
       actions.push({ company: co, action: 'borrador_no_creado_' + kind, why: r.response.message || r.response.error });
       return false;
     };
-    const s1 = slots[0], s2 = slots[1];
-    if (now >= s2.due) {
-      if (f2.length === 0) {
-        const f1live = live(f1);
-        if (!(f1live && f1live.status !== 'draft')) {
-          if (f1live) writes.push({ method: 'PATCH', path: 'outreach_messages?id=eq.' + f1live.id + '&status=eq.draft', body: { status: 'cancelled', error: 'Seguimiento 1 caducó sin aprobarse: se prepara el 2', updated_at: iso } });
-          draftFor('followup_2', f1live ? msgs.filter((x) => x.id !== f1live.id) : msgs);
-        }
+    // Último paso ya vencido (si el primero venció hace tiempo y no hubo borradores intermedios, solo se prepara el vigente).
+    let k = -1;
+    slots.forEach((s, i) => { if (now >= s.due) k = i; });
+    if (k < 0) { if (cand) writes.push({ method: 'PATCH', path: 'prospect_candidates?id=eq.' + cand.id, body: { next_action_at: new Date(slots[0].due).toISOString(), updated_at: iso } }); continue; }
+    if (by[k].length === 0) {
+      const prevLive = k > 0 ? live(by[k - 1]) : null;
+      if (!(prevLive && prevLive.status !== 'draft')) {
+        if (prevLive) writes.push({ method: 'PATCH', path: 'outreach_messages?id=eq.' + prevLive.id + '&status=eq.draft', body: { status: 'cancelled', error: 'Seguimiento ' + k + ' caducó sin aprobarse: se prepara el ' + (k + 1), updated_at: iso } });
+        draftFor(KINDS[k], prevLive ? msgs.filter((x) => x.id !== prevLive.id) : msgs);
       }
-      const f2done = f2.length > 0 && !live(f2);
-      if (f2done) { setMeta(m, { followup_state: 'done', followup_done_at: iso }); if (cand) writes.push({ method: 'PATCH', path: 'prospect_candidates?id=eq.' + cand.id, body: { next_action_at: null, updated_at: iso } }); actions.push({ company: co, action: 'secuencia_terminada' }); }
-    } else if (now >= s1.due) {
-      if (f1.length === 0) draftFor('followup_1', msgs);
-      if (cand) writes.push({ method: 'PATCH', path: 'prospect_candidates?id=eq.' + cand.id, body: { next_action_at: new Date(s2.due).toISOString(), updated_at: iso } });
-    } else if (cand) writes.push({ method: 'PATCH', path: 'prospect_candidates?id=eq.' + cand.id, body: { next_action_at: new Date(s1.due).toISOString(), updated_at: iso } });
+    }
+    if (k === slots.length - 1) {
+      const lastDone = by[k].length > 0 && !live(by[k]);
+      if (lastDone) { setMeta(m, { followup_state: 'done', followup_done_at: iso }); if (cand) writes.push({ method: 'PATCH', path: 'prospect_candidates?id=eq.' + cand.id, body: { next_action_at: null, updated_at: iso } }); actions.push({ company: co, action: 'secuencia_terminada' }); }
+    } else if (cand) writes.push({ method: 'PATCH', path: 'prospect_candidates?id=eq.' + cand.id, body: { next_action_at: new Date(slots[k + 1].due).toISOString(), updated_at: iso } });
   }
   return { ghl_ops, writes, actions, meta_updates };
 }
@@ -678,6 +685,7 @@ export function followupOverview(initials, byCandidate, candidates, cfg, nowMs) 
     const replied = msgs.some((x) => x.direction === 'inbound' && ['reply', 'decline', 'unsubscribe', 'bounce'].includes(x.classification));
     return { company: cand.company_name || m.company_name, to: m.to_email, first_sent_at: m.sent_at, state: meta.followup_state || 'pendiente', replied,
       followup_1: { due: slots[0] ? new Date(slots[0].due).toISOString() : null, due_now: slots[0] ? nowMs >= slots[0].due : false, message: pick('followup_1') },
-      followup_2: { due: slots[1] ? new Date(slots[1].due).toISOString() : null, due_now: slots[1] ? nowMs >= slots[1].due : false, message: pick('followup_2') } };
+      followup_2: { due: slots[1] ? new Date(slots[1].due).toISOString() : null, due_now: slots[1] ? nowMs >= slots[1].due : false, message: pick('followup_2') },
+      followup_3: { due: slots[2] ? new Date(slots[2].due).toISOString() : null, due_now: slots[2] ? nowMs >= slots[2].due : false, message: pick('followup_3') } };
   });
 }

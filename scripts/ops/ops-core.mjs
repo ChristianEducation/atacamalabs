@@ -9,6 +9,7 @@ import { edPlan } from '../content/editorial-core.mjs';
 import { growthResourceRank } from '../content/growth-core.mjs';
 import { rfAuthority } from '../content/resource-factory-core.mjs';
 import { prepSummary } from '../outreach/prep-core.mjs';
+import { verticalOf } from '../outreach/followup-templates.mjs';
 import { mvHealth } from '../outreach/mail-view-core.mjs';
 import { hrRules } from './health-rules.mjs';
 
@@ -126,7 +127,7 @@ export function summarizeCommercial(d) {
     const meta = m.metadata || {};
     if (/^(stopped|done)/.test(String(meta.followup_state || ''))) continue;
     const ft = meta.followup_tasks || {};
-    for (const [kind, slot] of [['followup_1', 'f1'], ['followup_2', 'f2']]) {
+    for (const [kind, slot] of [['followup_1', 'f1'], ['followup_2', 'f2'], ['followup_3', 'f3']]) {
       const due = ft[slot] && ft[slot].due ? Date.parse(ft[slot].due) : null;
       if (!due) continue;
       const mine = msgs.filter((x) => x.candidate_id === m.candidate_id && x.kind === kind && x.direction === 'outbound');
@@ -393,7 +394,18 @@ export function radarGate(d) {
   if (week >= 15) return { mode: 'skip', max_imports: 0, reason: 'tope semanal de corridas alcanzado (' + week + ' de 15)', ...base };
   if (backlog >= maxUnactioned) return { mode: 'skip', max_imports: 0, reason: 'hay ' + backlog + ' Investigados válidos sin próxima acción (tope ' + maxUnactioned + '): primero se preparan', ...base };
   if (pending >= maxPending) return { mode: 'skip', max_imports: 0, reason: 'hay ' + pending + ' mensajes esperando tu revisión (tope ' + maxPending + '): primero se revisan', ...base };
-  return { mode: 'import', max_imports: Math.max(1, Math.min(5, maxUnactioned - backlog)), reason: 'ok (' + backlog + ' sin acción, ' + pending + ' por revisar, ' + today + ' corridas hoy, ' + week + ' esta semana)', ...base };
+  // Foco 2 semanas (oct–nov 2026): meta diaria de prospectos NUEVOS del radar por rubro. casinos = colegios + empresas de alimentación.
+  const goal = Number(d.focus_goal) > 0 ? Number(d.focus_goal) : 5;
+  const have = { corredoras: 0, clinicas: 0, casinos: 0 };
+  (d.candidates || []).forEach((c) => {
+    if (!/radar/i.test(String(c.source_name || '')) || !c.created_at || dayOf(Date.parse(c.created_at)) !== dayOf(now)) return;
+    const v = verticalOf(c);
+    if (v === 'corredoras' || v === 'clinicas') have[v]++; else if (v === 'casinos_colegios' || v === 'casinos_empresas') have.casinos++;
+  });
+  const need = { corredoras: Math.max(0, goal - have.corredoras), clinicas: Math.max(0, goal - have.clinicas), casinos: Math.max(0, goal - have.casinos) };
+  const needTotal = need.corredoras + need.clinicas + need.casinos;
+  if (needTotal === 0) return { mode: 'skip', max_imports: 0, reason: 'meta del día cumplida (' + goal + ' por rubro: corredoras, clínicas y casinos)', need, ...base };
+  return { mode: 'import', max_imports: Math.max(1, Math.min(5, maxUnactioned - backlog, needTotal)), need, reason: 'ok (' + backlog + ' sin acción, ' + pending + ' por revisar, ' + today + ' corridas hoy, ' + week + ' esta semana; faltan hoy: corredoras ' + need.corredoras + ', clínicas ' + need.clinicas + ', casinos ' + need.casinos + ')', ...base };
 }
 
 /**

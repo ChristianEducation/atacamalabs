@@ -118,7 +118,8 @@ def gate(kind):
     extra = ""
     if mode != "skip":
         if kind == "radar":
-            extra = " max_imports=%s" % r.get("max_imports")
+            nd = r.get("need") or {}
+            extra = " max_imports=%s faltan_hoy: corredoras=%s clinicas=%s casinos=%s" % (r.get("max_imports"), nd.get("corredoras"), nd.get("clinicas"), nd.get("casinos"))
         elif kind == "prep":
             extra = " count=%s max_items=%s" % (r.get("count"), r.get("max_items"))
         elif kind in ("content", "rss"):

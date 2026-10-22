@@ -94,7 +94,8 @@ export function cmNormCold(c) {
  */
 export function coldLint(d, peers, cold) {
   const kind = String((d && d.kind) || 'initial');
-  const isFollow = kind === 'followup_1' || kind === 'followup_2';
+  const isFollow = kind === 'followup_1' || kind === 'followup_2' || kind === 'followup_3';
+  const isValueFollow = kind === 'followup_1' || kind === 'followup_2'; // dolor y valor (100–170 palabras); el 3 solo cierra el hilo
   const subject = String((d && d.subject) || '').trim();
   const body = String((d && d.body) || '').trim();
   const sn = cmNorm(subject), bn = cmNorm(body);
@@ -186,12 +187,13 @@ export function coldLint(d, peers, cold) {
   const atcSent = parts.sentences.filter((s) => /(atacama|armamos|implementamos|ayudamos a|nuestros agentes|trabajamos con empresas|somos una)/.test(cmNorm(s)) && !(/^(soy|me llamo) [^.]{0,40}atacama labs[.!]?$/.test(cmNorm(s)) && cmWords(s).length <= 9));
   const atcWords = atcSent.reduce((n, s) => n + cmWords(s).length, 0);
   if (atcSent.length > 1 || (atcSent.length === 1 && nWords > 0 && atcWords / nWords > 0.4)) warn('explica_atacama', 'Explica demasiado a Atacama Labs (' + atcSent.length + ' oraciones): el correo es sobre el prospecto, no sobre nosotros.', atcSent.length > 1 ? 10 : 6);
-  if (nWords > 130) warn('largo', 'Tiene ' + nWords + ' palabras: el playbook apunta a 70–120.', 10);
-  else if (nWords > 120) warn('largo', 'Tiene ' + nWords + ' palabras: apunta a 70–120.', 4);
+  if (isValueFollow ? nWords > 190 : nWords > 130) warn('largo', 'Tiene ' + nWords + ' palabras: el playbook apunta a 70–120.', 10);
+  else if (isValueFollow ? nWords > 170 : nWords > 120) warn('largo', 'Tiene ' + nWords + ' palabras: apunta a 70–120.', 4);
+  else if (isValueFollow && nWords < 80) warn('followup_corto', 'Tiene solo ' + nWords + ' palabras: los seguimientos 1 y 2 deben aportar contexto o valor (100–170 palabras), no solo retomar.', 8);
   else if (!isFollow && nWords < 40) warn('muy_corto', 'Tiene solo ' + nWords + ' palabras: falta contexto para que tenga sentido.', 8);
   const fr = parts.sentences.filter((s) => /(repite|a mano|manual|se pierde|se pierden|demora|tarda|cuello de botella|duplica|persigue|incomplet|desordenad|fuera de horario|sin respuesta|responder lo mismo)/.test(cmNorm(s))).length;
   const conn = (bn.match(/\b(ademas|tambien|por otro lado|por otra parte|asimismo|por ultimo)\b/g) || []).length;
-  if (fr >= 3 || conn >= 2) warn('varios_problemas', 'Toca más de un problema: elige uno solo.', fr >= 3 ? 8 : 4);
+  if (!isValueFollow && (fr >= 3 || conn >= 2)) warn('varios_problemas', 'Toca más de un problema: elige uno solo.', fr >= 3 ? 8 : 4);
 
   // ---- tono
   const buzz = bn.match(/\b(sinergia|disruptiv\w*|revolucion\w*|transformacion digital|transformar (tu|su) (empresa|negocio)|solucion integral|innovador\w*|de vanguardia|lider en|potenciar|potencia (tu|su) (negocio|empresa)|llevar (tu|su) (negocio|empresa) al siguiente nivel|optimizar procesos|ecosistema|360|a la medida de sus necesidades|de ultima generacion|impulsar su crecimiento)\b/g) || [];
@@ -208,8 +210,8 @@ export function coldLint(d, peers, cold) {
   if (/(me permito|quisiera presentar|tengo el agrado|le escribo para presentar)/.test(bn)) ai.push('fórmula de carta formal');
   if ((body.match(/—/g) || []).length >= 2 || /[\u{1F300}-\u{1FAFF}]/u.test(body)) ai.push('rayas largas/emojis');
   if (ai.length) warn('tono_ia', 'Suena generado: ' + ai.join('; ') + '.', Math.min(10, 5 * ai.length));
-  if (isFollow && /\b(demo|video|propuesta|cotizacion|presentacion|esquema|ejemplo)\b/.test(bn)) warn('followup_promete', 'El seguimiento menciona demo/ejemplo/video/propuesta: el Playbook §17 prohíbe prometer algo que no esté realmente preparado.', 14);
-  if (isFollow && /\b(armamos agentes|implementamos|nuestros agentes|nuestra solucion)\b/.test(bn)) warn('followup_vuelve_a_vender', 'El seguimiento vuelve a presentar la solución: el Playbook §17 pide solo retomar y preguntar (S1) o cerrar con cortesía (S2).', 10);
+  if (isFollow && /\b(demo|video|propuesta|cotizacion|presentacion|esquema)\b|(?<!por )\bejemplo\b/.test(bn)) warn('followup_promete', 'El seguimiento menciona demo/ejemplo/video/propuesta: el Playbook §17 prohíbe prometer algo que no esté realmente preparado.', 14);
+  if (kind === 'followup_3' && /\b(armamos agentes|implementamos|nuestros agentes|nuestra solucion)\b/.test(bn)) warn('followup_vuelve_a_vender', 'El seguimiento vuelve a presentar la solución: el Playbook §17 pide solo retomar y preguntar (S1) o cerrar con cortesía (S2).', 10);
 
   // ---- personalización real (evidencia usada / señal concreta)
   let used = false;
@@ -247,8 +249,9 @@ export function coldLint(d, peers, cold) {
   if (fr <= 1 && conn === 0 && nWords >= 30) rew('un_problema', 'Trata una sola idea.', 6);
   if (!sigRep && !(maxSim >= 0.25)) rew('diverso', 'Su estructura es distinta a la de los demás.', 6);
   if (!buzz.length && !ai.length && !/(somos una agencia|nuestra agencia|soluciones (a medida|personalizadas|integrales))/.test(bn)) rew('natural', 'Lenguaje natural, sin jerga.', 4);
-  if (kind === 'followup_1' && cta === 'question' && /\b(resuelt|quita tiempo|ya lo tienen|ya tienen)\b/.test(bn)) rew('followup_valida', 'Valida el dolor con una pregunta que admite «sí» o «ya lo tenemos resuelto» (Playbook §17).', 14);
-  if (kind === 'followup_2' && /\b(cierro|no insist|dejo el hilo|dejamos aqui)\b/.test(bn)) rew('followup_cierra', 'Cierra el hilo con educación y sin presión (Playbook §17).', 14);
+  if (isValueFollow && cta === 'question' && nWords >= 100 && nWords <= 170) rew('followup_valor', 'Seguimiento con contexto del rubro y una pregunta fácil de responder (dolor → valor).', 14);
+  if (isValueFollow && /\b(solo (para )?(saber|confirmar|preguntar)|queria saber si|reviso si|por si quedo abajo|espero que hayas|te escribo de nuevo)\b/.test(bn)) warn('followup_vacio', 'El seguimiento no aporta nada nuevo («solo para saber si viste…»): cada toque debe traer un dato, una cuenta o un patrón del rubro.', 14);
+  if (kind === 'followup_3' && /\b(cierro|no insist|dejo el hilo|dejamos aqui)\b/.test(bn)) rew('followup_cierra', 'Cierra el hilo con educación y sin presión (último correo de la secuencia).', 14);
 
   let score = 60;
   for (const r of rewards) score += r.pts;

@@ -44,8 +44,8 @@ export function splitName(name) {
 }
 
 /**
- * Prospectos cuyo ciclo de correo terminó SIN respuesta: el correo inicial enviado quedó con followup_state='done' Y existe un seguimiento 2 realmente ENVIADO
- * hace al menos `minDays` días (el planificador marca 'done' también si el borrador del 2 se canceló, por eso no basta el estado) y no queda ningún correo aprobado/en envío. Si respondió, rebotó o se dio de baja el estado es 'stopped:*' y NO entra.
+ * Prospectos cuyo ciclo de correo terminó SIN respuesta: el correo inicial enviado quedó con followup_state='done' Y existe el seguimiento 3 (cierre del hilo) realmente ENVIADO
+ * hace al menos `minDays` días (el planificador marca 'done' también si el borrador del cierre se canceló, por eso no basta el estado) y no queda ningún correo aprobado/en envío. Si respondió, rebotó o se dio de baja el estado es 'stopped:*' y NO entra.
  * Es la señal para abrir LinkedIn de forma secuencial (nunca al mismo tiempo que el correo). `msgs` = correos salientes con metadata.
  */
 export function emailSequenceDoneIds(msgs, nowMs, minDays) {
@@ -55,7 +55,7 @@ export function emailSequenceDoneIds(msgs, nowMs, minDays) {
     if (!m || !m.candidate_id) return;
     if (['approved', 'sending'].includes(m.status)) live.add(m.candidate_id);
     const meta = m.metadata || {};
-    if (m.kind === 'followup_2' && m.status === 'sent') { const t = Date.parse(m.sent_at || ''); if (Number.isFinite(t)) f2At[m.candidate_id] = Math.max(f2At[m.candidate_id] || 0, t); }
+    if (m.kind === 'followup_3' && m.status === 'sent') { const t = Date.parse(m.sent_at || ''); if (Number.isFinite(t)) f2At[m.candidate_id] = Math.max(f2At[m.candidate_id] || 0, t); }
     if (m.kind === 'initial' && m.status === 'sent' && meta.followup_state === 'done') done.add(m.candidate_id);
   });
   return [...done].filter((id) => !live.has(id) && f2At[id] && nowMs - f2At[id] >= gap);

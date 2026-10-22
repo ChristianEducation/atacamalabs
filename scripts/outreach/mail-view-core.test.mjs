@@ -8,7 +8,7 @@ const ok = (name, fn) => { try { fn(); n++; } catch (e) { console.error('FAIL', 
 const TZ = 'America/Santiago';
 const NOW = Date.parse('2026-10-20T14:00:00Z'); // martes 11:00 en Chile (en ventana)
 const iso = (ms) => new Date(ms).toISOString();
-const cfg = { mode: 'live', paused: false, daily_cap: 3, window_start: '09:00', window_end: '17:30', tz: TZ, followup_days: [3, 7], autosend_enabled: false, autosend_min_score: 80, funnel_min_sample: 2, legal_footer: 'Pie' };
+const cfg = { mode: 'live', paused: false, daily_cap: 3, window_start: '09:00', window_end: '17:30', tz: TZ, followup_days: [4, 9, 18], autosend_enabled: false, autosend_min_score: 80, funnel_min_sample: 2, legal_footer: 'Pie' };
 const out = (o) => ({ id: 'm' + Math.random().toString(36).slice(2, 8), candidate_id: 'c1', company_name: 'Empresa', direction: 'outbound', kind: 'initial', status: 'sent', to_email: 'a@b.cl', subject: 'S', body: 'B', created_at: iso(NOW - 86400000), ...o });
 const inb = (o) => ({ id: 'i' + Math.random().toString(36).slice(2, 8), candidate_id: 'c1', company_name: 'Empresa', direction: 'inbound', kind: 'other', status: 'received', classification: 'reply', created_at: iso(NOW - 3600000), body: 'Hola', ...o });
 
@@ -34,11 +34,11 @@ ok('Respuestas: clasificación legible y marca si ya hay borrador de respuesta',
   assert.equal(v.respuestas.replies[0].cls_label, 'Respuesta'); assert.equal(v.respuestas.replies[0].reply_draft, true);
   assert.equal(v.respuestas.sent[0].answer, 'Respuesta');
 });
-ok('Seguimientos: el +3 hábil se calcula del envío y se omite si respondieron', () => {
+ok('Seguimientos: el +4 hábil se calcula del envío y se omite si respondieron', () => {
   const sentAt = Date.parse('2026-10-15T14:00:00Z'); // jueves
   const v = mv.mailView({ now: NOW, cfg, msgs: [out({ sent_at: iso(sentAt) }), out({ candidate_id: 'c9', sent_at: iso(sentAt) }), inb({ candidate_id: 'c9' })], supp: [], cands: [] });
   assert.equal(v.seguimientos.upcoming.length, 1);
-  assert.equal(v.seguimientos.upcoming[0].due, '2026-10-20'); // jue + 3 hábiles = mar
+  assert.equal(v.seguimientos.upcoming[0].due, '2026-10-21'); // jue + 4 hábiles = mié
 });
 ok('Embudo: etapas acumuladas y desglose solo con muestra suficiente', () => {
   const cands = [{ id: 'c1', status: 'contacted', industry: 'Salud', ghl_stage: 'contactado' }, { id: 'c2', status: 'contacted', industry: 'Salud', ghl_stage: 'respondio' }, { id: 'c3', status: 'in_ghl', industry: 'Minería', ghl_stage: 'investigado' }];

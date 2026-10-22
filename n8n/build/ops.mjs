@@ -18,6 +18,7 @@ import * as edCore from '../../scripts/content/editorial-core.mjs';
 import * as rfCore from '../../scripts/content/resource-factory-core.mjs';
 import { growthNorm, growthResourceRank } from '../../scripts/content/growth-core.mjs';
 import * as v3Core from '../../scripts/ops/v3-core.mjs';
+import * as ftCore from '../../scripts/outreach/followup-templates.mjs';
 import * as ideasCore from '../../scripts/content/ideas-core.mjs';
 import * as tallerCore from '../../scripts/content/taller-core.mjs';
 import * as mvCore from '../../scripts/outreach/mail-view-core.mjs';
@@ -54,7 +55,7 @@ const sbApply = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRe
     headerParameters: { parameters: [{ name: 'Prefer', value: '={{ $json.prefer || "return=minimal" }}' }] }, sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full() } });
 const GH_HEADERS = [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', value: 'application/json' }];
 
-export const LIB = [...new Map([...Object.values(core), ...['linkedinOverview', 'linkedinView', 'liLabel'].map((k) => liCore[k]), ...Object.values(prepCore), ...Object.values(edCore), ...Object.values(rfCore), growthNorm, growthResourceRank, ...Object.values(v3Core), ...Object.values(ideasCore), ...Object.values(tallerCore), ...Object.values(mvCore), ...Object.values(hrCore), ...Object.values(hiCore), ...Object.values(wkCore), ...Object.values(rsCore), ...Object.values(lnCore)].filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
+export const LIB = [...new Map([...Object.values(core), ...['linkedinOverview', 'linkedinView', 'liLabel'].map((k) => liCore[k]), ...Object.values(prepCore), ...Object.values(edCore), ...Object.values(rfCore), growthNorm, growthResourceRank, ...Object.values(v3Core), ...Object.values(ideasCore), ...Object.values(tallerCore), ...Object.values(mvCore), ...Object.values(hrCore), ...Object.values(hiCore), ...Object.values(wkCore), ...Object.values(rsCore), ...Object.values(lnCore), ...Object.values(ftCore)].filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
 const CFG_JSON = JSON.stringify({ tz: OPS_CFG.tz, stages: OPS_CFG.stages, ignore_opps: OPS_CFG.ignore_opps });
 
 export const ACTIONS = ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'radar_report', 'content_radar_report', 'job_report', 'alerts_poll', 'alerts_ack', 'ideas_list', 'ideas_gate', 'ideas_propose', 'ideas_revise', 'taller_list', 'mail_view', 'history_list', 'week_status', 'results_view', 'learning_context', 'learning_propose'];

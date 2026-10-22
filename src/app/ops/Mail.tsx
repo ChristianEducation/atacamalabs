@@ -13,7 +13,7 @@ import { MailControls, OutcomeButtons, QueueActions } from "./MailClient";
  */
 export type MailTab = "correo" | "cola" | "respuestas" | "seguimientos" | "embudo" | "salud";
 
-const KIND: Record<string, string> = { initial: "Primer correo", followup_1: "Seguimiento 1", followup_2: "Seguimiento 2", reply: "Respuesta" };
+const KIND: Record<string, string> = { initial: "Primer correo", followup_1: "Seguimiento 1", followup_2: "Seguimiento 2", followup_3: "Seguimiento 3 (cierre)", reply: "Respuesta" };
 const day = (d: string) => new Date(d + "T12:00:00Z").toLocaleDateString("es-CL", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
 
 function Unavailable() {
@@ -146,7 +146,7 @@ export async function MailSection({ tab, mP, dnsP, panel, fetchedAt, stale }: { 
                 </ul>
               ) : <Empty>No hay borradores de seguimiento.</Empty>}
             </Section>
-            <Section id="ops-mfu" title={`Próximos (${m.seguimientos.upcoming.length})`} aside={<span className="ops-note">+{m.hoy.followup_days[0]} y +{m.hoy.followup_days[1]} días hábiles</span>}>
+            <Section id="ops-mfu" title={`Próximos (${m.seguimientos.upcoming.length})`} aside={<span className="ops-note">+{m.hoy.followup_days.join(", +")} días hábiles</span>}>
               {m.seguimientos.upcoming.length ? (
                 <ul className="ops-list ops-signals">
                   {m.seguimientos.upcoming.map((u) => <li key={u.candidate_id + u.n}><span className="ops-row-title">{u.company} · {u.label}</span><span className="ops-row-sub">{u.overdue ? "corresponde desde el " : "corresponde el "}{day(u.due)}</span></li>)}

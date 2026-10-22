@@ -77,7 +77,7 @@ export function mailView(d) {
   const inWindow = bizDay && clk.min >= ws && clk.min < we;
   const sentToday = out.filter((m) => m.status === 'sent' && m.sent_at && mvDay(Date.parse(m.sent_at), tz) === today).length;
   const paused = cfg.paused === true || Boolean(d.pause && d.pause.paused);
-  const fdays = Array.isArray(cfg.followup_days) && cfg.followup_days.length === 2 ? cfg.followup_days.map(Number) : [3, 7];
+  const fdays = Array.isArray(cfg.followup_days) && cfg.followup_days.length === 3 ? cfg.followup_days.map(Number) : [4, 9, 18];
 
   // ---- Cola: aprobados en orden de salida y estimación por día con el tope
   const approved = out.filter((m) => m.status === 'approved' || m.status === 'sending').sort((a, b) => String(a.scheduled_for || a.approved_at || '').localeCompare(String(b.scheduled_for || b.approved_at || '')));
@@ -110,17 +110,18 @@ export function mailView(d) {
     .map((m) => { const r = (byCand[m.candidate_id] || []).filter((x) => x.classification !== 'own' && Date.parse(x.created_at) >= Date.parse(m.sent_at)); return { id: m.id, candidate_id: m.candidate_id, company: m.company_name || '—', kind: m.kind, to: m.to_email, subject: m.subject, sent_at: m.sent_at, answer: r.length ? mvClassLabel(r[0].classification) : null }; });
 
   // ---- Seguimientos (+N/+M hábiles; nunca se envían solos)
-  const fuDrafts = out.filter((m) => ['followup_1', 'followup_2'].includes(m.kind) && ['draft', 'approved'].includes(m.status))
-    .map((m) => ({ id: m.id, candidate_id: m.candidate_id, company: m.company_name || '—', kind: m.kind, label: m.kind === 'followup_1' ? 'Seguimiento 1' : 'Seguimiento 2', status: m.status, subject: m.subject, hash: m.content_hash || null, due: null }));
+  const fuDrafts = out.filter((m) => ['followup_1', 'followup_2', 'followup_3'].includes(m.kind) && ['draft', 'approved'].includes(m.status))
+    .map((m) => ({ id: m.id, candidate_id: m.candidate_id, company: m.company_name || '—', kind: m.kind, label: 'Seguimiento ' + String(m.kind).slice(-1), status: m.status, subject: m.subject, hash: m.content_hash || null, due: null }));
   const upcoming = [];
   out.filter((m) => m.kind === 'initial' && m.status === 'sent' && m.sent_at).forEach((m) => {
     const theirs = (byCand[m.candidate_id] || []).filter((x) => ['reply', 'decline', 'unsubscribe', 'bounce'].includes(x.classification));
     if (theirs.length) return;
-    const mine = out.filter((x) => x.candidate_id === m.candidate_id && ['followup_1', 'followup_2'].includes(x.kind));
-    const has1 = mine.some((x) => x.kind === 'followup_1'), has2 = mine.some((x) => x.kind === 'followup_2');
-    if (has1 && has2) return;
-    const n = has1 ? 2 : 1;
-    if (has1 && !mine.some((x) => x.kind === 'followup_1' && x.status === 'sent')) return;
+    const mine = out.filter((x) => x.candidate_id === m.candidate_id && ['followup_1', 'followup_2', 'followup_3'].includes(x.kind));
+    const has = [1, 2, 3].map((k) => mine.some((x) => x.kind === 'followup_' + k));
+    if (has[2]) return;
+    const last = has.lastIndexOf(true) + 1; // 0 = ninguno aún
+    const n = last + 1;
+    if (last > 0 && !mine.some((x) => x.kind === 'followup_' + last && x.status === 'sent')) return;
     const due = mvAddBiz(Date.parse(m.sent_at), fdays[n - 1], tz);
     upcoming.push({ candidate_id: m.candidate_id, company: m.company_name || '—', n, label: 'Seguimiento ' + n, due: mvDay(due, tz), overdue: due < now });
   });

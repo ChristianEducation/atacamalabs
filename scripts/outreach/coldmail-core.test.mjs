@@ -143,30 +143,39 @@ ok('personalización: sin señal concreta resta; la investigación es invisible 
   assert.ok(cm.coldLint(GOOD_A, [], EV).evidence_used === true);
 });
 
-ok('seguimientos (Playbook §17): prometer ejemplo/demo penaliza; retomar y preguntar premia; cerrar el hilo premia; las plantillas del sistema pasan limpias', () => {
+ok('seguimientos (Playbook §17 revisado): prometer y el seguimiento vacío penalizan; dolor y valor premian; el cierre premia; las plantillas por rubro pasan limpias', () => {
   const sub = 'Re: consultas entre sedes';
   const promete = { kind: 'followup_1', subject: sub, body: 'Hola Andrea, te dejo un ejemplo concreto de cómo se vería. ¿Te sirve que te mande el esquema o una demo?' };
   const lp = cm.coldLint(promete, [], {});
   assert.ok(lp.warnings.some((w) => w.code === 'followup_promete'));
   assert.ok(lp.warnings.some((w) => w.code === 'cta_ofrece_ejemplo'));
-  const vende = { kind: 'followup_1', subject: sub, body: 'Estimado equipo de Dentaline,\n\nArmamos agentes que responden la primera consulta y dejan el caso listo. ¿Lo conversamos?' };
-  assert.ok(cm.coldLint(vende, [], {}).warnings.some((w) => w.code === 'followup_vuelve_a_vender'));
-  const f1 = { kind: 'followup_1', subject: sub, body: 'Estimado equipo de Rentalin,\n\nRetomo esto por si quedó abajo en la bandeja.\n\n¿Ese trabajo previo a cotizar hoy les quita tiempo, o es una parte que ya tienen bastante resuelta?' };
-  const l1 = cm.coldLint(f1, [], {});
-  assert.ok(l1.rewards.some((r) => r.code === 'followup_valida'));
-  assert.deepEqual(l1.hard, []);
-  assert.ok(!l1.warnings.some((w) => ['muy_corto', 'sin_senal_concreta', 'followup_sin_aporte', 'followup_promete', 'cta_ofrece_ejemplo'].includes(w.code)));
-  const f2 = { kind: 'followup_2', subject: sub, body: 'Estimado equipo de Rentalin,\n\nCierro el hilo por acá para no insistir. Si en algún momento quieren revisar esta u otra parte del proceso que siga siendo repetitiva, encantado de conversarlo.\n\nSaludos,' };
-  const l2 = cm.coldLint(f2, [], {});
-  assert.ok(l2.rewards.some((r) => r.code === 'followup_cierra'));
-  assert.ok(!l2.warnings.some((w) => ['muy_corto', 'followup_promete', 'cta_ofrece_ejemplo', 'cta_reunion', 'followup_vuelve_a_vender'].includes(w.code)));
-  for (const k of ['followup_1', 'followup_2']) {
-    const t = oc.followupTemplate(k, { company_name: 'Dentaline' }, 'consultas entre sedes');
-    const l = cm.coldLint({ kind: k, ...t }, [], {});
-    assert.deepEqual(l.hard, [], k);
-    assert.ok(!l.warnings.some((w) => ['followup_promete', 'cta_ofrece_ejemplo', 'followup_vuelve_a_vender', 'muy_corto'].includes(w.code)), k);
-    assert.ok(/^Estimado equipo de Dentaline,/.test(t.body), k);
-    assert.ok(!/ejemplo|demo|video|propuesta|reuni/i.test(t.body), k);
+  // «por ejemplo» (para ilustrar una cuenta) NO es prometer un ejemplo
+  const ilustra = { kind: 'followup_2', subject: sub, body: 'Estimado equipo de X,\n\nUna cuenta simple: pedidos por día × minutos. Por ejemplo, 150 pedidos × 1 minuto son 2,5 horas diarias antes de contar correcciones, y con cualquier planilla se puede medir en una semana de trabajo normal. Anotarlo ayuda a decidir qué conviene ordenar primero en la operación diaria.\n\n¿Cómo registran hoy los pedidos de cada turno?' };
+  assert.ok(!cm.coldLint(ilustra, [], {}).warnings.some((w) => w.code === 'followup_promete'));
+  const vende = { kind: 'followup_3', subject: sub, body: 'Estimado equipo de Dentaline,\n\nArmamos agentes que responden la primera consulta y dejan el caso listo. ¿Lo conversamos?' };
+  assert.ok(cm.coldLint(vende, [], {}).warnings.some((w) => w.code === 'followup_vuelve_a_vender'), 'el cierre no vuelve a vender');
+  // el seguimiento vacío («retomo por si quedó abajo») y el muy corto ya no pasan como buenos en los pasos 1 y 2
+  const vacio = { kind: 'followup_1', subject: sub, body: 'Estimado equipo de Rentalin,\n\nRetomo esto por si quedó abajo en la bandeja.\n\n¿Ese trabajo previo a cotizar hoy les quita tiempo, o es una parte que ya tienen bastante resuelta?' };
+  const lv = cm.coldLint(vacio, [], {});
+  assert.ok(lv.warnings.some((w) => w.code === 'followup_vacio')); assert.ok(lv.warnings.some((w) => w.code === 'followup_corto'));
+  const f3 = { kind: 'followup_3', subject: sub, body: 'Estimado equipo de Rentalin,\n\nCierro el hilo por acá para no insistir. Si en algún momento quieren revisar esta u otra parte del proceso que siga siendo repetitiva, encantado de conversarlo.' };
+  const l3 = cm.coldLint(f3, [], {});
+  assert.ok(l3.rewards.some((r) => r.code === 'followup_cierra'));
+  assert.ok(!l3.warnings.some((w) => ['muy_corto', 'followup_corto', 'followup_promete', 'cta_ofrece_ejemplo', 'cta_reunion', 'followup_vuelve_a_vender'].includes(w.code)));
+  for (const v of [null, 'corredoras', 'clinicas', 'casinos_colegios', 'casinos_empresas']) {
+    for (const k of ['followup_1', 'followup_2', 'followup_3']) {
+      const t = oc.followupTemplate(k, { company_name: 'Dentaline', canonical: v ? { vertical: v } : {} }, 'consultas entre sedes');
+      const l = cm.coldLint({ kind: k, ...t }, [], {});
+      const tag = (v || 'generico') + '/' + k;
+      assert.deepEqual(l.hard, [], tag);
+      assert.ok(!l.warnings.some((w) => ['followup_promete', 'cta_ofrece_ejemplo', 'followup_vuelve_a_vender', 'followup_vacio', 'followup_corto', 'muy_corto', 'largo', 'cta_reunion', 'buzzwords', 'tono_ia'].includes(w.code)), tag + ' ' + JSON.stringify(l.warnings.map((w) => w.code)));
+      assert.ok(l.score >= 90, tag + ' score ' + l.score);
+      assert.ok(/^Estimado equipo de Dentaline,/.test(t.body), tag);
+      assert.equal(t.subject, 'Re: consultas entre sedes', tag);
+      assert.ok(!/demo|video|propuesta|reuni[oó]n|precio|\$399|\$149/i.test(t.body), tag + ' no promete ni cotiza');
+      if (k !== 'followup_3') assert.ok(l.rewards.some((r) => r.code === 'followup_valor'), tag + ' dolor/valor con 100–170 palabras');
+      else assert.ok(l.rewards.some((r) => r.code === 'followup_cierra'), tag);
+    }
   }
 });
 

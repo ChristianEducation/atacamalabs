@@ -14,6 +14,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import * as oc from '../../scripts/outreach/outreach-core.mjs';
 import * as cm from '../../scripts/outreach/coldmail-core.mjs';
+import * as ft from '../../scripts/outreach/followup-templates.mjs';
 
 const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 export const N8N_BASE = 'https://n8n.srv1650725.hstgr.cloud';
@@ -48,7 +49,7 @@ const ghlExecX = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpR
 const gatewayHttp = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: pos, credentials: INGEST_CRED, continueOnFail: true, alwaysOutputData: true,
   parameters: { method: 'POST', url: '={{ $json.skip ? "' + NONE + '" : "' + N8N_BASE + '/webhook/atacama-prospect-gateway" }}', authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth', sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full(120000) } });
 
-export const LIB = [...new Map([...Object.values(cm), ...Object.values(oc)].filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
+export const LIB = [...new Map([...Object.values(cm), ...Object.values(ft), ...Object.values(oc)].filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
 
 const CAND_SELECT = 'id,company_name,status,canonical,drafts,ghl_contact_id,ghl_opportunity_id,ghl_stage,domain,website,last_contact_at,last_contact_channel,channel_state';
 const MSG_SELECT = '*';
@@ -72,7 +73,7 @@ try {
   const needsCand = ['draft', 'approve', 'cancel', 'get', 'suppress', 'lint'].includes(action);
   if (needsCand && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cid)) throw new Error('candidate_id (uuid del prospecto guardado) es obligatorio en ' + action);
   const kind = b.kind ? String(b.kind) : null;
-  if (kind && !['initial', 'followup_1', 'followup_2', 'reply'].includes(kind)) throw new Error('kind inválido: initial | followup_1 | followup_2 | reply');
+  if (kind && !['initial', 'followup_1', 'followup_2', 'followup_3', 'reply'].includes(kind)) throw new Error('kind inválido: initial | followup_1 | followup_2 | followup_3 | reply');
   const sb = '${SUPABASE}/rest/v1/';
   const limit = Math.min(Math.max(parseInt(b.limit, 10) || 20, 1), 50);
   const filter = String(b.filter || '').toLowerCase();
@@ -85,7 +86,7 @@ try {
     confirmation_code: b.confirmation_code ? String(b.confirmation_code) : '', order_text: b.order_text ? String(b.order_text) : '', by: String(b.by || 'Christian vía Hermes').slice(0, 60), filter, limit, now: Date.now(),
     reason: b.reason ? String(b.reason) : '', auto: b.auto === true, christian: b.christian === true, min_score: b.min_score != null ? Number(b.min_score) : null,
     cold: { evidence: b.evidence, insight: b.insight, friction: b.friction, angle: b.angle, cta_reason: b.cta_reason },
-    peers_url: ['draft', 'lint'].includes(action) ? sb + 'outreach_messages?direction=eq.outbound&kind=in.(initial,followup_1,followup_2)&status=in.(draft,approved,sending,sent)&created_at=gte.' + new Date(Date.now() - 75 * 86400000).toISOString() + '&select=id,candidate_id,company_name,kind,status,subject,body&order=created_at.desc&limit=80' : '${NONE}', cand_url: needsCand ? sb + 'prospect_candidates?id=eq.' + cid + '&select=${CAND_SELECT}&limit=1' : '${NONE}', hist_url: hist } }];
+    peers_url: ['draft', 'lint'].includes(action) ? sb + 'outreach_messages?direction=eq.outbound&kind=in.(initial,followup_1,followup_2,followup_3)&status=in.(draft,approved,sending,sent)&created_at=gte.' + new Date(Date.now() - 75 * 86400000).toISOString() + '&select=id,candidate_id,company_name,kind,status,subject,body&order=created_at.desc&limit=80' : '${NONE}', cand_url: needsCand ? sb + 'prospect_candidates?id=eq.' + cid + '&select=${CAND_SELECT}&limit=1' : '${NONE}', hist_url: hist } }];
 } catch (e) { return [{ json: { fatal: String((e && e.message) || e) } }]; }`;
 
 export const engineDecideCode = `${LIB}

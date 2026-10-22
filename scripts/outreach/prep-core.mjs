@@ -139,7 +139,7 @@ export function prepSummary(cands, msgs, nowMs, tz, opts) {
   const today = prepDay(nowMs, tz);
   const sentToday = messages.filter((m) => m.direction === 'outbound' && m.status === 'sent' && m.sent_at && prepDay(Date.parse(m.sent_at), tz) === today).length;
   const replies = messages.filter((m) => m.direction === 'inbound' && ['reply', 'decline'].includes(m.classification) && nowMs - Date.parse(m.created_at) <= 7 * 86400000).length;
-  const followupDrafts = messages.filter((m) => m.direction === 'outbound' && ['followup_1', 'followup_2'].includes(m.kind) && ['draft', 'approved'].includes(m.status)).length;
+  const followupDrafts = messages.filter((m) => m.direction === 'outbound' && ['followup_1', 'followup_2', 'followup_3'].includes(m.kind) && ['draft', 'approved'].includes(m.status)).length;
   const investigated = list.filter((c) => c.ghl_stage === 'investigado').length;
   return { counts, lists, valid_unactioned: counts.sin_accion, investigated, sent_today: sentToday, replies_7d: replies, followup_drafts: followupDrafts, generated_at: new Date(nowMs).toISOString() };
 }
@@ -180,7 +180,7 @@ export function prepEditDiff(before, after) {
  */
 export function prepStyleSamples(msgs, n) {
   const count = Math.min(Math.max(parseInt(n, 10) || 8, 1), 20);
-  const out = (Array.isArray(msgs) ? msgs : []).filter((m) => m.direction === 'outbound' && ['initial', 'followup_1', 'followup_2'].includes(m.kind));
+  const out = (Array.isArray(msgs) ? msgs : []).filter((m) => m.direction === 'outbound' && ['initial', 'followup_1', 'followup_2', 'followup_3'].includes(m.kind));
   const isOps = (h) => /\/ops/i.test(String((h && h.by) || ''));
   const withEdits = out.filter((m) => m.metadata && Array.isArray(m.metadata.history) && m.metadata.history.some(isOps));
   const edits = withEdits.sort((a, b) => String(b.updated_at || b.created_at).localeCompare(String(a.updated_at || a.created_at))).slice(0, count).map((m) => {
