@@ -45,12 +45,12 @@ export function followupBody(kind, vertical, variant) {
       followup_3: cierre('aliviar la coordinación de citas o las consultas repetidas por WhatsApp'),
     },
     casinos_colegios: {
-      followup_1: intro + 'En los casinos donde las familias pagan por transferencia, el trabajo de todos los días suele ser el mismo: llegan comprobantes por WhatsApp, alguien los revisa uno por uno, los cruza con la lista de pedidos y después persigue los pagos pendientes. Mientras más alumnos, más tiempo toma, y los cambios de último minuto y las anulaciones lo complican.\n\nTenemos una solución empaquetada para casinos: una plataforma donde quedan los pedidos y los pagos, con agentes que trabajan sobre ella: uno de cara a las familias, por WhatsApp, y otro de uso interno para el equipo. Así el trabajo repetitivo se hace más eficiente y el personal recupera tiempo.\n\n¿Les haría sentido conversar sobre cómo ordenar ese proceso?',
+      followup_1: intro + 'En los casinos donde las familias pagan por transferencia, el trabajo de todos los días suele ser el mismo: llegan comprobantes por WhatsApp, alguien los revisa uno por uno, los cruza con la lista de pedidos y después persigue los pagos pendientes. Mientras más alumnos, más tiempo toma, y los cambios de último minuto y las anulaciones lo complican.\n\nGracias a nuestra experiencia trabajando con casinos escolares, armamos una solución que une una plataforma para gestionar los pedidos y los pagos con agentes: unos atienden a las familias por WhatsApp y otros apoyan al equipo por dentro. Así el trabajo repetitivo se hace más rápido y el personal gana tiempo para lo que sí necesita a una persona.\n\n¿Les haría sentido conversar sobre cómo ordenar ese proceso?',
       followup_2: valor + 'Una forma de medir cuánto pesa hoy el cruce de pagos: comprobantes que reciben por día × minutos que toma revisar y anotar cada uno. Por ejemplo, 80 comprobantes al día × 2 minutos son más de 2 horas diarias solo en conciliar, sin contar los pagos pendientes.\n\nTres cosas ayudan incluso sin automatizar: fijar una hora de corte única para pedidos y cambios, pedir que cada comprobante indique nombre y curso del alumno, y llevar los pagos pendientes en una sola lista y no repartidos en varios chats.\n\n¿Cómo llevan hoy el cruce entre los pagos y los pedidos?',
       followup_3: cierre('ordenar los pedidos y pagos del casino'),
     },
     casinos_empresas: {
-      followup_1: intro + 'En los servicios de alimentación para empresas, un trabajo constante es registrar el pedido de cada persona o turno, ya sea en planillas, formularios o mensajes, y después cuadrar las raciones entregadas con lo que se factura al cliente. Los cambios de turno, las anulaciones y las opciones de menú hacen que ese registro se rehaga seguido.\n\nTenemos una solución empaquetada para operaciones de alimentación: una plataforma donde cada usuario registra su pedido y el equipo ve lo que debe producir cada día, con agentes que trabajan sobre ella: uno de cara a los usuarios, para consultas, cambios y anulaciones por WhatsApp, y otro de uso interno para el equipo. Así el trabajo repetitivo se hace más eficiente y el personal gana tiempo.\n\n¿Les haría sentido conversar sobre cómo mejorar ese proceso?',
+      followup_1: intro + 'En los servicios de alimentación para empresas, un trabajo constante es registrar el pedido de cada persona o turno, ya sea en planillas, formularios o mensajes, y después cuadrar las raciones entregadas con lo que se factura al cliente. Los cambios de turno, las anulaciones y las opciones de menú hacen que ese registro se rehaga seguido.\n\nGracias a nuestra experiencia trabajando con empresas de alimentación, armamos una solución que une una plataforma para gestionar los pedidos con agentes: unos atienden a los usuarios por WhatsApp y otros apoyan al equipo por dentro. Así el trabajo repetitivo se hace más rápido y el personal gana tiempo para lo que sí necesita a una persona.\n\n¿Les haría sentido conversar sobre cómo mejorar ese proceso?',
       followup_2: valor + 'Una forma simple de ver cuánto cuesta el registro manual: pedidos que consolidan por día × minutos que toma anotarlos, corregirlos y pasarlos a la planilla maestra. Por ejemplo, 150 pedidos al día × 1 minuto son 2,5 horas diarias, antes de contar correcciones.\n\nTres cosas ayudan aunque se mantenga Excel: fijar una hora de corte para pedidos y cambios, limitar las opciones de menú por día y llevar una sola planilla maestra y no una por turno. Si hoy cada turno entrega su pedido en un formato distinto, unificarlo en un solo formulario simple suele ser el primer paso más barato.\n\n¿Cómo registran hoy los pedidos de cada turno?',
       followup_3: cierre('mejorar el registro y la gestión de pedidos del servicio'),
     },
@@ -167,14 +167,14 @@ Si en algún momento quieren ordenar la agenda y las confirmaciones, escríbanme
 
 Llegan los comprobantes de transferencia por WhatsApp, uno tras otro. Alguien abre cada imagen, busca el nombre del alumno, lo cruza con el pedido y anota si quedó pagado. Al final del día, la lista de pendientes sigue repartida en varios chats, y los cambios de último minuto o las anulaciones obligan a rehacer parte del trabajo.
 
-Tenemos una solución empaquetada para casinos: una plataforma donde quedan los pedidos y los pagos, con agentes que trabajan sobre ella: uno de cara a las familias, por WhatsApp, y otro de uso interno para el equipo. Así el trabajo repetitivo se hace más eficiente y el personal recupera tiempo.
+Gracias a nuestra experiencia trabajando con casinos escolares, armamos una solución que une una plataforma para gestionar los pedidos y los pagos con agentes: unos atienden a las familias por WhatsApp y otros apoyan al equipo por dentro. Así el trabajo repetitivo se hace más rápido y el personal gana tiempo para lo que sí necesita a una persona.
 
 ¿Cuánto tiempo toma hoy dejar al día los pagos de cada jornada?`,
         `Quiero contarles cómo se ve este trabajo desde adentro de un casino escolar.
 
 Cuando las familias pagan por transferencia, cada pago es un pequeño trámite: recibir el comprobante, identificar al alumno, marcar el pedido y recordarle después a quienes quedaron pendientes. Con pocos alumnos se maneja; con cientos, se vuelve un trabajo propio.
 
-En Atacama Labs tenemos una solución empaquetada: una plataforma donde quedan los pedidos y los pagos, con agentes que trabajan sobre ella: uno de cara a las familias, por WhatsApp, y otro de uso interno para el equipo. Así el trabajo repetitivo se hace más eficiente y el personal recupera tiempo.
+En Atacama Labs, gracias a nuestra experiencia con casinos escolares, armamos una solución que une una plataforma para gestionar los pedidos y los pagos con agentes: unos atienden a las familias por WhatsApp y otros apoyan al equipo por dentro. Así el trabajo repetitivo se hace más rápido y el personal gana tiempo para lo que sí necesita a una persona.
 
 ¿Les haría sentido conversar sobre cómo ordenar esa parte?`,
       ],
@@ -209,14 +209,14 @@ Si en algún momento quieren aliviar el cruce de pagos y pedidos, escríbanme cu
 
 Cada turno entrega sus pedidos en un formato distinto: una planilla, un mensaje, un formulario. Alguien los junta, corrige duplicados, ajusta por cambios de última hora y recién ahí sabe cuántas raciones producir y cuántas se entregaron para el cierre con el cliente.
 
-Tenemos una solución empaquetada para servicios de alimentación: una plataforma donde cada usuario registra su pedido y el equipo ve lo que debe producir cada día, con agentes que trabajan sobre ella: uno de cara a los usuarios, para consultas, cambios y anulaciones por WhatsApp, y otro de uso interno para el equipo. Así el trabajo repetitivo se hace más eficiente y el personal gana tiempo.
+Gracias a nuestra experiencia trabajando con empresas de alimentación, armamos una solución que une una plataforma para gestionar los pedidos con agentes: unos atienden a los usuarios por WhatsApp y otros apoyan al equipo por dentro. Así el trabajo repetitivo se hace más rápido y el personal gana tiempo para lo que sí necesita a una persona.
 
 ¿Cómo consolidan hoy los pedidos de todos los turnos?`,
         `Quiero contarles cómo se ve este trabajo en una operación de alimentación para empresas.
 
 El pedido de cada persona es pequeño, pero son muchos y llegan por distintos canales. Registrarlos, corregirlos y cuadrarlos con lo que finalmente se entrega consume horas que no se ven en el costo del servicio. Mientras más turnos y más cambios, más pesa ese trabajo invisible.
 
-En Atacama Labs tenemos una solución empaquetada: una plataforma donde cada usuario registra su pedido y el equipo ve lo que debe producir cada día, con agentes que trabajan sobre ella: uno de cara a los usuarios, para consultas, cambios y anulaciones por WhatsApp, y otro de uso interno para el equipo. Así el trabajo repetitivo se hace más eficiente y el personal gana tiempo.
+En Atacama Labs, gracias a nuestra experiencia con empresas de alimentación, armamos una solución que une una plataforma para gestionar los pedidos con agentes: unos atienden a los usuarios por WhatsApp y otros apoyan al equipo por dentro. Así el trabajo repetitivo se hace más rápido y el personal gana tiempo para lo que sí necesita a una persona.
 
 ¿Les haría sentido conversar sobre cómo mejorar ese registro?`,
       ],
