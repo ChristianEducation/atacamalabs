@@ -31,7 +31,7 @@ Regla del Playbook que sigue valiendo: nada de demo, reunión, precios ni «agen
 > Hola {{firstName}}, gracias por conectar. En clínicas y consultas de Antofagasta suele repetirse lo mismo: agendar, confirmar y hacer seguimiento mientras se atiende, y la hora de quien no avisa queda vacía. ¿Cómo manejan hoy las confirmaciones en {{company}}?
 
 **Casinos y alimentación**
-> Hola {{firstName}}, gracias por conectar. En los servicios de alimentación suele aparecer un trabajo repetido: juntar pedidos, opciones de menú y pagos en planillas o mensajes. ¿Cómo registran hoy los pedidos en {{company}}?
+> Hola {{firstName}}, gracias por conectar. En los servicios de alimentación suele aparecer un trabajo repetido: juntar pedidos, opciones de menú y pagos en planillas o mensajes. Armamos una solución que une una plataforma de pedidos y pagos con agentes, uno de cara a los clientes y otro de uso interno, para que ese trabajo se haga con menos esfuerzo y el equipo gane tiempo. ¿Cómo registran hoy los pedidos en {{company}}?
 
 ## Mensaje 2 (cierre, igual para los 3)
 > {{firstName}}, no quiero insistir. Si en algún momento ordenar este proceso entra en sus prioridades, aquí estoy. Éxito con {{company}}.
