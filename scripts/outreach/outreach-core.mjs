@@ -175,13 +175,23 @@ export function validateDraft(d, ctx) {
  * Se escribe en el MISMO hilo (asunto original con «Re:»), el humano la edita y aprueba; nunca se envía sola. No promete demos, ejemplos, propuestas, precios ni reuniones.
  * La firma la agrega el sistema al enviar. Los textos viven en followup-templates.mjs (verticalOf + followupBody).
  */
-export function followupTemplate(kind, cand, firstSubject) {
+export function followupTemplate(kind, cand, firstSubject, firstBody) {
   const co = (cand && cand.company_name) || 'su empresa';
   const subj = 'Re: ' + String(firstSubject || 'Atacama Labs').replace(/^re:\s*/i, ''); // exacto como el original: así el hilo no se rompe
   const greet = 'Estimado equipo de ' + co + ',\n\n';
   const k = ['followup_1', 'followup_2', 'followup_3'].includes(kind) ? kind : 'followup_1';
   // 3 variantes por paso y rubro, elegidas de forma estable por prospecto: los textos no son idénticos entre prospectos (y una nueva corrida repite la misma)
-  return { subject: subj, body: greet + followupBody(k, verticalOf(cand), ftPick(String((cand && cand.id) || co) + '|' + k, 3)) };
+  const vert = verticalOf(cand);
+  let text = followupBody(k, vert, ftPick(String((cand && cand.id) || co) + '|' + k, 3));
+  // Casinos/alimentación: si el primer correo YA presentó la plataforma con los agentes, el seguimiento 1 no repite la frase de la experiencia: la retoma en una línea y sigue por otro lado.
+  const fb = String(firstBody || '').toLowerCase();
+  if (k === 'followup_1' && (vert === 'casinos_colegios' || vert === 'casinos_empresas') && /plataforma/.test(fb) && /agentes/.test(fb)) {
+    const ref = vert === 'casinos_colegios'
+      ? 'La plataforma y los agentes que les mencioné en mi primer correo apuntan justo a esa parte: los pedidos y los pagos quedan en un solo lugar, las familias consultan por WhatsApp y el equipo deja de cruzar comprobantes a mano.'
+      : 'La plataforma y los agentes que les mencioné en mi primer correo apuntan justo a esa parte: cada pedido queda registrado en un solo lugar, los usuarios hacen sus consultas y cambios por WhatsApp y el equipo ve la producción del día sin juntar planillas.';
+    text = text.split('\n\n').map((p) => (/gracias a nuestra experiencia/i.test(p) ? ref : p)).join('\n\n');
+  }
+  return { subject: subj, body: greet + text };
 }
 
 export function escapeHtml(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
@@ -281,7 +291,7 @@ export function planDraft(req, ctx) {
   if (subject == null || body == null) {
     if (kind === 'initial') { subject = subject != null ? subject : (drafts.email_subject || null); body = body != null ? body : (drafts.email_body || null); }
     else if (kind === 'reply') { if (subject == null) subject = 'Re: ' + String((inboundMsg && inboundMsg.subject) || (initialSent && initialSent.subject) || 'Atacama Labs').replace(/^re:s*/i, ''); }
-    else { const t = followupTemplate(kind, cand, initialSent && initialSent.subject); subject = subject != null ? subject : t.subject; body = body != null ? body : t.body; }
+    else { const t = followupTemplate(kind, cand, initialSent && initialSent.subject, initialSent && initialSent.body); subject = subject != null ? subject : t.subject; body = body != null ? body : t.body; }
   }
   if (subject != null || body != null) { const cl = cleanDraftText(subject, body, { capitalize: kind === 'initial' }); subject = cl.subject; body = cl.body; }
   if (subject == null || body == null) return fail('sin_contenido', kind === 'reply' ? 'Redacta la respuesta (body) para guardarla como borrador.' : 'No hay borrador base: indica subject y body.');

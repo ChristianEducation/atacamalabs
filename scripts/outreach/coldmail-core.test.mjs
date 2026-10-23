@@ -182,6 +182,18 @@ ok('seguimientos (Playbook §17 revisado): prometer y el seguimiento vacío pena
   const usados = new Set();
   for (let i = 0; i < 40; i++) { const t = oc.followupTemplate('followup_2', { id: 'c' + i, company_name: 'Dentaline', canonical: { vertical: 'clinicas' } }, 'consultas entre sedes'); assert.ok(/^Estimado equipo de Dentaline,/.test(t.body)); assert.equal(t.subject, 'Re: consultas entre sedes'); usados.add(t.body); }
   assert.equal(usados.size, 3, 'los prospectos reciben 3 textos distintos');
+  // casinos: si el primer correo ya presentó la plataforma con los agentes, el seguimiento 1 NO repite la frase de la experiencia; si no, la incluye
+  for (const v of ['casinos_colegios', 'casinos_empresas']) {
+    for (let i = 0; i < 12; i++) {
+      const cd = { id: 'k' + i, company_name: 'Casino X', canonical: { vertical: v } };
+      const con = oc.followupTemplate('followup_1', cd, 'Pedidos', 'Gracias a nuestra experiencia trabajando con casinos escolares, armamos una solución que une una plataforma para gestionar los pedidos con agentes.');
+      const sin = oc.followupTemplate('followup_1', cd, 'Pedidos', 'En los casinos suele haber un trabajo repetido: cruzar pagos. ¿Les haría sentido conversar?');
+      assert.ok(!/gracias a nuestra experiencia/i.test(con.body) && /La plataforma y los agentes que les mencioné/.test(con.body), v + ' con mención: no repite');
+      assert.ok(/gracias a nuestra experiencia/i.test(sin.body), v + ' sin mención: la agrega');
+      const l = cm.coldLint({ kind: 'followup_1', subject: con.subject, body: con.body }, [], {});
+      assert.deepEqual(l.hard, [], v + ' lint'); assert.ok(l.rewards.some((r) => r.code === 'followup_valor'), v + ' largo 100–170');
+    }
+  }
 });
 
 ok('bloqueos reales: porcentajes, garantías y números de clientes sin respaldo', () => {

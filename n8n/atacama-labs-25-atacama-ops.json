@@ -2,7 +2,7 @@
   "name": "Atacama Labs - 25 Atacama Ops",
   "nodes": [
     {
-      "id": "dc3c8a40-4dda-4b41-8b25-e54395b4cd42",
+      "id": "7f0113f8-0513-41c0-b819-0fc490286d69",
       "name": "Ops Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -10,7 +10,7 @@
         0,
         0
       ],
-      "webhookId": "80bdc51d-1c3d-4000-ba6a-38621853653c",
+      "webhookId": "b77f4d0d-c19b-4bd1-b95e-4d3dfd9cbd3a",
       "credentials": {
         "httpHeaderAuth": {
           "id": "lUGhlXVaQBEiEh5S",
@@ -26,7 +26,7 @@
       }
     },
     {
-      "id": "1623c954-85aa-415d-8df3-2150c9d3b791",
+      "id": "12990557-2b39-4fd9-bc18-0b9a229bd250",
       "name": "Parse",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -39,7 +39,7 @@
       }
     },
     {
-      "id": "fa3e6536-c35e-4121-b9e7-96ee1c637aa5",
+      "id": "e853b5fa-a7a9-4738-b326-262ba493c09b",
       "name": "Valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -70,7 +70,7 @@
       }
     },
     {
-      "id": "cb8ef806-cf01-43d8-8c92-8ff601193c5a",
+      "id": "afeaf7a3-fde9-41c3-a76d-c373900d450c",
       "name": "Respond Error",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -83,7 +83,7 @@
       }
     },
     {
-      "id": "18ab066a-0be5-414e-8148-39c900778364",
+      "id": "f8e9a7db-76e0-4c83-bf0a-8d136ae555da",
       "name": "SB Messages",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -117,7 +117,7 @@
       }
     },
     {
-      "id": "037ff6e1-77c7-45e8-8125-1eb46d7a4737",
+      "id": "6857c0e4-1eb7-44b9-978e-0d05f472e6ae",
       "name": "SB Candidates",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -151,7 +151,7 @@
       }
     },
     {
-      "id": "338bcb88-6d11-480b-a50a-0d6e0e5ba0b5",
+      "id": "93750c2c-86c9-4b44-8b29-6a6d75ee0816",
       "name": "SB Pieces",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -185,7 +185,7 @@
       }
     },
     {
-      "id": "ec41b31a-d846-422d-8474-d4f6102e7d9c",
+      "id": "0ce436d1-ba44-4250-868a-9a8cd3b41681",
       "name": "SB Metrics",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -219,7 +219,7 @@
       }
     },
     {
-      "id": "873de21b-54e4-4a9a-9785-ccb0ba90ce3d",
+      "id": "73e75b85-2468-4f7a-8d78-7091ecaa7df9",
       "name": "SB Signals",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -253,7 +253,7 @@
       }
     },
     {
-      "id": "d1d1af33-7849-441b-bc87-f6d61f354716",
+      "id": "1f8d2389-1be5-45ba-b6ba-66ecd44719e9",
       "name": "SB Review Pieces",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -287,7 +287,7 @@
       }
     },
     {
-      "id": "dca2d765-1b4b-485f-a806-43a48f663b84",
+      "id": "6b210f1b-725e-456e-8971-b1ee2e74227a",
       "name": "SB Alerts",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -321,7 +321,7 @@
       }
     },
     {
-      "id": "778d4dc1-3ab3-4a01-a269-e4cd8e10334a",
+      "id": "eb2328ce-f648-453d-95e7-a0669a775d92",
       "name": "SB Runs",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -355,7 +355,7 @@
       }
     },
     {
-      "id": "33170a06-736e-4965-9a83-b392b1d9c001",
+      "id": "8c6c7ad3-6a40-463f-bcd1-e4ce278b9d86",
       "name": "SB Config",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -389,7 +389,7 @@
       }
     },
     {
-      "id": "31946770-446d-4f99-ab78-600dddab443a",
+      "id": "42bdda4f-e457-4b31-9da5-cfdb56daec5f",
       "name": "GHL Opps",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -447,7 +447,7 @@
       }
     },
     {
-      "id": "2714ae50-c881-4d88-a753-dd0539f27aee",
+      "id": "b219f715-e871-4300-8d8a-bb75dcea65a9",
       "name": "GHL Tasks",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -516,7 +516,7 @@
       }
     },
     {
-      "id": "e0c940c8-88a8-4375-8d37-6736ceeab97d",
+      "id": "a9aaf9ce-1bc5-47f4-80a4-88c39e4fb4b8",
       "name": "GHL Accounts",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -563,7 +563,7 @@
       }
     },
     {
-      "id": "b97fea0c-8563-44f1-b0e3-726cace94ec6",
+      "id": "cba181f7-61af-4939-9acc-7e8d655f0c2a",
       "name": "N8N Workflows",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -597,7 +597,7 @@
       }
     },
     {
-      "id": "3e9c089b-c191-4e9f-b34e-91732ec2e7a9",
+      "id": "cc61e112-9e32-4eb4-af82-98633d6346cf",
       "name": "N8N Errors",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -631,7 +631,7 @@
       }
     },
     {
-      "id": "288dda91-0695-41be-9952-8fbef4a33b83",
+      "id": "7859daee-1f40-4ff1-be30-1223f1b87ed1",
       "name": "Expand Execs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -644,7 +644,7 @@
       }
     },
     {
-      "id": "fe38d6a5-b442-4b24-8af7-e493c8132dd7",
+      "id": "1f424424-bcf1-42a9-9cae-53044d688e82",
       "name": "N8N Execs",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -678,7 +678,7 @@
       }
     },
     {
-      "id": "c46de869-b577-464f-9c11-f292e79d0c48",
+      "id": "0292e458-0ea3-408f-971d-5032de1998c3",
       "name": "Gmail Check 22",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -715,7 +715,7 @@
       }
     },
     {
-      "id": "9ae4bd33-63f4-40de-be95-cd377b83e760",
+      "id": "ff6aec95-b489-4edd-870a-93663e57e348",
       "name": "Gmail Check 23",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -752,7 +752,7 @@
       }
     },
     {
-      "id": "c8ce77a1-b50d-4976-b9c3-2564fca49db9",
+      "id": "df9ed728-84ee-4f64-9469-4a59f4a0692a",
       "name": "Learnings",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -786,7 +786,7 @@
       }
     },
     {
-      "id": "36f9bf8f-2ea2-434b-a568-2f83310883f7",
+      "id": "c521db33-a401-4d31-95ff-24d8cc861aa0",
       "name": "Expand Growth",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -799,7 +799,7 @@
       }
     },
     {
-      "id": "e40e7e75-5400-44c1-9ba6-257c564b4f07",
+      "id": "eb02a6cb-d164-4302-9f64-bfbf0c5144dc",
       "name": "SB Growth",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -833,7 +833,7 @@
       }
     },
     {
-      "id": "c0079eb4-9af0-47f1-a745-3f6ce41e998b",
+      "id": "a9ee7263-d8bb-424d-9008-312830f0d9c1",
       "name": "Sign Prep",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -846,7 +846,7 @@
       }
     },
     {
-      "id": "2d5d23cd-f57b-4483-adb5-8ea1f8cb0b25",
+      "id": "d53e19f1-4fce-49ae-b0a6-26a6e781af9d",
       "name": "SB Sign",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -883,7 +883,7 @@
       }
     },
     {
-      "id": "4f599f7e-189e-45ae-9f7b-40c5d7a4e734",
+      "id": "141cb7cf-5d22-4562-9fd8-54da307d4df2",
       "name": "Compute",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -896,7 +896,7 @@
       }
     },
     {
-      "id": "2ffda45a-2a87-4f94-a9b4-e9cbbd30a389",
+      "id": "92647b8b-be0a-4037-83c9-4746c2126a58",
       "name": "Expand Writes",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -909,7 +909,7 @@
       }
     },
     {
-      "id": "bcc736ea-14de-4107-baaf-8d3229456a57",
+      "id": "3f84144e-ca9b-4c27-9366-2f8c3196cca7",
       "name": "Apply Writes",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -958,7 +958,7 @@
       }
     },
     {
-      "id": "3ec509df-f37e-4891-b283-8d4d7244406d",
+      "id": "e1fa61b3-5a2d-40c8-be3b-a0054c732e68",
       "name": "Respond",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
