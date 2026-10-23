@@ -6,7 +6,7 @@
  */
 
 import { cmNormCold, coldLint, coldSummary, coldHistory } from './coldmail-core.mjs';
-import { verticalOf, followupBody } from './followup-templates.mjs';
+import { verticalOf, followupBody, ftPick } from './followup-templates.mjs';
 
 export function stripAcc(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, ''); }
 export function normEmail(e) { return String(e == null ? '' : e).trim().toLowerCase().replace(/^mailto:/, ''); }
@@ -180,7 +180,8 @@ export function followupTemplate(kind, cand, firstSubject) {
   const subj = 'Re: ' + String(firstSubject || 'Atacama Labs').replace(/^re:\s*/i, ''); // exacto como el original: así el hilo no se rompe
   const greet = 'Estimado equipo de ' + co + ',\n\n';
   const k = ['followup_1', 'followup_2', 'followup_3'].includes(kind) ? kind : 'followup_1';
-  return { subject: subj, body: greet + followupBody(k, verticalOf(cand)) };
+  // 3 variantes por paso y rubro, elegidas de forma estable por prospecto: los textos no son idénticos entre prospectos (y una nueva corrida repite la misma)
+  return { subject: subj, body: greet + followupBody(k, verticalOf(cand), ftPick(String((cand && cand.id) || co) + '|' + k, 3)) };
 }
 
 export function escapeHtml(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }

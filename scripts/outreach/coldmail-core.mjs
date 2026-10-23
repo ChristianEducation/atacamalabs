@@ -251,7 +251,7 @@ export function coldLint(d, peers, cold) {
   if (!buzz.length && !ai.length && !/(somos una agencia|nuestra agencia|soluciones (a medida|personalizadas|integrales))/.test(bn)) rew('natural', 'Lenguaje natural, sin jerga.', 4);
   if (isValueFollow && cta === 'question' && nWords >= 100 && nWords <= 170) rew('followup_valor', 'Seguimiento con contexto del rubro y una pregunta fácil de responder (dolor → valor).', 14);
   if (isValueFollow && /\b(solo (para )?(saber|confirmar|preguntar)|queria saber si|reviso si|por si quedo abajo|espero que hayas|te escribo de nuevo)\b/.test(bn)) warn('followup_vacio', 'El seguimiento no aporta nada nuevo («solo para saber si viste…»): cada toque debe traer un dato, una cuenta o un patrón del rubro.', 14);
-  if (kind === 'followup_3' && /\b(cierro|no insist|dejo el hilo|dejamos aqui)\b/.test(bn)) rew('followup_cierra', 'Cierra el hilo con educación y sin presión (último correo de la secuencia).', 14);
+  if (kind === 'followup_3' && /\b(cierro|no insist\w*|dejo (este|el) hilo|dejamos aqui)\b/.test(bn)) rew('followup_cierra', 'Cierra el hilo con educación y sin presión (último correo de la secuencia).', 14);
 
   let score = 60;
   for (const r of rewards) score += r.pts;

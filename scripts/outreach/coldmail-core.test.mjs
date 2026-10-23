@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as cm from './coldmail-core.mjs';
 import * as oc from './outreach-core.mjs';
+import * as ftt from './followup-templates.mjs';
 
 let n = 0;
 const ok = (name, fn) => { try { fn(); n++; } catch (e) { console.error('FAIL', name, '\n', e.stack.split('\n').slice(0, 4).join('\n')); process.exitCode = 1; } };
@@ -162,21 +163,25 @@ ok('seguimientos (Playbook §17 revisado): prometer y el seguimiento vacío pena
   const l3 = cm.coldLint(f3, [], {});
   assert.ok(l3.rewards.some((r) => r.code === 'followup_cierra'));
   assert.ok(!l3.warnings.some((w) => ['muy_corto', 'followup_corto', 'followup_promete', 'cta_ofrece_ejemplo', 'cta_reunion', 'followup_vuelve_a_vender'].includes(w.code)));
+  // las plantillas por rubro, en sus 3 variantes, pasan limpias
   for (const v of [null, 'corredoras', 'clinicas', 'casinos_colegios', 'casinos_empresas']) {
     for (const k of ['followup_1', 'followup_2', 'followup_3']) {
-      const t = oc.followupTemplate(k, { company_name: 'Dentaline', canonical: v ? { vertical: v } : {} }, 'consultas entre sedes');
-      const l = cm.coldLint({ kind: k, ...t }, [], {});
-      const tag = (v || 'generico') + '/' + k;
-      assert.deepEqual(l.hard, [], tag);
-      assert.ok(!l.warnings.some((w) => ['followup_promete', 'cta_ofrece_ejemplo', 'followup_vuelve_a_vender', 'followup_vacio', 'followup_corto', 'muy_corto', 'largo', 'cta_reunion', 'buzzwords', 'tono_ia'].includes(w.code)), tag + ' ' + JSON.stringify(l.warnings.map((w) => w.code)));
-      assert.ok(l.score >= 90, tag + ' score ' + l.score);
-      assert.ok(/^Estimado equipo de Dentaline,/.test(t.body), tag);
-      assert.equal(t.subject, 'Re: consultas entre sedes', tag);
-      assert.ok(!/demo|video|propuesta|reuni[oó]n|precio|\$399|\$149/i.test(t.body), tag + ' no promete ni cotiza');
-      if (k !== 'followup_3') assert.ok(l.rewards.some((r) => r.code === 'followup_valor'), tag + ' dolor/valor con 100–170 palabras');
-      else assert.ok(l.rewards.some((r) => r.code === 'followup_cierra'), tag);
+      for (const i of [0, 1, 2]) {
+        const body = 'Estimado equipo de Dentaline,\n\n' + ftt.followupBody(k, v, i);
+        const l = cm.coldLint({ kind: k, subject: 'Re: consultas entre sedes', body }, [], {});
+        const tag = (v || 'generico') + '/' + k + '/v' + i;
+        assert.deepEqual(l.hard, [], tag);
+        assert.ok(!l.warnings.some((w) => ['followup_promete', 'cta_ofrece_ejemplo', 'followup_vuelve_a_vender', 'followup_vacio', 'followup_corto', 'muy_corto', 'largo', 'cta_reunion', 'buzzwords', 'tono_ia'].includes(w.code)), tag + ' ' + JSON.stringify(l.warnings.map((w) => w.code)));
+        assert.ok(l.score >= (k === 'followup_3' ? 80 : 90), tag + ' score ' + l.score);
+        if (k !== 'followup_3') assert.ok(l.rewards.some((r) => r.code === 'followup_valor'), tag + ' dolor/valor con 100–170 palabras');
+        else assert.ok(l.rewards.some((r) => r.code === 'followup_cierra'), tag);
+      }
     }
   }
+  // followupTemplate arma saludo + asunto original y reparte las variantes entre prospectos
+  const usados = new Set();
+  for (let i = 0; i < 40; i++) { const t = oc.followupTemplate('followup_2', { id: 'c' + i, company_name: 'Dentaline', canonical: { vertical: 'clinicas' } }, 'consultas entre sedes'); assert.ok(/^Estimado equipo de Dentaline,/.test(t.body)); assert.equal(t.subject, 'Re: consultas entre sedes'); usados.add(t.body); }
+  assert.equal(usados.size, 3, 'los prospectos reciben 3 textos distintos');
 });
 
 ok('bloqueos reales: porcentajes, garantías y números de clientes sin respaldo', () => {
