@@ -208,7 +208,7 @@ r = await exec({ action: 'overview' }, { candidates: [
   { id: UID(12), company_name: 'Correo en curso', status: 'contacted', last_contact_channel: 'email', priority_score: 70, band: 'media', channel_state: {}, contact: { name: 'Pedro Rojas', role: 'Gerente General', email: 'pedro@x.cl', linkedin: 'https://www.linkedin.com/in/pedro-rojas' }, evidence_urls: ['https://cl.linkedin.com/in/pedro-rojas'] }],
   seqdone: [{ candidate_id: UID(11), kind: 'initial', status: 'sent', sent_at: iso(NOW - 15 * 86400000), metadata: { followup_state: 'done', followup_done_at: iso(NOW - 4 * 86400000) } }],
   seqf3: [{ candidate_id: UID(11), kind: 'followup_3', status: 'sent', sent_at: iso(NOW - 4 * 86400000) }] });
-t('overview LinkedIn secuencial: pasa a «listo» solo quien terminó el ciclo de correo sin respuesta (el que sigue en seguimiento no)', r.resp.linkedin.ready.length === 1 && r.resp.linkedin.ready[0].company === 'Correo terminado');
+t('overview LinkedIn en paralelo: es «listo» quien tiene persona + perfil verificable aunque el correo siga en curso', r.resp.linkedin.ready.length === 2 && r.resp.linkedin.ready.some((x) => x.company === 'Correo terminado') && r.resp.linkedin.ready.some((x) => x.company === 'Correo en curso'));
 r = await exec({ action: 'overview' }, { candidates: [{ id: UID(13), company_name: 'Ya a mano', status: 'contacted', last_contact_channel: 'linkedin', priority_score: 70, band: 'media', channel_state: {}, contact: { name: 'Rafael Lario', role: 'Socio fundador', linkedin: 'https://www.linkedin.com/in/rafael-lario' }, evidence_urls: ['https://cl.linkedin.com/in/rafael-lario'] }] });
 t('overview LinkedIn: quien ya fue contactado por LinkedIn a mano NO aparece como listo para aprobar', r.resp.linkedin.ready.length === 0);
 

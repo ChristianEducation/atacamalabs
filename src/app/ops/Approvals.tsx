@@ -257,7 +257,7 @@ export function LinkedinReadyCard({ p }: { p: LinkedinReady }) {
             {p.reason ? (<><dt>Por qué LinkedIn</dt><dd>{p.reason}</dd></>) : null}
             <dt>Destino</dt><dd>Lista «Atacama OS — Producción» · campaña «Atacama OS — LinkedIn Producción»</dd>
           </dl>
-          <p className="ops-foot">Al aprobar entra a la lista y a la campaña y Waalaxy ejecuta la secuencia. Respeta el tope diario y la regla de no contactar por correo y LinkedIn a la vez.</p>
+          <p className="ops-foot">Al aprobar entra a la lista y a la campaña y Waalaxy ejecuta la secuencia. Respeta el tope diario. LinkedIn corre en paralelo al correo; quien ya respondió no aparece.</p>
           <div className="ops-btns">
             <button type="button" className="ops-btn ops-btn-primary" disabled={pending} onClick={async () => { const r = await run({ action: "linkedin_approve", candidate_id: p.candidate_id }); if (r?.ok) markGone(`l-${p.candidate_id}`, "✓ aprobado: entra a la lista y a la campaña de Waalaxy. Actualizando…"); }}>{pending ? "Aprobando…" : "Aprobar LinkedIn"}</button>
             {!rejecting ? <button type="button" className="ops-btn ops-btn-danger" disabled={pending} onClick={() => setRejecting(true)}>Rechazar</button> : null}
@@ -366,7 +366,7 @@ export function ApprovalsCenter({ overview, review, initialFilter, now }: { over
   const [confirm, setConfirm] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
   const { pending, run } = useRunner();
-  const { opt, patchEmail } = useOptimistic();
+  const { opt, patchEmail, markGone } = useOptimistic();
 
   const drafts = useMemo(() => (overview?.email.cards ?? []).filter((c) => effCard(c, opt).status === "draft"), [overview, opt]);
   const cap = overview?.email.cap ?? 5;
@@ -386,6 +386,22 @@ export function ApprovalsCenter({ overview, review, initialFilter, now }: { over
   const list = items.filter((i) => !want || i.kind === want);
   const counts = { todas: items.length, correos: items.filter((i) => i.kind === "email").length, linkedin: items.filter((i) => i.kind === "linkedin").length, contenido: items.filter((i) => i.kind === "content").length };
   const selDrafts = sel.filter((id) => drafts.some((d) => d.id === id));
+
+  const liReady = (overview?.linkedin.ready ?? []).filter((p) => !opt.gone[`l-${p.candidate_id}`]);
+  const liLeft = Math.max(0, (overview?.linkedin.cap ?? 0) - (overview?.linkedin.imported_today ?? 0));
+  const liBatch = liReady.slice(0, liLeft);
+  const bulkLi = async () => {
+    let ok = 0;
+    for (let i = 0; i < liBatch.length; i++) {
+      const p = liBatch[i];
+      setProgress(`Pasando ${i + 1} de ${liBatch.length} a Waalaxy…`);
+      const r = await run({ action: "linkedin_approve", candidate_id: p.candidate_id });
+      if (r === null) { await new Promise((res) => setTimeout(res, 500)); i--; continue; }   // otra acción en curso: se espera y se reintenta el mismo
+      if (r.ok) { ok++; markGone(`l-${p.candidate_id}`, "✓ aprobado: entra a la lista y a la campaña de Waalaxy. Actualizando…"); }
+    }
+    setProgress(null);
+    return ok;
+  };
 
   const bulk = async () => {
     setConfirm(false);
@@ -412,6 +428,13 @@ export function ApprovalsCenter({ overview, review, initialFilter, now }: { over
           </button>
         ))}
       </div>
+
+      {liBatch.length && (filter === "linkedin" || filter === "todas") ? (
+        <div className="ops-bulk" role="region" aria-label="Pasar varios prospectos a Waalaxy">
+          <span>{liReady.length} {liReady.length === 1 ? "prospecto listo" : "prospectos listos"} para LinkedIn · hoy {overview?.linkedin.imported_today ?? 0}/{overview?.linkedin.cap ?? 0}</span>
+          <button type="button" className="ops-btn ops-btn-primary" disabled={pending} onClick={bulkLi}>{pending ? progress ?? "Pasando…" : `Pasar ${liBatch.length} a Waalaxy`}</button>
+        </div>
+      ) : null}
 
       {selDrafts.length ? (
         <div className="ops-bulk" role="region" aria-label="Aprobación de varios correos">

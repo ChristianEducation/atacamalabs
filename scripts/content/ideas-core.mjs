@@ -95,24 +95,24 @@ export function ideasSimilar(a, b) {
 }
 
 /**
- * Plazo (anexo §D3): días hábiles que faltan hasta el viernes de cierre (el viernes anterior a la semana de publicación) vs. días necesarios
+ * Plazo (anexo §D3): días que faltan hasta el domingo de cierre (el fin de semana también se produce, decisión de Christian 23-oct) vs. días necesarios
  * (esfuerzo bajo 1, medio 2, alto 3; +1 si va al PC). Faltan ≥ necesarios+1 → alcanza; = necesarios → justo; menos → no alcanza.
  * Hoy cuenta si son antes de las 12:00 de Chile.
  */
 export function ideasDeadline(idea, nowMs, tz) {
   const zone = tz || 'America/Santiago';
   const need = ({ bajo: 1, medio: 2, alto: 3 }[String((idea && idea.effort) || '')] || 2) + (ideasLane(idea && idea.format) === 'pc' ? 1 : 0);
-  const closing = ideasAddDays(String((idea && idea.week_start) || ideasMonday(nowMs + 7 * 86400000, zone)), -3);
+  const closing = ideasAddDays(String((idea && idea.week_start) || ideasMonday(nowMs + 7 * 86400000, zone)), -1);
   const local = new Date(new Date(nowMs).toLocaleString('en-US', { timeZone: zone }));
   const today = local.getFullYear() + '-' + String(local.getMonth() + 1).padStart(2, '0') + '-' + String(local.getDate()).padStart(2, '0');
   let left = 0;
   for (let day = today, k = 0; day <= closing && k < 60; day = ideasAddDays(day, 1), k++) {
-    const dow = new Date(day + 'T12:00:00Z').getUTCDay();
-    if (dow === 0 || dow === 6) continue;
     if (day === today && local.getHours() >= 12) continue;
     left++;
   }
-  const state = left >= need + 1 ? 'alcanza' : left === need ? 'justo' : 'no_alcanza';
+  let state = left >= need + 1 ? 'alcanza' : left === need ? 'justo' : 'no_alcanza';
+  // Fin de semana 23–25 oct 2026: Christian produce el contenido de la semana y asume el riesgo; nada se marca «No alcanza» hasta pasar ese domingo.
+  if (state === 'no_alcanza' && today <= '2026-10-25') state = 'justo';
   return { state, label: { alcanza: 'Alcanza', justo: 'Justo', no_alcanza: 'No alcanza' }[state], left, need, closing };
 }
 

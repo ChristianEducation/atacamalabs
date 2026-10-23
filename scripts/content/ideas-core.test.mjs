@@ -38,12 +38,15 @@ ok('ficha: completa con los 12 campos (CTA y recurso opcionales); detecta lo que
   assert.equal(ic.ideasFicha(ic.ideasNorm(good({ cta: '' })).row).complete, true);
 });
 
-ok('plazo (anexo §D3): lunes 10:00 → viernes 23 alcanza para medio; jueves 14:00 no alcanza para alto+PC', () => {
+ok('plazo (anexo §D3): el fin de semana cuenta; lunes 10:00 → domingo 25 alcanza para medio; jueves 14:00 no alcanza para alto+PC', () => {
   const i = { week_start: '2026-10-26', effort: 'medio', format: 'carrusel' };
-  const d1 = ic.ideasDeadline(i, MON); assert.equal(d1.closing, '2026-10-23'); assert.equal(d1.left, 5); assert.equal(d1.state, 'alcanza');
-  const thu = Date.parse('2026-10-22T17:00:00Z');   // jueves 14:00 Chile: solo queda el viernes
-  assert.equal(ic.ideasDeadline({ ...i, effort: 'bajo' }, thu).state, 'justo');
-  assert.equal(ic.ideasDeadline({ ...i, effort: 'alto', format: 'reel' }, thu).state, 'no_alcanza');
+  const d1 = ic.ideasDeadline(i, MON); assert.equal(d1.closing, '2026-10-25'); assert.equal(d1.left, 7); assert.equal(d1.state, 'alcanza');
+  const thu = Date.parse('2026-10-29T17:00:00Z');   // jueves 14:00 Chile: quedan viernes, sábado y domingo
+  const j = { ...i, week_start: '2026-11-02' };
+  assert.equal(ic.ideasDeadline({ ...j, effort: 'bajo' }, thu).state, 'alcanza');
+  assert.equal(ic.ideasDeadline({ ...j, effort: 'alto', format: 'reel' }, thu).state, 'no_alcanza');
+  // fin de semana 23–25 oct: sin «No alcanza» (Christian asume el riesgo)
+  assert.equal(ic.ideasDeadline({ ...i, effort: 'alto', format: 'reel' }, Date.parse('2026-10-23T20:00:00Z')).state, 'justo');
 });
 
 ok('propuesta: guarda lote + ideas buenas; descarta débiles (ficha, fuente, puntaje, duplicado) y cuenta las descartadas', () => {

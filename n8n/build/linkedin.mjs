@@ -136,7 +136,7 @@ if (!resp) {
   else if (A === 'recommend') { const r = planRecommend({}, { now: nowMs, candidate: cand, suppressedEmails: sup, emailSequenceDone: seqDone.has(cand.id) }); resp = r.response; out.writes = r.writes; out.audit = { tool: 'linkedin_recommend', level: 1 }; }
   else if (A === 'approve') {
     const emailActive = msgs.some((m) => m.candidate_id === cand.id);
-    const r = planLinkedinApprove({ confirmation_code: p.confirmation_code, order_text: p.order_text, by: p.by }, { now: nowMs, candidate: cand, config: cfg, suppressedEmails: sup, emailActive, emailSequenceDone: seqDone.has(cand.id), importedToday });
+    const r = planLinkedinApprove({ confirmation_code: p.confirmation_code, order_text: p.order_text, by: p.by }, { now: nowMs, candidate: cand, config: cfg, suppressedEmails: sup, emailActive, emailSequenceDone: seqDone.has(cand.id), replied: Boolean(inboundMap[cand.id]), importedToday });
     resp = r.response; out.writes = r.writes; out.effects = r.effects;
     if (r.waalaxy) out.waalaxy = { skip: false, wx: r.waalaxy, body: r.waalaxy.body };
     out.audit = { tool: 'linkedin_approve', level: 3 };

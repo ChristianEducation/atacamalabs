@@ -74,8 +74,10 @@ ok('LinkedIn secuencial: solo cuando el ciclo de correo terminó sin respuesta (
   const sinPerfil = cand({ status: 'contacted', last_contact_channel: 'email', canonical: { contact: { name: 'Daniel Colodro Ebner', role: 'Gerente Comercial', email: 'daniel@prueba.cl', public: true } } });
   assert.equal(li.recommendChannel(sinPerfil, { emailSequenceDone: true }).channel, 'email', 'sin perfil verificable no se abre LinkedIn');
   assert.equal(li.recommendChannel({ ...c, status: 'discarded' }, { emailSequenceDone: true }).channel, 'none');
-  // aprobación: con correo enviado se bloquea salvo que el ciclo haya terminado
-  assert.equal(li.planLinkedinApprove({}, { now: NOW, candidate: c, config: CFG_LIVE, emailActive: true }).response.error, 'canal_email_activo');
+  // aprobación: LinkedIn corre en paralelo al correo; solo se frena si ya respondió
+  assert.equal(li.planLinkedinApprove({}, { now: NOW, candidate: c, config: CFG_LIVE, emailActive: true, rnd }).response.status, 'confirmation_required', 'con correo en curso igual se puede abrir LinkedIn');
+  assert.equal(li.planLinkedinApprove({}, { now: NOW, candidate: c, config: CFG_LIVE, emailActive: true, replied: true }).response.error, 'ya_respondio');
+  assert.equal(li.planLinkedinApprove({}, { now: NOW, candidate: { ...c, ghl_stage: 'respondio' }, config: CFG_LIVE, emailActive: true }).response.error, 'ya_respondio');
   const ok2 = li.planLinkedinApprove({}, { now: NOW, candidate: c, config: CFG_LIVE, emailActive: true, emailSequenceDone: true, rnd });
   assert.equal(ok2.response.status, 'confirmation_required', 'pide el código de Christian, no importa solo'); assert.equal(ok2.response.summary.will_contact, true);
 });
@@ -116,7 +118,7 @@ ok('aprobación: modo test rechaza perfiles fuera de la lista blanca; LinkedIn n
   const other = cand({ canonical: { contact: { name: 'Pedro Soto Rojas', role: 'Gerente', linkedin: 'https://www.linkedin.com/in/pedro-soto', linkedin_source_url: 'x' } } });
   assert.equal(li.planLinkedinApprove({}, { now: NOW, candidate: other, config: CFG_TEST }).response.error, 'fuera_de_allowlist');
   assert.equal(li.planLinkedinApprove({}, { now: NOW, candidate: cand({ canonical: { contact: { name: 'Equipo', email: 'a@b.cl' } } }), config: CFG_TEST }).response.error, 'linkedin_no_listo');
-  assert.equal(li.planLinkedinApprove({}, { now: NOW, candidate: cand(), config: CFG_TEST, emailActive: true }).response.error, 'canal_email_activo');
+  assert.equal(li.planLinkedinApprove({}, { now: NOW, candidate: cand(), config: CFG_TEST, replied: true }).response.error, 'ya_respondio');
   assert.equal(li.planLinkedinApprove({}, { now: NOW, candidate: cand({ status: 'discarded' }), config: CFG_TEST }).response.error, 'descartado');
 });
 ok('aprobación live: campaña de producción, tope diario y no repetir alta', () => {

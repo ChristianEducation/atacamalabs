@@ -294,7 +294,8 @@ export function oaLinkedinData(cands, cfg, nowMs, seqDoneIds) {
     }
     if (declined) return;
     const rec = recommendChannel({ status: c.status, last_contact_channel: c.last_contact_channel, contact: c.contact || {}, evidence_urls: c.evidence_urls || [] }, { suppressedEmails: [], emailSequenceDone: seqDone.has(c.id) });
-    if (rec.channel === 'linkedin' && rec.linkedin_ready && c.last_contact_channel !== 'linkedin') { // los ya contactados por LinkedIn (a mano) no se vuelven a proponer
+    // LinkedIn en paralelo al correo: basta que haya persona + perfil verificable (no se espera al cierre del correo). Ya contactados por LinkedIn (a mano), descartados y quienes respondieron no se proponen.
+    if (rec.linkedin_ready && c.status !== 'discarded' && c.ghl_stage !== 'respondio' && c.last_contact_channel !== 'linkedin') {
       ready.push({ candidate_id: c.id, company: c.company_name, person: rec.person, role: rec.role, url: rec.linkedin_url, score: c.priority_score != null ? c.priority_score : null, band: c.band || null, angle: c.angle || null, fact: c.quote || null, reason: rec.reason,
         list_id: (cfg && cfg.linkedin_list_id) || null, campaign_id: (cfg && cfg.linkedin_campaign_id) || null, source: ((c.contact || {}).linkedin_source_url) || (c.evidence_urls || []).find((u) => /linkedin\.com\/in\//i.test(u)) || null });
     }
