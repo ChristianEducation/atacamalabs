@@ -186,6 +186,8 @@ export const computeCode = `${LIB}
 const CFG = ${CFG_JSON};
 const p = $('Parse').first().json;
 const node = (n) => { try { return $(n).first().json || {}; } catch (e) { return {}; } };
+// Listas de GHL con varias páginas (paginación de n8n): se juntan TODAS; si solo hay una respuesta, queda igual que antes.
+const mergedBody = (n, key) => { let items = []; try { items = $(n).all().map((i) => i.json || {}); } catch (e) { items = []; } const good = items.filter((p) => (p.statusCode || 0) < 300 && p.body && Array.isArray(p.body[key])); if (!good.length) return node(n).body; return { ...good[0].body, [key]: good.flatMap((p) => p.body[key]) }; };
 const arr = (n) => { const x = node(n); return (x.statusCode || 0) < 300 && Array.isArray(x.body) ? x.body : []; };
 const ok = (n) => { const x = node(n); return (x.statusCode || 0) >= 200 && (x.statusCode || 0) < 300; };
 const missing = [];
@@ -205,7 +207,7 @@ const G = {};
 if (p.growth_reads && p.growth_reads.length) { const gi = $('Expand Growth').all().map((i) => i.json); const gr = $('SB Growth').all().map((i) => i.json || {}); gi.forEach((e, i) => { if (e.skip) return; const r = gr[i] || {}; if ((r.statusCode || 0) < 300 && Array.isArray(r.body)) G[e.key] = r.body; else missing.push('growth:' + e.key); }); }
 const gb = (n) => { const x = node(n); return (x.statusCode || 0) < 300 && x.body && typeof x.body === 'object' ? x.body : null; };
 const gmail = p.need.deep ? { w22: gb('Gmail Check 22'), w23: gb('Gmail Check 23') } : null;
-const oppBody = node('GHL Opps').body, taskBody = node('GHL Tasks').body;
+const oppBody = mergedBody('GHL Opps', 'opportunities'), taskBody = mergedBody('GHL Tasks', 'tasks');
 const accBody = node('GHL Accounts').body;
 const d = { now: p.now, ghl_accounts: accBody && accBody.results && Array.isArray(accBody.results.accounts) ? accBody.results.accounts : [], cfg: CFG, opps: p.need.ghl && oppBody && Array.isArray(oppBody.opportunities) ? oppBody.opportunities : [], tasks: p.need.ghl && taskBody && Array.isArray(taskBody.tasks) ? taskBody.tasks : [],
   messages: arr('SB Messages'), candidates: arr('SB Candidates'), pieces: arr('SB Pieces'), metrics: arr('SB Metrics'), signals_candidate: arr('SB Signals').length, signals_list: arr('SB Signals'), review_pieces: arr('SB Review Pieces'), alerts: arr('SB Alerts'), runs: arr('SB Runs'), outreach: arr('SB Config')[0] || null,
@@ -340,9 +342,9 @@ export function buildOps() {
     get('SB Alerts', u('alerts'), SUPABASE_CRED, 'supabase', [1600, 0]),
     get('SB Runs', u('runs'), SUPABASE_CRED, 'supabase', [1800, 0]),
     get('SB Config', u('config'), SUPABASE_CRED, 'supabase', [2000, 0]),
-    get('GHL Opps', u('opps'), GHL_CRED, 'ghl', [2200, 0], { headers: GH_HEADERS }),
+    (() => { const n = get('GHL Opps', u('opps'), GHL_CRED, 'ghl', [2200, 0], { headers: GH_HEADERS }); n.parameters.options = { ...n.parameters.options, pagination: { pagination: { paginationMode: 'responseContainsNextURL', nextURL: '={{ $response.body.meta.nextPageUrl }}', paginationCompleteWhen: 'other', completeExpression: '={{ !$response.body.opportunities || $response.body.opportunities.length < 100 || !$response.body.meta || !$response.body.meta.nextPageUrl }}', limitPagesFetched: true, maxRequests: 12, requestInterval: 150 } } }; return n; })(),
     { id: uuid(), name: 'GHL Tasks', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [2400, 0], credentials: GHL_CRED, continueOnFail: true, alwaysOutputData: true,
-      parameters: { method: 'POST', url: u('tasks'), authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth', sendHeaders: true, headerParameters: { parameters: GH_HEADERS }, sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify({ completed: false, limit: 100 }) }}', options: full() } },
+      parameters: { method: 'POST', url: u('tasks'), authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth', sendHeaders: true, headerParameters: { parameters: GH_HEADERS }, sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify({ completed: false, limit: 100 }) }}', options: { ...full(), pagination: { pagination: { paginationMode: 'updateAParameterInEachRequest', parameters: { parameters: [{ type: 'body', name: 'skip', value: '={{ $pageCount * 100 }}' }] }, paginationCompleteWhen: 'other', completeExpression: '={{ !$response.body.tasks || $response.body.tasks.length < 100 }}', limitPagesFetched: true, maxRequests: 15, requestInterval: 150 } } } } },
     get('GHL Accounts', u('accounts'), GHL_CRED, 'ghl', [2500, 0], { headers: GH_HEADERS }),
     get('N8N Workflows', u('wfs'), N8N_CRED, 'n8n', [2600, 0]),
     get('N8N Errors', u('errors'), N8N_CRED, 'n8n', [2800, 0]),

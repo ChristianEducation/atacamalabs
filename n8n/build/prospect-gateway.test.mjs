@@ -20,7 +20,7 @@ async function pipeline(body, st = {}, w = wf) {
   const parsed = (await runCode('Parse', store, {}, null, st.httpRequest, w))[0].json; if (parsed.fatal) throw new Error(parsed.fatal); store.Parse = parsed;
   if (st.cached) return { parsed, cached: (await runCode('Respond Cached', store, {}, { body: [{ response: st.cached }] }, null, w))[0].json };
   store.Lookup = st.lookup || emptyLookup; store['GHL Contacts'] = st.contacts || ghlEmpty; store['GHL Opps'] = st.opps || oppsEmpty;
-  const ev = (await runCode('Evaluate', store, {}, null, null, w))[0].json; store.Evaluate = ev;
+  const ev = (await runCode('Evaluate', store, st.contactsPages ? { 'GHL Contacts': st.contactsPages } : {}, null, null, w))[0].json; store.Evaluate = ev;
   if (ev.req.action === 'analyze') return { parsed, ev, response: (await runCode('Respond Analyze', store, {}, null, null, w))[0].json, s1: [{ kind: 'none' }] };
   const s1 = (await runCode('Plan S1', store, {}, null, null, w)).map((x) => x.json);
   const lists = { 'Plan S1': s1, 'Exec S1': s1.map((op) => (st.ghl || defaultGhl)(op)) };
@@ -156,5 +156,22 @@ if (process.env.GATEWAY_REAL_HTML && fs.existsSync(process.env.GATEWAY_REAL_HTML
   t('Persist se alimenta de Split Rows y Respond revisa TODOS los lotes', wf.connections['Finalize'].main[0][0].node === 'Split Rows' && wf.connections['Split Rows'].main[0][0].node === 'Persist' && code('Respond').includes('$("Persist").all()'));
 }
 
+// ---- Paginación de GHL: con más de 100 contactos el índice sigue completo (antes el Gateway dejaba de crear prospectos)
+{
+  const contacts = (k, from) => Array.from({ length: k }, (_, i) => ({ id: 'C' + (from + i), contactName: 'Persona ' + (from + i), email: 'p' + (from + i) + '@ejemplo-' + (from + i) + '.cl' }));
+  const page = (arr, total) => ({ statusCode: 200, body: { contacts: arr, meta: { total, nextPageUrl: 'https://x/next' } } });
+  const p1 = page(contacts(100, 0), 111), p2 = page(contacts(11, 100), 111);
+  const tag = (res) => (res.ev && res.ev.ev) || res.ev;
+  let r2 = await pipeline({ action: 'analyze', source: { type: 'ia', name: 'ChatGPT' }, prospects: [good()] }, { contacts: p1, contactsPages: [p1, p2] });
+  t('GHL con 111 contactos y TODAS las páginas leídas: el índice está completo', r2.response.ghl_index_complete === true, JSON.stringify(r2.response).slice(0, 200));
+  r2 = await pipeline({ action: 'analyze', source: { type: 'ia', name: 'ChatGPT' }, prospects: [good()] }, { contacts: p1, contactsPages: [p1] });
+  t('GHL con 111 contactos pero solo la primera página: sigue marcado incompleto (nunca se crea a ciegas)', r2.response.ghl_index_complete === false);
+  r2 = await pipeline({ action: 'analyze', source: { type: 'ia', name: 'ChatGPT' }, prospects: [good()] }, { contacts: p1, contactsPages: [p1, { statusCode: 500, body: {} }] });
+  t('si una página de GHL falla, el índice queda incompleto', r2.response.ghl_index_complete === false);
+  r2 = await pipeline({ action: 'analyze', source: { type: 'ia', name: 'ChatGPT' }, prospects: [good()] }, {});
+  t('sin paginación (una sola respuesta) sigue funcionando como antes', r2.response.ghl_index_complete === true);
+  const node = (n) => wf.nodes.find((x) => x.name === n);
+  t('los nodos de GHL siguen meta.nextPageUrl, paran en una página incompleta y tienen tope de páginas', ['GHL Contacts', 'GHL Opps'].every((n) => { const pg = node(n).parameters.options.pagination.pagination; return pg.paginationMode === 'responseContainsNextURL' && /nextPageUrl/.test(pg.nextURL) && pg.limitPagesFetched === true && pg.maxRequests >= 10 && /length < 100/.test(pg.completeExpression); }));
+}
 console.log(`\n${pass} ok ${fail} fallos`);
 process.exit(fail ? 1 : 0);

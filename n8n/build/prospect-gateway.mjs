@@ -38,6 +38,8 @@ const sb = (name, method, url, bodyExpr, pos, prefer) => ({ id: uuid(), name, ty
     ...(bodyExpr ? { sendBody: true, specifyBody: 'json', jsonBody: bodyExpr } : {}), options: full() } });
 const ghlGet = (name, url, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: pos, credentials: GHL_CRED, continueOnFail: true, alwaysOutputData: true,
   parameters: { method: 'GET', url, authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth', sendHeaders: true, headerParameters: { parameters: [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', value: 'application/json' }] }, options: full() } });
+/** GET a GHL que SIGUE las páginas (limit=100 + meta.nextPageUrl) hasta una página incompleta, máx. 12 páginas (1.200 registros). Antes se leían solo los primeros 100 y, al pasar de 100 contactos, el índice quedaba «incompleto» y el Gateway dejaba de crear prospectos. */
+const ghlGetPaged = (name, url, key, pos) => { const n = ghlGet(name, url, pos); n.parameters.options = { ...n.parameters.options, pagination: { pagination: { paginationMode: 'responseContainsNextURL', nextURL: '={{ $response.body.meta.nextPageUrl }}', paginationCompleteWhen: 'other', completeExpression: `={{ !$response.body.${key} || $response.body.${key}.length < 100 || !$response.body.meta || !$response.body.meta.nextPageUrl }}`, limitPagesFetched: true, maxRequests: 12, requestInterval: 150 } } }; return n; };
 const ghlExec = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: pos, credentials: GHL_CRED, continueOnFail: true, alwaysOutputData: true,
   parameters: { method: '={{ $json.method || "POST" }}', url: '={{ $json.skip ? "https://localhost.invalid/" : $json.url }}', authentication: 'genericCredentialType', genericAuthType: 'httpHeaderAuth', sendHeaders: true,
     headerParameters: { parameters: [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', value: 'application/json' }] }, sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full() } });
@@ -116,11 +118,13 @@ const CFG = ${JSON.stringify(cfg)};
 const req = $('Parse').first().json;
 const lk = $('Lookup').first().json || {};
 if ((lk.statusCode || 0) >= 300) throw new Error('Supabase gateway_lookup falló (HTTP ' + lk.statusCode + '): ' + JSON.stringify(lk.body || {}).slice(0, 200));
-const cr = $('GHL Contacts').first().json || {};
-const orr = $('GHL Opps').first().json || {};
-const contacts = (cr.statusCode || 0) < 300 && cr.body && Array.isArray(cr.body.contacts) ? cr.body.contacts : [];
-const opps = (orr.statusCode || 0) < 300 && orr.body && Array.isArray(orr.body.opportunities) ? orr.body.opportunities : [];
-const st = { lookup: Array.isArray(lk.body) ? lk.body : [], contacts, opps, contacts_ok: (cr.statusCode || 0) < 300 && Boolean(cr.body), opps_ok: (orr.statusCode || 0) < 300 && Boolean(orr.body),
+const pages = (n) => { let a = []; try { a = $(n).all().map((i) => i.json || {}); } catch (e) { a = []; } if (!a.length) { try { const f = $(n).first().json; if (f) a = [f]; } catch (e) { a = []; } } return a; };
+const crs = pages('GHL Contacts'), ors = pages('GHL Opps');
+const cr = crs[0] || {}, orr = ors[0] || {};
+const good = (p) => (p.statusCode || 0) < 300 && p.body;
+const contacts = crs.filter(good).flatMap((p) => Array.isArray(p.body.contacts) ? p.body.contacts : []);
+const opps = ors.filter(good).flatMap((p) => Array.isArray(p.body.opportunities) ? p.body.opportunities : []);
+const st = { lookup: Array.isArray(lk.body) ? lk.body : [], contacts, opps, contacts_ok: crs.length > 0 && crs.every((p) => (p.statusCode || 0) < 300 && Boolean(p.body)), opps_ok: ors.length > 0 && ors.every((p) => (p.statusCode || 0) < 300 && Boolean(p.body)),
   contacts_total: Number((cr.body && cr.body.meta && cr.body.meta.total) || contacts.length), opps_total: Number((orr.body && orr.body.meta && orr.body.meta.total) || opps.length) };
 if (req.act && req.act.type === undefined && req.action === 'act') throw new Error('act.type obligatorio');
 const ev = evaluateRequest(req, st, CFG, req.now);
@@ -183,8 +187,8 @@ export function buildProspectGateway(mode = 'real') {
     ifNode('Cached?', 'Array.isArray($json.body) && $json.body.length > 0', [720, 0]),
     code('Respond Cached', cachedCode, [960, -140]),
     sb('Lookup', 'POST', `${SUPABASE}/rest/v1/rpc/gateway_lookup`, `={{ JSON.stringify({ p_pack: "${pack}", p_keys: $("Parse").first().json.keys }) }}`, [960, 120]),
-    ghlGet('GHL Contacts', `${GHL}/contacts/?locationId=${cfg.locationId}&limit=100`, [1200, 120]),
-    ghlGet('GHL Opps', `${GHL}/opportunities/search?location_id=${cfg.locationId}&pipeline_id=${cfg.pipelineId}&limit=100`, [1440, 120]),
+    ghlGetPaged('GHL Contacts', `${GHL}/contacts/?locationId=${cfg.locationId}&limit=100`, 'contacts', [1200, 120]),
+    ghlGetPaged('GHL Opps', `${GHL}/opportunities/search?location_id=${cfg.locationId}&pipeline_id=${cfg.pipelineId}&limit=100`, 'opportunities', [1440, 120]),
     code('Evaluate', evaluateCode(cfg), [1680, 120]),
     ifNode('Is Analyze?', '$json.req.action === "analyze"', [1920, 120]),
     code('Respond Analyze', analyzeCode, [2160, -20]),
