@@ -16,3 +16,10 @@ Log propio del módulo. No reescribe el cierre v3 (`EJECUCION-LOG.md`). Estado d
 | Migraciones aplicadas en vivo, workflows 25/29, cron del Daily | `NO VERIFICADO EN VIVO` (no se consultó Supabase, n8n ni el VPS) | no comprobado |
 
 Diferencias con el spec: ninguna que cambie producto, seguridad o alcance. Rama de trabajo distinta a `main` por seguridad (se integra a `main` solo con tu «sí»).
+
+## F1 · Esquema + motor de calidad (27-oct-2026)
+- `supabase/migrations/20261024_strategic_radar.sql`: 6 tablas `strategic_*` (config, prod_targets, prod_checks, opportunities, evidence, runs), constraints con nombre, índices del §5.1, semilla de 5 servicios `candidate` (§17.1, sin URLs, `monitor_enabled=false`), config con todo en `false`. RLS encendido + `revoke` a anon/authenticated, sin políticas, sin `SECURITY DEFINER`, sin triggers, sin tocar tablas existentes. **NO aplicada en ningún servidor.**
+- `scripts/ops/strategic-radar-core.mjs` (puro, sin imports): `srCanonicalUrl`, `srSha256` (JS puro, igual a `node:crypto`; así corre en el sandbox de n8n), `srFingerprint`, `srValidateEvidence`, `srScoreProduct/Partner/Event`, `srCoverage`, `srRank`, `srTransition`, `srProductionHealth`, `srAttention`, `srGate`, `srView` (+ `srParseDate`, `srDaysLeft`, `srEventState`, `srIsPrivateHost`, `srDbKind`).
+- Decisiones donde el spec dejaba margen (revisables): confianza de alianzas = `low` salvo fuente `official` + elegibilidad ≥12/20; cuota del gate = 3 corridas fallidas en 24 h; separación mínima entre corridas 10 min (producción) / 6 h (investigación); solo-fecha se compara por día calendario en `America/Santiago`.
+- Pruebas: `scripts/ops/strategic-radar-core.test.mjs` = **39 pruebas** (cientos de aserciones: URL, huella, fechas, evidencia, productos 9+unknown≠90 %, licencia ausente, alianza inelegible, evento pasado/sin fecha, producción 1/2 caídas y 60 min, Daily 3 máx/orden, gate, vista y revisión estática de la migración). Suite total: ver abajo.
+- Pendiente de F1 para F5: el equivalente Python de `srCanonicalUrl`/huella (fixtures compartidos) se hace con el monitor/MCP.
