@@ -12,7 +12,7 @@
  */
 
 export function oaActionList() {
-  return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject', 'autosend_set', 'autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release', 'prep_contact', 'pause_set', 'idea_decide', 'idea_mine', 'taller_feedback', 'taller_approve', 'taller_schedule', 'taller_discard', 'taller_duplicate', 'taller_caption', 'taller_add_version', 'mail_config_set', 'mail_outcome', 'week_ritual_set', 'piece_contact', 'learning_decide'];
+  return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject', 'autosend_set', 'autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release', 'prep_contact', 'pause_set', 'idea_decide', 'idea_mine', 'taller_feedback', 'taller_approve', 'taller_schedule', 'taller_discard', 'taller_duplicate', 'taller_caption', 'taller_add_version', 'mail_config_set', 'mail_outcome', 'week_ritual_set', 'piece_contact', 'learning_decide', 'strategic_decide', 'strategic_target_confirm'];
 }
 
 export function oaIsUuid(v) {
@@ -175,6 +175,9 @@ export function oaValidate(b) {
     if (!oaIsUuid(x.piece_id)) return { ok: false, error: 'piece_id_invalido', message: 'piece_id (uuid de la pieza) es obligatorio.' };
     req.piece_id = String(x.piece_id).toLowerCase();
   }
+  // Radar estratégico (spec RADAR §6.2): dos decisiones humanas; ninguna contacta, inscribe, crea en GHL ni enciende monitoreo.
+  if (action === 'strategic_decide') { const v = srValidateDecision(x); if (!v.ok) return v; Object.assign(req, v.value); }
+  if (action === 'strategic_target_confirm') { const v = srValidateTargetConfirm(x); if (!v.ok) return v; Object.assign(req, v.value); }
   return { ok: true, req };
 }
 
@@ -218,6 +221,10 @@ export function oaReads(req, sb) {
     add('idea', 'content_ideas?id=eq.' + req.idea_id + '&select=*&limit=1');
   } else if (req.action === 'pause_set') {
     add('state', 'system_state?id=eq.1&select=*&limit=1');
+  } else if (req.action === 'strategic_decide') {
+    add('opp', 'strategic_opportunities?id=eq.' + req.opportunity_id + '&select=id,kind,title,status,is_test&limit=1');
+  } else if (req.action === 'strategic_target_confirm') {
+    add('target', 'strategic_prod_targets?id=eq.' + req.target_id + '&select=id,logical_name,status,repo_full_name,deployment_url,health_url,monitor_enabled,is_test&limit=1');
   } else if (req.action.startsWith('content_')) {
     add('piece', 'content_pieces?id=eq.' + req.piece_id + '&select=id,status,ghl_post_id,ghl_status,channel,format,topic,is_test,scheduled_at&limit=1');
   }
@@ -606,6 +613,12 @@ export function oaStep(req, R, results, nowMs, env) {
     }
   }
 
+  // ---------------------------------------------------------------- Radar estratégico: una sola escritura condicional por acción; nunca llamadas externas
+  if (A === 'strategic_decide' || A === 'strategic_target_confirm') {
+    const pl = A === 'strategic_decide' ? srDecidePlan(req, (R.opp || [])[0] || null, { now: nowMs, by }) : srTargetConfirmPlan(req, (R.target || [])[0] || null, { now: nowMs, by });
+    return pl.error ? fail(pl.error, pl.message, pl.current_status ? { current_status: pl.current_status } : undefined) : done(pl.resp, pl.writes);
+  }
+
   // ---------------------------------------------------------------- pausa general (spec §8.8): system_state + reflejo en outreach_config.paused
   if (A === 'pause_set') {
     const plan = v3PausePlan(req, (R.state || [])[0] || null, (R.config || [])[0] || null, nowMs, by);
@@ -666,8 +679,10 @@ export function oaAudit(req, R, final, nowMs) {
   else if (req.action === 'piece_contact') { ent.piece_id = req.piece_id; ent.contact = req.name; ent.keyword = req.keyword; }
   else if (req.piece_id) { const p = (R.piece || [])[0]; ent.piece_id = req.piece_id; if (p) { ent.topic = p.topic; ent.channel = p.channel; ent.ghl_post_id = p.ghl_post_id; } }
   if (req.proposal_id) { const pr = (R.proposal || [])[0]; ent.proposal_id = req.proposal_id; if (pr) ent.target = pr.target; }
+  if (req.opportunity_id) { const o = (R.opp || [])[0]; ent.opportunity_id = req.opportunity_id; if (o) { ent.kind = o.kind; ent.title = o.title; ent.before = o.status; ent.is_test = o.is_test === true; } }
+  if (req.target_id) { const t = (R.target || [])[0]; ent.target_id = req.target_id; if (t) { ent.logical_name = t.logical_name; ent.before = t.status; ent.is_test = t.is_test === true; } ent.repo_full_name = req.repo_full_name; ent.monitor_enabled = false; }
   const type = req.action.split('_')[0];
-  const params = { type, decision: req.action === 'pause_set' ? (req.paused ? 'paused' : 'resumed') : req.action === 'idea_decide' ? req.decision : req.action === 'idea_mine' ? 'mine' : req.action.startsWith('taller_') ? req.action.replace('taller_', '') : req.action === 'mail_config_set' || req.action === 'week_ritual_set' ? 'config' : req.action === 'mail_outcome' ? req.outcome : req.action === 'learning_decide' ? req.decision : req.action === 'piece_contact' ? 'contact' : req.action === 'email_save' && req.paste ? 'paste' : /approve/.test(req.action) ? 'approved' : /reject/.test(req.action) ? 'rejected' : req.action.replace(type + '_', ''), reason: req.reason || null, ...(req.subject ? { subject_len: req.subject.length, body_len: req.body.length } : {}) };
-  return { request_id: req.request_id + (r.ok ? '' : '~' + Math.floor(nowMs / 1000).toString(36)), actor: 'Christian via /ops', tool: 'ops_' + req.action, level: /approve|autosend_set|pause_set|taller_schedule|mail_config_set/.test(req.action) ? 3 : 2, entity: ent, params,
+  const params = { type, decision: req.action === 'pause_set' ? (req.paused ? 'paused' : 'resumed') : req.action === 'idea_decide' ? req.decision : req.action === 'idea_mine' ? 'mine' : req.action.startsWith('taller_') ? req.action.replace('taller_', '') : req.action === 'mail_config_set' || req.action === 'week_ritual_set' ? 'config' : req.action === 'mail_outcome' ? req.outcome : req.action === 'learning_decide' || req.action === 'strategic_decide' ? req.decision : req.action === 'strategic_target_confirm' ? 'confirm' : req.action === 'piece_contact' ? 'contact' : req.action === 'email_save' && req.paste ? 'paste' : /approve/.test(req.action) ? 'approved' : /reject/.test(req.action) ? 'rejected' : req.action.replace(type + '_', ''), reason: req.reason || null, ...(req.subject ? { subject_len: req.subject.length, body_len: req.body.length } : {}) };
+  return { request_id: req.request_id + (r.ok ? '' : '~' + Math.floor(nowMs / 1000).toString(36)), actor: 'Christian via /ops', tool: 'ops_' + req.action, level: /approve|autosend_set|pause_set|taller_schedule|mail_config_set|strategic_target_confirm/.test(req.action) ? 3 : 2, entity: ent, params,
     status: r.ok ? 'executed' : 'refused', result_summary: String(r.message || '').slice(0, 300), response: { ok: Boolean(r.ok), status: r.status || null, error: r.error || null, message: String(r.message || '').slice(0, 300) } };
 }

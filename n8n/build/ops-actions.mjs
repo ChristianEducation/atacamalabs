@@ -19,6 +19,7 @@ import * as taller from '../../scripts/content/taller-core.mjs';
 import * as week from '../../scripts/ops/week-core.mjs';
 import * as learn from '../../scripts/ops/learning-core.mjs';
 import * as results from '../../scripts/ops/results-core.mjs';
+import * as strategic from '../../scripts/ops/strategic-radar-core.mjs';
 
 const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 export const N8N_BASE = 'https://n8n.srv1650725.hstgr.cloud';
@@ -38,7 +39,7 @@ const ifNode = (name, expr, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.i
   parameters: { conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'loose' }, combinator: 'and', conditions: [{ leftValue: `={{ (${expr}) ? "yes" : "no" }}`, rightValue: 'yes', operator: { type: 'string', operation: 'equals' } }] }, options: {} } });
 
 const fnsOf = (mod) => Object.values(mod).filter((f) => typeof f === 'function');
-export const LIB = [...new Map([...fnsOf(li), ...fnsOf(oa), ...fnsOf(v3), ...fnsOf(ideas), ...fnsOf(taller), ...fnsOf(week), ...fnsOf(learn), ...fnsOf(results)].map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
+export const LIB = [...new Map([...fnsOf(li), ...fnsOf(oa), ...fnsOf(v3), ...fnsOf(ideas), ...fnsOf(taller), ...fnsOf(week), ...fnsOf(learn), ...fnsOf(results), ...fnsOf(strategic)].map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
 
 export const PARSE = `${LIB}
 
@@ -105,7 +106,7 @@ planned.forEach((w, i) => {
   const failed = !a.statusCode || a.statusCode >= 300;
   if (w.audit) { if (failed) r.audit_error = 'No quedó registrada en la auditoría (' + (a.statusCode ? 'HTTP ' + a.statusCode : 'sin respuesta') + ').'; return; }
   if (failed) { r.ok = false; r.error = 'no_se_guardo'; r.message = 'La acción no se pudo guardar (' + (a.statusCode ? 'HTTP ' + a.statusCode : 'sin respuesta') + '): ' + JSON.stringify(a.body || {}).slice(0, 140); return; }
-  if (w.check_rows && !(Array.isArray(a.body) && a.body.length)) { r.ok = false; r.error = 'sin_cambios'; r.message = w.check_message || 'No se aplicó el cambio.'; }
+  if (w.check_rows && !(Array.isArray(a.body) && a.body.length)) { r.ok = false; r.error = w.check_error || 'sin_cambios'; r.message = w.check_message || 'No se aplicó el cambio.'; }
 });
 r.safety = { sends_directly: false, note: 'Aprobar activa el flujo real existente; /ops nunca envía ni publica por sí mismo.' };
 return [{ json: r }];`;

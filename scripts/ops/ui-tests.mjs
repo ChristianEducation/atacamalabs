@@ -74,13 +74,13 @@ const panel = () => ({ v3: v3(), prep: prepData(), generated_at: new Date().toIS
 
 
 // ---- Radar estratégico (simulado): seed = todo apagado con los 5 candidatos; live = con datos; down = HTTP 500; unavailable = tablas ausentes; bad = fila mal formada
-const SR = { mode: 'seed', hits: [] };
+const SR = { mode: 'seed', hits: [], decided: {}, confirmed: {} };
 const srT = (n, name, o = {}) => ({ id: UID(1000 + n), logical_name: name, repo_full_name: null, repo_branch: null, deployment_url: null, health_url: null, provider: null, status: 'candidate', monitor_enabled: false, verified_at: null, notes: 'Código identificado; confirmar deployment y health endpoint', last_deploy_sha: null, section: 'pending', http_state: 'unverified', health_reason: 'sin_verificar', last_checked_at: null, last_check: null, ...o });
 const SR_SEED = ['Atacama Labs / OS', 'Librería Crecer', 'Pedidos Empresas', 'Registro Almuerzos', 'Casino Escolar'].map((nm, i) => srT(i + 1, nm, nm === 'Librería Crecer' ? { repo_full_name: 'ChristianEducation/LibreriaCrecer' } : {}));
 const SR_EV = (o = {}) => ({ source_url: 'https://github.com/acme/repo', source_title: 'Repositorio oficial', source_type: 'repository', claim: 'Existe este código con licencia MIT', excerpt: 'MIT License', source_published_at: null, verified_at: ISO(-5), ...o });
 const srO = (n, kind, o = {}) => ({ id: UID(2000 + n), kind, title: 'Oportunidad ' + n, organization: 'Org ' + n, canonical_url: 'https://example.org/o' + n, summary: 'Resumen concreto ' + n, business_case: 'Proceso operativo ' + n, target_customer: 'Clínicas', next_action: 'Validar con el dueño ' + n, status: 'new', score: 82, score_parts: {}, confidence: 'medium', license_id: null, license_verified: false, coverage_pct: null, critical_blockers: [], event_start_at: null, event_end_at: null, deadline_at: null, event_timezone: null, event_location: null, event_format: null, first_seen_at: ISO(-30), last_checked_at: ISO(-3), decision_at: null, decision_by: null, decision_reason: null, evidence: [SR_EV()], stale_days: null, unverified: false, ...o });
 function strategicView(tab) {
-  const live = SR.mode === 'live';
+  const live = SR.mode === 'live' || SR.mode === 'stale';
   const base = { generated_at: new Date().toISOString(), tab, enabled: live, source_state: SR.mode === 'unavailable' ? 'unavailable' : 'ok', runs: [] };
   if (SR.mode === 'unavailable') return { ...base, summary: { total: 0, pending: 0, alerts: 0, last_run_at: null }, items: [] };
   if (tab === 'production') {
@@ -89,6 +89,7 @@ function strategicView(tab) {
         srT(3, 'Pedidos Empresas', { status: 'confirmed', section: 'confirmed', monitor_enabled: true, deployment_url: 'https://pedidos.example.org', health_url: 'https://pedidos.example.org/h', verified_at: ISO(-48), http_state: 'down', health_reason: 'dos_caidas_consecutivas', last_checked_at: ISO(-0.2), last_check: { checked_at: ISO(-0.2), result: 'down', http_status: 503, latency_ms: null, error_code: 'timeout' } }),
         ...SR_SEED.filter((x) => !['Librería Crecer', 'Pedidos Empresas'].includes(x.logical_name))]
       : SR_SEED;
+    items.forEach((t, i) => { const c = SR.confirmed[t.id]; if (c) items[i] = { ...t, status: 'confirmed', section: 'confirmed', repo_full_name: c.repo_full_name, deployment_url: c.deployment_url, health_url: c.health_url, provider: c.provider || null, verified_at: ISO(0) }; });
     if (SR.mode === 'bad') items[0] = { ...items[0], logical_name: null };
     return { ...base, summary: { total: items.length, pending: items.filter((x) => x.section === 'pending').length, alerts: items.filter((x) => x.http_state === 'down').length, last_run_at: null }, items };
   }
@@ -97,6 +98,7 @@ function strategicView(tab) {
     ? [srO(1, 'product', { title: 'Repo agenda clínica', score: 88, license_id: 'MIT', license_verified: true, coverage_pct: 85, score_parts: { license: 25, functionality: 20, coverage_provisional: true }, critical_blockers: ['Falta módulo de pagos'], evidence: [SR_EV(), SR_EV({ source_url: 'https://github.com/acme/repo/blob/main/LICENSE', source_title: 'LICENSE', claim: 'Licencia MIT' })] }), srO(2, 'product', { title: 'Repo sin licencia', score: 60, confidence: 'low', unverified: true, last_checked_at: null })]
     : k === 'partner' ? [srO(3, 'partner', { title: 'Programa de partners Acme', deadline_at: ISO(24 * 5), evidence: [SR_EV({ source_type: 'official', source_title: 'Página oficial del programa', claim: 'Programa vigente para Chile' })] })]
       : [srO(4, 'event', { title: 'Encuentro minero Antofagasta', event_start_at: '2026-11-18T00:00:00.000Z', score_parts: { date_precision: 'date_only', audience: 24 }, event_location: 'Antofagasta', event_format: 'Presencial', stale_days: 9, evidence: [SR_EV({ source_type: 'official', source_title: 'Sitio del organizador', claim: 'Fecha anunciada por el organizador' })] })];
+  items.forEach((o, i) => { const d = SR.decided[o.id]; if (d) items[i] = { ...o, status: d, decision_at: ISO(0), decision_by: 'Christian via /ops' }; });
   return { ...base, summary: { total: items.length, pending: items.filter((x) => x.status === 'new').length, alerts: 0, last_run_at: null }, items };
 }
 
@@ -108,7 +110,7 @@ const mock = http.createServer((req, res) => {
   req.on('end', () => {
     const send = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
     const j = body ? JSON.parse(body) : {};
-    if (req.url === '/__sr') { SR.mode = j.mode; SR.hits = []; return send(200, {}); }
+    if (req.url === '/__sr') { SR.mode = j.mode; SR.hits = []; SR.decided = {}; SR.confirmed = {}; return send(200, {}); }
     if (req.url === '/__srhits') return send(200, SR.hits);
     if (req.url === '/webhook/atacama-ops' && j.action === 'strategic_view') { if (req.headers['x-atacama-key'] !== INGEST_KEY) return send(403, {}); SR.hits.push((j.params || {}).tab || 'production'); if (SR.mode === 'down') return send(500, {}); return send(200, { ok: true, action: 'strategic_view', strategic: strategicView((j.params || {}).tab || 'production') }); }
     if (req.url === '/__calls') return send(200, state.calls);
@@ -122,6 +124,8 @@ const mock = http.createServer((req, res) => {
       state.calls.push({ ...j, at: Date.now() });
       if (state.mode === 'error') return send(200, { ok: false, error: 'rechazado', message: 'El motor rechazó la acción (prueba).' });
       if (state.mode === 'down') return send(500, { message: 'boom' });
+      if (j.action === 'strategic_decide') { if (SR.mode === 'stale') return send(200, { ok: false, error: 'stale_state', message: 'Este registro cambió. Recarga para decidir sobre la última versión.' }); const to = { shortlist: 'shortlisted', work: 'working', dismiss: 'dismissed' }[j.decision]; SR.decided[j.opportunity_id] = to; return send(200, { ok: true, status: to, message: to === 'shortlisted' ? 'Guardada para evaluar. No se contactó a nadie.' : to === 'working' ? 'Anotada como prioridad interna. No se envió nada ni se creó nada en GHL.' : 'Descartada. No se vuelve a avisar.' }); }
+      if (j.action === 'strategic_target_confirm') { SR.confirmed[j.target_id] = j; return send(200, { ok: true, status: 'confirmed', message: 'Confirmado. El monitoreo sigue APAGADO: primero se prueba el endpoint real y tú autorizas encenderlo.' }); }
       if (j.action === 'content_approve' || j.action === 'content_reject') return send(200, { ok: true, status: j.action === 'content_approve' ? 'scheduled' : 'rejected', message: j.action === 'content_approve' ? 'Aprobada y programada en GHL (prueba).' : 'Rechazada (prueba).' });
       if (j.action && j.action.startsWith('taller_')) { const tp = state.tpieces.find((x) => x.id === j.piece_id); if (tp && j.action === 'taller_schedule') { tp.status = 'programada_pendiente_de_clic'; tp.status_label = 'Falta tu último clic en GHL'; tp.scheduled_at = j.schedule_at; } if (tp && j.action === 'taller_approve') { tp.status = 'lista'; tp.status_label = 'Lista para programar'; } if (tp && j.action === 'taller_feedback') { tp.status = 'cambios_pedidos'; tp.status_label = 'Cambios pedidos'; } return send(200, { ok: true, status: j.action, needs_ghl: j.action === 'taller_schedule', message: j.action === 'taller_schedule' ? 'Carrusel creado en GHL, EN REVISIÓN (prueba).' : 'Taller: ' + j.action + ' (prueba).' }); }
       if (j.action === 'idea_decide') { const it = state.ideas.find((i) => i.id === j.idea_id); if (it) { if (j.decision === 'approve') it.status = 'approved'; if (j.decision === 'change') { it.status = 'changed'; it.change_request = j.text; } if (j.decision === 'discard') state.ideas = state.ideas.filter((i) => i !== it); if (j.decision === 'move') it.week_start = j.week_start; } return send(200, { ok: true, status: j.decision, message: 'Idea: ' + j.decision + ' (prueba).' }); }
@@ -682,8 +686,9 @@ async function main() {
     await shot(page, 'radar-produccion-apagado');
     t('Radar · Producción apagado: aviso inequívoco y los 5 servicios como «Por verificar», ninguno con salud', /Monitoreo automático apagado; inventario por verificar/.test(srMain) && (await page.locator('[data-testid="strategic-target"]').count()) === 5 && (await page.locator('.ops-strategic-badge-unverified').count()) === 5 && (await page.locator('.ops-strategic-badge-healthy, .ops-strategic-badge-down, .ops-strategic-badge-degraded').count()) === 0 && (await page.locator('.ops-tag', { hasText: 'Pendiente de confirmar' }).count()) === 5);
     t('Radar · Producción: sin servicios confirmados, lo dice y no inventa verde', /Confirmados para monitoreo/i.test(srMain) && /Ningún servicio confirmado todavía/.test(srMain) && /Sin verificar/i.test(srMain) && !/Operativo/i.test(srMain));
-    t('Radar: ningún botón de contactar, inscribirse, enviar, aplicar ni push', !SR_BAD.test(srMain) && (await page.locator('#ops-main button').count()) === 0);
-    await page.locator('[data-testid="strategic-target"] summary').nth(1).click();
+    const srBtns = [...new Set(await page.locator('#ops-main button').evaluateAll((bs) => bs.map((b) => b.textContent.trim())))];
+    t('Radar: los únicos botones son «Confirmar registro», «Guardar para evaluar», «Trabajar», «Descartar»: nada de contactar, inscribirse, enviar, aplicar ni push', !SR_BAD.test(srMain) && srBtns.every((b) => ['Confirmar registro', 'Guardar para evaluar', 'Trabajar', 'Descartar', 'Sí, descartar', 'Cancelar'].includes(b)), srBtns.join('|'));
+    await page.locator('[data-testid="strategic-target"] > summary').nth(1).click();
     const srDet = await page.locator('[data-testid="strategic-target"]').nth(1).innerText();
     t('Radar · detalle de un servicio: repositorio como «código», sin integración, sin comprobación', /ChristianEducation\/LibreriaCrecer/.test(srDet) && /Sin integración/.test(srDet) && /Ninguna: no se chequea/.test(srDet) && /no prueba que esté desplegado/.test(srDet));
     for (const [id, h] of [['radar_productos', 'Repos externos'], ['radar_alianzas', 'Programas y alianzas'], ['radar_eventos', 'Eventos y networking']]) {
@@ -699,7 +704,7 @@ async function main() {
     await shot(page, 'radar-produccion-datos');
     t('Radar · Producción con datos: confirmados primero (healthy HTTP y caído) y luego los candidatos', (await page.locator('.ops-strategic-badge-healthy').count()) === 1 && (await page.locator('.ops-strategic-badge-down').count()) === 1 && (await page.locator('.ops-strategic-badge-unverified').count()) === 3 && (await page.locator('section[aria-labelledby="ops-sr-conf"]').innerText()).includes('Librería Crecer') && (await page.locator('section[aria-labelledby="ops-sr-conf"]').innerText()).includes('Pedidos Empresas') && (await page.locator('section[aria-labelledby="ops-sr-pend"]').innerText()).includes('Casino Escolar') && !(await page.locator('section[aria-labelledby="ops-sr-pend"]').innerText()).includes('Librería Crecer'));
     t('Radar · Producción: contador de caídos y el «Responde» aclara que es solo HTTP', /1\s*caídos/.test(srLive.replace(/\n/g, ' ')) && /solo que el endpoint contestó por HTTP/.test(srLive) && !/Monitoreo automático apagado/.test(srLive));
-    await page.locator('[data-testid="strategic-target"] summary').first().click();
+    await page.locator('[data-testid="strategic-target"] > summary').first().click();
     const srFirst = await page.locator('[data-testid="strategic-target"]').first().innerText();
     t('Radar · detalle de un confirmado: destino, HTTP 200, latencia y tipo de evidencia', /libreria\.example\.org/.test(srFirst) && /HTTP 200/.test(srFirst) && /142 ms/.test(srFirst) && /Chequeo HTTP autorizado/.test(srFirst));
     await page.goto(APP + '/ops?view=radar_productos'); await page.waitForSelector('[data-testid="strategic-opp"]');
@@ -718,6 +723,70 @@ async function main() {
     await page.locator('[data-testid="strategic-opp"] summary').first().click();
     const srPart = await page.locator('[data-testid="strategic-opp"]').first().innerText();
     t('Radar · Alianzas: plazo confirmado visible y el puntaje explicado', /Plazo/i.test(srPart) && /82\/100 · confianza media/.test(srPart));
+
+    // ---------------------------------------------------------------- Radar estratégico (F3): decisiones humanas
+    const nbR = (await calls()).length;
+    await srSet('seed');
+    await page.goto(APP + '/ops?view=radar_produccion'); await page.waitForSelector('[data-testid="strategic-target"]');
+    const tgt = page.locator('[data-testid="strategic-target"]').nth(1);
+    await tgt.locator(':scope > summary').click();
+    await tgt.locator('[data-testid="strategic-confirm"] summary').click();
+    const subBtn = tgt.locator('[data-testid="strategic-confirm"] button[type="submit"]');
+    t('Radar · Confirmar registro: el botón está bloqueado hasta tener repo, dos URLs https y un motivo', (await subBtn.isDisabled()) === true);
+    await tgt.locator('input[name="dep"]').fill('https://libreria.example.org');
+    await tgt.locator('input[name="health"]').fill('https://libreria.example.org/api/health');
+    await tgt.locator('input[name="provider"]').fill('Vercel');
+    t('Radar · Confirmar registro: sigue bloqueado sin el motivo', (await subBtn.isDisabled()) === true);
+    await tgt.locator('input[name="reason"]').fill('Es el sitio que está en producción');
+    t('Radar · Confirmar registro: el repositorio ya conocido viene precargado y el botón se habilita', (await tgt.locator('input[name="repo"]').inputValue()) === 'ChristianEducation/LibreriaCrecer' && (await subBtn.isEnabled()) === true);
+    await subBtn.click();
+    await waitCall('strategic_target_confirm');
+    const cc = (await calls()).slice(nbR).filter((c) => c.action === 'strategic_target_confirm');
+    t('Radar · confirmar llama UNA vez a strategic_target_confirm con repo, URLs y motivo; sin pedir monitoreo', cc.length === 1 && cc[0].repo_full_name === 'ChristianEducation/LibreriaCrecer' && cc[0].deployment_url === 'https://libreria.example.org' && cc[0].health_url === 'https://libreria.example.org/api/health' && cc[0].provider === 'Vercel' && !('monitor_enabled' in cc[0]) && /^[A-Za-z0-9_-]{8,64}$/.test(cc[0].request_id), JSON.stringify(cc));
+    await page.waitForFunction(() => /Pendiente de primer chequeo/i.test(document.body.innerText), null, { timeout: 20000 });
+    t('Radar · tras confirmar el servicio pasa a «Confirmados», aclara que el monitoreo sigue apagado y no se marca como sano', /Librería Crecer/.test(await page.locator('section[aria-labelledby="ops-sr-conf"]').innerText()) && (await page.locator('section[aria-labelledby="ops-sr-pend"] [data-testid="strategic-target"]').count()) === 4 && (await page.locator('.ops-strategic-badge-healthy').count()) === 0 && (await page.locator('.ops-toast-ok').first().innerText()).includes('monitoreo sigue APAGADO'));
+
+    await srSet('live');
+    await page.goto(APP + '/ops?view=radar_productos'); await page.waitForSelector('[data-testid="strategic-opp"]');
+    const o1 = page.locator('[data-testid="strategic-opp"]').first();
+    await o1.locator('summary').first().click();
+    t('Radar · una oportunidad nueva ofrece exactamente «Guardar para evaluar», «Trabajar» y «Descartar»', (await o1.locator('button').allInnerTexts()).join('|') === 'Guardar para evaluar|Trabajar|Descartar');
+    await o1.getByRole('button', { name: 'Guardar para evaluar' }).dblclick();
+    await waitCall('strategic_decide');
+    await page.waitForTimeout(800);
+    const d1 = (await calls()).slice(nbR).filter((c) => c.action === 'strategic_decide');
+    t('Radar · doble toque en «Guardar para evaluar» = UNA sola llamada, con el estado que se vio', d1.length === 1 && d1[0].decision === 'shortlist' && d1[0].expected_status === 'new' && d1[0].opportunity_id === UID(2001), JSON.stringify(d1));
+    t('Radar · el aviso es el del backend y no promete contacto', (await page.locator('.ops-toast-ok').last().innerText()) === 'Guardada para evaluar. No se contactó a nadie.');
+    await page.waitForFunction(() => /Guardado para evaluar/.test(document.querySelector('[data-testid="strategic-opp"]').textContent), null, { timeout: 20000 });
+    const o1b = page.locator('[data-testid="strategic-opp"]').first();
+    await o1b.evaluate((d) => { d.open = true; });
+    t('Radar · ya guardada: solo quedan «Trabajar» y «Descartar» (no se puede guardar dos veces)', (await o1b.locator('button').allInnerTexts()).join('|') === 'Trabajar|Descartar');
+    await o1b.getByRole('button', { name: 'Trabajar' }).click();
+    await page.waitForFunction(() => document.querySelectorAll('.ops-toast-ok').length >= 2, null, { timeout: 20000 });
+    const wk = (await calls()).slice(nbR).filter((c) => c.action === 'strategic_decide' && c.decision === 'work');
+    t('Radar · «Trabajar» solo llama a strategic_decide(work): sin correo, GHL, contacto ni inscripción', wk.length === 1 && (await calls()).slice(nbR).every((c) => /^strategic_/.test(c.action)) && /no se envió nada ni se creó nada en GHL/i.test(await page.locator('.ops-toast-ok').last().innerText()));
+    const o1c = page.locator('[data-testid="strategic-opp"]').first();
+    await o1c.evaluate((d) => { d.open = true; });
+    await o1c.getByRole('button', { name: 'Descartar' }).click();
+    t('Radar · «Descartar» pide confirmación y todavía no llama a nada', (await page.locator('[data-testid="strategic-dismiss-confirm"]').count()) === 1 && (await calls()).slice(nbR).filter((c) => c.decision === 'dismiss').length === 0);
+    await page.locator('[data-testid="strategic-dismiss-confirm"]').getByRole('button', { name: 'Cancelar' }).click();
+    t('Radar · cancelar no llama a nada', (await page.locator('[data-testid="strategic-dismiss-confirm"]').count()) === 0 && (await calls()).slice(nbR).filter((c) => c.decision === 'dismiss').length === 0);
+    await o1c.getByRole('button', { name: 'Descartar' }).click();
+    await page.locator('[data-testid="strategic-dismiss-confirm"] input').fill('Fuera de foco');
+    await page.locator('[data-testid="strategic-dismiss-confirm"]').getByRole('button', { name: 'Sí, descartar' }).click();
+    await page.waitForSelector('[data-testid="strategic-final"]', { timeout: 20000 });
+    const dd = (await calls()).slice(nbR).filter((c) => c.decision === 'dismiss');
+    t('Radar · descartar confirmado llama UNA vez con el motivo y queda como final (sin botones)', dd.length === 1 && dd[0].reason === 'Fuera de foco' && /no se reabre/.test(await page.locator('[data-testid="strategic-final"]').innerText()) && (await page.locator('[data-testid="strategic-opp"]').first().locator('button').count()) === 0);
+
+    await srSet('stale');
+    await page.goto(APP + '/ops?view=radar_alianzas'); await page.waitForSelector('[data-testid="strategic-opp"]');
+    await page.locator('[data-testid="strategic-opp"] summary').first().click();
+    await page.locator('[data-testid="strategic-opp"]').first().getByRole('button', { name: 'Guardar para evaluar' }).click();
+    await page.waitForSelector('.ops-toast-err', { timeout: 20000 });
+    t('Radar · decisión sobre una versión vieja: aviso legible «Este registro cambió. Recarga…» y nada cambia en pantalla', (await page.locator('.ops-toast-err').last().innerText()) === 'Este registro cambió. Recarga para decidir sobre la última versión.' && !/Guardado para evaluar/.test(await page.locator('[data-testid="strategic-opp"]').first().locator('.ops-row-sub').first().textContent()));
+    const allSr = (await calls()).slice(nbR);
+    t('Radar · en toda la sesión de pruebas solo se llamó a strategic_decide / strategic_target_confirm (ninguna otra acción)', allSr.length > 0 && allSr.every((c) => c.action === 'strategic_decide' || c.action === 'strategic_target_confirm'), allSr.map((c) => c.action).join(','));
+    await srSet('seed');
 
     for (const [mode, label] of [['down', 'n8n responde 500'], ['unavailable', 'tablas ausentes'], ['bad', 'una fila mal formada']]) {
       await srSet(mode);
@@ -790,8 +859,10 @@ async function main() {
         await rp.waitForSelector('#ops-main h1');
         await rp.locator('details.ops-row summary').first().click().catch(() => {});
         if (!(await rp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1))) { flat = false; console.log('  desborda en', v, w); }
-        const hs = await rp.locator('details.ops-row summary').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
+        const hs = await rp.locator('details.ops-row[open] > summary, details.ops-row > summary').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
         if (hs.some((h) => h < 44)) tall = false;
+        const bh = await rp.locator('details[open] button, details.ops-row[open] .ops-strategic-act button').evaluateAll((els) => els.filter((e) => e.offsetParent !== null).map((e) => e.getBoundingClientRect().height));
+        if (bh.some((h) => h < 43.5)) { tall = false; console.log('  botón bajo en', v, w, bh.join(',')); }
       }
       await shot(rp, `movil-${w}-radar`);
       t(`Radar móvil ${w}: sin scroll horizontal en las cuatro pestañas`, flat);

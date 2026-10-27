@@ -359,3 +359,5 @@ html:has(.ops), body:has(.ops) { overflow-x: clip; }
 .ops-detail dd { overflow-wrap: anywhere; }
 .ops-strategic-act { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 @media (min-width: 640px) { .ops-strategic-parts { grid-template-columns: 1fr 1fr; } }
+.ops-strategic-field { display: grid; gap: 4px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.ops-strategic-act .ops-input { flex: 1 1 220px; }

@@ -14,6 +14,7 @@ const iso = (ms) => new Date(ms).toISOString();
 const UID = (n) => '00000000-0000-4000-8000-' + String(n).padStart(12, '0');
 const CID = UID(1), MID = UID(2), PID = UID(3), CID2 = UID(4);
 const H1 = 'aaaa1111', H2 = 'bbbb2222';
+const OID = UID(50), TID = UID(51);
 
 /** Motores simulados. Registran cada llamada para comprobar QUÉ se pidió y qué NO. */
 function world(o = {}) {
@@ -64,7 +65,7 @@ async function exec(body, o = {}) {
   const parsed = (await run('Parse', store))[0].json; store.Parse = parsed;
   if (parsed.fatal) { const r = (await run('Respond Error', { ...store }, {})).length ? { ok: false, error: 'solicitud_invalida', message: parsed.fatal } : null; return { resp: r, calls: [], writes: [] }; }
   const reads = (await run('Expand Reads', store)).map((x) => x.json);
-  const dbForKey = (key) => key === 'audit' ? w.db.audit : key === 'message' ? [{ ...w.db.message, cand: { id: CID, company_name: 'Clínica Ramis', status: 'in_ghl' } }] : key === 'candidate' ? [w.db.candidate] : key === 'piece' ? [o.tpiece || w.db.piece] : key === 'proposal' ? [o.proposal || { id: UID(9), status: 'proposed', target: 'playbook' }] : key === 'versions' ? (o.versions || []) : key === 'feedback' ? (o.feedbackRows || []) : key === 'taken' ? (o.taken || []) : key === 'tcfg' ? [o.tcfg || {}]
+  const dbForKey = (key) => key === 'audit' ? w.db.audit : key === 'opp' ? (o.opp === null ? [] : [{ id: OID, kind: 'event', title: 'Evento minero', status: 'new', is_test: false, ...(o.opp || {}) }]) : key === 'target' ? (o.target === null ? [] : [{ id: TID, logical_name: 'Librería Crecer', status: 'candidate', repo_full_name: null, deployment_url: null, health_url: null, monitor_enabled: false, is_test: false, ...(o.target || {}) }]) : key === 'message' ? [{ ...w.db.message, cand: { id: CID, company_name: 'Clínica Ramis', status: 'in_ghl' } }] : key === 'candidate' ? [w.db.candidate] : key === 'piece' ? [o.tpiece || w.db.piece] : key === 'proposal' ? [o.proposal || { id: UID(9), status: 'proposed', target: 'playbook' }] : key === 'versions' ? (o.versions || []) : key === 'feedback' ? (o.feedbackRows || []) : key === 'taken' ? (o.taken || []) : key === 'tcfg' ? [o.tcfg || {}]
     : key === 'messages' ? (o.messages || [w.db.message]) : key === 'candidates' ? (o.candidates || [w.db.candidate]) : key === 'seqdone' ? (o.seqdone || []) : key === 'seqf3' ? (o.seqf3 || []) : key === 'suppression' ? [] : key === 'state' ? (o.state === null ? [] : [o.state || { id: 1, global_pause: false, meta: {} }]) : key === 'idea' ? (o.idea === null ? [] : [o.idea || { id: UID(9), status: 'proposed', week_start: '2026-10-26', title: 'Idea X', channel: 'instagram', format: 'carrusel', history: [], is_test: false }]) : key === 'config' ? [o.config || { mode: 'live', paused: false, daily_cap: 5, window_start: '09:00', window_end: '17:30', tz: 'America/Santiago', linkedin_mode: 'live', linkedin_list_id: 'L1', linkedin_campaign_id: 'C1', linkedin_daily_cap: 10 }] : [];
   const readRes = reads.map((r) => (o.readFails === r.key ? { statusCode: 500, body: {} } : { statusCode: 200, body: dbForKey(r.key) }));
   store.Read = readRes[0]; const lists = { Read: readRes };
@@ -93,7 +94,7 @@ const names = new Set(wf.nodes.map((n) => n.name));
 t('29: conexiones válidas y webhook con clave EXCLUSIVA de /ops (no la de Hermes)', Object.entries(wf.connections).every(([a, v]) => names.has(a) && v.main.every((o) => o.every((c) => names.has(c.node)))) && wf.nodes[0].parameters.authentication === 'headerAuth' && wf.nodes[0].credentials.httpHeaderAuth.name === 'Atacama Labs - Ops Approval Key' && wf.nodes[0].parameters.path === 'atacama-ops-actions');
 t('29: sin secretos incrustados y sin nodos de envío directo (Gmail, Telegram, SMTP, Waalaxy)', !/(Bearer |eyJ[A-Za-z0-9_-]{20}|pit-[0-9a-f]{8}|sk-[A-Za-z0-9]{20})/.test(JSON.stringify(wf)) && !wf.nodes.some((n) => /gmail|emailSend|telegram|slack|smtp|waalaxy/i.test(n.type + JSON.stringify(n.credentials || {}))));
 t('29: los únicos destinos son los motores 21/26 (webhooks de n8n) y GHL Social Planner (posts)', (() => { const c = code('Plan 1'); return /atacama-outreach-engine/.test(c) && /atacama-linkedin/.test(c) && /social-media-posting/.test(c) && !/messages\/send|conversations\/messages|\/delete|DELETE/.test(c); })());
-t('29: las acciones permitidas son exactamente la lista cerrada (sin ejecutor genérico)', JSON.stringify(wf.nodes.find((n) => n.name === 'Parse').parameters.jsCode.match(/return \['overview'[^\]]*\]/)[0]) === JSON.stringify("return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject', 'autosend_set', 'autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release', 'prep_contact', 'pause_set', 'idea_decide', 'idea_mine', 'taller_feedback', 'taller_approve', 'taller_schedule', 'taller_discard', 'taller_duplicate', 'taller_caption', 'taller_add_version', 'mail_config_set', 'mail_outcome', 'week_ritual_set', 'piece_contact', 'learning_decide']"));
+t('29: las acciones permitidas son exactamente la lista cerrada (sin ejecutor genérico)', JSON.stringify(wf.nodes.find((n) => n.name === 'Parse').parameters.jsCode.match(/return \['overview'[^\]]*\]/)[0]) === JSON.stringify("return ['overview', 'email_save', 'email_approve', 'email_reject', 'email_reopen', 'linkedin_approve', 'linkedin_reject', 'content_approve', 'content_reject', 'autosend_set', 'autosend_sweep', 'prep_li_sent', 'prep_hold', 'prep_release', 'prep_contact', 'pause_set', 'idea_decide', 'idea_mine', 'taller_feedback', 'taller_approve', 'taller_schedule', 'taller_discard', 'taller_duplicate', 'taller_caption', 'taller_add_version', 'mail_config_set', 'mail_outcome', 'week_ritual_set', 'piece_contact', 'learning_decide', 'strategic_decide', 'strategic_target_confirm']"));
 t('29: las escrituras reintentan 3 veces y las llamadas externas no cortan el flujo', wf.nodes.find((n) => n.name === 'Apply Writes').maxTries === 3 && wf.nodes.filter((n) => /^(Ingest|GHL (Get|Put)) \d$/.test(n.name)).every((n) => n.continueOnFail === true));
 t('29: cada PUT a GHL envía su cuerpo JSON (sendBody) y cada GET no envía cuerpo', wf.nodes.filter((n) => /^GHL Put \d$/.test(n.name)).every((n) => n.parameters.method === 'PUT' && n.parameters.sendBody === true && /JSON\.stringify/.test(n.parameters.jsonBody)) && wf.nodes.filter((n) => /^GHL Get \d$/.test(n.name)).every((n) => n.parameters.method === 'GET' && !n.parameters.sendBody));
 
@@ -380,6 +381,106 @@ t('Mi idea: nace aprobada (origin christian), ficha por completar, carril PC', r
   t('Nueva versión: v2 «para revisar» y cierra el feedback abierto', r.resp.ok === true && r.resp.version_no === 2 && r.writes.some((w) => /content_feedback\?piece_id/.test(w.path) && w.body.status === 'done'));
   r = await exec({ ...reqBase, action: 'taller_discard', piece_id: TP, reason: 'no va' }, { tpiece: tp({ taller_status: 'programada_pendiente_de_clic', ghl_post_id: 'ghlpost1' }), versions: ver(4), rejecting: true });
   t('Descartar algo ya en GHL: rechazo reversible (GET → PUT rechazado → GET) y recién ahí descarta', r.resp.ok === true && r.calls.map((c) => c.method).join(',') === 'GET,PUT,GET' && r.calls[1].body.postApprovalDetails.approvalStatus === 'rejected' && r.writes.some((w) => w.body && w.body.taller_status === 'descartada'), JSON.stringify(r.resp));
+}
+
+// ---------------------------------------------------------------- Radar estratégico (F3): dos decisiones humanas, sin efectos externos
+{
+  const dec = (decision, extra = {}) => ({ ...reqBase, action: 'strategic_decide', opportunity_id: OID, decision, ...extra });
+  const conf = (extra = {}) => ({ ...reqBase, action: 'strategic_target_confirm', target_id: TID, repo_full_name: 'ChristianEducation/LibreriaCrecer', deployment_url: 'https://libreria.example.org/', health_url: 'https://libreria.example.org/api/health', provider: 'Vercel', reason: 'Es el sitio que está en producción', ...extra });
+  const noExternal = (x) => x.calls.length === 0 && x.writes.every((w) => /^(strategic_opportunities|strategic_prod_targets)\?|^operator_audit_log$/.test(w.path));
+  const main = (x) => x.writes.find((w) => !w.audit);
+
+  r = await exec(dec('shortlist'));
+  t('Radar · guardar para evaluar: UN PATCH condicional al estado leído, con return=representation y sin llamadas externas', r.resp.ok === true && r.resp.status === 'shortlisted' && main(r).method === 'PATCH' && main(r).path === 'strategic_opportunities?id=eq.' + OID + '&status=eq.new&is_test=eq.false' && main(r).prefer === 'return=representation' && main(r).check_rows === true && noExternal(r), JSON.stringify(r.resp));
+  t('Radar · el PATCH guarda quién, cuándo y el motivo', main(r).body.status === 'shortlisted' && main(r).body.decision_by === 'Christian via /ops' && !!main(r).body.decision_at && main(r).body.decision_reason === null);
+  r = await exec(dec('dismiss', { reason: 'No es de nuestro rubro' }));
+  t('Radar · descartar con motivo lo deja en decision_reason', r.resp.status === 'dismissed' && main(r).body.decision_reason === 'No es de nuestro rubro');
+  r = await exec(dec('work'));
+  t('Radar · «Trabajar» solo anota prioridad interna: 1 PATCH + auditoría; NADA de correo, GHL, contacto ni inscripción', r.resp.ok === true && r.resp.status === 'working' && /no se envió nada ni se creó nada en GHL/i.test(r.resp.message) && noExternal(r) && r.writes.length === 2 && !!r.writes.find((w) => w.audit));
+  r = await exec(dec('work'), { opp: { status: 'shortlisted' } });
+  t('Radar · guardada → trabajar permitido', r.resp.ok === true && r.resp.status === 'working');
+  r = await exec(dec('dismiss'), { opp: { status: 'working' } });
+  t('Radar · en trabajo → descartar permitido', r.resp.ok === true && r.resp.status === 'dismissed');
+
+  // transiciones prohibidas: dismissed/expired son terminales y no hay vuelta atrás
+  for (const st of ['dismissed', 'expired']) {
+    r = await exec(dec('work'), { opp: { status: st } });
+    t(`Radar · ${st} es terminal: no se reactiva con «work»`, r.resp.ok === false && r.resp.error === 'estado_terminal' && !main(r) && noExternal(r));
+    r = await exec(dec('shortlist'), { opp: { status: st } });
+    t(`Radar · ${st} es terminal: tampoco con «shortlist»`, r.resp.ok === false && r.resp.error === 'estado_terminal');
+  }
+  r = await exec(dec('shortlist'), { opp: { status: 'working' } });
+  t('Radar · working → shortlist no existe', r.resp.ok === false && r.resp.error === 'transicion_invalida' && !main(r));
+
+  // versión vieja / carrera
+  r = await exec(dec('shortlist', { expected_status: 'new' }), { opp: { status: 'dismissed' } });
+  t('Radar · decisión sobre una versión vieja => error stale_state con el aviso del spec y SIN escribir', r.resp.ok === false && r.resp.error === 'stale_state' && r.resp.message === 'Este registro cambió. Recarga para decidir sobre la última versión.' && !main(r));
+  r = await exec(dec('shortlist'), { rowsChanged: false });
+  t('Radar · si la fila cambió entre la lectura y el PATCH (0 filas) => stale_state, no éxito falso', r.resp.ok === false && r.resp.error === 'stale_state' && /Recarga/.test(r.resp.message), JSON.stringify(r.resp));
+  r = await exec(dec('shortlist'), { writeFails: true });
+  t('Radar · si Supabase falla al guardar => ok:false, no éxito falso', r.resp.ok === false && r.resp.error === 'no_se_guardo');
+
+  // idempotencia
+  r = await exec(dec('shortlist'), { opp: { status: 'shortlisted' } });
+  t('Radar · ya estaba en ese estado (otro clic con otro request_id) => ok sin mutar', r.resp.ok === true && r.resp.status === 'already_shortlisted' && !main(r));
+  r = await exec(dec('shortlist'), { audit: [{ status: 'executed', response: { ok: true, status: 'shortlisted', message: 'Guardada para evaluar. No se contactó a nadie.' } }] });
+  t('Radar · mismo request_id ya ejecutado (doble clic) => devuelve el primer resultado, 0 escrituras y 0 llamadas', r.resp.ok === true && r.resp.replayed === true && r.writes.length === 0 && r.calls.length === 0);
+
+  // aislamiento test / real
+  r = await exec(dec('shortlist'), { opp: { is_test: true } });
+  t('Radar · una acción real NO modifica un registro de prueba', r.resp.ok === false && r.resp.error === 'registro_test' && !main(r));
+  r = await exec(dec('shortlist', { test: true }), { opp: { is_test: false } });
+  t('Radar · una prueba NO modifica un registro real', r.resp.ok === false && r.resp.error === 'registro_test' && !main(r));
+  r = await exec(dec('shortlist', { test: true }), { opp: { is_test: true } });
+  t('Radar · prueba sobre registro de prueba: permitida y el PATCH apunta a is_test=true', r.resp.ok === true && /is_test=eq\.true$/.test(main(r).path));
+  r = await exec(dec('shortlist'), { opp: null });
+  t('Radar · oportunidad inexistente => error claro', r.resp.ok === false && r.resp.error === 'oportunidad_no_encontrada');
+
+  // validación de entrada
+  for (const [label, body] of [['decisión inventada', dec('contactar')], ['sin id', { ...reqBase, action: 'strategic_decide', decision: 'shortlist' }], ['id no uuid', dec('shortlist', { opportunity_id: "1' or '1'='1" })], ['estado esperado inválido', dec('shortlist', { expected_status: 'hackeado' })], ['sin request_id', { action: 'strategic_decide', opportunity_id: OID, decision: 'shortlist' }]]) {
+    r = await exec(body);
+    t(`Radar · entrada inválida (${label}) => rechazada sin leer ni escribir nada`, r.resp.ok === false && r.calls.length === 0 && r.writes.length === 0);
+  }
+  r = await exec(dec('shortlist', { to_email: 'x@y.cl', url: 'https://evil.test', path: '../x', table: 'users', method: 'DELETE' }));
+  t('Radar · parámetros extra (url, path, table, method) se ignoran: la escritura sigue siendo la misma, fija', main(r).method === 'PATCH' && main(r).path.startsWith('strategic_opportunities?id=eq.' + OID) && !/evil|users/.test(JSON.stringify(r.writes)));
+
+  // pausa general: las decisiones humanas siguen anotándose (no producen efectos externos)
+  r = await exec(dec('shortlist'), { state: { id: 1, global_pause: true, meta: {} } });
+  t('Radar · con la pausa general activa, la decisión humana igual se anota (sin efectos externos)', r.resp.ok === true && noExternal(r));
+
+  // auditoría
+  r = await exec(dec('dismiss', { reason: 'Fuera de foco' }));
+  const aud = r.writes.find((w) => w.audit);
+  t('Radar · auditoría: actor, herramienta, entidad (oportunidad, antes), decisión y motivo', aud && aud.body.actor === 'Christian via /ops' && aud.body.tool === 'ops_strategic_decide' && aud.body.status === 'executed' && aud.body.entity.opportunity_id === OID && aud.body.entity.before === 'new' && aud.body.params.decision === 'dismiss' && aud.body.params.reason === 'Fuera de foco' && aud.body.request_id === reqBase.request_id, JSON.stringify(aud && aud.body));
+  r = await exec(dec('shortlist'), { opp: { status: 'dismissed' }, writeFails: false });
+  t('Radar · una decisión rechazada también queda auditada, con otro request_id (no bloquea el reintento)', r.writes.find((w) => w.audit).body.status === 'refused' && r.writes.find((w) => w.audit).body.request_id.startsWith(reqBase.request_id + '~'));
+  r = await exec(dec('shortlist'), { writeFails: true });
+  t('Radar · si Supabase falla (guardar y auditar) NO se anuncia éxito', r.resp.ok === false);
+
+  // confirmar servicio
+  r = await exec(conf());
+  t('Radar · confirmar servicio: candidate → confirmed con repo y URLs; el monitoreo queda APAGADO; sin llamadas externas', r.resp.ok === true && r.resp.status === 'confirmed' && main(r).path === 'strategic_prod_targets?id=eq.' + TID + '&status=eq.candidate&is_test=eq.false' && main(r).body.status === 'confirmed' && main(r).body.monitor_enabled === false && main(r).body.health_url === 'https://libreria.example.org/api/health' && main(r).body.verified_by === 'Christian via /ops' && !!main(r).body.verified_at && noExternal(r), JSON.stringify(r.resp));
+  t('Radar · confirmar NO toca la configuración del Radar ni enciende nada', r.writes.every((w) => !/strategic_radar_config/.test(w.path)) && !('monitor_enabled' in main(r).body && main(r).body.monitor_enabled === true));
+  for (const [label, extra] of [['http', { health_url: 'http://libreria.example.org/h' }], ['localhost', { deployment_url: 'https://localhost/' }], ['IP privada', { health_url: 'https://10.0.0.5/health' }], ['IP de metadatos', { health_url: 'https://169.254.169.254/latest' }], ['con usuario y clave', { deployment_url: 'https://user:pass@libreria.example.org/' }], ['puerto raro', { health_url: 'https://libreria.example.org:8443/h' }], ['con token en la URL', { health_url: 'https://libreria.example.org/h?token=abc' }], ['sin dominio', { deployment_url: 'https://intranet/' }], ['data URL', { deployment_url: 'data:text/html,hola' }], ['repo mal formado', { repo_full_name: '../etc/passwd' }], ['sin razón', { reason: 'ok' }], ['proveedor con basura', { provider: '<script>' }]]) {
+    r = await exec(conf(extra));
+    t(`Radar · confirmar rechaza ${label}, sin escribir`, r.resp.ok === false && r.writes.length === 0 && r.calls.length === 0, JSON.stringify(r.resp));
+  }
+  r = await exec(conf(), { target: { status: 'paused' } });
+  t('Radar · solo un servicio «por verificar» se puede confirmar', r.resp.ok === false && r.resp.error === 'estado_invalido' && !main(r));
+  r = await exec(conf(), { target: { status: 'confirmed', repo_full_name: 'ChristianEducation/LibreriaCrecer', deployment_url: 'https://libreria.example.org/', health_url: 'https://libreria.example.org/api/health' } });
+  t('Radar · confirmar dos veces con los mismos datos es idempotente', r.resp.ok === true && r.resp.status === 'already_confirmed' && !main(r));
+  r = await exec(conf(), { target: { status: 'confirmed', repo_full_name: 'otro/repo' } });
+  t('Radar · un servicio ya confirmado no se reescribe con otros datos', r.resp.ok === false && r.resp.error === 'ya_confirmado' && !main(r));
+  r = await exec(conf(), { target: { is_test: true } });
+  t('Radar · confirmar real no modifica un servicio de prueba', r.resp.error === 'registro_test');
+  r = await exec(conf(), { rowsChanged: false });
+  t('Radar · carrera al confirmar (0 filas) => stale_state', r.resp.ok === false && r.resp.error === 'stale_state');
+  r = await exec(conf());
+  const au3 = r.writes.find((w) => w.audit);
+  t('Radar · auditoría de la confirmación: nivel 3, servicio, repo y motivo', au3 && au3.body.tool === 'ops_strategic_target_confirm' && au3.body.level === 3 && au3.body.entity.target_id === TID && au3.body.entity.repo_full_name === 'ChristianEducation/LibreriaCrecer' && au3.body.entity.monitor_enabled === false && au3.body.params.decision === 'confirm' && au3.body.params.reason === 'Es el sitio que está en producción');
+  r = await exec(conf(), { audit: [{ status: 'executed', response: { ok: true, status: 'confirmed', message: 'x' } }] });
+  t('Radar · doble clic al confirmar (mismo request_id) => primer resultado, sin segunda escritura', r.resp.replayed === true && r.writes.length === 0);
+  t('Radar · el workflow 29 sigue sin nodos de envío ni destinos nuevos por el Radar', !/strategic[^'"]{0,60}(gmail|telegram|messages\/send|waalaxy)/i.test(code('Plan 1')) && !wf.nodes.some((n) => /gmail|emailSend|telegram|slack|smtp|waalaxy/i.test(n.type)));
 }
 
 console.log(`\n${pass} ok, ${fail} fallos`);

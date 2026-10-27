@@ -2,11 +2,12 @@ import type { StrategicEvidence, StrategicHttpState, StrategicOpportunity, Strat
 import type { V3Result } from "@/lib/ops/v3-data";
 import { Empty, Head, Section, Stat } from "./Blocks";
 import { fmtCl } from "./Parts";
+import { ConfirmTargetForm, DecideButtons } from "./StrategicRadarClient";
 
 /**
- * Radar estratégico (spec RADAR §2): Producción · Productos · Alianzas · Eventos. SOLO LECTURA en esta fase.
+ * Radar estratégico (spec RADAR §2): Producción · Productos · Alianzas · Eventos.
  * Reglas de la casa: sin tarjetas con datos inventados, sin contadores si la lectura falló, nada «verde» sin un chequeo comprobado y vigente,
- * y ningún botón de contactar / inscribirse / enviar / aplicar.
+ * y ningún botón de contactar / inscribirse / enviar / aplicar: solo «Guardar para evaluar», «Trabajar», «Descartar» y «Confirmar registro».
  */
 const TITLE: Record<StrategicTab, string> = { production: "Producción", products: "Productos", partners: "Alianzas", events: "Eventos" };
 const MSG_DOWN = "No pude consultar el Radar. No significa que no existan oportunidades.";
@@ -45,7 +46,7 @@ function TargetRow({ t, now }: { t: StrategicProdTarget; now: number }) {
       <details className="ops-row" data-testid="strategic-target">
         <summary>
           <span className="ops-row-main">
-            <span className="ops-row-head"><span className="ops-row-title">{t.logical_name}</span>{pending ? <span className="ops-tag">Pendiente de confirmar</span> : null}</span>
+            <span className="ops-row-head"><span className="ops-row-title">{t.logical_name}</span>{pending ? <span className="ops-tag">Pendiente de confirmar</span> : !t.monitor_enabled ? <span className="ops-tag">Pendiente de primer chequeo</span> : null}</span>
             <span className="ops-row-sub ops-ellipsis">{t.repo_full_name ? `Código: ${t.repo_full_name}` : "Repositorio por definir"}{lc ? ` · ${ago(lc.checked_at, now)}` : ""}</span>
           </span>
           <Badge state={t.http_state} />
@@ -62,6 +63,7 @@ function TargetRow({ t, now }: { t: StrategicProdTarget; now: number }) {
           {t.monitor_enabled ? <><dt>Monitoreo</dt><dd>Activo</dd></> : null}
           {t.notes ? <><dt>Notas</dt><dd>{t.notes}</dd></> : null}
         </dl>
+        {t.status === "candidate" ? <ConfirmTargetForm id={t.id} repo={t.repo_full_name} /> : !t.monitor_enabled ? <p className="ops-foot">Confirmado. El monitoreo está apagado hasta que se pruebe la dirección real y lo autorices.</p> : null}
       </details>
     </li>
   );
@@ -108,6 +110,7 @@ function OppDetail({ o }: { o: StrategicOpportunity }) {
   const dateOnlyEv = o.score_parts.date_precision === "date_only";
   const fmtEv = (iso: string | null) => (iso ? (dateOnlyEv ? dateOnly(iso) : `${fmtCl(iso)}${o.event_timezone ? ` (${o.event_timezone})` : ""}`) : null);
   return (
+    <>
     <dl className="ops-detail">
       {o.organization ? <><dt>{o.kind === "event" ? "Organizador" : o.kind === "partner" ? "Organización" : "Autor"}</dt><dd>{o.organization}</dd></> : null}
       <dt>{o.kind === "product" ? "Repositorio" : o.kind === "partner" ? "Programa (fuente oficial)" : "Enlace oficial"}</dt><dd><Ext href={o.canonical_url}>{o.canonical_url}</Ext></dd>
@@ -133,7 +136,9 @@ function OppDetail({ o }: { o: StrategicOpportunity }) {
       <dt>Evidencia</dt><dd><EvidenceList ev={o.evidence} /></dd>
       <dt>Próximo paso</dt><dd>{o.next_action}</dd>
       {o.decision_at ? <><dt>Decisión</dt><dd>{STATUS_LABEL[o.status]} · {o.decision_by ?? "—"} · {fmtCl(o.decision_at)}{o.decision_reason ? ` · ${o.decision_reason}` : ""}</dd></> : null}
-    </dl>
+      </dl>
+      <DecideButtons id={o.id} status={o.status} />
+    </>
   );
 }
 

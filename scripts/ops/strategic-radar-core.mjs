@@ -338,3 +338,79 @@ export function srView(input) {
   });
   return { ...base, summary: { total: all.length, pending: all.filter((o) => o.status === 'new' || o.status === 'shortlisted').length, alerts: 0, last_run_at: lastRun }, items };
 }
+
+// ---------- Decisiones humanas (workflow 29 · spec §6.2). Puras: el workflow lee la fila fresca, arma el PATCH condicional y audita. ----------
+export function srIsUuid(v) { return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v || '')); }
+
+/** strategic_decide: shortlist | work | dismiss sobre UNA oportunidad. expected_status (opcional) = el estado que Christian tenía en pantalla. */
+export function srValidateDecision(x) {
+  const b = x && typeof x === 'object' ? x : {};
+  if (!srIsUuid(b.opportunity_id)) return { ok: false, error: 'opportunity_id_invalido', message: 'opportunity_id (uuid de la oportunidad) es obligatorio.' };
+  const decision = String(b.decision || '').toLowerCase();
+  if (['shortlist', 'work', 'dismiss'].indexOf(decision) < 0) return { ok: false, error: 'decision_invalida', message: 'decision: shortlist | work | dismiss.' };
+  const exp = b.expected_status == null || b.expected_status === '' ? null : String(b.expected_status);
+  if (exp !== null && ['new', 'shortlisted', 'working', 'dismissed', 'expired'].indexOf(exp) < 0) return { ok: false, error: 'estado_esperado_invalido', message: 'expected_status no es un estado válido.' };
+  return { ok: true, value: { opportunity_id: String(b.opportunity_id).toLowerCase(), decision, expected_status: exp, test: b.test === true } };
+}
+
+export function srDecidePlan(req, row, ctx) {
+  const c = ctx || {}, nowIso = new Date(c.now == null ? Date.now() : c.now).toISOString(), by = c.by || 'Christian via /ops';
+  const STALE = 'Este registro cambió. Recarga para decidir sobre la última versión.';
+  const LABEL = { new: 'nueva', shortlisted: 'guardada para evaluar', working: 'en trabajo', dismissed: 'descartada', expired: 'vencida' };
+  const target = { shortlist: 'shortlisted', work: 'working', dismiss: 'dismissed' }[req.decision];
+  if (!row) return { error: 'oportunidad_no_encontrada', message: 'No encontré esa oportunidad.' };
+  if ((row.is_test === true) !== (req.test === true)) return { error: 'registro_test', message: row.is_test === true ? 'Esa oportunidad es de prueba: una decisión real no la modifica.' : 'Esa oportunidad es real: una prueba no la modifica.' };
+  if (req.expected_status && req.expected_status !== row.status) return { error: 'stale_state', message: STALE, current_status: row.status };
+  if (row.status === target) return { resp: { ok: true, status: 'already_' + target, opportunity_status: target, message: 'Ya estaba ' + LABEL[target] + '.' }, writes: [] };
+  const next = srTransition(row.status, req.decision);
+  if (!next) {
+    if (row.status === 'dismissed' || row.status === 'expired') return { error: 'estado_terminal', message: 'Esa oportunidad está ' + LABEL[row.status] + ': en esta versión no se reabre.', current_status: row.status };
+    return { error: 'transicion_invalida', message: 'Desde «' + (LABEL[row.status] || row.status) + '» no se puede hacer eso. Recarga para ver las opciones vigentes.', current_status: row.status };
+  }
+  const message = { shortlisted: 'Guardada para evaluar. No se contactó a nadie.', working: 'Anotada como prioridad interna. No se envió nada ni se creó nada en GHL.', dismissed: 'Descartada. No se vuelve a avisar.' }[next];
+  return {
+    resp: { ok: true, status: next, opportunity_status: next, message },
+    writes: [{ method: 'PATCH', path: 'strategic_opportunities?id=eq.' + row.id + '&status=eq.' + row.status + '&is_test=eq.' + (row.is_test === true ? 'true' : 'false'), body: { status: next, decision_at: nowIso, decision_by: by, decision_reason: req.reason ? req.reason : null, updated_at: nowIso }, prefer: 'return=representation', check_rows: true, check_error: 'stale_state', check_message: STALE }],
+  };
+}
+
+/** strategic_target_confirm: candidate → confirmed con repo + URL real + health endpoint. NO enciende el monitoreo. Sin red: solo valida la forma (el monitor revisa DNS y redirecciones en cada chequeo). */
+export function srValidateTargetConfirm(x) {
+  const b = x && typeof x === 'object' ? x : {};
+  if (!srIsUuid(b.target_id)) return { ok: false, error: 'target_id_invalido', message: 'target_id (uuid del servicio) es obligatorio.' };
+  const repo = srStr(b.repo_full_name);
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}\/[A-Za-z0-9._-]{1,100}$/.test(repo)) return { ok: false, error: 'repo_invalido', message: 'El repositorio debe verse como dueño/nombre (por ejemplo ChristianEducation/LibreriaCrecer).' };
+  const clean = (u, label) => {
+    const raw = srStr(u).split('#')[0];
+    if (!raw) return { error: label + ' es obligatoria.' };
+    if (!srCanonicalUrl(raw)) return { error: label + ' no es válida: debe ser https, de un sitio público, sin usuario ni contraseña ni puerto distinto de 443.' };
+    let q = '';
+    try { q = new URL(raw).search; } catch { return { error: label + ' no es válida.' }; }
+    if (/(token|key|secret|passw|auth|sig|session|credential)/i.test(q)) return { error: label + ' no puede llevar claves ni tokens en la dirección.' };
+    return { value: raw };
+  };
+  const dep = clean(b.deployment_url, 'La URL del sitio'), hl = clean(b.health_url, 'La URL de salud');
+  if (dep.error) return { ok: false, error: 'url_invalida', message: dep.error };
+  if (hl.error) return { ok: false, error: 'url_invalida', message: hl.error };
+  const provider = b.provider == null || b.provider === '' ? null : srStr(b.provider);
+  if (provider !== null && !/^[A-Za-z0-9][A-Za-z0-9 ._-]{0,59}$/.test(provider)) return { ok: false, error: 'proveedor_invalido', message: 'El proveedor debe ser un nombre corto (por ejemplo Vercel).' };
+  const reason = srStr(b.reason);
+  if (reason.length < 8) return { ok: false, error: 'falta_razon', message: 'Escribe por qué confirmas este servicio (mínimo 8 caracteres).' };
+  return { ok: true, value: { target_id: String(b.target_id).toLowerCase(), repo_full_name: repo, deployment_url: dep.value, health_url: hl.value, provider, reason: reason.slice(0, 200), test: b.test === true } };
+}
+
+export function srTargetConfirmPlan(req, row, ctx) {
+  const c = ctx || {}, nowIso = new Date(c.now == null ? Date.now() : c.now).toISOString(), by = c.by || 'Christian via /ops';
+  const STALE = 'Este servicio cambió. Recarga para confirmarlo sobre la última versión.';
+  if (!row) return { error: 'servicio_no_encontrado', message: 'No encontré ese servicio.' };
+  if ((row.is_test === true) !== (req.test === true)) return { error: 'registro_test', message: row.is_test === true ? 'Ese servicio es de prueba: una confirmación real no lo modifica.' : 'Ese servicio es real: una prueba no lo modifica.' };
+  if (row.status === 'confirmed') {
+    const same = row.repo_full_name === req.repo_full_name && row.deployment_url === req.deployment_url && row.health_url === req.health_url;
+    return same ? { resp: { ok: true, status: 'already_confirmed', message: 'Ya estaba confirmado con esos datos.' }, writes: [] } : { error: 'ya_confirmado', message: 'Ese servicio ya está confirmado con otros datos; en esta versión no se cambian desde aquí.' };
+  }
+  if (row.status !== 'candidate') return { error: 'estado_invalido', message: 'Solo un servicio «por verificar» se puede confirmar (este está ' + row.status + ').', current_status: row.status };
+  return {
+    resp: { ok: true, status: 'confirmed', message: 'Confirmado. El monitoreo sigue APAGADO: primero se prueba el endpoint real y tú autorizas encenderlo.' },
+    writes: [{ method: 'PATCH', path: 'strategic_prod_targets?id=eq.' + row.id + '&status=eq.candidate&is_test=eq.' + (row.is_test === true ? 'true' : 'false'), body: { status: 'confirmed', repo_full_name: req.repo_full_name, deployment_url: req.deployment_url, health_url: req.health_url, provider: req.provider, verified_by: by, verified_at: nowIso, monitor_enabled: false, updated_at: nowIso }, prefer: 'return=representation', check_rows: true, check_error: 'stale_state', check_message: STALE }],
+  };
+}

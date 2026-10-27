@@ -48,7 +48,7 @@ export async function getOverview(): Promise<OverviewResult> {
   }
 }
 
-const ACTIONS = new Set(["email_save", "email_approve", "email_reject", "email_reopen", "linkedin_approve", "linkedin_reject", "content_approve", "content_reject", "autosend_set", "autosend_sweep", "prep_li_sent", "prep_hold", "prep_release", "prep_contact", "pause_set", "idea_decide", "idea_mine", "taller_feedback", "taller_approve", "taller_schedule", "taller_discard", "taller_duplicate", "taller_caption", "mail_config_set", "mail_outcome", "week_ritual_set", "piece_contact", "learning_decide"]);
+const ACTIONS = new Set(["email_save", "email_approve", "email_reject", "email_reopen", "linkedin_approve", "linkedin_reject", "content_approve", "content_reject", "autosend_set", "autosend_sweep", "prep_li_sent", "prep_hold", "prep_release", "prep_contact", "pause_set", "idea_decide", "idea_mine", "taller_feedback", "taller_approve", "taller_schedule", "taller_discard", "taller_duplicate", "taller_caption", "mail_config_set", "mail_outcome", "week_ritual_set", "piece_contact", "learning_decide", "strategic_decide", "strategic_target_confirm"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Valida la solicitud antes de salir del servidor (lista cerrada de acciones; nada genérico). */
@@ -84,6 +84,11 @@ export function checkInput(i: OpsActionInput): string | null {
   if (i.action === "week_ritual_set" && (!i.ritual || typeof i.ritual !== "object" || Object.entries(i.ritual).some(([k, v]) => !["lun", "mar", "mie", "jue", "vie"].includes(k) || !Array.isArray(v) || v.length > 4 || v.some((t) => typeof t !== "string" || t.length > 30)))) return "Ritual inválido.";
   if (i.action === "piece_contact" && (!UUID.test(i.piece_id ?? "") || (i.contact_name ?? "").trim().length < 2 || (i.contact_name ?? "").length > 80 || (i.handle ?? "").length > 31 || (i.keyword ?? "").length > 30)) return "Contacto inválido.";
   if (i.action === "learning_decide" && (!UUID.test(i.proposal_id ?? "") || !["approve", "reject"].includes(i.decision ?? ""))) return "Decisión inválida.";
+  if (i.action === "strategic_decide" && (!UUID.test(i.opportunity_id ?? "") || !["shortlist", "work", "dismiss"].includes(i.decision ?? "") || (i.expected_status !== undefined && !["new", "shortlisted", "working", "dismissed", "expired"].includes(i.expected_status)))) return "Decisión inválida.";
+  if (i.action === "strategic_target_confirm") {
+    const url = (u: string | undefined) => typeof u === "string" && u.length <= 2000 && /^https:\/\//i.test(u);
+    if (!UUID.test(i.target_id ?? "") || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}\/[A-Za-z0-9._-]{1,100}$/.test(i.repo_full_name ?? "") || !url(i.deployment_url) || !url(i.health_url) || (i.provider !== undefined && (typeof i.provider !== "string" || i.provider.length > 60)) || (i.reason ?? "").trim().length < 8) return "Datos del servicio inválidos.";
+  }
   if (i.action === "mail_outcome" && (!UUID.test(i.candidate_id ?? "") || !["reunion", "perdido"].includes(i.outcome ?? ""))) return "Resultado inválido.";
   return null;
 }
