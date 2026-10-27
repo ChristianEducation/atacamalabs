@@ -38,6 +38,9 @@ const gate = read('scripts/strategic_gate.sh');
 t('strategic_gate.sh: ejecuta strategic_lib.py gate con los argumentos recibidos y no trae claves', /exec \/opt\/hermes\/\.venv\/bin\/python \/opt\/data\/atacama-ops\/strategic_lib\.py gate "\$@"/.test(gate) && !/(Bearer |eyJ|sk-|pit-|KEY=|TOKEN)/.test(gate));
 const sh = spawnSync('bash', ['-n'], { input: gate, encoding: 'utf8' });
 t('strategic_gate.sh: sintaxis de bash válida', sh.error ? true : sh.status === 0, sh.stderr);
+const mon = read('scripts/strategic_prod_monitor.sh');
+t('strategic_prod_monitor.sh: ejecuta el monitor sin IA, pasa los argumentos, no imprime nada por sí mismo y no trae claves', /exec \/opt\/hermes\/\.venv\/bin\/python \/opt\/data\/scripts\/strategic_prod_monitor\.py "\$@"/.test(mon) && !/echo|printf|curl|KEY=|TOKEN/.test(mon.split('\n').filter((l) => !l.startsWith('#')).join('\n')));
+t('strategic_prod_monitor.sh: sintaxis de bash válida', (() => { const r = spawnSync('bash', ['-n'], { input: mon, encoding: 'utf8' }); return r.error ? true : r.status === 0; })());
 t('los 3 prompts son archivos propios y el job de cada categoría usa su compuerta', fs.existsSync(new URL('./strategic-products.prompt.txt', import.meta.url)) && fs.existsSync(new URL('./strategic-partners.prompt.txt', import.meta.url)) && fs.existsSync(new URL('./strategic-events.prompt.txt', import.meta.url)) && fs.existsSync(new URL('./scripts/strategic_gate.sh', import.meta.url)));
 
 console.log(`\n${pass} ok ${fail} fallos`);

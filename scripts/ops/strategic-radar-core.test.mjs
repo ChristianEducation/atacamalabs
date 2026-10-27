@@ -1,7 +1,7 @@
 // node scripts/ops/strategic-radar-core.test.mjs — Radar estratégico: núcleo puro (spec §7, §8, §17). Fixtures sintéticos, ningún dato real.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import vm from 'node:vm';
 import * as sr from './strategic-radar-core.mjs';
 
@@ -503,7 +503,7 @@ ok('Node = Python: las fixtures compartidas (strategic-fixtures.json) siguen coi
 ok('autocontenido: todas las funciones funcionan incrustadas con .toString() en un contexto vacío', () => {
   const src = Object.values(sr).filter((f) => typeof f === 'function').map((f) => f.toString()).join('\n\n');
   assert.equal(Object.values(sr).filter((f) => typeof f !== 'function').length, 0, 'solo funciones exportadas');
-  const ctx = vm.createContext({ URL, TextEncoder, Intl, Date, Math, Number, String, Array, Object, JSON, Set, Map, RegExp, encodeURIComponent, decodeURIComponent });
+  const ctx = vm.createContext({ URL, Intl, Date, Math, Number, String, Array, Object, JSON, Set, Map, RegExp, encodeURIComponent, decodeURIComponent });
   const emb = vm.runInContext('(function(){' + src + '\nreturn { srView, srAttention, srGate, srFingerprint, srCanonicalUrl, srScoreProduct, srScorePartner, srScoreEvent, srValidateEvidence, srRank, srTransition, srProductionHealth, srCoverage, srDaysLeft, srEventState, srParseDate };})()', ctx);
   assert.equal(emb.srFingerprint('product', emb.srCanonicalUrl('https://GitHub.com/Acme/Repo/?utm_source=a#x')), sr.srFingerprint('product', 'https://github.com/Acme/Repo'));
   assert.equal(emb.srTransition('new', 'shortlist'), 'shortlisted');
@@ -522,6 +522,32 @@ ok('srView: last_check solo en confirmados monitoreados; candidatos nunca llevan
   const a = v.items.find((x) => x.id === 'a'), b = v.items.find((x) => x.id === 'b');
   assert.deepEqual(a.last_check, { checked_at: iso(NOW - 5 * MIN), result: 'healthy', http_status: 200, latency_ms: 120, error_code: null });
   assert.equal(b.last_check, null); assert.equal(b.http_state, 'unverified');
+});
+ok('rollback de la migración: fuera de migrations/, se niega a borrar si hay datos, sin CASCADE y en orden de claves foráneas', () => {
+  const rb = readFileSync(new URL('../../supabase/rollbacks/20261024_strategic_radar_rollback.sql', import.meta.url), 'utf8');
+  const code = rb.split('\n').filter((l) => !l.trim().startsWith('--')).join('\n').toLowerCase();
+  assert.ok(!readdirSync(new URL('../../supabase/migrations/', import.meta.url)).some((f) => /rollback/i.test(f)), 'el rollback NO está en migrations: nada lo aplica solo');
+  assert.ok(code.includes('raise exception') && code.includes('rollback bloqueado'));
+  assert.ok(code.indexOf('raise exception') < code.indexOf('drop table'), 'primero comprueba, después borra');
+  const drops = [...code.matchAll(/drop table public\.(\w+)/g)].map((m) => m[1]);
+  assert.deepEqual(drops, ['strategic_evidence', 'strategic_opportunities', 'strategic_prod_checks', 'strategic_prod_targets', 'strategic_runs', 'strategic_radar_config']);
+  assert.ok(!/cascade|drop schema|drop function|delete from|truncate|alter table/.test(code));
+  for (const t of ['strategic_opportunities', 'strategic_evidence', 'strategic_runs', 'strategic_prod_checks']) assert.ok(code.includes('public.' + t), t);
+  assert.ok(code.includes('is_test') && code.includes('monitor_enabled') && code.includes('daily_max_items <> 0'), 'considera datos de prueba, monitoreo y Daily encendido');
+});
+ok('SHA-256 sin TextEncoder: idéntico a node:crypto con tildes, emoji, CJK, sustitutos sueltos y entradas largas', () => {
+  const cases = ['', 'a', 'ñandú', 'münchen', '日本語', '😀 emoji 🚀', 'lone\ud800surrogate', 'x\udc00', 'product\nhttps://github.com/Acme/Repo', 'z'.repeat(1000), 'é'.repeat(333)];
+  for (const c of cases) assert.equal(sr.srSha256(c), createHash('sha256').update(Buffer.from(new TextEncoder().encode(c))).digest('hex'), JSON.stringify(c).slice(0, 30));
+});
+ok('runtime incompleto (sin URL): ingesta y confirmar servicio fallan CERRADO con runtime_incompleto, sin motivos engañosos', () => {
+  const src = Object.values(sr).filter((f) => typeof f === 'function').map((f) => f.toString()).join('\n\n');
+  const ctx = vm.createContext({ Intl, Date, Math, Number, String, Array, Object, JSON, Set, Map, RegExp, encodeURIComponent, decodeURIComponent });
+  const emb = vm.runInContext('(function(){' + src + '\nreturn { srIngestPlan, srValidateTargetConfirm, srRuntimeOk };})()', ctx);
+  assert.equal(JSON.stringify(emb.srRuntimeOk()), '{"url":false,"intl":true}');
+  const pl = emb.srIngestPlan({ kind: 'products', run_id: '3f2b8c1e-5a6d-4e7f-9a0b-1c2d3e4f5a6b', items: [{}] }, { now: NOW, cfg: { products_enabled: true, ai_max_items_per_run: 12 }, newId: () => 'x' });
+  assert.equal(pl.error, 'runtime_incompleto');
+  assert.equal(emb.srValidateTargetConfirm({ target_id: '00000000-0000-4000-8000-000000000001', repo_full_name: 'a/b', deployment_url: 'https://x.example.org', health_url: 'https://x.example.org/h', reason: 'razón suficiente' }).error, 'runtime_incompleto');
+  assert.deepEqual(sr.srRuntimeOk(), { url: true, intl: true });
 });
 ok('srTransition no se deja engañar por claves heredadas del prototipo', () => {
   assert.equal(sr.srTransition('__proto__', 'dismiss'), null);

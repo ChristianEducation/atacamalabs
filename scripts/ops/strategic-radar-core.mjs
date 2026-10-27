@@ -15,6 +15,11 @@ export function srFlag(kind) { return ({ production: 'production_enabled', produ
 /** Separación mínima entre corridas buenas de una categoría, en ms. */
 export function srMinGap(kind) { return ({ production: 10 * 60000, products: 6 * 3600000, partners: 6 * 3600000, events: 6 * 3600000 })[kind] || 6 * 3600000; }
 
+/** ¿El entorno trae lo que el motor necesita? `URL` (URL canónica) e `Intl` con zonas horarias (fechas de Chile). Si no, las acciones que lo usan fallan CERRADO con `runtime_incompleto`. */
+export function srRuntimeOk() {
+  return { url: typeof URL === 'function', intl: typeof Intl === 'object' && Intl !== null && typeof Intl.DateTimeFormat === 'function' };
+}
+
 /** Host que jamás se acepta: loopback, privado, link-local, IPv6 literal, nombres internos o sin punto. */
 export function srIsPrivateHost(host) {
   const h = String(host || '').toLowerCase().replace(/\.$/, '');
@@ -56,7 +61,18 @@ export function srSha256(str) {
     0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
     0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
     0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2];
-  const bytes = Array.from(new TextEncoder().encode(String(str)));
+  // UTF-8 a mano (sin TextEncoder: el sandbox de n8n no lo garantiza). Un sustituto suelto se codifica como U+FFFD, igual que TextEncoder.
+  const bytes = [];
+  const txt = String(str);
+  for (let i = 0; i < txt.length; i++) {
+    let cp = txt.codePointAt(i);
+    if (cp > 0xffff) i++;
+    if (cp >= 0xd800 && cp <= 0xdfff) cp = 0xfffd;
+    if (cp < 0x80) bytes.push(cp);
+    else if (cp < 0x800) bytes.push(0xc0 | (cp >> 6), 0x80 | (cp & 63));
+    else if (cp < 0x10000) bytes.push(0xe0 | (cp >> 12), 0x80 | ((cp >> 6) & 63), 0x80 | (cp & 63));
+    else bytes.push(0xf0 | (cp >> 18), 0x80 | ((cp >> 12) & 63), 0x80 | ((cp >> 6) & 63), 0x80 | (cp & 63));
+  }
   const bitLen = bytes.length * 8;
   bytes.push(0x80);
   while (bytes.length % 64 !== 56) bytes.push(0);
@@ -396,6 +412,7 @@ export function srDecidePlan(req, row, ctx) {
 /** strategic_target_confirm: candidate → confirmed con repo + URL real + health endpoint. NO enciende el monitoreo. Sin red: solo valida la forma (el monitor revisa DNS y redirecciones en cada chequeo). */
 export function srValidateTargetConfirm(x) {
   const b = x && typeof x === 'object' ? x : {};
+  if (!srRuntimeOk().url) return { ok: false, error: 'runtime_incompleto', message: 'El entorno de n8n no trae URL: no se puede validar la dirección. No se guardó nada.' };
   if (!srIsUuid(b.target_id)) return { ok: false, error: 'target_id_invalido', message: 'target_id (uuid del servicio) es obligatorio.' };
   const repo = srStr(b.repo_full_name);
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}\/[A-Za-z0-9._-]{1,100}$/.test(repo)) return { ok: false, error: 'repo_invalido', message: 'El repositorio debe verse como dueño/nombre (por ejemplo ChristianEducation/LibreriaCrecer).' };
@@ -587,6 +604,7 @@ export function srIngestPlan(req, ctx) {
   const r = req && typeof req === 'object' ? req : {}, c = ctx || {};
   const now = c.now == null ? Date.now() : c.now, nowIso = new Date(now).toISOString();
   const dbKind = srDbKind(r.kind);
+  if (!srRuntimeOk().url) return { error: 'runtime_incompleto', message: 'El entorno de n8n no trae URL: no se puede validar ninguna dirección. No se guardó nada.' };
   if (!dbKind || ['products', 'partners', 'events'].indexOf(r.kind) < 0) return { error: 'kind_invalido', message: 'kind: products | partners | events.' };
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(r.run_id || ''))) return { error: 'run_id_invalido', message: 'run_id debe ser un UUID v4 generado antes de investigar.' };
   const runId = String(r.run_id).toLowerCase();

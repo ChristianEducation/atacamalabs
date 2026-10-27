@@ -107,7 +107,8 @@ export async function runAction(input: OpsActionInput): Promise<OpsActionState> 
     const friendly = r.ok ? String(j.message ?? "No se pudo completar.") : "El sistema de aprobaciones respondió con un error (HTTP " + r.status + "). No se hizo nada; reintenta en un momento.";
     return {
       ok,
-      message: (ok ? String(j.message ?? "Listo.") : friendly).slice(0, 500),
+      // Si el cambio se guardó pero la auditoría no, se dice (nunca un éxito silencioso).
+      message: ((ok ? String(j.message ?? "Listo.") : friendly) + (ok && typeof j.audit_error === "string" && j.audit_error ? " ⚠ " + j.audit_error : "")).slice(0, 500),
       status: typeof j.status === "string" ? j.status : undefined,
       hash: typeof j.hash === "string" ? j.hash : null,
       needsGhl: j.needs_ghl === true,

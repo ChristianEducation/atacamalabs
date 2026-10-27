@@ -83,8 +83,12 @@ async function exec(body, o = {}) {
   const writes = (await run('Expand Writes', store)).map((x) => x.json).filter((x) => !x.skip);
   const applied = writes.map((x) => (o.writeFails ? { statusCode: 500, body: { message: 'x' } } : (x.check_rows ? { statusCode: 200, body: o.rowsChanged === false ? [] : [{ id: MID }] } : { statusCode: 201, body: {} })));
   store['Apply Writes'] = applied[0] || {};
+  const ap = (await run('Audit Plan', store, { ...lists, 'Apply Writes': applied }))[0].json;
+  store['Audit Plan'] = ap;
+  const auditApplied = ap.skip ? { statusCode: 200, body: [] } : (o.writeFails || o.auditFails ? { statusCode: 500, body: { message: 'x' } } : { statusCode: 201, body: {} });
+  store['Apply Audit'] = auditApplied;
   const resp = (await run('Respond', store, { 'Apply Writes': applied }))[0].json;
-  return { resp, calls: w.calls, writes, parsed };
+  return { resp, calls: w.calls, writes: ap.skip ? writes : [...writes, ap], audit: ap.skip ? null : ap, parsed };
 }
 const ingestCalls = (r) => r.calls.filter((c) => c.kind === 'ingest');
 const reqBase = { request_id: 'req-abcdef01' };
@@ -481,6 +485,36 @@ t('Mi idea: nace aprobada (origin christian), ficha por completar, carril PC', r
   r = await exec(conf(), { audit: [{ status: 'executed', response: { ok: true, status: 'confirmed', message: 'x' } }] });
   t('Radar · doble clic al confirmar (mismo request_id) => primer resultado, sin segunda escritura', r.resp.replayed === true && r.writes.length === 0);
   t('Radar · el workflow 29 sigue sin nodos de envío ni destinos nuevos por el Radar', !/strategic[^'"]{0,60}(gmail|telegram|messages\/send|waalaxy)/i.test(code('Plan 1')) && !wf.nodes.some((n) => /gmail|emailSend|telegram|slack|smtp|waalaxy/i.test(n.type)));
+}
+
+// ---------------------------------------------------------------- Radar estratégico: la auditoría refleja lo que REALMENTE pasó (carrera entre la lectura y el PATCH)
+{
+  const dec = (extra = {}) => ({ ...reqBase, action: 'strategic_decide', opportunity_id: OID, decision: 'shortlist', ...extra });
+  const conf = { ...reqBase, action: 'strategic_target_confirm', target_id: TID, repo_full_name: 'ChristianEducation/LibreriaCrecer', deployment_url: 'https://libreria.example.org/', health_url: 'https://libreria.example.org/api/health', reason: 'Es el sitio que está en producción' };
+  const wf29 = wf.nodes.map((n) => n.name);
+  t('Carrera · el workflow 29 tiene Audit Plan y Apply Audit entre «Apply Writes» y «Respond», con la misma credencial de Supabase', wf29.indexOf('Audit Plan') > wf29.indexOf('Apply Writes') && wf.connections['Apply Writes'].main[0][0].node === 'Audit Plan' && wf.connections['Audit Plan'].main[0][0].node === 'Apply Audit' && wf.connections['Apply Audit'].main[0][0].node === 'Respond' && JSON.stringify(wf.nodes.find((n) => n.name === 'Apply Audit').credentials) === JSON.stringify(wf.nodes.find((n) => n.name === 'Apply Writes').credentials) && wf.nodes.find((n) => n.name === 'Apply Audit').continueOnFail === true);
+  let r = await exec(dec(), { rowsChanged: false });
+  t('Carrera · el PATCH no cambió ninguna fila: la respuesta es stale_state Y la auditoría queda «refused», nunca «executed»', r.resp.ok === false && r.resp.error === 'stale_state' && r.audit && r.audit.body.status === 'refused' && r.audit.body.response.ok === false && r.audit.body.response.error === 'stale_state' && /Este registro cambió/.test(r.audit.body.response.message), JSON.stringify(r.audit && r.audit.body));
+  t('Carrera · esa auditoría usa otro request_id (~sufijo): reintentar con el mismo request_id NO devuelve un éxito falso', r.audit.body.request_id.startsWith(reqBase.request_id + '~') && r.audit.body.request_id !== reqBase.request_id);
+  const retry = await exec(dec(), { audit: [] });
+  t('Carrera · el reintento con el mismo request_id vuelve a evaluar el estado fresco (no es un «replay»)', retry.resp.ok === true && !retry.resp.replayed && retry.writes.some((w) => !w.audit && w.method === 'PATCH'));
+  r = await exec(dec());
+  t('Normal · si el PATCH cambió la fila, la auditoría queda «executed» con el request_id original y se escribe DESPUÉS del cambio', r.resp.ok === true && r.audit.body.status === 'executed' && r.audit.body.request_id === reqBase.request_id && r.writes.findIndex((w) => w.audit) === r.writes.length - 1);
+  r = await exec(dec(), { writeFails: true });
+  t('Supabase caído: ni el cambio ni la auditoría se anuncian como éxito (ok:false, no_se_guardo) y la auditoría dice «refused»', r.resp.ok === false && r.resp.error === 'no_se_guardo' && r.audit.body.status === 'refused' && r.audit.body.response.error === 'no_se_guardo');
+  r = await exec(dec(), { auditFails: true });
+  t('El cambio se guardó pero la auditoría falló: ok:true PERO con audit_error visible (no se calla)', r.resp.ok === true && /auditor/i.test(r.resp.audit_error || ''));
+  r = await exec(dec(), { opp: { status: 'dismissed' } });
+  t('Una decisión rechazada antes de escribir también se audita como «refused» (sin escrituras de datos)', r.resp.ok === false && r.audit.body.status === 'refused' && r.writes.filter((w) => !w.audit).length === 0);
+  r = await exec(dec(), { audit: [{ status: 'executed', response: { ok: true, status: 'shortlisted', message: 'x' } }] });
+  t('Un replay legítimo (ya ejecutado de verdad) sigue devolviendo lo guardado, sin escrituras ni auditoría nueva', r.resp.replayed === true && r.writes.length === 0 && r.audit === null);
+  r = await exec(conf, { rowsChanged: false });
+  t('Carrera al confirmar un servicio: stale_state + auditoría «refused» (el servicio sigue sin confirmar)', r.resp.error === 'stale_state' && r.audit.body.status === 'refused' && r.audit.body.entity.target_id === TID);
+  r = await exec(conf);
+  t('Confirmar servicio normal: «executed», nivel 3, después del cambio', r.resp.ok === true && r.audit.body.status === 'executed' && r.audit.body.level === 3);
+  // el resto de las acciones conserva EXACTAMENTE el comportamiento anterior (auditoría en el mismo lote)
+  r = await exec({ ...reqBase, action: 'email_approve', message_id: MID, expected_hash: H1 });
+  t('Sin cambios para otras acciones: la auditoría de email_approve sigue en el mismo lote que el cambio y no pasa por el nodo nuevo', r.audit === null && r.writes.some((w) => w.audit));
 }
 
 console.log(`\n${pass} ok, ${fail} fallos`);

@@ -80,7 +80,7 @@ const SR_SEED = ['Atacama Labs / OS', 'Librería Crecer', 'Pedidos Empresas', 'R
 const SR_EV = (o = {}) => ({ source_url: 'https://github.com/acme/repo', source_title: 'Repositorio oficial', source_type: 'repository', claim: 'Existe este código con licencia MIT', excerpt: 'MIT License', source_published_at: null, verified_at: ISO(-5), ...o });
 const srO = (n, kind, o = {}) => ({ id: UID(2000 + n), kind, title: 'Oportunidad ' + n, organization: 'Org ' + n, canonical_url: 'https://example.org/o' + n, summary: 'Resumen concreto ' + n, business_case: 'Proceso operativo ' + n, target_customer: 'Clínicas', next_action: 'Validar con el dueño ' + n, status: 'new', score: 82, score_parts: {}, confidence: 'medium', license_id: null, license_verified: false, coverage_pct: null, critical_blockers: [], event_start_at: null, event_end_at: null, deadline_at: null, event_timezone: null, event_location: null, event_format: null, first_seen_at: ISO(-30), last_checked_at: ISO(-3), decision_at: null, decision_by: null, decision_reason: null, evidence: [SR_EV()], stale_days: null, unverified: false, ...o });
 function strategicView(tab) {
-  const live = SR.mode === 'live' || SR.mode === 'stale';
+  const live = SR.mode === 'live' || SR.mode === 'stale' || SR.mode === 'audit';
   const base = { generated_at: new Date().toISOString(), tab, enabled: live, source_state: SR.mode === 'unavailable' ? 'unavailable' : 'ok', runs: [] };
   if (SR.mode === 'unavailable') return { ...base, summary: { total: 0, pending: 0, alerts: 0, last_run_at: null }, items: [] };
   if (tab === 'production') {
@@ -124,6 +124,7 @@ const mock = http.createServer((req, res) => {
       state.calls.push({ ...j, at: Date.now() });
       if (state.mode === 'error') return send(200, { ok: false, error: 'rechazado', message: 'El motor rechazó la acción (prueba).' });
       if (state.mode === 'down') return send(500, { message: 'boom' });
+      if (j.action === 'strategic_decide' && SR.mode === 'audit') { SR.decided[j.opportunity_id] = 'shortlisted'; return send(200, { ok: true, status: 'shortlisted', message: 'Guardada para evaluar. No se contactó a nadie.', audit_error: 'No quedó registrada en la auditoría (HTTP 500).' }); }
       if (j.action === 'strategic_decide') { if (SR.mode === 'stale') return send(200, { ok: false, error: 'stale_state', message: 'Este registro cambió. Recarga para decidir sobre la última versión.' }); const to = { shortlist: 'shortlisted', work: 'working', dismiss: 'dismissed' }[j.decision]; SR.decided[j.opportunity_id] = to; return send(200, { ok: true, status: to, message: to === 'shortlisted' ? 'Guardada para evaluar. No se contactó a nadie.' : to === 'working' ? 'Anotada como prioridad interna. No se envió nada ni se creó nada en GHL.' : 'Descartada. No se vuelve a avisar.' }); }
       if (j.action === 'strategic_target_confirm') { SR.confirmed[j.target_id] = j; return send(200, { ok: true, status: 'confirmed', message: 'Confirmado. El monitoreo sigue APAGADO: primero se prueba el endpoint real y tú autorizas encenderlo.' }); }
       if (j.action === 'content_approve' || j.action === 'content_reject') return send(200, { ok: true, status: j.action === 'content_approve' ? 'scheduled' : 'rejected', message: j.action === 'content_approve' ? 'Aprobada y programada en GHL (prueba).' : 'Rechazada (prueba).' });
@@ -797,6 +798,13 @@ async function main() {
     await page.locator('[data-testid="strategic-opp"]').first().getByRole('button', { name: 'Guardar para evaluar' }).click();
     await page.waitForSelector('.ops-toast-err', { timeout: 20000 });
     t('Radar · decisión sobre una versión vieja: aviso legible «Este registro cambió. Recarga…» y nada cambia en pantalla', (await page.locator('.ops-toast-err').last().innerText()) === 'Este registro cambió. Recarga para decidir sobre la última versión.' && !/Guardado para evaluar/.test(await page.locator('[data-testid="strategic-opp"]').first().locator('.ops-row-sub').first().textContent()));
+    await srSet('audit');
+    await page.waitForTimeout(61000);   // /ops limita a 40 acciones por minuto por proceso (actions.ts): la propia corrida de pruebas llegaría al tope; se espera a que la ventana se despeje
+    await page.goto(APP + '/ops?view=radar_alianzas'); await page.waitForSelector('[data-testid="strategic-opp"]');
+    await page.locator('[data-testid="strategic-opp"] summary').first().click();
+    await page.locator('[data-testid="strategic-opp"]').first().getByRole('button', { name: 'Guardar para evaluar' }).click();
+    await page.waitForFunction(() => document.querySelectorAll('.ops-toast-ok').length >= 1 && /auditoría/.test(document.body.innerText), null, { timeout: 20000 });
+    t('Radar · si el cambio se guardó pero la auditoría falló, el aviso lo dice (no hay éxito silencioso)', /Guardada para evaluar/.test(await page.locator('.ops-toast-ok').last().innerText()) && /auditoría/.test(await page.locator('.ops-toast-ok').last().innerText()));
     const allSr = (await calls()).slice(nbR);
     t('Radar · en toda la sesión de pruebas solo se llamó a strategic_decide / strategic_target_confirm (ninguna otra acción)', allSr.length > 0 && allSr.every((c) => c.action === 'strategic_decide' || c.action === 'strategic_target_confirm'), allSr.map((c) => c.action).join(','));
     await srSet('seed');

@@ -90,8 +90,30 @@ const final = plan.final || { resp: { ok: false, error: 'sin_resultado', message
 const rd = $('Read').all().map((i) => i.json || {});
 const R = {}; p.reads.forEach((r, i) => { R[r.key] = Array.isArray((rd[i] || {}).body) ? rd[i].body : []; });
 const writes = (final.writes || []).slice();
-if (req.action !== 'overview' && !plan.replayed) writes.push({ method: 'POST', path: 'operator_audit_log', body: oaAudit(req, R, final, nowMs), prefer: 'return=minimal', audit: true });
-return [{ json: { resp: final.resp, writes } }];`;
+// Radar estratégico: la auditoría se escribe DESPUÉS de aplicar el cambio (nodo «Audit Plan»), con el resultado REAL: si el PATCH condicional no cambió ninguna fila
+// no puede quedar un «executed» que luego un reintento con el mismo request_id devuelva como éxito.
+const deferred = /^strategic_/.test(req.action) && !plan.replayed;
+if (req.action !== 'overview' && !plan.replayed && !deferred) writes.push({ method: 'POST', path: 'operator_audit_log', body: oaAudit(req, R, final, nowMs), prefer: 'return=minimal', audit: true });
+return [{ json: { resp: final.resp, writes, deferred } }];`;
+
+export const AUDIT_PLAN = `${LIB}
+
+const f = $('Finish').first().json;
+if (!f.deferred) return [{ json: { skip: true } }];
+const p = $('Parse').first().json;
+const req = p.req;
+const plan = $('Plan 4').first().json;
+const nowMs = Date.now();
+const planned = f.writes || [], applied = $('Apply Writes').all().map((i) => i.json).slice(0, planned.length);
+const resp = { ...(f.resp || {}) };
+planned.forEach((w, i) => {
+  const a = applied[i] || {};
+  if (!a.statusCode || a.statusCode >= 300) { resp.ok = false; resp.error = 'no_se_guardo'; resp.message = 'La acción no se pudo guardar (' + (a.statusCode ? 'HTTP ' + a.statusCode : 'sin respuesta') + ').'; return; }
+  if (w.check_rows && !(Array.isArray(a.body) && a.body.length)) { resp.ok = false; resp.error = w.check_error || 'sin_cambios'; resp.message = w.check_message || 'No se aplicó el cambio.'; }
+});
+const rd = $('Read').all().map((i) => i.json || {});
+const R = {}; p.reads.forEach((r, i) => { R[r.key] = Array.isArray((rd[i] || {}).body) ? rd[i].body : []; });
+return [{ json: { skip: false, method: 'POST', path: 'operator_audit_log', body: oaAudit(req, R, { resp, writes: planned }, nowMs), prefer: 'return=minimal', audit: true } }];`;
 
 export const EXPAND_WRITES = `const w = $('Finish').first().json.writes || [];
 if (!w.length) return [{ json: { skip: true } }];
@@ -108,6 +130,8 @@ planned.forEach((w, i) => {
   if (failed) { r.ok = false; r.error = 'no_se_guardo'; r.message = 'La acción no se pudo guardar (' + (a.statusCode ? 'HTTP ' + a.statusCode : 'sin respuesta') + '): ' + JSON.stringify(a.body || {}).slice(0, 140); return; }
   if (w.check_rows && !(Array.isArray(a.body) && a.body.length)) { r.ok = false; r.error = w.check_error || 'sin_cambios'; r.message = w.check_message || 'No se aplicó el cambio.'; }
 });
+let ap = null; try { ap = $('Audit Plan').first().json; } catch (e) { ap = null; }
+if (ap && ap.skip === false) { const au = $('Apply Audit').first().json || {}; if (!au.statusCode || au.statusCode >= 300) r.audit_error = 'No quedó registrada en la auditoría (' + (au.statusCode ? 'HTTP ' + au.statusCode : 'sin respuesta') + ').'; }
 r.safety = { sends_directly: false, note: 'Aprobar activa el flujo real existente; /ops nunca envía ni publica por sí mismo.' };
 return [{ json: r }];`;
 
@@ -138,14 +162,18 @@ export function buildOpsActions() {
     { id: uuid(), name: 'Apply Writes', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [2800, 0], credentials: SUPABASE_CRED, continueOnFail: true, alwaysOutputData: true, retryOnFail: true, maxTries: 3, waitBetweenTries: 1500,
       parameters: { method: '={{ $json.skip ? "GET" : ($json.method || "POST") }}', url: `={{ $json.skip ? "${SUPABASE}/rest/v1/content_config?select=id&limit=1" : "${SUPABASE}/rest/v1/" + $json.path }}`, authentication: 'predefinedCredentialType', nodeCredentialType: 'supabaseApi', sendHeaders: true,
         headerParameters: { parameters: [{ name: 'Prefer', value: '={{ $json.prefer || "return=minimal" }}' }] }, sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full() } },
-    code('Respond', RESPOND, [3000, 0]),
+    code('Audit Plan', AUDIT_PLAN, [3000, 0]),
+    { id: uuid(), name: 'Apply Audit', type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [3200, 0], credentials: SUPABASE_CRED, continueOnFail: true, alwaysOutputData: true, retryOnFail: true, maxTries: 3, waitBetweenTries: 1500,
+      parameters: { method: '={{ $json.skip ? "GET" : "POST" }}', url: `={{ $json.skip ? "${SUPABASE}/rest/v1/content_config?select=id&limit=1" : "${SUPABASE}/rest/v1/" + $json.path }}`, authentication: 'predefinedCredentialType', nodeCredentialType: 'supabaseApi', sendHeaders: true,
+        headerParameters: { parameters: [{ name: 'Prefer', value: '={{ $json.prefer || "return=minimal" }}' }] }, sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full() } },
+    code('Respond', RESPOND, [3400, 0]),
   ];
   const c = {
     'Actions Webhook': { main: [to('Parse')] }, 'Parse': { main: [to('Valid?')] }, 'Valid?': { main: [to('Expand Reads'), to('Respond Error')] }, 'Expand Reads': { main: [to('Read')] }, 'Read': { main: [to('Plan 1')] },
     'Plan 1': { main: [to('Ingest 1')] }, 'Ingest 1': { main: [to('GHL Get 1')] }, 'GHL Get 1': { main: [to('GHL Put 1')] }, 'GHL Put 1': { main: [to('GHL Post 1')] }, 'GHL Post 1': { main: [to('Plan 2')] },
     'Plan 2': { main: [to('Ingest 2')] }, 'Ingest 2': { main: [to('GHL Get 2')] }, 'GHL Get 2': { main: [to('GHL Put 2')] }, 'GHL Put 2': { main: [to('GHL Post 2')] }, 'GHL Post 2': { main: [to('Plan 3')] },
     'Plan 3': { main: [to('Ingest 3')] }, 'Ingest 3': { main: [to('GHL Get 3')] }, 'GHL Get 3': { main: [to('GHL Put 3')] }, 'GHL Put 3': { main: [to('GHL Post 3')] }, 'GHL Post 3': { main: [to('Plan 4')] },
-    'Plan 4': { main: [to('Finish')] }, 'Finish': { main: [to('Expand Writes')] }, 'Expand Writes': { main: [to('Apply Writes')] }, 'Apply Writes': { main: [to('Respond')] },
+    'Plan 4': { main: [to('Finish')] }, 'Finish': { main: [to('Expand Writes')] }, 'Expand Writes': { main: [to('Apply Writes')] }, 'Apply Writes': { main: [to('Audit Plan')] }, 'Audit Plan': { main: [to('Apply Audit')] }, 'Apply Audit': { main: [to('Respond')] },
   };
   return { name: 'Atacama Labs - 29 Ops Actions', nodes, connections: c, settings: { executionOrder: 'v1' } };
 }
