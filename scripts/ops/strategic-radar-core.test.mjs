@@ -288,4 +288,4 @@ ok('migración: 6 tablas strategic_*, RLS + revoke, sin políticas/definer/drop/
   assert.equal([...cfg.matchAll(/boolean not null default (\w+)/g)].every((m) => m[1] === 'false'), true);
 });
 
-console.log(`strategic-radar-core: ${n} pruebas ok`);
+console.log(`${n} ok`);
