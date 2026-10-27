@@ -188,11 +188,16 @@ await ok('gate producción: sin target confirmado y monitoreado = no_source; con
 });
 
 // ---------- sin regresiones: Daily, panel y demás no leen ni muestran nada estratégico
-await ok('daily y panel no hacen ninguna lectura del Radar ni cambian de texto', async () => {
-  for (const action of ['daily', 'panel', 'today', 'health']) {
+await ok('today, health y urgent no leen el Radar; daily, panel y alerts_poll hacen UNA lectura mínima (4 consultas) y silenciosa', async () => {
+  for (const action of ['today', 'health', 'urgent']) {
     const r = await call({ action });
     assert.ok(!r.reads.some((x) => /strategic_|^sr_/.test(x.key + x.url)), action + ' no debe leer el Radar');
-    assert.ok(!/Radar estratégico/.test(JSON.stringify(r.out)), action + ' no menciona el Radar');
+  }
+  for (const action of ['daily', 'panel', 'alerts_poll']) {
+    const r = await call({ action, now_ms: undefined });
+    assert.deepEqual(r.reads.filter((x) => /^sr_/.test(x.key)).map((x) => x.key).sort(), ['sr_checks', 'sr_cfg', 'sr_opps', 'sr_targets'].sort(), action);
+    assert.ok(r.reads.filter((x) => /^sr_/.test(x.key)).every((x) => /strategic_/.test(x.url) && x.url.includes('is_test=eq.false') || x.key === 'sr_cfg'), action);
+    assert.ok(!r.reads.some((x) => /sr_runs|sr_evidence|sr_existing/.test(x.key)), 'sin detalle: solo lo necesario para hasta 3 señales');
   }
 });
 await ok('las acciones estratégicas jamás escriben ni envían (writes = [], sin mensajes)', async () => {
@@ -361,6 +366,107 @@ await ok('ingest: errores de petición (tope, kind, run_id) no escriben nada', a
   for (const [o, why] of [[{ items: Array(13).fill(prodItem()) }, 'demasiados_items'], [{ kind: 'oro' }, 'kind_invalido'], [{ run_id: 'no' }, 'run_id_invalido'], [{ items: [] }, 'items_invalidos']]) {
     const r = await ing(o); assert.equal(r.out.ok, false, why); assert.equal(r.out.error, why); assert.equal(r.writes.length, 0);
   }
+});
+
+// ---------- F6 · Daily, «Hoy» y alertas: solo señales reales, máximo 3, sin romper nada
+const TARGET_DOWN = { id: 'tc', logical_name: 'Librería Crecer', status: 'confirmed', monitor_enabled: true, is_test: false };
+const oppF6 = (o) => opp({ ...o });
+const SIGNALS = () => ({
+  sr_cfg: [CFG({ daily_max_items: 3, production_enabled: true })], sr_targets: [TARGET_DOWN], sr_checks: [down('tc', 5), down('tc', 20)],
+  sr_opps: [oppF6({ id: 'e5', title: 'Evento en 5 días' }), oppF6({ id: 'p3', kind: 'partner', title: 'Programa en 3 días', deadline_at: iso(NOW + 3 * DAY) }), oppF6({ id: 'e12', title: 'Evento en 12 días', deadline_at: iso(NOW + 12 * DAY) }), oppF6({ id: 'e9', title: 'Evento en 9 días', deadline_at: iso(NOW + 9 * DAY) }), oppF6({ id: 'p1', kind: 'product', title: 'Repo casi listo', deadline_at: null, score: 88, license_verified: true, license_id: 'MIT', coverage_pct: 95, critical_blockers: [], score_parts: {} })],
+});
+const ALL_FAIL = { sr_cfg: 'FAIL', sr_targets: 'FAIL', sr_checks: 'FAIL', sr_opps: 'FAIL' };
+const OFF = { sr_cfg: [CFG()], sr_targets: [], sr_checks: [], sr_opps: [] };
+const dnL = (id, m) => ({ ...past(m, 'down'), target_id: id });
+const upL = (id, m) => ({ ...past(m, 'healthy'), target_id: id });
+
+await ok('F6 Daily: sin señales (apagado, vacío o tablas ausentes) el texto es EXACTAMENTE el de antes, sin bloque estratégico', async () => {
+  const before = (await call({ action: 'daily' }, ALL_FAIL)).out;
+  for (const g of [OFF, { ...OFF, sr_cfg: [CFG({ daily_max_items: 3 })] }, { ...SIGNALS(), sr_cfg: [CFG({ daily_max_items: 0 })] }, { ...SIGNALS(), sr_cfg: [] }, { ...SIGNALS(), sr_opps: 'FAIL' }]) {
+    const r = (await call({ action: 'daily' }, g)).out;
+    assert.equal(r.text, before.text); assert.equal(r.brief, before.brief); assert.equal(r.action_count, before.action_count); assert.equal(r.review_count, before.review_count);
+    assert.ok(!/RADAR ESTRATÉGICO/.test(r.text));
+  }
+});
+await ok('F6 Daily: con señales agrega UN bloque con máximo 3 viñetas en el orden caído > plazo ≤7 > plazo 8–14 > producto, sin cambiar lo demás', async () => {
+  const before = (await call({ action: 'daily' }, ALL_FAIL)).out.text;
+  const r = (await call({ action: 'daily' }, SIGNALS())).out;
+  const block = r.text.split('RADAR ESTRATÉGICO')[1].split('Pregúntame')[0].trim().split('\n').filter((l) => l.startsWith('•'));
+  assert.equal(block.length, 3, 'máximo 3 aunque haya 5 elegibles');
+  assert.ok(/Librería Crecer no responde/.test(block[0]) && /Producción/.test(block[0]));
+  assert.ok(/Programa en 3 días/.test(block[1]) && /Alianzas/.test(block[1]));
+  assert.ok(/Evento en 5 días/.test(block[2]) && /Eventos/.test(block[2]));
+  assert.ok(block.every((l) => /Qué hacer:/.test(l) && /Radar estratégico →/.test(l)), 'qué, por qué, acción y a dónde ir');
+  assert.ok(r.text.startsWith(before.split('\n')[0]) && r.text.endsWith(before.split('\n').slice(-1)[0]), 'cabecera y pie intactos');
+  assert.equal((r.text.match(/RADAR ESTRATÉGICO/g) || []).length, 1);
+});
+await ok('F6 Daily: solo 1 producto aunque haya varios, y nunca un producto sin licencia, cobertura auditada o con bloqueos', async () => {
+  const mk = (id, o) => oppF6({ id, kind: 'product', title: 'Repo ' + id, deadline_at: null, score: 90, license_verified: true, license_id: 'MIT', coverage_pct: 95, critical_blockers: [], score_parts: {}, ...o });
+  const g = { sr_cfg: [CFG({ daily_max_items: 3 })], sr_targets: [], sr_checks: [], sr_opps: [mk('a'), mk('b'), mk('c', { license_verified: false }), mk('d', { coverage_pct: 80 }), mk('e', { critical_blockers: ['x'] }), mk('f', { score_parts: { coverage_provisional: true } })] };
+  const r = (await call({ action: 'daily' }, g)).out.text;
+  assert.equal((r.match(/•[^\n]*Repo /g) || []).length, 1); assert.ok(/Repo a|Repo b/.test(r));
+});
+await ok('F6 panel/Hoy: UNA tarjeta agregada «Radar estratégico · N asuntos para decidir»; sin señales no hay tarjeta; el resto de la bandeja no cambia', async () => {
+  const base = (await call({ action: 'panel' }, ALL_FAIL)).out.panel.v3.inbox;
+  assert.ok(!base.items.some((i) => i.kind === 'radar'));
+  const r = (await call({ action: 'panel' }, SIGNALS())).out.panel.v3.inbox;
+  const cards = r.items.filter((i) => i.kind === 'radar');
+  assert.equal(cards.length, 1); assert.equal(cards[0].count, 3); assert.equal(cards[0].title, 'Radar estratégico · 3 asuntos para decidir'); assert.equal(cards[0].href, '/ops?view=radar_produccion'); assert.equal(cards[0].from, 'Radar estratégico');
+  assert.equal(r.total, base.total + 3); assert.deepEqual(r.items.filter((i) => i.kind !== 'radar'), base.items);
+  const one = (await call({ action: 'panel' }, { ...SIGNALS(), sr_targets: [], sr_checks: [], sr_opps: [SIGNALS().sr_opps[0]] })).out.panel.v3.inbox.items.find((i) => i.kind === 'radar');
+  assert.equal(one.title, 'Radar estratégico · 1 asunto para decidir'); assert.equal(one.href, '/ops?view=radar_eventos'); assert.equal(one.prio, 5);
+  assert.equal((await call({ action: 'panel' }, { ...SIGNALS(), sr_cfg: [CFG({ daily_max_items: 0 })] })).out.panel.v3.inbox.items.some((i) => i.kind === 'radar'), false);
+});
+await ok('F6 panel: una caída que ya aparece como alerta abierta no se cuenta dos veces en «Hoy»', async () => {
+  const g = { ...SIGNALS(), sr_opps: [] };
+  const alerts = [{ alert_key: 'strategic_prod:tc', severity: 'critical', status: 'open', title: 'Servicio caído: Librería Crecer', first_seen_at: iso(NOW - 600000), event: false, notify_count: 1 }];
+  const r = (await call({ action: 'panel' }, g, alerts)).out.panel.v3.inbox;
+  assert.ok(!r.items.some((i) => i.kind === 'radar')); assert.ok(r.items.some((i) => i.kind === 'alerta'));
+});
+await ok('F6 fuente caída: panel, daily y alerts_poll siguen igual y NO marcan «missing» por el Radar', async () => {
+  for (const action of ['panel', 'daily']) {
+    const ok1 = (await call({ action }, ALL_FAIL)).out, ok2 = (await call({ action }, OFF)).out;
+    assert.deepEqual((ok1.panel || {}).missing || [], (ok2.panel || {}).missing || []); assert.ok(!(ok1.missing || []).some((m) => /sr_/.test(m)), action);
+    assert.equal(ok1.ok, true);
+  }
+  const a = (await live({ action: 'alerts_poll' }, ALL_FAIL)).out;
+  assert.equal(a.ok, true); assert.ok(!(a.missing || []).some((m) => /sr_/.test(m)));
+});
+await ok('F6 alertas: dos caídas seguidas de un servicio confirmado crean UNA alerta crítica strategic_prod:<id> con la deduplicación de alerts_poll', async () => {
+  const g = { sr_cfg: [CFG({ daily_max_items: 3 })], sr_targets: [TARGET_DOWN], sr_checks: [dnL('tc', 5), dnL('tc', 20)], sr_opps: [] };
+  const r = await live({ action: 'alerts_poll' }, g);
+  const w = r.writes.find((x) => x.path.startsWith('ops_alerts') && x.body && x.body.alert_key === 'strategic_prod:tc');
+  assert.ok(w, 'se crea la alerta'); assert.equal(w.body.severity, 'critical'); assert.equal(w.body.status, 'open'); assert.match(w.body.title, /Servicio caído: Librería Crecer/); assert.equal(w.body.meta.href, '/ops?view=radar_produccion');
+  assert.ok(r.out.notify_keys.includes('strategic_prod:tc')); assert.match(r.out.text, /CRÍTICO · Servicio caído: Librería Crecer/);
+  // ya abierta y avisada: no se repite
+  const again = await live({ action: 'alerts_poll' }, g, [{ alert_key: 'strategic_prod:tc', severity: 'critical', status: 'open', title: 'x', event: false, notify_count: 1, last_notified_at: new Date(Date.now() - 60000).toISOString(), first_seen_at: iso(NOW - 3600000) }]);
+  assert.ok(!again.out.notify_keys.includes('strategic_prod:tc'), 'sin repetir cada 15 min'); assert.ok(!again.out.resolved.includes('strategic_prod:tc'));
+});
+await ok('F6 alertas: una caída aislada, un servicio sin confirmar/sin monitoreo, de prueba o con la incorporación apagada NO alertan', async () => {
+  const run = async (g, al) => (await live({ action: 'alerts_poll' }, g, al || [])).out.notify_keys.filter((k) => /strategic_prod/.test(k));
+  const on = { sr_cfg: [CFG({ daily_max_items: 3 })], sr_opps: [] };
+  assert.deepEqual(await run({ ...on, sr_targets: [TARGET_DOWN], sr_checks: [dnL('tc', 5), upL('tc', 20)] }), []);
+  assert.deepEqual(await run({ ...on, sr_targets: [TARGET_DOWN], sr_checks: [dnL('tc', 5)] }), []);
+  assert.deepEqual(await run({ ...on, sr_targets: [{ ...TARGET_DOWN, monitor_enabled: false }], sr_checks: [dnL('tc', 5), dnL('tc', 20)] }), []);
+  assert.deepEqual(await run({ ...on, sr_targets: [{ ...TARGET_DOWN, status: 'candidate' }], sr_checks: [dnL('tc', 5), dnL('tc', 20)] }), []);
+  assert.deepEqual(await run({ ...on, sr_targets: [{ ...TARGET_DOWN, is_test: true }], sr_checks: [dnL('tc', 5), dnL('tc', 20)] }), []);
+  assert.deepEqual(await run({ sr_cfg: [CFG({ daily_max_items: 0 })], sr_opps: [], sr_targets: [TARGET_DOWN], sr_checks: [dnL('tc', 5), dnL('tc', 20)] }), [], 'incorporación apagada: nada nuevo a Telegram');
+  assert.deepEqual(await run({ ...on, sr_targets: [TARGET_DOWN], sr_checks: [] }), [], 'sin datos = desconocido, no caído');
+});
+await ok('F6 alertas: se resuelve con DOS healthy seguidos; con un solo healthy o sin datos recientes sigue abierta (no se da por recuperado)', async () => {
+  const al = [{ alert_key: 'strategic_prod:tc', severity: 'critical', status: 'open', title: 'x', event: false, notify_count: 1, last_notified_at: new Date(Date.now() - 60000).toISOString(), first_seen_at: iso(NOW - 3600000) }];
+  const on = { sr_cfg: [CFG({ daily_max_items: 3 })], sr_opps: [], sr_targets: [TARGET_DOWN] };
+  const two = (await live({ action: 'alerts_poll' }, { ...on, sr_checks: [upL('tc', 2), upL('tc', 17)] }, al)).out;
+  assert.ok(two.resolved.includes('strategic_prod:tc'));
+  const one = (await live({ action: 'alerts_poll' }, { ...on, sr_checks: [upL('tc', 2), dnL('tc', 17)] }, al)).out;
+  assert.ok(!one.resolved.includes('strategic_prod:tc'));
+  const none = (await live({ action: 'alerts_poll' }, { ...on, sr_checks: [] }, al)).out;
+  assert.ok(!none.resolved.includes('strategic_prod:tc'), 'sin datos recientes no resuelve');
+});
+await ok('F6: las lecturas del Radar nunca escriben nada en panel/daily y las alertas solo en ops_alerts', async () => {
+  for (const action of ['panel', 'daily']) assert.deepEqual((await call({ action }, SIGNALS())).writes.filter((w) => /strategic_/.test(w.path)), []);
+  const r = await live({ action: 'alerts_poll' }, { sr_cfg: [CFG({ daily_max_items: 3 })], sr_opps: [], sr_targets: [TARGET_DOWN], sr_checks: [dnL('tc', 5), dnL('tc', 20)] });
+  assert.ok(r.writes.every((w) => !/^strategic_/.test(w.path)));
 });
 
 console.log(`${n} ok`);

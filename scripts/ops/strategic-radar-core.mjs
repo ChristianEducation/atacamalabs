@@ -285,6 +285,25 @@ export function srAttention(input, now) {
   return out.slice(0, max);
 }
 
+// ---------- Alertas de producción para ops_alerts (§3, §8): solo caídas CONFIRMADAS de servicios confirmados y monitoreados ----------
+/**
+ * input = { config, targets:[{id,logical_name,status,monitor_enabled,is_test,alert_open,checks}] }. Clave `strategic_prod:<id>` (la deduplicación es la de alerts_poll).
+ * Solo si la incorporación al Daily/alertas está encendida (daily_max_items > 0). Sin datos recientes NO se declara caído ni se da por resuelta una alerta abierta.
+ */
+export function srProdAlerts(input, now) {
+  const i = input || {}, cfg = i.config;
+  if (!cfg || !(Number(cfg.daily_max_items) > 0)) return [];
+  const out = [];
+  for (const t of Array.isArray(i.targets) ? i.targets : []) {
+    if (!t || t.is_test || t.status !== 'confirmed' || t.monitor_enabled !== true) continue;
+    const h = srProductionHealth(t.checks, now, t.alert_open === true);
+    const keepOpen = t.alert_open === true && h.state === 'unknown';
+    if (!h.confirmed_down && !keepOpen) continue;
+    out.push({ key: 'strategic_prod:' + t.id, severity: 'critical', title: 'Servicio caído: ' + t.logical_name, detail: keepOpen ? 'Sin datos recientes del monitor: no se confirma que se haya recuperado.' : 'Dos comprobaciones HTTP seguidas fallaron (esto mide solo HTTP, no la base de datos ni los pagos).', meta: { strategic: true, target_id: t.id, href: '/ops?view=radar_produccion' } });
+  }
+  return out;
+}
+
 // ---------- Compuerta de corridas (§6.1 strategic_gate) ----------
 /** input = { kind, now, global_pause, config, runs:[{kind,status,finished_at,is_test}], has_source } → {mode, reason, max_items}. */
 export function srGate(input) {

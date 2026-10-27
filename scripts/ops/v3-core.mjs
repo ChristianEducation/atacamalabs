@@ -62,6 +62,10 @@ export function v3Inbox(x) {
   if (find) items.push({ kind: 'contacto', prio: 5, count: find.count, title: find.count === 1 ? '1 contacto por pegar' : find.count + ' contactos por pegar', from: 'Prospección y correo', age: '', tone: 'fresh', href: '/ops?view=control', examples: find.items.slice(0, 3) });
   const al = (Array.isArray(x && x.alerts) ? x.alerts : []).filter((a) => a.status === 'open' && !String(a.alert_key || '').startsWith('_') && ['critical', 'high'].includes(a.severity));
   push('alerta', 6, al.length === 1 ? '1 alerta pide tu atención' : al.length + ' alertas piden tu atención', 'Sistema', al, (a) => a.first_seen_at, '/ops?view=alertas', al.map((a) => a.title));
+  // Radar estratégico (spec RADAR §3): UNA sola tarjeta agregada «Radar estratégico · N asuntos para decidir» (nunca una fila por hallazgo). Una caída de servicio que ya aparece como alerta abierta no se cuenta dos veces.
+  const covered = new Set(al.map((a) => a.alert_key));
+  const strat = (Array.isArray(x && x.strategic) ? x.strategic : []).filter((s) => s && s.what && !(s.class === 'production' && covered.has('strategic_prod:' + s.id))).slice(0, 3);
+  if (strat.length) items.push({ kind: 'radar', prio: strat.some((s) => s.class === 'production') ? 1 : 5, count: strat.length, title: 'Radar estratégico · ' + strat.length + (strat.length === 1 ? ' asunto' : ' asuntos') + ' para decidir', from: 'Radar estratégico', age: '', tone: 'warn', href: '/ops?view=' + strat[0].tab, examples: strat.map((s) => s.title).filter(Boolean).slice(0, 3) });
   // Fase 7: reuniones de hoy (reservas del sitio). No son decisiones, pero van arriba para no perderlas.
   const tz = (x && x.tz) || 'America/Santiago';
   const today = new Date(now).toLocaleDateString('en-CA', { timeZone: tz });

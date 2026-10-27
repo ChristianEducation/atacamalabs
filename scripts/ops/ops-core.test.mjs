@@ -665,4 +665,40 @@ ok('pieza descartada con ghl_status=failed ya no cuenta como falla de publicaci�
   assert.ok(oc.evaluateAlerts(base({ pieces: [live] }), []).notify.some((x) => x.key === 'publish_failed:fx'));
 });
 
+// ---- Radar estratégico (F6): el Daily y las alertas solo cambian cuando HAY señales reales
+const SIG = (o) => ({ rank: 0, sub: 0, class: 'event', id: 'e1', title: 'Evento B2B', what: 'Evento B2B', why: 'Plazo confirmado en 5 días · puntaje 82', action: 'Decidir si postular', tab: 'radar_eventos', ...o });
+ok('F6 Daily: sin señales (ausente, vacío o inválido) el texto es idéntico byte por byte al de antes', () => {
+  const before = oc.composeDaily(base());
+  for (const strategic of [undefined, null, [], 'x', {}, [null], [{}], [{ what: '' }]]) {
+    const r = oc.composeDaily({ ...base(), strategic });
+    assert.equal(r.text, before.text, JSON.stringify(strategic)); assert.equal(r.action_count, before.action_count); assert.equal(r.review_count, before.review_count);
+  }
+  assert.match(before.text, /Sin novedades: nada que requiera tu acción hoy/);
+});
+ok('F6 Daily: con señales agrega un único bloque (máx. 3), conserva el resto y no dice «sin novedades»', () => {
+  const r = oc.composeDaily({ ...base(), strategic: [SIG({ id: 'a', tab: 'radar_produccion', class: 'production', what: 'Librería Crecer no responde', why: 'Dos comprobaciones seguidas fallaron (HTTP)', action: 'Revisar el servicio' }), SIG({ id: 'b', tab: 'radar_alianzas', class: 'partner', what: 'Programa Acme' }), SIG({ id: 'c' }), SIG({ id: 'd', what: 'cuarta no cabe' })] });
+  assert.equal((r.text.match(/RADAR ESTRATÉGICO/g) || []).length, 1);
+  const lines = r.text.split('RADAR ESTRATÉGICO')[1].split('Pregúntame')[0].trim().split('\n');
+  assert.equal(lines.length, 3); assert.ok(!r.text.includes('cuarta no cabe'));
+  assert.match(lines[0], /Librería Crecer no responde — Dos comprobaciones seguidas fallaron \(HTTP\)\. Qué hacer: Revisar el servicio\. \(Radar estratégico → Producción\)/); assert.match(lines[1], /→ Alianzas/); assert.match(lines[2], /→ Eventos/);
+  assert.ok(!/Sin novedades/.test(r.text)); assert.match(r.text, /TODO BIEN[\s\S]*Sistema operativo/); assert.match(r.text, /Pregúntame/);
+  assert.equal(r.action_count, 0, 'no altera los contadores del Daily existente');
+});
+ok('F6 Daily: con acciones o revisiones pendientes también agrega el bloque sin tocar sus secciones', () => {
+  const plain = oc.composeDaily(rich()), withR = oc.composeDaily({ ...rich(), strategic: [SIG()] });
+  assert.ok(withR.text.replace(/\n\nRADAR ESTRATÉGICO\n• [^\n]*/, '') === plain.text, 'quitando el bloque queda idéntico');
+  assert.equal(withR.action_count, plain.action_count); assert.equal(withR.review_count, plain.review_count);
+});
+ok('F6 alertas: strategic_alerts crea la alerta crítica strategic_prod:<id> UNA vez y se resuelve sola cuando deja de venir', () => {
+  const al = { key: 'strategic_prod:t1', severity: 'critical', title: 'Servicio caído: Librería Crecer', detail: 'Dos comprobaciones HTTP seguidas fallaron', meta: { strategic: true, target_id: 't1', href: '/ops?view=radar_produccion' } };
+  const first = oc.evaluateAlerts({ ...base(), strategic_alerts: [al] }, []);
+  assert.ok(first.notify.some((x) => x.key === 'strategic_prod:t1' && x.severity === 'critical')); assert.ok(first.upserts.some((x) => x.key === 'strategic_prod:t1' && x.op === 'insert'));
+  const open = { alert_key: 'strategic_prod:t1', status: 'open', event: false, notify_count: 1, last_notified_at: new Date(base().now - 60000).toISOString(), severity: 'critical' };
+  const again = oc.evaluateAlerts({ ...base(), strategic_alerts: [al] }, [open]);
+  assert.ok(!again.notify.some((x) => x.key === 'strategic_prod:t1'), 'no se repite cada 15 min'); assert.ok(!again.resolve.includes('strategic_prod:t1'));
+  assert.ok(oc.evaluateAlerts({ ...base(), strategic_alerts: [] }, [open]).resolve.includes('strategic_prod:t1'));
+  assert.equal(oc.evaluateAlerts(base(), []).current.filter((x) => /^strategic_prod:/.test(x.key)).length, 0, 'sin strategic_alerts nada cambia');
+  assert.ok(oc.alertsText(first.notify).includes('CRÍTICO · Servicio caído: Librería Crecer'));
+});
+
 console.log(n + ' ok');

@@ -534,7 +534,7 @@ export async function PanelView({ sp }: { sp: { view?: string | string[]; filter
   const inbox = panel.v3?.inbox;
   const nKind = (k: string) => inbox?.items.filter((i) => i.kind === k || i.kind.startsWith(k + "_")).reduce((a, i) => a + i.count, 0) ?? 0;
   const badges: Record<string, number> = v2
-    ? { hoy: inbox?.total ?? 0, redes: nKind("idea") + nKind("pieza") + (ap ? ap.content : 0), correo: (ap ? ap.emails + ap.linkedin : 0) + ctl, sistema: nKind("alerta") }
+    ? { hoy: inbox?.total ?? 0, redes: nKind("idea") + nKind("pieza") + (ap ? ap.content : 0), correo: (ap ? ap.emails + ap.linkedin : 0) + ctl, sistema: nKind("alerta"), estrategico: nKind("radar") }
     : { aprobaciones: ap ? ap.emails + ap.linkedin + ap.content : 0, control: ctl, contenido: panel.content.weekly && panel.content.weekly.state === "falta" ? 1 : 0 };
   const filter = (["todas", "correos", "linkedin", "contenido"].includes(one(sp.filter) ?? "") ? one(sp.filter) : "todas") as ApprovalFilter;
   // En la navegación v2 «outreach» es la pestaña LinkedIn; ?tab=email sigue funcionando (ninguna URL vieja queda rota).

@@ -58,7 +58,7 @@ const tallerView = () => ({ generated_at: new Date().toISOString(), labels: {}, 
 const ideasView = () => ({ generated_at: new Date().toISOString(), next_week: '2026-10-26', weeks: [{ week_start: '2026-10-26', is_next: true, counts: { proposed: 2, changed: 0, approved: 0, discarded: 0 }, discarded_weak: 3, weak: [{ title: 'Débil', channel: 'instagram', reasons: ['sin fuente verificada'] }], batch_at: ISO(-2),
   channels: [{ channel: 'instagram', label: 'Instagram', ideas: state.ideas.filter((i) => i.channel === 'instagram' && i.score >= 75), folded: state.ideas.filter((i) => i.channel === 'instagram' && i.score < 75) }, { channel: 'linkedin_page', label: 'LinkedIn · página', ideas: state.ideas.filter((i) => i.channel === 'linkedin_page'), folded: [] }, { channel: 'linkedin_profile', label: 'LinkedIn · personal', ideas: [], folded: [] }] }] });
 const v3 = () => ({ pause: { paused: state.paused, reason: state.paused ? 'Viaje' : null, since: state.paused ? ISO(-1) : null, by: state.paused ? 'Christian via /ops' : null, resume_at: null }, nav_v2: state.navV2,
-  inbox: { total: 3 + 1 + 2, items: [{ kind: 'correo', prio: 1, count: 3, title: '3 correos por aprobar', from: 'Prospección y correo', age: 'hace 3 d', tone: 'old', href: '/ops?view=aprobaciones&filter=correos', examples: ['Empresa 1', 'Empresa 2'] },
+  inbox: { total: 3 + 1 + 2 + (SR.card ? 2 : 0), items: [...(SR.card ? [{ kind: 'radar', prio: 5, count: 2, title: 'Radar estratégico · 2 asuntos para decidir', from: 'Radar estratégico', age: '', tone: 'warn', href: '/ops?view=radar_eventos', examples: ['Encuentro minero Antofagasta', 'Programa de partners Acme'] }] : []), { kind: 'correo', prio: 1, count: 3, title: '3 correos por aprobar', from: 'Prospección y correo', age: 'hace 3 d', tone: 'old', href: '/ops?view=aprobaciones&filter=correos', examples: ['Empresa 1', 'Empresa 2'] },
     { kind: 'idea', prio: 2, count: 1, title: '1 idea por decidir', from: 'Redes → Ideas', age: 'hace 2 h', tone: 'fresh', href: '/ops?view=ideas', examples: ['Idea de prueba'] },
     { kind: 'publicacion', prio: 8, count: 2, title: '2 publicaciones en revisión (GHL)', from: 'Redes', age: '', tone: 'fresh', href: '/ops?view=aprobaciones&filter=contenido', examples: [] }] } });
 const panel = () => ({ v3: v3(), prep: prepData(), generated_at: new Date().toISOString(), date_label: 'jue 8 oct', tz: 'America/Santiago', missing: [], attention_total: 1, attention: [{ key: 'content_pending', tone: 'act', title: 'Contenido por aprobar', count: 2, items: ['«API Gateway…»'], more: 0 }],
@@ -74,7 +74,7 @@ const panel = () => ({ v3: v3(), prep: prepData(), generated_at: new Date().toIS
 
 
 // ---- Radar estratégico (simulado): seed = todo apagado con los 5 candidatos; live = con datos; down = HTTP 500; unavailable = tablas ausentes; bad = fila mal formada
-const SR = { mode: 'seed', hits: [], decided: {}, confirmed: {} };
+const SR = { mode: 'seed', hits: [], decided: {}, confirmed: {}, card: false };
 const srT = (n, name, o = {}) => ({ id: UID(1000 + n), logical_name: name, repo_full_name: null, repo_branch: null, deployment_url: null, health_url: null, provider: null, status: 'candidate', monitor_enabled: false, verified_at: null, notes: 'Código identificado; confirmar deployment y health endpoint', last_deploy_sha: null, section: 'pending', http_state: 'unverified', health_reason: 'sin_verificar', last_checked_at: null, last_check: null, ...o });
 const SR_SEED = ['Atacama Labs / OS', 'Librería Crecer', 'Pedidos Empresas', 'Registro Almuerzos', 'Casino Escolar'].map((nm, i) => srT(i + 1, nm, nm === 'Librería Crecer' ? { repo_full_name: 'ChristianEducation/LibreriaCrecer' } : {}));
 const SR_EV = (o = {}) => ({ source_url: 'https://github.com/acme/repo', source_title: 'Repositorio oficial', source_type: 'repository', claim: 'Existe este código con licencia MIT', excerpt: 'MIT License', source_published_at: null, verified_at: ISO(-5), ...o });
@@ -110,7 +110,7 @@ const mock = http.createServer((req, res) => {
   req.on('end', () => {
     const send = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
     const j = body ? JSON.parse(body) : {};
-    if (req.url === '/__sr') { SR.mode = j.mode; SR.hits = []; SR.decided = {}; SR.confirmed = {}; return send(200, {}); }
+    if (req.url === '/__sr') { SR.mode = j.mode; SR.hits = []; SR.decided = {}; SR.confirmed = {}; SR.card = j.card === true; return send(200, {}); }
     if (req.url === '/__srhits') return send(200, SR.hits);
     if (req.url === '/webhook/atacama-ops' && j.action === 'strategic_view') { if (req.headers['x-atacama-key'] !== INGEST_KEY) return send(403, {}); SR.hits.push((j.params || {}).tab || 'production'); if (SR.mode === 'down') return send(500, {}); return send(200, { ok: true, action: 'strategic_view', strategic: strategicView((j.params || {}).tab || 'production') }); }
     if (req.url === '/__calls') return send(200, state.calls);
@@ -723,6 +723,19 @@ async function main() {
     await page.locator('[data-testid="strategic-opp"] summary').first().click();
     const srPart = await page.locator('[data-testid="strategic-opp"]').first().innerText();
     t('Radar · Alianzas: plazo confirmado visible y el puntaje explicado', /Plazo/i.test(srPart) && /82\/100 · confianza media/.test(srPart));
+
+    // ---------------------------------------------------------------- Radar estratégico (F6): «Hoy» y menú
+    await fetch(`http://localhost:${MOCK_PORT}/__sr`, { method: 'POST', body: JSON.stringify({ mode: 'seed', card: false }) });
+    await page.goto(APP + '/ops?view=hoy'); await page.waitForSelector('[data-testid="inbox"]');
+    t('Radar · sin señales: «Hoy» no tiene tarjeta del Radar y el menú no muestra insignia', (await page.locator('[data-testid="inbox"] [data-kind="radar"]').count()) === 0 && (await page.locator('.ops-side a.ops-nav-a', { hasText: /^Radar estratégico/ }).locator('.ops-badge').count()) === 0);
+    await fetch(`http://localhost:${MOCK_PORT}/__sr`, { method: 'POST', body: JSON.stringify({ mode: 'seed', card: true }) });
+    await page.goto(APP + '/ops?view=hoy'); await page.waitForSelector('[data-testid="inbox"] [data-kind="radar"]');
+    const srCard = page.locator('[data-testid="inbox"] [data-kind="radar"]');
+    t('Radar · con señales: UNA sola tarjeta agregada «Radar estratégico · 2 asuntos para decidir» (no una fila por hallazgo)', (await page.locator('[data-testid="inbox"] [data-kind="radar"]').count()) === 1 && /Radar estratégico · 2 asuntos para decidir/.test(await srCard.innerText()) && /Encuentro minero Antofagasta/.test(await srCard.innerText()));
+    t('Radar · el menú muestra la insignia con las decisiones reales (2), no con todos los resultados', (await page.locator('.ops-side a.ops-nav-a', { hasText: /^Radar estratégico/ }).locator('.ops-badge').innerText()) === '2');
+    await srCard.locator('a').click(); await page.waitForURL(/view=radar_eventos/);
+    t('Radar · la tarjeta lleva a la pestaña que corresponde', (await page.locator('nav.ops-sec-tabs a.ops-tab-on').innerText()) === 'Eventos');
+    await fetch(`http://localhost:${MOCK_PORT}/__sr`, { method: 'POST', body: JSON.stringify({ mode: 'seed', card: false }) });
 
     // ---------------------------------------------------------------- Radar estratégico (F3): decisiones humanas
     const nbR = (await calls()).length;

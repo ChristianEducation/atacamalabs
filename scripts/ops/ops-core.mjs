@@ -317,13 +317,20 @@ export function composeDaily(d) {
   const head = 'ATACAMA DAILY · ' + fmtDate(d.now, tz);
   const out = [head];
   const sect = (title, items) => { if (!items.length) return; out.push('', title); items.forEach((i) => out.push('• ' + i.text)); };
+  // Radar estratégico (spec RADAR §3): hasta 3 señales ya filtradas por el motor del Radar (d.strategic). Sin señales NO se agrega nada: el Daily queda idéntico.
+  const strat = Array.isArray(d.strategic) ? d.strategic.filter((x) => x && x.what).slice(0, 3) : [];
   if (!s.action.length && !s.review.length) {
-    out.push('', 'Sin novedades: nada que requiera tu acción hoy.');
+    if (!strat.length) out.push('', 'Sin novedades: nada que requiera tu acción hoy.');
     sect('TODO BIEN', s.good);
   } else {
     sect('NECESITA TU ACCIÓN', s.action);
     sect('PARA REVISAR', s.review);
     sect('TODO BIEN', s.good);
+  }
+  if (strat.length) {
+    const tabName = { radar_produccion: 'Producción', radar_productos: 'Productos', radar_alianzas: 'Alianzas', radar_eventos: 'Eventos' };
+    out.push('', 'RADAR ESTRATÉGICO');
+    strat.forEach((x) => out.push('• ' + x.what + ' — ' + x.why + '. Qué hacer: ' + x.action + '. (Radar estratégico → ' + (tabName[x.tab] || 'Radar') + ')'));
   }
   out.push('', 'Pregúntame: «¿qué tengo que hacer hoy?», «¿quién respondió?», «¿qué falló?»');
   return { text: out.join('\n'), action_count: s.action.length, review_count: s.review.length, sections: s };
@@ -473,6 +480,8 @@ export function evaluateAlerts(d, existing) {
   for (const r of hrRules(d)) add(r.key, r.severity, r.title, r.detail, false, r.meta);
   // 6c) Taller (v3 §6.5): una pieza que la producción automática no pudo terminar → importante (se detuvo sin gastar más)
   for (const p of (d.pieces || []).filter((x) => !x.is_test && x.taller_status === 'necesita_ayuda')) add('taller_help:' + p.id, 'high', 'Pieza del Taller necesita ayuda: ' + String(p.topic || '').slice(0, 60), 'La producción automática se detuvo (topes de intentos o créditos). No se gasta más: decide en Redes → Taller.', false);
+  // 6d) Radar estratégico: servicio propio confirmado y monitoreado con 2 caídas HTTP seguidas (d.strategic_alerts lo arma el motor del Radar; vacío si está apagado)
+  for (const a of Array.isArray(d.strategic_alerts) ? d.strategic_alerts : []) add(a.key, a.severity, a.title, a.detail, false, a.meta);
   // 7) feeds RSS con 3+ fallos seguidos (aviso, no crítico)
   summarizeGrowth(d).rss.failing.forEach((f) => add('rss_feed:' + f.slug, 'high', 'Feed RSS con fallos: ' + f.slug, f.error + ' (' + f.failures + ' veces seguidas)', false));
   // --- dedupe

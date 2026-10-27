@@ -175,6 +175,14 @@ export const parseCode = `try {
       sr('sr_opps', 'strategic_opportunities?is_test=eq.false&kind=in.(event,partner,product)&status=in.(new,shortlisted)&score=gte.75&select=id,kind,title,status,score,confidence,deadline_at,next_action,last_daily_at,license_id,license_verified,coverage_pct,critical_blockers,score_parts,is_test&order=score.desc&limit=100');
     }
   }
+  // Radar estratégico en el Daily, «Hoy» y las alertas: lectura mínima y SILENCIOSA (si falla, no pasa nada y no se marca «missing»: ventas, correo y Daily siguen igual).
+  if (['panel', 'daily', 'alerts_poll'].includes(action)) {
+    const sr = (key, rest) => growth_reads.push({ key, url: sb + rest });
+    sr('sr_cfg', 'strategic_radar_config?id=eq.1&select=daily_max_items,production_enabled');
+    sr('sr_targets', 'strategic_prod_targets?is_test=eq.false&status=eq.confirmed&monitor_enabled=eq.true&select=id,logical_name,status,monitor_enabled,is_test&limit=60');
+    sr('sr_checks', 'strategic_prod_checks?is_test=eq.false&checked_at=gte.' + iso(now - 2 * 3600000) + '&select=target_id,checked_at,result,is_test&order=checked_at.desc&limit=400');
+    sr('sr_opps', 'strategic_opportunities?is_test=eq.false&kind=in.(event,partner,product)&status=in.(new,shortlisted)&score=gte.75&select=id,kind,title,status,score,confidence,deadline_at,next_action,last_daily_at,license_id,license_verified,coverage_pct,critical_blockers,score_parts,is_test&order=score.desc&limit=100');
+  }
   // Radar · monitor de producción (solo ejecutor confiable con la clave de ingesta; el navegador nunca los pide). Siempre se leen config y pausa: test=true NO salta compuertas.
   if (action === 'strategic_targets' || action === 'strategic_prod_check') {
     const T = P.test === true ? 'true' : 'false';
@@ -257,7 +265,7 @@ const errCount = {};
 (p.need.n8n && errBody && Array.isArray(errBody.data) ? errBody.data : []).filter((e) => p.now - Date.parse(e.startedAt) <= 24 * 3600000).forEach((e) => { const nm = nameOf[e.workflowId] || ('workflow ' + e.workflowId); errCount[nm] = (errCount[nm] || 0) + 1; });
 const errors24h = Object.keys(errCount).map((k) => ({ name: k, count: errCount[k] })).sort((a, b) => b.count - a.count);
 const G = {};
-if (p.growth_reads && p.growth_reads.length) { const gi = $('Expand Growth').all().map((i) => i.json); const gr = $('SB Growth').all().map((i) => i.json || {}); gi.forEach((e, i) => { if (e.skip) return; const r = gr[i] || {}; if ((r.statusCode || 0) < 300 && Array.isArray(r.body)) G[e.key] = r.body; else missing.push('growth:' + e.key); }); }
+if (p.growth_reads && p.growth_reads.length) { const gi = $('Expand Growth').all().map((i) => i.json); const gr = $('SB Growth').all().map((i) => i.json || {}); gi.forEach((e, i) => { if (e.skip) return; const r = gr[i] || {}; if ((r.statusCode || 0) < 300 && Array.isArray(r.body)) G[e.key] = r.body; else if (!(/^sr_/.test(e.key) && ['panel', 'daily', 'alerts_poll'].indexOf(p.action) >= 0)) missing.push('growth:' + e.key); }); }
 const gb = (n) => { const x = node(n); return (x.statusCode || 0) < 300 && x.body && typeof x.body === 'object' ? x.body : null; };
 const gmail = p.need.deep ? { w22: gb('Gmail Check 22'), w23: gb('Gmail Check 23') } : null;
 const oppBody = mergedBody('GHL Opps', 'opportunities'), taskBody = mergedBody('GHL Tasks', 'tasks');
@@ -268,9 +276,17 @@ const d = { now: p.now, ghl_accounts: accBody && accBody.results && Array.isArra
   content_cfg: (G.content_cfg || [])[0] || null, feeds: G.feeds || [], feed_new: G.feed_new || [], intel: (G.intel || [])[0] || null, resources: G.resources || [], story_proposals: G.story_props || [], leads: G.leads || [], resource_use: G.resource_use || [], interviews: G.interviews || [], system_state: (G.sys_state || [])[0] || null, ideas: G.ideas || [] };
 const A = p.action, writes = [], nowIso = new Date(p.now).toISOString();
 if (!d.hermes) { const hs = d.alerts.find((a) => a.alert_key === '_state:hermes'); if (hs && hs.meta && Array.isArray(hs.meta.jobs)) { d.hermes = hs.meta; d.hermes_age_ms = Math.max(0, p.now - Date.parse(hs.last_seen_at)); } }
+// Radar estratégico (silencioso): señales para el Daily/«Hoy» y alertas de producción. Apagado o ilegible = [] (el resto queda exactamente igual).
+if (A === 'panel' || A === 'daily' || A === 'alerts_poll') {
+  const scfg = (G.sr_cfg || [])[0] || null, sOk = !!scfg && !!G.sr_targets && !!G.sr_checks && !!G.sr_opps;
+  const byT = {}; (G.sr_checks || []).forEach((c) => { (byT[c.target_id] = byT[c.target_id] || []).push(c); });
+  const trg = (G.sr_targets || []).map((t) => ({ ...t, alert_open: d.alerts.some((a) => a.alert_key === 'strategic_prod:' + t.id && a.status === 'open'), checks: byT[t.id] || [] }));
+  d.strategic = sOk ? srAttention({ targets: trg, opportunities: G.sr_opps, daily_max_items: scfg.daily_max_items }, p.now) : [];
+  d.strategic_alerts = A === 'alerts_poll' && sOk ? srProdAlerts({ config: scfg, targets: trg }, p.now) : [];
+}
 let out;
 if (A === 'daily') { const r = composeDaily(d); const br = composeBrief(d); out = { text: r.text, brief: br.text, action_count: r.action_count, review_count: r.review_count }; }
-else if (A === 'panel') { const pn = composePanel(d); pn.v3 = { pause: v3Pause(d.system_state), nav_v2: !(d.content_cfg && d.content_cfg.ops_nav_v2 === false), inbox: v3Inbox({ now: p.now, tz: CFG.tz, messages: d.messages, ideas: d.ideas, pieces: d.pieces, alerts: d.alerts, attention: pn.attention, approvals: pn.approvals, meetings: G.meet_today || [] }) }; out = { panel: pn }; }
+else if (A === 'panel') { const pn = composePanel(d); pn.v3 = { pause: v3Pause(d.system_state), nav_v2: !(d.content_cfg && d.content_cfg.ops_nav_v2 === false), inbox: v3Inbox({ now: p.now, tz: CFG.tz, messages: d.messages, ideas: d.ideas, pieces: d.pieces, alerts: d.alerts, attention: pn.attention, approvals: pn.approvals, meetings: G.meet_today || [], strategic: d.strategic }) }; out = { panel: pn }; }
 else if (A === 'today') { out = composeToday(d); }
 else if (A === 'urgent') { out = composeUrgent(d); }
 else if (A === 'health') { const h = healthReport(d); out = { text: healthText(h) + (errors24h.length ? '\\nEjecuciones fallidas en 24 h: ' + errors24h.slice(0, 6).map((e) => e.name + ' (' + e.count + ')').join(', ') : '') + (missing.length ? '\\n⚠ ' + missingNotes(d).join(' ') : ''), overall: h.overall, components: h.components, errors24h }; }
