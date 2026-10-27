@@ -1,0 +1,18 @@
+# Ejecución · Radar estratégico (spec `SPEC-ATACAMA-OS-RADAR-ESTRATEGICO-v1.md`)
+
+Log propio del módulo. No reescribe el cierre v3 (`EJECUCION-LOG.md`). Estado de todo: **solo código local, flags OFF**. Nada se ha aplicado, desplegado ni activado.
+
+## F0 · Preflight (27-oct-2026)
+
+| Qué | Resultado | Estado |
+|---|---|---|
+| Repo | `ChristianEducation/atacamalabs`, carpeta `atacama-labs-app` (git propio; el git de `C:\Users\alain` es otro) | comprobado |
+| Rama de partida | `feat/frontend-v2-2-1` = `origin/main` = `39db2ec`. El `main` local está 150 commits atrasado, no se usa. Trabajo en rama nueva `feat/radar-estrategico` | comprobado |
+| SHA del spec `dcf3a66` | Es ancestro de HEAD; hay 21 commits posteriores. Tocan archivos de `/ops` (`ops.mjs`, `ops-core.mjs`, `ops-actions-core.mjs`, `Approvals.tsx`, `Mail.tsx`, prompts). **Prevalece el código real** para nombres y rutas (spec §0) | comprobado |
+| Next / React | 16.3.5 / 19.2.8 (coincide con `AGENTS.md`); docs locales en `node_modules/next/dist/docs/` (se leen antes de F2) | comprobado |
+| Rutas del §1 y §10 | `views.ts`, `n8n/build/ops.mjs`, `ops-actions.mjs`, `scripts/ops/*`, `ops/hermes/*`, migraciones hasta `20261023_*` existen. Ningún archivo `strategic_*` existe aún | comprobado |
+| Pruebas base | `node scripts/run-all-tests.mjs` → **58/58 suites, 1631 pruebas, exit 0** | comprobado |
+| Árbol local ajeno | Hay trabajo sin versionar de contenido (`brand/content/**`, `backups/`, `social/exports/**`, `docs/HANDOFF-CONTENIDO-SEMANA-26-OCT.md`) y 2 modificados (`brand/content/historias/build.mjs`, `ghl-sched.mjs`). **No se tocan**; los commits de este módulo listan archivos exactos, nunca `git add -A` | riesgo controlado |
+| Migraciones aplicadas en vivo, workflows 25/29, cron del Daily | `NO VERIFICADO EN VIVO` (no se consultó Supabase, n8n ni el VPS) | no comprobado |
+
+Diferencias con el spec: ninguna que cambie producto, seguridad o alcance. Rama de trabajo distinta a `main` por seguridad (se integra a `main` solo con tu «sí»).
