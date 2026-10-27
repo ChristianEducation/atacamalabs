@@ -27,6 +27,7 @@ import * as hiCore from '../../scripts/ops/history-core.mjs';
 import * as wkCore from '../../scripts/ops/week-core.mjs';
 import * as rsCore from '../../scripts/ops/results-core.mjs';
 import * as lnCore from '../../scripts/ops/learning-core.mjs';
+import * as srCore from '../../scripts/ops/strategic-radar-core.mjs';
 
 const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 export const N8N_BASE = 'https://n8n.srv1650725.hstgr.cloud';
@@ -55,10 +56,10 @@ const sbApply = (name, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.httpRe
     headerParameters: { parameters: [{ name: 'Prefer', value: '={{ $json.prefer || "return=minimal" }}' }] }, sendBody: true, specifyBody: 'json', jsonBody: '={{ JSON.stringify($json.body || {}) }}', options: full() } });
 const GH_HEADERS = [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', value: 'application/json' }];
 
-export const LIB = [...new Map([...Object.values(core), ...['linkedinOverview', 'linkedinView', 'liLabel'].map((k) => liCore[k]), ...Object.values(prepCore), ...Object.values(edCore), ...Object.values(rfCore), growthNorm, growthResourceRank, ...Object.values(v3Core), ...Object.values(ideasCore), ...Object.values(tallerCore), ...Object.values(mvCore), ...Object.values(hrCore), ...Object.values(hiCore), ...Object.values(wkCore), ...Object.values(rsCore), ...Object.values(lnCore), ...Object.values(ftCore)].filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
+export const LIB = [...new Map([...Object.values(core), ...['linkedinOverview', 'linkedinView', 'liLabel'].map((k) => liCore[k]), ...Object.values(prepCore), ...Object.values(edCore), ...Object.values(rfCore), growthNorm, growthResourceRank, ...Object.values(v3Core), ...Object.values(ideasCore), ...Object.values(tallerCore), ...Object.values(mvCore), ...Object.values(hrCore), ...Object.values(hiCore), ...Object.values(wkCore), ...Object.values(rsCore), ...Object.values(lnCore), ...Object.values(srCore), ...Object.values(ftCore)].filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
 const CFG_JSON = JSON.stringify({ tz: OPS_CFG.tz, stages: OPS_CFG.stages, ignore_opps: OPS_CFG.ignore_opps });
 
-export const ACTIONS = ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'radar_report', 'content_radar_report', 'job_report', 'alerts_poll', 'alerts_ack', 'ideas_list', 'ideas_gate', 'ideas_propose', 'ideas_revise', 'taller_list', 'mail_view', 'history_list', 'week_status', 'results_view', 'learning_context', 'learning_propose'];
+export const ACTIONS = ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'radar_report', 'content_radar_report', 'job_report', 'alerts_poll', 'alerts_ack', 'ideas_list', 'ideas_gate', 'ideas_propose', 'ideas_revise', 'taller_list', 'mail_view', 'history_list', 'week_status', 'results_view', 'learning_context', 'learning_propose', 'strategic_view', 'strategic_today', 'strategic_gate'];
 
 export const parseCode = `try {
   const first = $('Ops Webhook').first().json || {};
@@ -68,7 +69,7 @@ export const parseCode = `try {
   if (!ACTIONS.includes(action)) throw new Error('action inválida: usa ' + ACTIONS.join(' | '));
   const dry = b.dry_run === true;
   // la hora solo se puede simular en consultas de lectura o con dry_run (pruebas); las escrituras siempre usan la hora real
-  const now = Number.isFinite(Number(b.now_ms)) && (dry || ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'ideas_list', 'ideas_gate', 'taller_list', 'mail_view', 'history_list', 'week_status', 'results_view', 'learning_context', 'learning_propose'].includes(action)) ? Number(b.now_ms) : Date.now();
+  const now = Number.isFinite(Number(b.now_ms)) && (dry || ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'ideas_list', 'ideas_gate', 'taller_list', 'mail_view', 'history_list', 'week_status', 'results_view', 'learning_context', 'learning_propose', 'strategic_view', 'strategic_today', 'strategic_gate'].includes(action)) ? Number(b.now_ms) : Date.now();
   const need = {
     sb: !['alerts_ack'].includes(action) || true,
     ghl: ['daily', 'today', 'urgent', 'stale', 'replies', 'panel'].includes(action),
@@ -149,6 +150,31 @@ export const parseCode = `try {
   if (action === 'week_status') growth_reads.push({ key: 'w_ideas', url: sb + 'content_ideas?week_start=gte.' + day(now - 7 * 86400000) + '&select=week_start,status,is_test&limit=500' },
     { key: 'w_meet', url: sb + 'lead_submissions?meeting_start=gte.' + iso(now - 8 * 86400000) + '&meeting_start=lte.' + iso(now + 8 * 86400000) + '&select=meeting_start,name,company&order=meeting_start.asc&limit=100' },
     { key: 'w_pieces', url: sb + 'content_pieces?taller_status=not.is.null&is_test=eq.false&select=id,topic,taller_status,status,needs_by,credits_spent,is_test&limit=500' });
+  // Radar estratégico (spec RADAR §6.1 · F2): SOLO lecturas. Si la tabla no existe (migración sin aplicar) o falla, la clave queda en missing y la vista dice «no disponible»: nunca un vacío falso.
+  if (['strategic_view', 'strategic_today', 'strategic_gate'].includes(action)) {
+    const TABS = ['production', 'products', 'partners', 'events'];
+    const tab = action === 'strategic_view' ? (TABS.includes(String(P.tab || 'production')) ? String(P.tab || 'production') : 'production') : (TABS.includes(String(P.kind || '')) ? String(P.kind) : null);
+    const dbKind = { products: 'product', partners: 'partner', events: 'event' }[tab];
+    const sr = (key, rest) => growth_reads.push({ key, url: sb + rest });
+    sr('sr_cfg', 'strategic_radar_config?id=eq.1&select=*');
+    if (action === 'strategic_gate') {
+      sr('sys_state', 'system_state?id=eq.1&select=*');
+      if (tab) sr('sr_runs', 'strategic_runs?is_test=eq.false&kind=eq.' + tab + '&finished_at=gte.' + iso(now - 86400000) + '&select=kind,status,finished_at,is_test&order=finished_at.desc&limit=60');
+      if (tab === 'production') sr('sr_tmon', 'strategic_prod_targets?is_test=eq.false&status=eq.confirmed&monitor_enabled=eq.true&select=id&limit=1');
+    }
+    if (action === 'strategic_view') {
+      sr('sr_runs', 'strategic_runs?is_test=eq.false&kind=eq.' + tab + '&select=id,kind,trigger,status,started_at,finished_at,scanned_count,accepted_count,duplicate_count,failed_count,error_code,is_test&order=finished_at.desc&limit=5');
+      if (tab === 'production') {
+        sr('sr_targets', 'strategic_prod_targets?is_test=eq.false&select=id,logical_name,repo_full_name,repo_branch,deployment_url,health_url,provider,status,monitor_enabled,verified_at,notes,last_deploy_sha,is_test,updated_at&order=logical_name.asc&limit=60');
+        sr('sr_checks', 'strategic_prod_checks?is_test=eq.false&checked_at=gte.' + iso(now - 86400000) + '&select=target_id,checked_at,result,http_status,latency_ms,error_code,observed_sha,is_test&order=checked_at.desc&limit=800');
+      } else sr('sr_opps', 'strategic_opportunities?is_test=eq.false&kind=eq.' + dbKind + '&select=*,evidence:strategic_evidence(source_url,source_title,source_type,claim,excerpt,source_published_at,verified_at)&order=score.desc.nullslast,title.asc&limit=200');
+    }
+    if (action === 'strategic_today') {
+      sr('sr_targets', 'strategic_prod_targets?is_test=eq.false&status=eq.confirmed&monitor_enabled=eq.true&select=id,logical_name,status,monitor_enabled,is_test&limit=60');
+      sr('sr_checks', 'strategic_prod_checks?is_test=eq.false&checked_at=gte.' + iso(now - 2 * 3600000) + '&select=target_id,checked_at,result,is_test&order=checked_at.desc&limit=400');
+      sr('sr_opps', 'strategic_opportunities?is_test=eq.false&kind=in.(event,partner,product)&status=in.(new,shortlisted)&score=gte.75&select=id,kind,title,status,score,confidence,deadline_at,next_action,last_daily_at,license_id,license_verified,coverage_pct,critical_blockers,score_parts,is_test&order=score.desc&limit=100');
+    }
+  }
   if (action === 'ideas_gate') growth_reads.push({ key: 'sources_verified', url: sb + 'content_sources?verified=eq.true&created_at=gte.' + iso(now - 21 * 86400000) + '&select=id,title,url,kind,signal_type,source_date,created_at&order=created_at.desc&limit=60' });
   if (['ideas_propose', 'ideas_revise'].includes(action)) {
     const evs = (action === 'ideas_propose' ? ((P.proposal || {}).ideas || []) : [P.idea || {}]).flatMap((i) => (i && Array.isArray(i.evidence) ? i.evidence : []));
@@ -258,6 +284,24 @@ else if (A === 'learning_propose') {
 }
 else if (A === 'history_list') { out = { history: historyView({ now: p.now, tz: CFG.tz, audit: G.h_audit || [], runs: G.h_runs || [], msgs: G.h_msgs || [], pieces: G.h_pieces || [], alerts: G.h_alerts || [] }), alerts_open: d.alerts.filter((a) => a.status === 'open' && !/^_state:/.test(a.alert_key || '') && !(a.meta && a.meta.notice)).slice(0, 100).map((a) => ({ key: a.alert_key, severity: a.severity, title: a.title, detail: a.detail || '', since: a.first_seen_at, last: a.last_seen_at, panel_only: Boolean(a.meta && a.meta.panel_only) })) }; ['h_audit', 'h_runs', 'h_msgs'].forEach((k) => { if (!G[k]) missing.push(k); }); }
 else if (A === 'week_status') { out = { week: weekView({ now: p.now, tz: CFG.tz, ritual: d.content_cfg && d.content_cfg.week_ritual, ideas: G.w_ideas || [], messages: d.messages, meetings: G.w_meet || [], intel_at: d.intel && d.intel.created_at, pieces: G.w_pieces || [] }), costs: costsView({ higgs: d.hermes && d.hermes.higgs, pieces: G.w_pieces || [] }) }; }
+else if (A === 'strategic_view' || A === 'strategic_today' || A === 'strategic_gate') {
+  // Radar estratégico (F2, solo lectura). Cualquier lectura sr_* fallida (tabla ausente, red) = fuente NO disponible: jamás se traduce a «sin datos».
+  const srFailed = missing.some((m) => /^growth:sr_/.test(m)) || missing.indexOf('growth:sys_state') >= 0;
+  const srCfg = (G.sr_cfg || [])[0] || null;
+  const srAlertOpen = (id) => d.alerts.some((a) => a.alert_key === 'strategic_prod:' + id && a.status === 'open');
+  const srChecksBy = {}; (G.sr_checks || []).forEach((c) => { (srChecksBy[c.target_id] = srChecksBy[c.target_id] || []).push(c); });
+  if (A === 'strategic_view') {
+    const tabP = String((p.params || {}).tab || 'production'), tab = ['production', 'products', 'partners', 'events'].indexOf(tabP) >= 0 ? tabP : 'production';
+    out = { strategic: srView({ tab, now: p.now, source_state: srFailed || !G.sr_cfg ? 'unavailable' : 'ok', config: srCfg, targets: (G.sr_targets || []).map((t) => ({ ...t, alert_open: srAlertOpen(t.id) })), checks: G.sr_checks || [], opportunities: G.sr_opps || [], runs: G.sr_runs || [] }) };
+  } else if (A === 'strategic_today') {
+    const ready = !srFailed && !!srCfg;
+    out = { items: ready ? srAttention({ targets: (G.sr_targets || []).map((t) => ({ ...t, alert_open: srAlertOpen(t.id), checks: srChecksBy[t.id] || [] })), opportunities: G.sr_opps || [], daily_max_items: srCfg.daily_max_items }, p.now) : [], source_state: srFailed || !G.sr_cfg ? 'unavailable' : srCfg ? 'ok' : 'not_configured' };
+  } else {
+    const kind = String((p.params || {}).kind || '');
+    const g = srFailed || !G.sr_cfg ? { mode: 'skip', reason: 'source_unavailable', max_items: 0 } : srGate({ kind, now: p.now, global_pause: !!(d.system_state && d.system_state.global_pause === true), config: srCfg || {}, runs: G.sr_runs || [], has_source: kind === 'production' ? (G.sr_tmon || []).length > 0 : true });
+    out = { mode: g.mode, reason: g.reason, max_items: g.max_items, text: 'Radar estratégico (' + kind + '): ' + g.mode + ' — ' + g.reason };
+  }
+}
 else if (A === 'ideas_list') { out = { ideas: ideasListView(G.ideas_rows || [], G.idea_batches || [], p.now, CFG.tz) }; }
 else if (A === 'ideas_gate') { out = ideasGateView({ now: p.now, tz: CFG.tz, content_cfg: d.content_cfg, system_state: d.system_state, ideas_all: G.ideas_all || [], pieces: d.pieces, sources_verified: G.sources_verified || [], resources: d.resources, intel: d.intel }); out.text = 'Ideas: ' + out.mode + ' — ' + out.reason; out.results = rsMondaySummary({ now: p.now, pieces: (G.r_pieces || []).filter((x) => !x.is_test), attributions: (G.r_att || []).filter((x) => !x.is_test), leads: G.r_leads || [], resources: d.resources || [] }); }
 else if (A === 'ideas_propose' || A === 'ideas_revise') {

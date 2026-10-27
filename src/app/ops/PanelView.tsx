@@ -10,10 +10,11 @@ import { ControlCenter } from "./Control";
 import { PauseCard } from "./Pause";
 import { IdeasBoard } from "./Ideas";
 import { TallerBoard } from "./Taller";
-import { getDns, getHistory, getIdeas, getMail, getResults, getTaller, getWeek } from "@/lib/ops/v3-data";
+import { getDns, getHistory, getIdeas, getMail, getResults, getStrategicRadar, getTaller, getWeek } from "@/lib/ops/v3-data";
 import { AlertsView, CostsView, HistoryView, LibraryView, WeekCard } from "./SystemViews";
 import { IterationsView, LearningView, SalesView } from "./ResultsViews";
-import { parseView, sectionOf, viewHref, type ViewId } from "./views";
+import { StrategicRadarView } from "./StrategicRadarViews";
+import { parseView, sectionOf, strategicTabOf, viewHref, type ViewId } from "./views";
 import { MailSection, type MailTab } from "./Mail";
 
 const MAIL_TABS: readonly string[] = ["correo", "cola", "respuestas", "seguimientos", "embudo", "salud"];
@@ -511,6 +512,9 @@ export async function PanelView({ sp }: { sp: { view?: string | string[]; filter
   const rP = asked === "resultados" || asked === "aprendizaje" || asked === "iteraciones" ? getResults() : Promise.resolve<Awaited<ReturnType<typeof getResults>>>({ ok: false, reason: "not_configured" });
   const hP = asked === "historial" || asked === "alertas" ? getHistory() : Promise.resolve<Awaited<ReturnType<typeof getHistory>>>({ ok: false, reason: "not_configured" });
   const wP = !asked || asked === "hoy" || asked === "inicio" || asked === "costos" ? getWeek() : Promise.resolve<Awaited<ReturnType<typeof getWeek>>>({ ok: false, reason: "not_configured" });
+  // Radar estratégico: se lee SOLO en sus cuatro URLs (ninguna otra vista paga esta consulta).
+  const srTab = strategicTabOf(asked);
+  const sP = srTab ? getStrategicRadar(srTab) : Promise.resolve<Awaited<ReturnType<typeof getStrategicRadar>>>({ ok: false, reason: "not_configured" });
   const r = await getPanel();
   // Navegación v2 (spec §5) salvo que content_config.ops_nav_v2 = false. Sin vista en la URL: «Hoy» (v2) o «Inicio» (v1).
   const v2 = !(r.ok && r.panel.v3 && r.panel.v3.nav_v2 === false);
@@ -545,6 +549,7 @@ export async function PanelView({ sp }: { sp: { view?: string | string[]; filter
         : view === "resultados" ? <SalesView rP={rP} fetchedAt={fetchedAt} stale={stale} />
         : view === "aprendizaje" ? <LearningView rP={rP} fetchedAt={fetchedAt} stale={stale} />
         : view === "iteraciones" ? <IterationsView rP={rP} fetchedAt={fetchedAt} stale={stale} />
+        : srTab ? <StrategicRadarView tab={srTab} sP={sP} fetchedAt={fetchedAt} stale={stale} />
         : view === "controles" ? <Controles panel={panel} fetchedAt={fetchedAt} stale={stale} />
         : view === "aprobaciones" ? <Aprobaciones panel={panel} fetchedAt={fetchedAt} stale={stale} filter={filter} ovP={ovP} />
         : view === "control" ? <Control panel={panel} fetchedAt={fetchedAt} stale={stale} />

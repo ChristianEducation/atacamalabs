@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
 import * as sr from './strategic-radar-core.mjs';
 
 let n = 0;
@@ -286,6 +287,36 @@ ok('migración: 6 tablas strategic_*, RLS + revoke, sin políticas/definer/drop/
   assert.ok(!/(https?:\/\/)/.test(sql.split('-- 7)')[1].split('-- 8)')[0]), 'la semilla no trae URLs');
   const cfg = sql.split('create table if not exists public.strategic_radar_config')[1].split('\n);')[0];
   assert.equal([...cfg.matchAll(/boolean not null default (\w+)/g)].every((m) => m[1] === 'false'), true);
+  assert.ok(code.includes('insert into public.strategic_radar_config (id, daily_max_items) values (1, 0)'), 'la fila inicial parte con el Daily estratégico apagado');
+});
+
+// n8n incrusta cada función exportada con .toString(): el núcleo debe ser autocontenido (sin constantes de módulo ni helpers sin exportar).
+ok('autocontenido: todas las funciones funcionan incrustadas con .toString() en un contexto vacío', () => {
+  const src = Object.values(sr).filter((f) => typeof f === 'function').map((f) => f.toString()).join('\n\n');
+  assert.equal(Object.values(sr).filter((f) => typeof f !== 'function').length, 0, 'solo funciones exportadas');
+  const ctx = vm.createContext({ URL, TextEncoder, Intl, Date, Math, Number, String, Array, Object, JSON, Set, Map, RegExp, encodeURIComponent, decodeURIComponent });
+  const emb = vm.runInContext('(function(){' + src + '\nreturn { srView, srAttention, srGate, srFingerprint, srCanonicalUrl, srScoreProduct, srScorePartner, srScoreEvent, srValidateEvidence, srRank, srTransition, srProductionHealth, srCoverage, srDaysLeft, srEventState, srParseDate };})()', ctx);
+  assert.equal(emb.srFingerprint('product', emb.srCanonicalUrl('https://GitHub.com/Acme/Repo/?utm_source=a#x')), sr.srFingerprint('product', 'https://github.com/Acme/Repo'));
+  assert.equal(emb.srTransition('new', 'shortlist'), 'shortlisted');
+  assert.equal(emb.srTransition('dismissed', 'work'), null);
+  assert.equal(emb.srTransition('constructor', 'x'), null);
+  assert.equal(emb.srGate({ kind: 'products', now: NOW, config: {}, runs: [] }).reason, 'flag_off');
+  assert.equal(emb.srView({ tab: 'production', now: NOW, config: {}, targets: [], checks: [] }).tab, 'production');
+  assert.equal(emb.srAttention({ targets: [], opportunities: [] }, NOW).length, 0);
+  assert.equal(emb.srDaysLeft('2026-11-05', NOW), 3);
+});
+ok('srView: last_check solo en confirmados monitoreados; candidatos nunca llevan resultado HTTP', () => {
+  const T = { id: 'a', logical_name: 'A', status: 'confirmed', monitor_enabled: true, verified_at: iso(NOW - DAY), health_url: 'https://example.org/h', is_test: false };
+  const C = { id: 'b', logical_name: 'B', status: 'candidate', monitor_enabled: false, is_test: false };
+  const checks = [{ target_id: 'a', checked_at: iso(NOW - 5 * MIN), result: 'healthy', http_status: 200, latency_ms: 120, is_test: false }, { target_id: 'a', checked_at: iso(NOW - 20 * MIN), result: 'down', http_status: 503, is_test: false }, { target_id: 'b', checked_at: iso(NOW - MIN), result: 'healthy', http_status: 200, is_test: false }];
+  const v = sr.srView({ tab: 'production', now: NOW, config: {}, targets: [T, C], checks });
+  const a = v.items.find((x) => x.id === 'a'), b = v.items.find((x) => x.id === 'b');
+  assert.deepEqual(a.last_check, { checked_at: iso(NOW - 5 * MIN), result: 'healthy', http_status: 200, latency_ms: 120, error_code: null });
+  assert.equal(b.last_check, null); assert.equal(b.http_state, 'unverified');
+});
+ok('srTransition no se deja engañar por claves heredadas del prototipo', () => {
+  assert.equal(sr.srTransition('__proto__', 'dismiss'), null);
+  assert.equal(sr.srTransition('new', 'constructor'), null);
 });
 
 console.log(`${n} ok`);

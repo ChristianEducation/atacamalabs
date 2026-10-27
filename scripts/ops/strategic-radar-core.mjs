@@ -4,15 +4,16 @@
  * Regla de oro: solo evidencia. Un dato sin verificar es `unknown`/NULL, jamás un número inventado.
  */
 
-const SR_DAY = 86400000;
-const SR_TRACKING = /^(utm_.*|fbclid|gclid|igshid)$/i;
-const SR_SOURCE_TYPES = ['official', 'repository', 'documentation', 'secondary'];
-const SR_PRIMARY = ['official', 'repository', 'documentation'];
-const SR_REQ_STATES = ['implemented', 'partial', 'missing', 'unknown'];
+// Convención de los núcleos de /ops: SIN constantes de módulo y TODA función exportada. n8n incrusta cada función con .toString() en un
+// Code node; una constante o un helper fuera de la función rompería en el servidor (ReferenceError) aunque las pruebas locales pasen.
 
 // ---------- Utilidades ----------
-function srClamp(v, max) { const n = Number(v); return Number.isFinite(n) ? Math.max(0, Math.min(max, Math.round(n))) : 0; }
-function srStr(v) { return typeof v === 'string' ? v.trim() : ''; }
+export function srClamp(v, max) { const n = Number(v); return Number.isFinite(n) ? Math.max(0, Math.min(max, Math.round(n))) : 0; }
+export function srStr(v) { return typeof v === 'string' ? v.trim() : ''; }
+/** Bandera de config por categoría (production|products|partners|events) o null. */
+export function srFlag(kind) { return ({ production: 'production_enabled', products: 'products_enabled', partners: 'partners_enabled', events: 'events_enabled' })[kind] || null; }
+/** Separación mínima entre corridas buenas de una categoría, en ms. */
+export function srMinGap(kind) { return ({ production: 10 * 60000, products: 6 * 3600000, partners: 6 * 3600000, events: 6 * 3600000 })[kind] || 6 * 3600000; }
 
 /** Host que jamás se acepta: loopback, privado, link-local, IPv6 literal, nombres internos o sin punto. */
 export function srIsPrivateHost(host) {
@@ -44,7 +45,7 @@ export function srCanonicalUrl(input) {
   let path = u.pathname || '/';
   if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
   const keyOf = (p) => { const k = p.split('=')[0].replace(/\+/g, ' '); try { return decodeURIComponent(k).trim(); } catch { return k.trim(); } };
-  const pairs = u.search.replace(/^\?/, '').split('&').filter(Boolean).filter((p) => !SR_TRACKING.test(keyOf(p)));
+  const pairs = u.search.replace(/^\?/, '').split('&').filter(Boolean).filter((p) => !/^(utm_.*|fbclid|gclid|igshid)$/i.test(keyOf(p)));
   pairs.sort((a, b) => { const [ka, va = ''] = a.split('='); const [kb, vb = ''] = b.split('='); return ka < kb ? -1 : ka > kb ? 1 : va < vb ? -1 : va > vb ? 1 : 0; });
   return 'https://' + host + path + (pairs.length ? '?' + pairs.join('&') : '');
 }
@@ -105,7 +106,7 @@ export function srParseDate(s) {
   if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/.test(v)) { const ms = Date.parse(v); return Number.isFinite(ms) ? { date_only: false, ms } : null; }
   return null;
 }
-function srSantiagoDate(ms) {
+export function srSantiagoDate(ms) {
   const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(ms));
   const g = (t) => p.find((x) => x.type === t).value;
   return g('year') + '-' + g('month') + '-' + g('day');
@@ -114,8 +115,8 @@ function srSantiagoDate(ms) {
 export function srDaysLeft(s, now) {
   const p = srParseDate(s);
   if (!p) return null;
-  if (p.date_only) return Math.round((Date.parse(p.date + 'T00:00:00Z') - Date.parse(srSantiagoDate(now) + 'T00:00:00Z')) / SR_DAY);
-  return Math.ceil((p.ms - now) / SR_DAY);
+  if (p.date_only) return Math.round((Date.parse(p.date + 'T00:00:00Z') - Date.parse(srSantiagoDate(now) + 'T00:00:00Z')) / 86400000);
+  return Math.ceil((p.ms - now) / 86400000);
 }
 /** Estado temporal de un evento: upcoming | expired | unverified (sin fecha de inicio verificable). */
 export function srEventState(item, now) {
@@ -131,6 +132,7 @@ export function srEventState(item, now) {
 export function srValidateEvidence(item) {
   const reasons = [];
   const it = item || {};
+  const TYPES = ['official', 'repository', 'documentation', 'secondary'], PRIMARY = ['official', 'repository', 'documentation'];
   if (!srStr(it.organization)) reasons.push('organization_missing');
   const ev = Array.isArray(it.evidence) ? it.evidence : [];
   if (!ev.length) reasons.push('evidence_missing');
@@ -140,7 +142,7 @@ export function srValidateEvidence(item) {
     const x = e || {};
     const url = srCanonicalUrl(x.source_url);
     if (!url) { reasons.push('source_url_invalid:' + i); return; }
-    if (!SR_SOURCE_TYPES.includes(x.source_type)) { reasons.push('source_type_invalid:' + i); return; }
+    if (!TYPES.includes(x.source_type)) { reasons.push('source_type_invalid:' + i); return; }
     if (!srStr(x.source_title)) { reasons.push('source_title_missing:' + i); return; }
     if (srStr(x.claim).length < 5) { reasons.push('claim_missing:' + i); return; }
     if (srStr(x.claim).length > 2000) { reasons.push('claim_too_long:' + i); return; }
@@ -148,13 +150,13 @@ export function srValidateEvidence(item) {
     const vd = srParseDate(x.verified_at);
     if (!vd || vd.date_only) { reasons.push('verified_at_invalid:' + i); return; }
     good++;
-    if (SR_PRIMARY.includes(x.source_type)) primary++;
+    if (PRIMARY.includes(x.source_type)) primary++;
   });
   if (good > 0 && primary === 0) reasons.push('primary_source_missing');
   return { ok: reasons.length === 0 && good > 0, reasons, sources: good, primary };
 }
 
-function srConfidence(sources, primary, criticalVerified, contradicted) {
+export function srConfidence(sources, primary, criticalVerified, contradicted) {
   if (contradicted) return 'low';
   if (sources >= 2 && primary >= 1 && criticalVerified) return 'high';
   if (primary >= 1) return 'medium';
@@ -168,7 +170,7 @@ export function srCoverage(requirements) {
   if (r.length !== 10) return { coverage_pct: null, provisional: true, counted: r.length, unknown: null, all_evidenced: false };
   let sum = 0, unknown = 0, evidenced = 0;
   for (const q of r) {
-    const st = SR_REQ_STATES.includes(q && q.state) ? q.state : 'unknown';
+    const st = ['implemented', 'partial', 'missing', 'unknown'].includes(q && q.state) ? q.state : 'unknown';
     if (st === 'implemented') sum += 1; else if (st === 'partial') sum += 0.5; else if (st === 'unknown') unknown++;
     if (srCanonicalUrl(q && q.evidence_url) && st !== 'unknown') evidenced++;
   }
@@ -214,10 +216,10 @@ export function srScoreEvent(item, now) {
 }
 
 // ---------- Ranking ----------
-const SR_CONF = { high: 2, medium: 1, low: 0 };
 /** Activas primero por score desc, confianza y título. Excluye pruebas y estados terminales; máx 10 por categoría. */
 export function srRank(items, opts) {
   const limit = (opts && opts.limit) || 10;
+  const SR_CONF = { high: 2, medium: 1, low: 0 };
   return (Array.isArray(items) ? items : [])
     .filter((o) => o && !o.is_test && o.status !== 'dismissed' && o.status !== 'expired')
     .sort((a, b) => (b.score == null ? -1 : b.score) - (a.score == null ? -1 : a.score) || (SR_CONF[b.confidence] || 0) - (SR_CONF[a.confidence] || 0) || String(a.title).localeCompare(String(b.title)))
@@ -225,9 +227,12 @@ export function srRank(items, opts) {
 }
 
 // ---------- Transiciones humanas (§6.2) ----------
-const SR_TRANSITIONS = { new: { shortlist: 'shortlisted', work: 'working', dismiss: 'dismissed' }, shortlisted: { work: 'working', dismiss: 'dismissed' }, working: { dismiss: 'dismissed' } };
 /** Estado nuevo o null si la transición no existe (dismissed/expired son terminales en v1). */
-export function srTransition(from, decision) { return (SR_TRANSITIONS[from] && SR_TRANSITIONS[from][decision]) || null; }
+export function srTransition(from, decision) {
+  const T = { new: { shortlist: 'shortlisted', work: 'working', dismiss: 'dismissed' }, shortlisted: { work: 'working', dismiss: 'dismissed' }, working: { dismiss: 'dismissed' } };
+  const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+  return (own(T, from) && own(T[from], decision) && T[from][decision]) || null;
+}
 
 // ---------- Producción (§8) ----------
 /**
@@ -251,13 +256,13 @@ export function srProductionHealth(checks, now, alertOpen) {
 }
 
 // ---------- Señales para el Daily y «Hoy» (§3) ----------
-const SR_TAB = { production: 'radar_produccion', product: 'radar_productos', partner: 'radar_alianzas', event: 'radar_eventos' };
 /**
  * input = { targets:[{id,logical_name,status,monitor_enabled,is_test,alert_open,checks}], opportunities:[...], daily_max_items }.
  * Máx 3 señales, orden: caído > plazo ≤7 > plazo 8–14 > producto (máx 1). Sin señales → []. Deduplica por clase+id.
  */
 export function srAttention(input, now) {
   const inp = input || {};
+  const SR_TAB = { production: 'radar_produccion', product: 'radar_productos', partner: 'radar_alianzas', event: 'radar_eventos' };
   const max = Math.max(0, Math.min(3, inp.daily_max_items == null ? 3 : Number(inp.daily_max_items)));
   const out = [], seen = new Set();
   const push = (x) => { const k = x.class + ':' + x.id; if (!seen.has(k)) { seen.add(k); out.push(x); } };
@@ -281,21 +286,19 @@ export function srAttention(input, now) {
 }
 
 // ---------- Compuerta de corridas (§6.1 strategic_gate) ----------
-const SR_FLAG = { production: 'production_enabled', products: 'products_enabled', partners: 'partners_enabled', events: 'events_enabled' };
-const SR_MIN_GAP = { production: 10 * 60000, products: 6 * 3600000, partners: 6 * 3600000, events: 6 * 3600000 };
 /** input = { kind, now, global_pause, config, runs:[{kind,status,finished_at,is_test}], has_source } → {mode, reason, max_items}. */
 export function srGate(input) {
   const i = input || {}, cfg = i.config || {};
   const skip = (reason) => ({ mode: 'skip', reason, max_items: 0 });
-  if (!SR_FLAG[i.kind]) return skip('kind_invalid');
+  if (!srFlag(i.kind)) return skip('kind_invalid');
   if (i.global_pause === true) return skip('global_pause');
-  if (cfg[SR_FLAG[i.kind]] !== true) return skip('flag_off');
+  if (cfg[srFlag(i.kind)] !== true) return skip('flag_off');
   if (i.has_source === false) return skip('no_source');
   const runs = (Array.isArray(i.runs) ? i.runs : []).filter((r) => r && r.kind === i.kind && !r.is_test);
   const now = i.now;
-  const failed24 = runs.filter((r) => r.status === 'failed' && now - Date.parse(r.finished_at) < SR_DAY).length;
+  const failed24 = runs.filter((r) => r.status === 'failed' && now - Date.parse(r.finished_at) < 86400000).length;
   if (failed24 >= 3) return skip('quota');
-  const recent = runs.some((r) => (r.status === 'ok' || r.status === 'partial') && now - Date.parse(r.finished_at) < SR_MIN_GAP[i.kind]);
+  const recent = runs.some((r) => (r.status === 'ok' || r.status === 'partial') && now - Date.parse(r.finished_at) < srMinGap(i.kind));
   if (recent) return skip('recent_run');
   return { mode: 'run', reason: 'ok', max_items: i.kind === 'production' ? 0 : Math.max(1, Math.min(12, Number(cfg.ai_max_items_per_run) || 12)) };
 }
@@ -308,7 +311,7 @@ export function srGate(input) {
 export function srView(input) {
   const i = input || {}, now = i.now, cfg = i.config || {};
   const tab = ['production', 'products', 'partners', 'events'].includes(i.tab) ? i.tab : 'production';
-  const flag = cfg[SR_FLAG[tab]] === true;
+  const flag = cfg[srFlag(tab)] === true;
   let source = ['ok', 'stale', 'unavailable', 'not_configured'].includes(i.source_state) ? i.source_state : 'ok';
   if (!i.config && source === 'ok') source = 'not_configured';
   const runs = (Array.isArray(i.runs) ? i.runs : []).filter((r) => r && !r.is_test && r.kind === tab).sort((a, b) => Date.parse(b.finished_at) - Date.parse(a.finished_at)).slice(0, 5);
@@ -321,14 +324,16 @@ export function srView(input) {
     const rows = (Array.isArray(i.targets) ? i.targets : []).filter((t) => t && !t.is_test && t.status !== 'retired').map((t) => {
       const confirmed = t.status === 'confirmed';
       const health = confirmed && t.monitor_enabled ? srProductionHealth(checksBy[t.id], now, t.alert_open) : null;
-      return { ...t, section: confirmed ? 'confirmed' : 'pending', http_state: health ? health.state : 'unverified', health_reason: health ? health.reason : 'sin_verificar', last_checked_at: health ? health.last_checked_at : null };
+      const real = health ? (checksBy[t.id] || []).filter((c) => c && !c.is_test && Number.isFinite(Date.parse(c.checked_at))).sort((a, b) => Date.parse(b.checked_at) - Date.parse(a.checked_at))[0] : null;
+      const last_check = real ? { checked_at: real.checked_at, result: real.result, http_status: real.http_status == null ? null : real.http_status, latency_ms: real.latency_ms == null ? null : real.latency_ms, error_code: real.error_code || null } : null;
+      return { ...t, section: confirmed ? 'confirmed' : 'pending', http_state: health ? health.state : 'unverified', health_reason: health ? health.reason : 'sin_verificar', last_checked_at: health ? health.last_checked_at : null, last_check };
     }).sort((a, b) => (a.section === b.section ? String(a.logical_name).localeCompare(String(b.logical_name)) : a.section === 'confirmed' ? -1 : 1));
     return { ...base, summary: { total: rows.length, pending: rows.filter((r) => r.section === 'pending').length, alerts: rows.filter((r) => r.http_state === 'down').length, last_run_at: lastRun }, items: rows };
   }
   const kind = srDbKind(tab);
   const all = (Array.isArray(i.opportunities) ? i.opportunities : []).filter((o) => o && !o.is_test && o.kind === kind);
   const items = srRank(all, { limit: 10 }).map((o) => {
-    const age = o.last_checked_at ? Math.floor((now - Date.parse(o.last_checked_at)) / SR_DAY) : null;
+    const age = o.last_checked_at ? Math.floor((now - Date.parse(o.last_checked_at)) / 86400000) : null;
     return { ...o, stale_days: age !== null && age >= 7 ? age : null, unverified: !o.last_checked_at };
   });
   return { ...base, summary: { total: all.length, pending: all.filter((o) => o.status === 'new' || o.status === 'shortlisted').length, alerts: 0, last_run_at: lastRun }, items };

@@ -233,6 +233,33 @@ export type Overview = {
 };
 export type OverviewResult = { ok: true; overview: Overview } | { ok: false; reason: "not_configured" | "unreachable" | "bad_response" };
 
+/** ---- Radar estratégico (spec RADAR §6.3). Todo campo sin certeza es null: «sin verificar» es un estado válido, nunca un valor inventado. ---- */
+export type StrategicTab = "production" | "products" | "partners" | "events";
+export type StrategicSourceState = "ok" | "stale" | "unavailable" | "not_configured";
+export type StrategicHttpState = "healthy" | "degraded" | "down" | "unknown" | "unverified";
+export type StrategicProdTarget = {
+  id: string; logical_name: string; repo_full_name: string | null; repo_branch: string | null; deployment_url: string | null; health_url: string | null; provider: string | null;
+  status: "candidate" | "confirmed" | "paused" | "retired"; monitor_enabled: boolean; verified_at: string | null; notes: string | null; last_deploy_sha: string | null;
+  section: "confirmed" | "pending"; http_state: StrategicHttpState; health_reason: string; last_checked_at: string | null;
+  last_check: { checked_at: string; result: string; http_status: number | null; latency_ms: number | null; error_code: string | null } | null;
+};
+export type StrategicEvidence = { source_url: string; source_title: string; source_type: "official" | "repository" | "documentation" | "secondary"; claim: string; excerpt: string | null; source_published_at: string | null; verified_at: string };
+export type StrategicOpportunity = {
+  id: string; kind: "product" | "partner" | "event"; title: string; organization: string | null; canonical_url: string; summary: string; business_case: string; target_customer: string | null; next_action: string;
+  status: "new" | "shortlisted" | "working" | "dismissed" | "expired"; score: number | null; score_parts: Record<string, unknown>; confidence: "low" | "medium" | "high";
+  license_id: string | null; license_verified: boolean; coverage_pct: number | null; critical_blockers: string[];
+  event_start_at: string | null; event_end_at: string | null; deadline_at: string | null; event_timezone: string | null; event_location: string | null; event_format: string | null;
+  first_seen_at: string | null; last_checked_at: string | null; decision_at: string | null; decision_by: string | null; decision_reason: string | null;
+  evidence: StrategicEvidence[]; stale_days: number | null; unverified: boolean;
+};
+export type StrategicRun = { id: string; kind: StrategicTab; trigger: "manual" | "cron" | "test"; status: "ok" | "partial" | "blocked" | "failed"; started_at: string; finished_at: string; scanned_count: number; accepted_count: number; duplicate_count: number; failed_count: number; error_code: string | null };
+export type StrategicView = {
+  generated_at: string; tab: StrategicTab; enabled: boolean; source_state: StrategicSourceState;
+  summary: { total: number; pending: number; alerts: number; last_run_at: string | null };
+  items: StrategicProdTarget[] | StrategicOpportunity[]; runs: StrategicRun[];
+};
+export type StrategicAttentionItem = { class: "production" | "event" | "partner" | "product"; id: string; title: string; what: string; why: string; action: string; tab: string };
+
 export type OpsActionName = "email_save" | "email_approve" | "email_reject" | "email_reopen" | "linkedin_approve" | "linkedin_reject" | "content_approve" | "content_reject" | "autosend_set" | "autosend_sweep" | "prep_li_sent" | "prep_hold" | "prep_release" | "prep_contact" | "pause_set" | "idea_decide" | "idea_mine" | "taller_feedback" | "taller_approve" | "taller_schedule" | "taller_discard" | "taller_duplicate" | "taller_caption" | "mail_config_set" | "mail_outcome" | "week_ritual_set" | "piece_contact" | "learning_decide";
 export type OpsActionInput = { contact_name?: string; handle?: string; keyword?: string; proposal_id?: string; ritual?: Record<string, string[]>; paste?: boolean; daily_cap?: number; window_start?: string; window_end?: string; followup_days?: number[]; funnel_min_sample?: number; outcome?: "reunion" | "perdido"; action: OpsActionName; request_id: string; message_id?: string; candidate_id?: string; piece_id?: string; subject?: string; body?: string; expected_hash?: string; reason?: string; enabled?: boolean; min_score?: number; kind?: string; text?: string; email?: string; linkedin?: string; paused?: boolean; resume_at?: string; idea_id?: string; decision?: string; chips?: string[]; title?: string; channel?: string; format?: string; week_start?: string; scope?: string; schedule_at?: string; caption?: string };
 export type OpsActionState = { ok: boolean; message: string; status?: string; hash?: string | null; needsGhl?: boolean; replayed?: boolean; ghlPostId?: string | null };

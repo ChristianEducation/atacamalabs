@@ -1,6 +1,7 @@
 import "server-only";
-import type { DnsCheck, HistoryData, IdeasView, MailView, ResultsData, TallerView, WeekData } from "./types";
-import { swr } from "./swr";
+import type { DnsCheck, HistoryData, IdeasView, MailView, ResultsData, StrategicTab, StrategicView, TallerView, WeekData } from "./types";
+import { swr, type Swr } from "./swr";
+import { parseStrategicView } from "./strategic";
 
 /**
  * Atacama OS v3 — lecturas propias de las vistas nuevas (n8n «25 Atacama Ops», solo lectura, clave de ingesta que el navegador nunca ve).
@@ -12,13 +13,13 @@ function config() {
   return base && key ? { base, key } : null;
 }
 
-async function read<T>(action: string, pick: (j: Record<string, unknown>) => T | null): Promise<{ value: T; at: number }> {
+async function read<T>(action: string, pick: (j: Record<string, unknown>) => T | null, params?: Record<string, string>): Promise<{ value: T; at: number }> {
   const cfg = config();
   if (!cfg) throw new Error("not_configured");
   const res = await fetch(`${cfg.base}/webhook/atacama-ops`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Atacama-Key": cfg.key },
-    body: JSON.stringify({ action }),
+    body: JSON.stringify(params ? { action, params } : { action }),
     cache: "no-store",
     signal: AbortSignal.timeout(28_000),
   });
@@ -115,6 +116,22 @@ export async function getWeek(): Promise<V3Result<WeekData>> {
   try { return { ok: true, value: (await weekCache.get()).value }; } catch { return { ok: false, reason: "unreachable" }; }
 }
 
+/**
+ * Radar estratégico (spec RADAR §10.5): una caché SWR por pestaña, 30 s fresca / 10 min máximo viejo. La respuesta de n8n se valida entera
+ * (parseStrategicView) antes de llegar a la interfaz. Si n8n falla y se muestra el dato anterior, la vista queda marcada `stale`.
+ */
+const strategicCaches: Record<StrategicTab, Swr<StrategicView>> = Object.fromEntries(
+  (["production", "products", "partners", "events"] as const).map((tab) => [tab, swr<StrategicView>(() => read("strategic_view", (j) => parseStrategicView(j.strategic), { tab }), { freshMs: 30_000, maxStaleMs: 10 * 60_000 })]),
+) as Record<StrategicTab, Swr<StrategicView>>;
+
+export async function getStrategicRadar(tab: StrategicTab): Promise<V3Result<StrategicView>> {
+  if (!config()) return { ok: false, reason: "not_configured" };
+  try {
+    const r = await strategicCaches[tab].get();
+    return { ok: true, value: r.stale && r.value.source_state === "ok" ? { ...r.value, source_state: "stale" } : r.value };
+  } catch { return { ok: false, reason: "unreachable" }; }
+}
+
 export async function getDns(): Promise<DnsCheck | null> {
   try { return (await dnsCache.get()).value; } catch { return null; }
 }
@@ -127,4 +144,5 @@ export function invalidateV3(): void {
   historyCache.drop();
   resultsCache.drop();
   weekCache.drop();
+  for (const c of Object.values(strategicCaches)) c.drop();
 }

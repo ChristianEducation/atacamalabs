@@ -72,6 +72,34 @@ const panel = () => ({ v3: v3(), prep: prepData(), generated_at: new Date().toIS
   system: { overall: 'ok', components: [{ name: 'Gmail Sender', status: 'ok', reason: 'ok' }, { name: 'Content RSS (ingestión)', status: 'ok', reason: 'ok' }], outreach_mode: 'live', approved_pending: 1, drafts: 3, errors24h: [], hermes_known: true },
   linkedin: { mode: 'live', counts: { pendiente: 0, en_lista: 0, en_campana: 1, conexion: 0, mensaje: 0, followup: 0, respondio: 0, rechazo: 0, error: 0 }, ready: 1, rows: [], note: 'Waalaxy no informa por API si la invitación se envió, si la aceptaron o si respondieron: esos estados los registras tú con Hermes.' } });
 
+
+// ---- Radar estratégico (simulado): seed = todo apagado con los 5 candidatos; live = con datos; down = HTTP 500; unavailable = tablas ausentes; bad = fila mal formada
+const SR = { mode: 'seed', hits: [] };
+const srT = (n, name, o = {}) => ({ id: UID(1000 + n), logical_name: name, repo_full_name: null, repo_branch: null, deployment_url: null, health_url: null, provider: null, status: 'candidate', monitor_enabled: false, verified_at: null, notes: 'Código identificado; confirmar deployment y health endpoint', last_deploy_sha: null, section: 'pending', http_state: 'unverified', health_reason: 'sin_verificar', last_checked_at: null, last_check: null, ...o });
+const SR_SEED = ['Atacama Labs / OS', 'Librería Crecer', 'Pedidos Empresas', 'Registro Almuerzos', 'Casino Escolar'].map((nm, i) => srT(i + 1, nm, nm === 'Librería Crecer' ? { repo_full_name: 'ChristianEducation/LibreriaCrecer' } : {}));
+const SR_EV = (o = {}) => ({ source_url: 'https://github.com/acme/repo', source_title: 'Repositorio oficial', source_type: 'repository', claim: 'Existe este código con licencia MIT', excerpt: 'MIT License', source_published_at: null, verified_at: ISO(-5), ...o });
+const srO = (n, kind, o = {}) => ({ id: UID(2000 + n), kind, title: 'Oportunidad ' + n, organization: 'Org ' + n, canonical_url: 'https://example.org/o' + n, summary: 'Resumen concreto ' + n, business_case: 'Proceso operativo ' + n, target_customer: 'Clínicas', next_action: 'Validar con el dueño ' + n, status: 'new', score: 82, score_parts: {}, confidence: 'medium', license_id: null, license_verified: false, coverage_pct: null, critical_blockers: [], event_start_at: null, event_end_at: null, deadline_at: null, event_timezone: null, event_location: null, event_format: null, first_seen_at: ISO(-30), last_checked_at: ISO(-3), decision_at: null, decision_by: null, decision_reason: null, evidence: [SR_EV()], stale_days: null, unverified: false, ...o });
+function strategicView(tab) {
+  const live = SR.mode === 'live';
+  const base = { generated_at: new Date().toISOString(), tab, enabled: live, source_state: SR.mode === 'unavailable' ? 'unavailable' : 'ok', runs: [] };
+  if (SR.mode === 'unavailable') return { ...base, summary: { total: 0, pending: 0, alerts: 0, last_run_at: null }, items: [] };
+  if (tab === 'production') {
+    const items = live
+      ? [srT(2, 'Librería Crecer', { status: 'confirmed', section: 'confirmed', monitor_enabled: true, repo_full_name: 'ChristianEducation/LibreriaCrecer', deployment_url: 'https://libreria.example.org', health_url: 'https://libreria.example.org/health', provider: 'Vercel', verified_at: ISO(-48), http_state: 'healthy', health_reason: 'ok', last_checked_at: ISO(-0.1), last_check: { checked_at: ISO(-0.1), result: 'healthy', http_status: 200, latency_ms: 142, error_code: null } }),
+        srT(3, 'Pedidos Empresas', { status: 'confirmed', section: 'confirmed', monitor_enabled: true, deployment_url: 'https://pedidos.example.org', health_url: 'https://pedidos.example.org/h', verified_at: ISO(-48), http_state: 'down', health_reason: 'dos_caidas_consecutivas', last_checked_at: ISO(-0.2), last_check: { checked_at: ISO(-0.2), result: 'down', http_status: 503, latency_ms: null, error_code: 'timeout' } }),
+        ...SR_SEED.filter((x) => !['Librería Crecer', 'Pedidos Empresas'].includes(x.logical_name))]
+      : SR_SEED;
+    if (SR.mode === 'bad') items[0] = { ...items[0], logical_name: null };
+    return { ...base, summary: { total: items.length, pending: items.filter((x) => x.section === 'pending').length, alerts: items.filter((x) => x.http_state === 'down').length, last_run_at: null }, items };
+  }
+  const k = { products: 'product', partners: 'partner', events: 'event' }[tab];
+  const items = !live ? [] : k === 'product'
+    ? [srO(1, 'product', { title: 'Repo agenda clínica', score: 88, license_id: 'MIT', license_verified: true, coverage_pct: 85, score_parts: { license: 25, functionality: 20, coverage_provisional: true }, critical_blockers: ['Falta módulo de pagos'], evidence: [SR_EV(), SR_EV({ source_url: 'https://github.com/acme/repo/blob/main/LICENSE', source_title: 'LICENSE', claim: 'Licencia MIT' })] }), srO(2, 'product', { title: 'Repo sin licencia', score: 60, confidence: 'low', unverified: true, last_checked_at: null })]
+    : k === 'partner' ? [srO(3, 'partner', { title: 'Programa de partners Acme', deadline_at: ISO(24 * 5), evidence: [SR_EV({ source_type: 'official', source_title: 'Página oficial del programa', claim: 'Programa vigente para Chile' })] })]
+      : [srO(4, 'event', { title: 'Encuentro minero Antofagasta', event_start_at: '2026-11-18T00:00:00.000Z', score_parts: { date_precision: 'date_only', audience: 24 }, event_location: 'Antofagasta', event_format: 'Presencial', stale_days: 9, evidence: [SR_EV({ source_type: 'official', source_title: 'Sitio del organizador', claim: 'Fecha anunciada por el organizador' })] })];
+  return { ...base, summary: { total: items.length, pending: items.filter((x) => x.status === 'new').length, alerts: 0, last_run_at: null }, items };
+}
+
 // ------------------------------------------------------------------ n8n simulado
 const state = { cards: CARDS, pieces: PIECES, calls: [], opsHits: 0, mode: 'ok', autosend: false, paused: false, navV2: true, ideas: [IDEA(1), IDEA(2, { channel: 'linkedin_page', channel_label: 'LinkedIn · página', format: 'texto' }), IDEA(15, { score: 72, title: 'Idea débil plegada' })], tpieces: [TPIECE(1), TPIECE(2, { status: 'en_cola', status_label: 'En cola', current_version: null, versions: [], feedback: [], thumb: null, channel: 'linkedin_page', channel_label: 'LinkedIn · página', format: 'texto' })] };
 const mock = http.createServer((req, res) => {
@@ -80,6 +108,9 @@ const mock = http.createServer((req, res) => {
   req.on('end', () => {
     const send = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
     const j = body ? JSON.parse(body) : {};
+    if (req.url === '/__sr') { SR.mode = j.mode; SR.hits = []; return send(200, {}); }
+    if (req.url === '/__srhits') return send(200, SR.hits);
+    if (req.url === '/webhook/atacama-ops' && j.action === 'strategic_view') { if (req.headers['x-atacama-key'] !== INGEST_KEY) return send(403, {}); SR.hits.push((j.params || {}).tab || 'production'); if (SR.mode === 'down') return send(500, {}); return send(200, { ok: true, action: 'strategic_view', strategic: strategicView((j.params || {}).tab || 'production') }); }
     if (req.url === '/__calls') return send(200, state.calls);
     if (req.url === '/__reset') { state.calls = []; state.mode = 'ok'; state.cards = CARDS; state.autosend = false; state.paused = false; state.navV2 = true; state.tpieces = [TPIECE(1), TPIECE(2, { status: 'en_cola', status_label: 'En cola', current_version: null, versions: [], feedback: [], thumb: null, channel: 'linkedin_page', channel_label: 'LinkedIn · página', format: 'texto' })]; state.ideas = [IDEA(1), IDEA(2, { channel: 'linkedin_page', channel_label: 'LinkedIn · página', format: 'texto' }), IDEA(15, { score: 72, title: 'Idea débil plegada' })]; return send(200, {}); }
     if (req.url === '/__nav') { state.navV2 = j.v2 !== false; return send(200, {}); }
@@ -634,6 +665,73 @@ async function main() {
     await page.waitForSelector('[data-testid="pause-card"][data-paused="false"]', { timeout: 20000 });
     const pz2 = (await calls()).filter((c) => c.action === 'pause_set');
     t('v3 · reanudar es un toque (pause_set paused=false) y vuelve «ON»', pz2.length === 2 && pz2[1].paused === false && (await page.locator('.ops-side .ops-on').innerText()) === 'ON');
+    // ---------------------------------------------------------------- Radar estratégico (F2): solo lectura, todo apagado por defecto
+    const srSet = async (mode) => fetch(`http://localhost:${MOCK_PORT}/__sr`, { method: 'POST', body: JSON.stringify({ mode }) });
+    const srHits = async () => (await fetch(`http://localhost:${MOCK_PORT}/__srhits`)).json();
+    const SR_BAD = /Contactar|Enviar correo|Inscribirme|Programar reunión|Aplicar\b|Push\b/;
+    await srSet('seed');
+    await page.goto(APP + '/ops?view=hoy'); await page.waitForSelector('#ops-main h1');
+    t('Radar: abrir «Hoy» NO consulta el Radar (se lee solo en sus cuatro URLs)', (await srHits()).length === 0);
+    const navLabels = await page.locator('.ops-side nav.ops-nav a').allInnerTexts();
+    t('Radar: la navegación v2 suma una sexta sección «Radar estratégico» y conserva las cinco anteriores', navLabels.length === 6 && navLabels.slice(0, 5).map((x) => x.replace(/\d+$/, '').trim()).join('|') === 'Hoy|Redes|Prospección y correo|Resultados|Sistema' && /^Radar estratégico/.test(navLabels[5]), navLabels.join('|'));
+    await page.locator('.ops-side a.ops-nav-a', { hasText: /^Radar estratégico/ }).click();
+    await page.waitForURL(/view=radar_produccion/); await page.waitForSelector('[data-testid="strategic-target"]');
+    t('Radar: la sección abre en «Producción» con el título y la bajada del spec', (await page.locator('#ops-main h1').innerText()) === 'Radar estratégico' && /Solo oportunidades con evidencia/.test(await page.locator('#ops-main .ops-sub').innerText()) && (await page.locator('nav.ops-sec-tabs a.ops-tab-on').innerText()) === 'Producción');
+    t('Radar: las cuatro pestañas (Producción · Productos · Alianzas · Eventos) con sus URLs exactas', (await page.locator('nav.ops-sec-tabs a').allInnerTexts()).join('|') === 'Producción|Productos|Alianzas|Eventos' && (await page.locator('nav.ops-sec-tabs a').evaluateAll((as) => as.map((a) => a.getAttribute('href')))).join('|') === '/ops?view=radar_produccion|/ops?view=radar_productos|/ops?view=radar_alianzas|/ops?view=radar_eventos');
+    const srMain = await page.locator('#ops-main').innerText();
+    await shot(page, 'radar-produccion-apagado');
+    t('Radar · Producción apagado: aviso inequívoco y los 5 servicios como «Por verificar», ninguno con salud', /Monitoreo automático apagado; inventario por verificar/.test(srMain) && (await page.locator('[data-testid="strategic-target"]').count()) === 5 && (await page.locator('.ops-strategic-badge-unverified').count()) === 5 && (await page.locator('.ops-strategic-badge-healthy, .ops-strategic-badge-down, .ops-strategic-badge-degraded').count()) === 0 && (await page.locator('.ops-tag', { hasText: 'Pendiente de confirmar' }).count()) === 5);
+    t('Radar · Producción: sin servicios confirmados, lo dice y no inventa verde', /Confirmados para monitoreo/i.test(srMain) && /Ningún servicio confirmado todavía/.test(srMain) && /Sin verificar/i.test(srMain) && !/Operativo/i.test(srMain));
+    t('Radar: ningún botón de contactar, inscribirse, enviar, aplicar ni push', !SR_BAD.test(srMain) && (await page.locator('#ops-main button').count()) === 0);
+    await page.locator('[data-testid="strategic-target"] summary').nth(1).click();
+    const srDet = await page.locator('[data-testid="strategic-target"]').nth(1).innerText();
+    t('Radar · detalle de un servicio: repositorio como «código», sin integración, sin comprobación', /ChristianEducation\/LibreriaCrecer/.test(srDet) && /Sin integración/.test(srDet) && /Ninguna: no se chequea/.test(srDet) && /no prueba que esté desplegado/.test(srDet));
+    for (const [id, h] of [['radar_productos', 'Repos externos'], ['radar_alianzas', 'Programas y alianzas'], ['radar_eventos', 'Eventos y networking']]) {
+      await page.goto(APP + '/ops?view=' + id); await page.waitForSelector('#ops-sr-opps');
+      const srTx = await page.locator('#ops-main').innerText();
+      t(`Radar · ${id} apagado: «Investigación no activada» y estado vacío honesto, sin tarjetas`, /Investigación no activada/.test(srTx) && /Todavía no hay datos verificados para esta sección/.test(srTx) && srTx.toLowerCase().includes(h.toLowerCase()) && (await page.locator('[data-testid="strategic-opp"]').count()) === 0);
+    }
+    t('Radar: cada pestaña pidió su propia lectura (una por URL)', (await srHits()).join(',') === 'production,products,partners,events', (await srHits()).join(','));
+
+    await srSet('live');
+    await page.goto(APP + '/ops?view=radar_produccion'); await page.waitForSelector('[data-testid="strategic-target"]');
+    const srLive = await page.locator('#ops-main').innerText();
+    await shot(page, 'radar-produccion-datos');
+    t('Radar · Producción con datos: confirmados primero (healthy HTTP y caído) y luego los candidatos', (await page.locator('.ops-strategic-badge-healthy').count()) === 1 && (await page.locator('.ops-strategic-badge-down').count()) === 1 && (await page.locator('.ops-strategic-badge-unverified').count()) === 3 && (await page.locator('section[aria-labelledby="ops-sr-conf"]').innerText()).includes('Librería Crecer') && (await page.locator('section[aria-labelledby="ops-sr-conf"]').innerText()).includes('Pedidos Empresas') && (await page.locator('section[aria-labelledby="ops-sr-pend"]').innerText()).includes('Casino Escolar') && !(await page.locator('section[aria-labelledby="ops-sr-pend"]').innerText()).includes('Librería Crecer'));
+    t('Radar · Producción: contador de caídos y el «Responde» aclara que es solo HTTP', /1\s*caídos/.test(srLive.replace(/\n/g, ' ')) && /solo que el endpoint contestó por HTTP/.test(srLive) && !/Monitoreo automático apagado/.test(srLive));
+    await page.locator('[data-testid="strategic-target"] summary').first().click();
+    const srFirst = await page.locator('[data-testid="strategic-target"]').first().innerText();
+    t('Radar · detalle de un confirmado: destino, HTTP 200, latencia y tipo de evidencia', /libreria\.example\.org/.test(srFirst) && /HTTP 200/.test(srFirst) && /142 ms/.test(srFirst) && /Chequeo HTTP autorizado/.test(srFirst));
+    await page.goto(APP + '/ops?view=radar_productos'); await page.waitForSelector('[data-testid="strategic-opp"]');
+    await page.locator('[data-testid="strategic-opp"] summary').first().click();
+    const srProd = await page.locator('[data-testid="strategic-opp"]').first().innerText();
+    t('Radar · Productos: licencia verificada, cobertura «provisional», bloqueos y evidencia con enlace', /MIT \(verificada\)/.test(srProd) && /85% · provisional/.test(srProd) && /Falta módulo de pagos/.test(srProd) && (await page.locator('[data-testid="strategic-opp"]').first().locator('.ops-strategic-ev a').count()) === 2);
+    const srNoLic = await page.locator('[data-testid="strategic-opp"]').nth(1).innerText();
+    t('Radar · Productos: sin licencia = «Pendiente de verificar» y «Requiere confirmar»', /Pendiente de verificar/i.test(srNoLic) && /Requiere confirmar/i.test(srNoLic));
+    await page.locator('[data-testid="strategic-opp"] summary').nth(1).click();
+    t('Radar · Productos: la licencia sin verificar lo dice y no es candidato a vender', /Sin verificar: no es candidato a vender/.test(await page.locator('[data-testid="strategic-opp"]').nth(1).innerText()));
+    await page.goto(APP + '/ops?view=radar_eventos'); await page.waitForSelector('[data-testid="strategic-opp"]');
+    await page.locator('[data-testid="strategic-opp"] summary').first().click();
+    const srEvt = await page.locator('[data-testid="strategic-opp"]').first().innerText();
+    t('Radar · Eventos: fecha solo-día sin inventar hora, antigüedad de la verificación y fuente oficial', /18 de noviembre de 2026/.test(srEvt) && !/00:00/.test(srEvt) && /Última verificación hace 9 días/.test(srEvt) && /Fuente oficial/i.test(srEvt));
+    await page.goto(APP + '/ops?view=radar_alianzas'); await page.waitForSelector('[data-testid="strategic-opp"]');
+    await page.locator('[data-testid="strategic-opp"] summary').first().click();
+    const srPart = await page.locator('[data-testid="strategic-opp"]').first().innerText();
+    t('Radar · Alianzas: plazo confirmado visible y el puntaje explicado', /Plazo/i.test(srPart) && /82\/100 · confianza media/.test(srPart));
+
+    for (const [mode, label] of [['down', 'n8n responde 500'], ['unavailable', 'tablas ausentes'], ['bad', 'una fila mal formada']]) {
+      await srSet(mode);
+      await page.goto(APP + '/ops?view=radar_produccion'); await page.waitForSelector('#ops-main h1');
+      const srTx = await page.locator('#ops-main').innerText();
+      t(`Radar · ${label}: «No pude consultar el Radar…», sin contadores ni filas, y la navegación sigue en pie`, /No pude consultar el Radar\. No significa que no existan oportunidades\./.test(srTx) && (await page.locator('.ops-stat').count()) === 0 && (await page.locator('[data-testid="strategic-target"]').count()) === 0 && (await page.locator('.ops-side nav.ops-nav a').count()) === 6);
+    }
+    await srSet('down');
+    await page.goto(APP + '/ops?view=hoy'); await page.waitForSelector('#ops-main h1');
+    t('Radar caído: «Hoy» sigue funcionando igual', (await page.locator('#ops-main h1').innerText()) === 'Hoy');
+    await page.goto(APP + '/ops?view=prospeccion'); await page.waitForSelector('#ops-main h1');
+    t('Radar: el «Radar» de Prospección (view=prospeccion) permanece intacto y distinto', (await page.locator('.ops-sec-tabs a.ops-tab-on').innerText()) === 'Radar' && (await page.locator('[data-testid="strategic-target"]').count()) === 0);
+    await srSet('seed');
+
     await reset();
     await page.goto(APP + '/ops?view=aprobaciones');
     await page.waitForSelector('.ops-ap');
@@ -679,6 +777,33 @@ async function main() {
       t(`móvil ${w}: sin scroll horizontal en las demás vistas`, true);
       await mctx.close();
     }
+    // Radar estratégico en móvil 360 y 390: sin scroll horizontal, pestañas alcanzables, filas táctiles >= 44 px
+    await fetch(`http://localhost:${MOCK_PORT}/__sr`, { method: 'POST', body: JSON.stringify({ mode: 'live' }) });
+    for (const w of [360, 390]) {
+      const rctx = await browser.newContext({ viewport: { width: w, height: 800 }, isMobile: true, hasTouch: true });
+      const rp = await rctx.newPage();
+      await login(rp, PIN);
+      await rp.waitForSelector('.ops-bar');
+      let flat = true, tall = true;
+      for (const v of ['radar_produccion', 'radar_productos', 'radar_alianzas', 'radar_eventos']) {
+        await rp.goto(`${APP}/ops?view=${v}`);
+        await rp.waitForSelector('#ops-main h1');
+        await rp.locator('details.ops-row summary').first().click().catch(() => {});
+        if (!(await rp.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1))) { flat = false; console.log('  desborda en', v, w); }
+        const hs = await rp.locator('details.ops-row summary').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().height));
+        if (hs.some((h) => h < 44)) tall = false;
+      }
+      await shot(rp, `movil-${w}-radar`);
+      t(`Radar móvil ${w}: sin scroll horizontal en las cuatro pestañas`, flat);
+      t(`Radar móvil ${w}: las filas tocables miden >= 44 px`, tall);
+      await rp.goto(`${APP}/ops?view=radar_eventos`); await rp.waitForSelector('nav.ops-sec-tabs');
+      t(`Radar móvil ${w}: las cuatro pestañas existen`, (await rp.locator('nav.ops-sec-tabs a').count()) === 4);
+      await rp.locator('nav.ops-sec-tabs a', { hasText: 'Producción' }).click();
+      await rp.waitForURL(/view=radar_produccion/);
+      t(`Radar móvil ${w}: tocar una pestaña navega`, (await rp.locator('nav.ops-sec-tabs a.ops-tab-on').innerText()) === 'Producción');
+      await rctx.close();
+    }
+    await fetch(`http://localhost:${MOCK_PORT}/__sr`, { method: 'POST', body: JSON.stringify({ mode: 'seed' }) });
   } finally {
     await browser.close().catch(() => {});
     child.kill();

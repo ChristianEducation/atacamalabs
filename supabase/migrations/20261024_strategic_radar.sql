@@ -16,7 +16,8 @@ create table if not exists public.strategic_radar_config (
   ai_max_items_per_run int not null default 12 constraint strategic_radar_config_ai_max check (ai_max_items_per_run between 1 and 20),
   updated_at timestamptz not null default now()
 );
-insert into public.strategic_radar_config (id) values (1) on conflict (id) do nothing;
+-- La columna conserva el default 3 del spec, pero la fila inicial parte en 0: ninguna señal estratégica llega al Daily/«Hoy» hasta que Christian autorice F7 paso 7 (daily_max_items = 3).
+insert into public.strategic_radar_config (id, daily_max_items) values (1, 0) on conflict (id) do nothing;
 
 -- 2) Producción: servicios propios por verificar / confirmados ----------------------------------------------------------------
 create table if not exists public.strategic_prod_targets (

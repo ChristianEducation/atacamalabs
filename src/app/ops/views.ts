@@ -21,9 +21,16 @@ export const SECTIONS = [
   { id: "correo", label: "Prospección y correo", views: [{ id: "correo", label: "Hoy" }, { id: "aprobaciones", label: "Borradores", q: "&filter=correos" }, { id: "cola", label: "Cola" }, { id: "respuestas", label: "Enviados y respuestas" }, { id: "seguimientos", label: "Seguimientos" }, { id: "embudo", label: "Embudo" }, { id: "prospeccion", label: "Radar" }, { id: "control", label: "Falta contacto" }, { id: "salud", label: "Salud" }, { id: "outreach", label: "LinkedIn", q: "&tab=linkedin" }] },
   { id: "resultados", label: "Resultados", views: [{ id: "resultados", label: "Contenido → ventas" }, { id: "aprendizaje", label: "Aprendizaje" }, { id: "iteraciones", label: "Iteraciones" }] },
   { id: "sistema", label: "Sistema", views: [{ id: "sistema", label: "Salud" }, { id: "historial", label: "Historial" }, { id: "alertas", label: "Alertas" }, { id: "costos", label: "Costos" }, { id: "controles", label: "Controles" }] },
+  /** Radar estratégico (spec RADAR §2): sexta sección. «Radar» de Prospección (view prospeccion) es otra cosa y no se toca; aquí todo lleva prefijo radar_. */
+  { id: "estrategico", label: "Radar estratégico", views: [{ id: "radar_produccion", label: "Producción" }, { id: "radar_productos", label: "Productos" }, { id: "radar_alianzas", label: "Alianzas" }, { id: "radar_eventos", label: "Eventos" }] },
 ] as const;
 
-export type ViewId = (typeof VIEWS)[number]["id"] | "hoy" | "ideas" | "taller" | "resultados" | "controles" | "correo" | "cola" | "respuestas" | "seguimientos" | "embudo" | "salud" | "biblioteca" | "historial" | "alertas" | "costos" | "aprendizaje" | "iteraciones";
+export type ViewId = (typeof VIEWS)[number]["id"] | "hoy" | "ideas" | "taller" | "resultados" | "controles" | "correo" | "cola" | "respuestas" | "seguimientos" | "embudo" | "salud" | "biblioteca" | "historial" | "alertas" | "costos" | "aprendizaje" | "iteraciones" | "radar_produccion" | "radar_productos" | "radar_alianzas" | "radar_eventos";
+
+/** Pestaña del Radar estratégico que corresponde a una vista (o null si no es del Radar). */
+export function strategicTabOf(view: ViewId | null): "production" | "products" | "partners" | "events" | null {
+  return view === "radar_produccion" ? "production" : view === "radar_productos" ? "products" : view === "radar_alianzas" ? "partners" : view === "radar_eventos" ? "events" : null;
+}
 type SectionView = { id: string; label: string; q?: string };
 
 /** Enlace de una pestaña de sección (algunas llevan su filtro: Borradores = solo correos, LinkedIn = pestaña LinkedIn). */
