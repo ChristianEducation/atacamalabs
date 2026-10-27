@@ -399,6 +399,66 @@ export function srValidateTargetConfirm(x) {
   return { ok: true, value: { target_id: String(b.target_id).toLowerCase(), repo_full_name: repo, deployment_url: dep.value, health_url: hl.value, provider, reason: reason.slice(0, 200), test: b.test === true } };
 }
 
+// ---------- Monitor de producción: lo que el ejecutor confiable (Hermes) puede leer y registrar (spec §6.1, §8) ----------
+/** Compuerta común de las dos acciones del monitor: config + pausa SIEMPRE en el servidor (test=true no las salta). */
+export function srMonitorGuard(ctx) {
+  const c = ctx || {};
+  if (c.paused === true) return { error: 'global_pause', message: 'Pausa general activa: el monitor no lee ni registra.' };
+  if (!c.cfg) return { error: 'not_configured', message: 'El Radar no tiene configuración todavía: el monitor sigue apagado.' };
+  if (c.cfg.production_enabled !== true) return { error: 'flag_off', message: 'El monitoreo de producción está apagado.' };
+  return null;
+}
+
+/** strategic_targets: solo id, nombre y health_url de los servicios confirmados Y con monitoreo encendido. Sin repos, notas ni datos internos. */
+export function srTargetsPlan(ctx) {
+  const c = ctx || {}, g = srMonitorGuard(c);
+  if (g) return { error: g.error, message: g.message, targets: [] };
+  const test = c.test === true;
+  const targets = (Array.isArray(c.targets) ? c.targets : []).filter((t) => t && t.status !== 'paused' && t.status !== 'retired' && t.monitor_enabled === true && (t.status === undefined || t.status === 'confirmed') && (t.is_test === true) === test && typeof t.health_url === 'string' && t.health_url).slice(0, 60)
+    .map((t) => ({ id: t.id, logical_name: t.logical_name, health_url: t.health_url }));
+  return { targets };
+}
+
+/**
+ * strategic_prod_check {target_id, checked_at, result, http_status?, latency_ms?, error_code?, observed_sha?, test}: guarda UNA observación.
+ * No admite URL: el servicio sale de la base. No crea alertas (las evalúa alerts_poll) y no declara «caído» por su cuenta: devuelve la salud que resulta de las 2 últimas observaciones reales.
+ */
+export function srCheckPlan(p, ctx) {
+  const x = p && typeof p === 'object' ? p : {}, c = ctx || {};
+  const g = srMonitorGuard(c);
+  if (g) return g;
+  const now = c.now == null ? Date.now() : c.now, test = x.test === true;
+  if (!srIsUuid(x.target_id)) return { error: 'target_id_invalido', message: 'target_id (uuid del servicio) es obligatorio.' };
+  const t = c.target;
+  if (!t) return { error: 'target_no_encontrado', message: 'No encontré ese servicio.' };
+  if ((t.is_test === true) !== test) return { error: 'registro_test', message: t.is_test === true ? 'Ese servicio es de prueba: un chequeo real no lo modifica.' : 'Ese servicio es real: una prueba no lo modifica.' };
+  if (t.status !== 'confirmed' || t.monitor_enabled !== true) return { error: 'target_no_monitoreado', message: 'Ese servicio no está confirmado con el monitoreo encendido: no se registra.' };
+  if (['healthy', 'degraded', 'down', 'unknown'].indexOf(x.result) < 0) return { error: 'resultado_invalido', message: 'result: healthy | degraded | down | unknown.' };
+  const st = x.http_status == null ? null : Number(x.http_status);
+  if (st !== null && !(Number.isInteger(st) && st >= 100 && st <= 599)) return { error: 'http_invalido', message: 'http_status debe estar entre 100 y 599.' };
+  const lat = x.latency_ms == null ? null : Number(x.latency_ms);
+  if (lat !== null && !(Number.isInteger(lat) && lat >= 0 && lat <= 120000)) return { error: 'latencia_invalida', message: 'latency_ms debe estar entre 0 y 120000.' };
+  const code = x.error_code == null || x.error_code === '' ? null : String(x.error_code);
+  if (code !== null && !/^[A-Za-z0-9_.:-]{1,60}$/.test(code)) return { error: 'codigo_invalido', message: 'error_code: hasta 60 caracteres simples.' };
+  const sha = x.observed_sha == null || x.observed_sha === '' ? null : String(x.observed_sha);
+  if (sha !== null && !/^[0-9a-f]{7,64}$/i.test(sha)) return { error: 'sha_invalido', message: 'observed_sha no es un SHA válido.' };
+  const at = srParseDate(x.checked_at);
+  if (!at || at.date_only || at.ms < now - 15 * 60000 || at.ms > now + 2 * 60000) return { error: 'checked_at_invalido', message: 'checked_at debe ser la hora real del chequeo (ISO con zona, de los últimos 15 minutos).' };
+  // Un resultado no puede contradecir el HTTP observado: «healthy» exige 2xx; «down» con un 2xx/3xx/4xx sería inventar una caída.
+  if (x.result === 'healthy' && !(st !== null && st >= 200 && st < 300)) return { error: 'resultado_incoherente', message: 'healthy exige un HTTP 2xx.' };
+  if (x.result === 'down' && st !== null && st < 500) return { error: 'resultado_incoherente', message: 'down solo con HTTP 5xx o sin respuesta (timeout, DNS, conexión).' };
+  const recent = (Array.isArray(c.recent) ? c.recent : []).filter((r) => r && Number.isFinite(Date.parse(r.checked_at)) && (r.is_test === true) === test).sort((a, b) => Date.parse(b.checked_at) - Date.parse(a.checked_at));
+  if (recent.length && Math.abs(at.ms - Date.parse(recent[0].checked_at)) < 60000) return { error: 'demasiado_pronto', message: 'Ya hay un chequeo de este servicio en el último minuto.' };
+  const row = { target_id: String(x.target_id).toLowerCase(), checked_at: new Date(at.ms).toISOString(), result: x.result, http_status: st, latency_ms: lat, error_code: code, observed_sha: sha, evidence_url: null, is_test: test };
+  // La salud se calcula con las 2 observaciones reales más recientes de ESE servicio (las de prueba se tratan como reales solo dentro de una prueba).
+  const asReal = (r) => ({ ...r, is_test: false });
+  const h = srProductionHealth([row, ...recent].map(asReal), now, c.alert_open === true);
+  return {
+    resp: { ok: true, recorded: true, state: h.state, confirmed_down: h.confirmed_down, resolve_alert: h.resolve_alert, last_checked_at: h.last_checked_at, alert_created: false },
+    writes: [{ method: 'POST', path: 'strategic_prod_checks', body: row, prefer: 'return=minimal' }],
+  };
+}
+
 export function srTargetConfirmPlan(req, row, ctx) {
   const c = ctx || {}, nowIso = new Date(c.now == null ? Date.now() : c.now).toISOString(), by = c.by || 'Christian via /ops';
   const STALE = 'Este servicio cambió. Recarga para confirmarlo sobre la última versión.';

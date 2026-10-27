@@ -6,6 +6,7 @@
 import assert from 'node:assert/strict';
 import { buildOps, ACTIONS } from '../../n8n/build/ops.mjs';
 import * as core from './ops-core.mjs';
+import { readFileSync } from 'node:fs';
 
 let n = 0;
 const ok = async (name, fn) => { try { await fn(); n++; } catch (e) { console.error('FAIL', name, '\n', String(e.stack).split('\n').slice(0, 5).join('\n')); process.exitCode = 1; } };
@@ -52,9 +53,10 @@ const opp = (o) => ({ id: 'o1', kind: 'event', title: 'Evento B2B Antofagasta', 
 const down = (id, minsAgo) => ({ target_id: id, checked_at: iso(NOW - minsAgo * MIN), result: 'down', is_test: false });
 
 // ---------- registro de acciones
-await ok('25: las tres acciones del Radar existen y no hay acciones de escritura estratégicas', () => {
-  for (const a of ['strategic_view', 'strategic_today', 'strategic_gate']) assert.ok(ACTIONS.includes(a), a);
-  assert.deepEqual(ACTIONS.filter((a) => /^strategic_/.test(a)).sort(), ['strategic_gate', 'strategic_today', 'strategic_view']);
+await ok('25: acciones del Radar = 3 de lectura de la web + 2 del monitor (targets, prod_check); la web NUNCA pide las del monitor', () => {
+  assert.deepEqual(ACTIONS.filter((a) => /^strategic_/.test(a)).sort(), ['strategic_gate', 'strategic_prod_check', 'strategic_targets', 'strategic_today', 'strategic_view']);
+  const web = [readFileSync(new URL('../../src/lib/ops/v3-data.ts', import.meta.url), 'utf8'), readFileSync(new URL('../../src/lib/ops/strategic.ts', import.meta.url), 'utf8')].join('\n');
+  assert.ok(!/strategic_prod_check|strategic_targets|strategic_ingest/.test(web), 'el navegador/servidor web no llama a las acciones del monitor');
 });
 
 // ---------- lecturas
@@ -203,6 +205,103 @@ await ok('el workflow 25 no suma nodos de envío ni credenciales nuevas por el R
   assert.ok(!wf.nodes.some((x) => /gmail|emailSend|whatsapp|telegram|slack|smtp/i.test(x.type)));
   const creds = new Set(wf.nodes.flatMap((x) => Object.values(x.credentials || {}).map((c) => c.id)));
   assert.deepEqual([...creds].sort(), ['4Vc6nfxyKjZ14Bep', 'V2SOaE1TC54lPbJ2', 'XOmXUuyLVSazDIh5', 'lUGhlXVaQBEiEh5S']);
+});
+
+// ---------- F4 · monitor de producción: lectura de servicios y registro de chequeos (clave de ingesta; nunca desde el navegador)
+const live = (body, growth = {}, alerts = []) => call({ ...body, now_ms: undefined }, growth, alerts);
+const TID = '00000000-0000-4000-8000-0000000000aa';
+const MON = { id: TID, logical_name: 'Librería Crecer', status: 'confirmed', monitor_enabled: true, is_test: false, health_url: 'https://libreria.example.org/health' };
+const ON = { sr_cfg: [CFG({ production_enabled: true })] };
+const chk = (o = {}) => ({ action: 'strategic_prod_check', params: { target_id: TID, checked_at: new Date(Date.now() - 20000).toISOString(), result: 'healthy', http_status: 200, latency_ms: 140, error_code: null, test: false, ...o } });
+const past = (minsAgo, result, o = {}) => ({ target_id: TID, checked_at: new Date(Date.now() - minsAgo * MIN).toISOString(), result, http_status: result === 'down' ? 503 : 200, is_test: false, ...o });
+
+await ok('targets: apagado, en pausa o sin tablas = lista vacía con el motivo; nunca devuelve servicios', async () => {
+  for (const [g, why] of [[{ sr_cfg: [CFG()], sr_targets: [MON] }, 'flag_off'], [{ ...ON, sr_targets: [MON], sys_state: [{ id: 1, global_pause: true, meta: {} }] }, 'global_pause'], [{ sr_cfg: 'FAIL' }, 'source_unavailable'], [{ sr_cfg: [], sr_targets: [MON] }, 'not_configured']]) {
+    const r = await live({ action: 'strategic_targets' }, g);
+    assert.equal(r.out.ok, false, why); assert.equal(r.out.error, why); assert.deepEqual(r.out.targets, []);
+  }
+});
+await ok('targets: encendido devuelve SOLO id, nombre y health_url de los confirmados con monitoreo (sin repos, notas ni candidatos)', async () => {
+  const rows = [MON, { ...MON, id: 'b', status: 'candidate', monitor_enabled: false }, { ...MON, id: 'c', monitor_enabled: false }, { ...MON, id: 'd', status: 'paused' }, { ...MON, id: 'e', is_test: true }, { ...MON, id: 'f', health_url: null }, { ...MON, repo_full_name: 'secreto/repo', notes: 'privado', deployment_url: 'https://x' }];
+  const r = await live({ action: 'strategic_targets' }, { ...ON, sr_targets: rows });
+  assert.equal(r.out.ok, true); assert.equal(r.writes.length, 0);
+  assert.deepEqual(r.out.targets.map((t) => t.id), [TID, TID]);
+  for (const t of r.out.targets) assert.deepEqual(Object.keys(t).sort(), ['health_url', 'id', 'logical_name']);
+  assert.ok(r.reads.find((x) => x.key === 'sr_targets').url.includes('status=eq.confirmed&monitor_enabled=eq.true') && r.reads.find((x) => x.key === 'sr_targets').url.includes('is_test=eq.false'));
+  assert.ok(/is_test=eq\.true/.test((await live({ action: 'strategic_targets', params: { test: true } }, ON)).reads.find((x) => x.key === 'sr_targets').url));
+});
+await ok('prod_check: registra UNA observación con la fila exacta, sin URL, sin alertas y devuelve la salud', async () => {
+  const r = await live(chk(), { ...ON, sr_target: [MON] });
+  assert.equal(r.out.ok, true); assert.equal(r.out.recorded, true); assert.equal(r.out.state, 'healthy'); assert.equal(r.out.alert_created, false);
+  assert.equal(r.writes.length, 1);
+  const w = r.writes[0];
+  assert.equal(w.method, 'POST'); assert.equal(w.path, 'strategic_prod_checks');
+  assert.deepEqual(Object.keys(w.body).sort(), ['checked_at', 'error_code', 'evidence_url', 'http_status', 'is_test', 'latency_ms', 'observed_sha', 'result', 'target_id']);
+  assert.equal(w.body.target_id, TID); assert.equal(w.body.is_test, false); assert.equal(w.body.evidence_url, null);
+  assert.ok(!r.writes.some((x) => /ops_alerts/.test(x.path)), 'no crea alertas');
+});
+await ok('prod_check: con parámetros extra (url, path, table, method) la escritura sigue siendo la misma, fija', async () => {
+  const r = await live({ action: 'strategic_prod_check', params: { ...chk().params, url: 'https://evil.test', health_url: 'https://evil.test', path: '../x', table: 'users', method: 'DELETE', evidence_url: 'https://evil.test' } }, { ...ON, sr_target: [MON] });
+  assert.equal(r.writes.length, 1); assert.equal(r.writes[0].path, 'strategic_prod_checks'); assert.ok(!/evil|users|DELETE/.test(JSON.stringify(r.writes)));
+  assert.ok(r.reads.every((x) => x.url.startsWith('https://uwquwjmiofixzugttals.supabase.co/rest/v1/') && !/evil|users/.test(x.url)));
+});
+await ok('prod_check: compuertas SIEMPRE en el servidor (apagado, pausa, tabla ausente); test=true no las salta', async () => {
+  for (const [g, why] of [[{ sr_cfg: [CFG()], sr_target: [MON] }, 'flag_off'], [{ ...ON, sr_target: [MON], sys_state: [{ id: 1, global_pause: true, meta: {} }] }, 'global_pause'], [{ sr_cfg: 'FAIL' }, 'source_unavailable']]) {
+    for (const test of [false, true]) {
+      const r = await live(chk({ test }), { ...g, sr_target: [{ ...MON, is_test: test }] });
+      assert.equal(r.out.ok, false, why + ' test=' + test); assert.equal(r.out.error, why); assert.equal(r.writes.length, 0);
+    }
+  }
+});
+await ok('prod_check: solo un servicio confirmado y monitoreado; real/prueba no se mezclan', async () => {
+  const cases = [[{ sr_target: [] }, 'target_no_encontrado'], [{ sr_target: [{ ...MON, status: 'candidate', monitor_enabled: false }] }, 'target_no_monitoreado'], [{ sr_target: [{ ...MON, monitor_enabled: false }] }, 'target_no_monitoreado'], [{ sr_target: [{ ...MON, status: 'paused' }] }, 'target_no_monitoreado'], [{ sr_target: [{ ...MON, is_test: true }] }, 'registro_test']];
+  for (const [g, why] of cases) { const r = await live(chk(), { ...ON, ...g }); assert.equal(r.out.error, why, why); assert.equal(r.writes.length, 0); }
+  assert.equal((await live(chk({ test: true }), { ...ON, sr_target: [MON] })).out.error, 'registro_test');
+  const t = await live(chk({ test: true }), { ...ON, sr_target: [{ ...MON, is_test: true }] });
+  assert.equal(t.out.ok, true); assert.equal(t.writes[0].body.is_test, true);
+});
+await ok('prod_check: un resultado no puede contradecir el HTTP observado ni inventar una caída', async () => {
+  const bad = [{ result: 'healthy', http_status: 500 }, { result: 'healthy', http_status: null }, { result: 'healthy', http_status: 404 }, { result: 'down', http_status: 200 }, { result: 'down', http_status: 404 }, { result: 'oops' }];
+  for (const o of bad) { const r = await live(chk(o), { ...ON, sr_target: [MON] }); assert.equal(r.out.ok, false, JSON.stringify(o)); assert.equal(r.writes.length, 0); }
+  for (const o of [{ result: 'down', http_status: 503 }, { result: 'down', http_status: null, error_code: 'timeout' }, { result: 'degraded', http_status: 404 }, { result: 'degraded', http_status: 301 }, { result: 'unknown', http_status: null, error_code: 'blocked_ip' }]) {
+    const r = await live(chk(o), { ...ON, sr_target: [MON] }); assert.equal(r.out.ok, true, JSON.stringify(o));
+  }
+});
+await ok('prod_check: valida hora real, rangos y formatos', async () => {
+  const bad = [{ checked_at: new Date(Date.now() - 20 * MIN).toISOString() }, { checked_at: new Date(Date.now() + 10 * MIN).toISOString() }, { checked_at: '2026-11-02' }, { checked_at: 'ayer' }, { http_status: 99 }, { http_status: 600 }, { http_status: 20.5 }, { latency_ms: -1 }, { latency_ms: 999999 }, { error_code: 'con espacios y <script>' }, { observed_sha: 'xyz' }, { target_id: "1' or '1'='1" }];
+  for (const o of bad) { const r = await live(chk(o), { ...ON, sr_target: [MON] }); assert.equal(r.out.ok, false, JSON.stringify(o)); assert.equal(r.writes.length, 0); }
+});
+await ok('prod_check: máximo un chequeo por minuto por servicio', async () => {
+  const r = await live(chk(), { ...ON, sr_target: [MON], sr_recent: [past(0.2, 'healthy')] });
+  assert.equal(r.out.error, 'demasiado_pronto'); assert.equal(r.writes.length, 0);
+  assert.equal((await live(chk(), { ...ON, sr_target: [MON], sr_recent: [past(15, 'healthy')] })).out.ok, true);
+});
+await ok('prod_check: UNA caída = degradado por confirmar; DOS seguidas dentro de 45 min = caída confirmada (sin crear alerta)', async () => {
+  const one = (await live(chk({ result: 'down', http_status: 503 }), { ...ON, sr_target: [MON], sr_recent: [past(15, 'healthy')] })).out;
+  assert.deepEqual([one.state, one.confirmed_down], ['degraded', false]);
+  const two = (await live(chk({ result: 'down', http_status: 503 }), { ...ON, sr_target: [MON], sr_recent: [past(15, 'down')] })).out;
+  assert.deepEqual([two.state, two.confirmed_down, two.alert_created], ['down', true, false]);
+  const far = (await live(chk({ result: 'down', http_status: 503 }), { ...ON, sr_target: [MON], sr_recent: [past(50, 'down')] })).out;
+  assert.equal(far.confirmed_down, false, 'dos caídas separadas por más de 45 min no cuentan');
+  const real = (await live(chk({ result: 'down', http_status: 503 }), { ...ON, sr_target: [MON], sr_recent: [past(15, 'down', { is_test: true })] })).out;
+  assert.equal(real.confirmed_down, false, 'una observación de prueba no cuenta en un servicio real');
+});
+await ok('prod_check: dos healthy seguidos con alerta abierta resuelven; uno solo no', async () => {
+  const al = [{ alert_key: 'strategic_prod:' + TID, status: 'open', severity: 'critical' }];
+  const one = (await live(chk(), { ...ON, sr_target: [MON], sr_recent: [past(15, 'down')] }, al)).out;
+  assert.deepEqual([one.state, one.resolve_alert], ['down', false]);
+  const two = (await live(chk(), { ...ON, sr_target: [MON], sr_recent: [past(15, 'healthy'), past(30, 'down')] }, al)).out;
+  assert.deepEqual([two.state, two.resolve_alert], ['healthy', true]);
+});
+await ok('prod_check: en dry_run no escribe nada', async () => {
+  const r = await live({ ...chk(), dry_run: true }, { ...ON, sr_target: [MON] });
+  assert.equal(r.out.ok, true); assert.deepEqual(r.writes, []);
+});
+await ok('el monitor jamás puede escribir ops_alerts, contactar ni tocar GHL desde estas acciones', async () => {
+  for (const b of [chk(), { action: 'strategic_targets' }]) {
+    const r = await live(b, { ...ON, sr_target: [MON], sr_targets: [MON] });
+    assert.ok(r.writes.every((w) => w.path === 'strategic_prod_checks'));
+  }
 });
 
 console.log(`${n} ok`);
