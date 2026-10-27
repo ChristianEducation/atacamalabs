@@ -59,7 +59,7 @@ const GH_HEADERS = [{ name: 'Version', value: '2021-07-28' }, { name: 'Accept', 
 export const LIB = [...new Map([...Object.values(core), ...['linkedinOverview', 'linkedinView', 'liLabel'].map((k) => liCore[k]), ...Object.values(prepCore), ...Object.values(edCore), ...Object.values(rfCore), growthNorm, growthResourceRank, ...Object.values(v3Core), ...Object.values(ideasCore), ...Object.values(tallerCore), ...Object.values(mvCore), ...Object.values(hrCore), ...Object.values(hiCore), ...Object.values(wkCore), ...Object.values(rsCore), ...Object.values(lnCore), ...Object.values(srCore), ...Object.values(ftCore)].filter((f) => typeof f === 'function').map((f) => [f.name, f])).values()].map((f) => f.toString()).join('\n\n');
 const CFG_JSON = JSON.stringify({ tz: OPS_CFG.tz, stages: OPS_CFG.stages, ignore_opps: OPS_CFG.ignore_opps });
 
-export const ACTIONS = ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'radar_report', 'content_radar_report', 'job_report', 'alerts_poll', 'alerts_ack', 'ideas_list', 'ideas_gate', 'ideas_propose', 'ideas_revise', 'taller_list', 'mail_view', 'history_list', 'week_status', 'results_view', 'learning_context', 'learning_propose', 'strategic_view', 'strategic_today', 'strategic_gate', 'strategic_targets', 'strategic_prod_check'];
+export const ACTIONS = ['daily', 'today', 'urgent', 'health', 'stale', 'followups', 'replies', 'radar_new', 'content_status', 'content_performance', 'panel', 'radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'ig_week_status', 'storyday_gate', 'story_proposal_save', 'editorial_plan', 'radar_report', 'content_radar_report', 'job_report', 'alerts_poll', 'alerts_ack', 'ideas_list', 'ideas_gate', 'ideas_propose', 'ideas_revise', 'taller_list', 'mail_view', 'history_list', 'week_status', 'results_view', 'learning_context', 'learning_propose', 'strategic_view', 'strategic_today', 'strategic_gate', 'strategic_targets', 'strategic_prod_check', 'strategic_ingest'];
 
 export const parseCode = `try {
   const first = $('Ops Webhook').first().json || {};
@@ -186,6 +186,20 @@ export const parseCode = `try {
       const tid = UU.test(String(P.target_id || '')) ? String(P.target_id).toLowerCase() : '00000000-0000-0000-0000-000000000000';
       sr('sr_target', 'strategic_prod_targets?id=eq.' + tid + '&select=id,logical_name,status,monitor_enabled,is_test&limit=1');
       sr('sr_recent', 'strategic_prod_checks?target_id=eq.' + tid + '&select=target_id,checked_at,result,http_status,is_test&order=checked_at.desc&limit=6');
+    }
+  }
+  // Radar · ingesta de hallazgos de la IA (clave de ingesta; el navegador nunca la pide). Lee lo ya guardado de ESA categoría para deduplicar y proteger decisiones humanas.
+  if (action === 'strategic_ingest') {
+    const KK = { products: 'product', partners: 'partner', events: 'event' };
+    const kk = KK[String(P.kind || '')] || null;
+    const sr = (key, rest) => growth_reads.push({ key, url: sb + rest });
+    sr('sr_cfg', 'strategic_radar_config?id=eq.1&select=*');
+    sr('sys_state', 'system_state?id=eq.1&select=*');
+    if (kk) {
+      const rid = UU.test(String(P.run_id || '')) ? String(P.run_id).toLowerCase() : '00000000-0000-0000-0000-000000000000';
+      sr('sr_run', 'strategic_runs?id=eq.' + rid + '&select=id,kind,status,accepted_count,duplicate_count,failed_count&limit=1');
+      sr('sr_existing', 'strategic_opportunities?kind=eq.' + kk + '&select=id,fingerprint,canonical_url,status,is_test,event_start_at,event_timezone,score_parts&limit=1500');
+      sr('sr_evidence', 'strategic_evidence?select=opportunity_id,source_url,claim&order=verified_at.desc&limit=4000');
     }
   }
   if (action === 'ideas_gate') growth_reads.push({ key: 'sources_verified', url: sb + 'content_sources?verified=eq.true&created_at=gte.' + iso(now - 21 * 86400000) + '&select=id,title,url,kind,signal_type,source_date,created_at&order=created_at.desc&limit=60' });
@@ -326,6 +340,17 @@ else if (A === 'strategic_targets' || A === 'strategic_prod_check') {
     const tid2 = String(pp.target_id || '').toLowerCase();
     const pl = srCheckPlan(pp, { now: p.now, cfg: srCfg2, paused: paused2, target: (G.sr_target || [])[0] || null, recent: G.sr_recent || [], alert_open: d.alerts.some((a) => a.alert_key === 'strategic_prod:' + tid2 && a.status === 'open') });
     if (pl.error) out = { ok: false, error: pl.error, text: pl.message }; else { pl.writes.forEach((w) => writes.push(w)); out = { ...pl.resp, text: 'Chequeo registrado: ' + pl.resp.state }; }
+  }
+}
+else if (A === 'strategic_ingest') {
+  // Ingesta (solo clave de ingesta). Compuertas SIEMPRE en el servidor (test=true no las salta); dry_run valida sin escribir ni exigir bandera. La corrida se guarda al final.
+  const srFailed3 = missing.some((m) => /^growth:(sr_|sys_state)/.test(m)) || !G.sr_cfg;
+  const pi = p.params || {};
+  if (srFailed3 && !p.dry) out = { ok: false, error: 'source_unavailable', text: 'No pude leer el Radar (migración sin aplicar o Supabase caído). No se guardó nada.' };
+  else {
+    const plan = srIngestPlan({ kind: pi.kind, run_id: pi.run_id, items: pi.items, test: pi.test === true, trigger: pi.trigger, started_at: pi.started_at }, { now: p.now, cfg: (G.sr_cfg || [])[0] || null, paused: !!(d.system_state && d.system_state.global_pause === true), existing: G.sr_existing || [], evidence: G.sr_evidence || [], run: (G.sr_run || [])[0] || null, newId: () => ideasNewId(), validate_only: p.dry === true });
+    if (plan.error) out = { ok: false, error: plan.error, text: plan.message };
+    else { plan.writes.forEach((w) => writes.push(w)); out = { ...plan.resp, text: plan.resp.replayed ? 'Corrida ya registrada (sin cambios).' : 'Hallazgos: ' + plan.resp.accepted + ' nuevos · ' + plan.resp.duplicates + ' repetidos · ' + plan.resp.rejected.length + ' rechazados.' }; }
   }
 }
 else if (A === 'ideas_list') { out = { ideas: ideasListView(G.ideas_rows || [], G.idea_batches || [], p.now, CFG.tz) }; }

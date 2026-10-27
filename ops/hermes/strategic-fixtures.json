@@ -1,0 +1,541 @@
+{
+  "_doc": "Generado por el motor de Node (strategic-radar-core.mjs): es la fuente de verdad. Python debe reproducirlo exactamente (ops/hermes/strategic_monitor_test.py y strategic_lib_test.py). Regenerar solo si cambia §17.3 del spec.",
+  "event_date": "2026-11-18",
+  "cases": [
+    {
+      "input": "https://github.com/Acme/Repo/?utm_source=a#readme",
+      "canonical": "https://github.com/Acme/Repo",
+      "fingerprints": {
+        "product": "da86b744e3e5fd9473c6f8a5733ff3dece5263cccc6c5019859ed76c69aca481",
+        "partner": "c3b5873267bc051c84852a64c683e54eda5310522be84b5e6c1240ad1aa67612",
+        "event": "f79f834adfe4807519bced98be83725dba2e90527fca4da69ae4bc6274113bc2",
+        "event_dated": "2b9fe373340b54b69d971492868afbe3214b397e095321a7ad9d892523c906b3"
+      }
+    },
+    {
+      "input": "https://github.com/Acme/Repo",
+      "canonical": "https://github.com/Acme/Repo",
+      "fingerprints": {
+        "product": "da86b744e3e5fd9473c6f8a5733ff3dece5263cccc6c5019859ed76c69aca481",
+        "partner": "c3b5873267bc051c84852a64c683e54eda5310522be84b5e6c1240ad1aa67612",
+        "event": "f79f834adfe4807519bced98be83725dba2e90527fca4da69ae4bc6274113bc2",
+        "event_dated": "2b9fe373340b54b69d971492868afbe3214b397e095321a7ad9d892523c906b3"
+      }
+    },
+    {
+      "input": "https://GITHUB.com/Acme/Repo/",
+      "canonical": "https://github.com/Acme/Repo",
+      "fingerprints": {
+        "product": "da86b744e3e5fd9473c6f8a5733ff3dece5263cccc6c5019859ed76c69aca481",
+        "partner": "c3b5873267bc051c84852a64c683e54eda5310522be84b5e6c1240ad1aa67612",
+        "event": "f79f834adfe4807519bced98be83725dba2e90527fca4da69ae4bc6274113bc2",
+        "event_dated": "2b9fe373340b54b69d971492868afbe3214b397e095321a7ad9d892523c906b3"
+      }
+    },
+    {
+      "input": "https://github.com:443/Acme/Repo",
+      "canonical": "https://github.com/Acme/Repo",
+      "fingerprints": {
+        "product": "da86b744e3e5fd9473c6f8a5733ff3dece5263cccc6c5019859ed76c69aca481",
+        "partner": "c3b5873267bc051c84852a64c683e54eda5310522be84b5e6c1240ad1aa67612",
+        "event": "f79f834adfe4807519bced98be83725dba2e90527fca4da69ae4bc6274113bc2",
+        "event_dated": "2b9fe373340b54b69d971492868afbe3214b397e095321a7ad9d892523c906b3"
+      }
+    },
+    {
+      "input": "https://organizador.cl/evento?id=2026",
+      "canonical": "https://organizador.cl/evento?id=2026",
+      "fingerprints": {
+        "product": "124f2eb572b881ee7510bf4037321a61be38c8237b887dfcc78e05b006dfe9f1",
+        "partner": "d10db363a2e85b1fbbd725a8c6be80f7a499959224097cf9257dc2c7d8dcc90a",
+        "event": "13df7900c8980db0368bd6e1e372a6f311187a56de4bafecf431c4748dfaa9c3",
+        "event_dated": "8373d493acc1a312e2954a7bef97590630ec602ef98d3c3645aba54a1ec8e4d6"
+      }
+    },
+    {
+      "input": "https://organizador.cl/evento?id=2027",
+      "canonical": "https://organizador.cl/evento?id=2027",
+      "fingerprints": {
+        "product": "1524955049b735632e18ad2ca940fde435d9b4191b0822ce657b07dd0547af17",
+        "partner": "a2db109fa2adc6e9ed064fa287a96e9cb321cd0757743fbf86412a6986be9393",
+        "event": "c5cfa109a01ffcc10114212489c1d972248d3297adb90b4b66b1da1c11f57832",
+        "event_dated": "010419f23cf930c605a08ba370a6331be55e7cf8a6c51bd0f7f8a27608a069be"
+      }
+    },
+    {
+      "input": "https://organizador.cl/evento/?id=2026&utm_medium=mail",
+      "canonical": "https://organizador.cl/evento?id=2026",
+      "fingerprints": {
+        "product": "124f2eb572b881ee7510bf4037321a61be38c8237b887dfcc78e05b006dfe9f1",
+        "partner": "d10db363a2e85b1fbbd725a8c6be80f7a499959224097cf9257dc2c7d8dcc90a",
+        "event": "13df7900c8980db0368bd6e1e372a6f311187a56de4bafecf431c4748dfaa9c3",
+        "event_dated": "8373d493acc1a312e2954a7bef97590630ec602ef98d3c3645aba54a1ec8e4d6"
+      }
+    },
+    {
+      "input": "https://example.org/p?UTM_Source=x&fbclid=1&gclid=2&igshid=3&event=ia&id=7&edition=2026&year=2026",
+      "canonical": "https://example.org/p?edition=2026&event=ia&id=7&year=2026",
+      "fingerprints": {
+        "product": "a3a4357ce3bfeef69a86bb4fad9d1208fa5d8070a9b206cd4fd6a91c36f431ef",
+        "partner": "4c8f46708d9f395b0caaa7cc19dfc0b3b6244d304a7da4f00434bdd2f830525a",
+        "event": "5a232d43544b6600e88b840d85f677a2b16bf02b2524ec99383da4afe98ed65d",
+        "event_dated": "326c1d308d464947dbc18cb64caad6139ebac4dcfc8c53affb48675ee395e9ec"
+      }
+    },
+    {
+      "input": "https://example.org/p?b=2&a=1&a=0",
+      "canonical": "https://example.org/p?a=0&a=1&b=2",
+      "fingerprints": {
+        "product": "040638fbb218a2b5a7193777e4c4f281ffaa213a8592f07c6d61b8ce5d8d3825",
+        "partner": "76f628d3d702da1105f205cef39a2e67cc7150f0c44867999d4b3449b73463c7",
+        "event": "ebf107d33e10d0ea23f4594c63135090e49a5aa782a68b147f353f283f4a211c",
+        "event_dated": "9f9c780926a774bbf01aa019383ed8f9a4284e6f58b468036e743982c53be6ea"
+      }
+    },
+    {
+      "input": "https://example.org/p?utm_campaign=z",
+      "canonical": "https://example.org/p",
+      "fingerprints": {
+        "product": "d77ccd16af60b5607f09e153cbef857128d6445078702c367e251264d39ad814",
+        "partner": "0ba22c1b6430642e14c531c69a77565666022d388fe5fdd3bdbe62d8f785f76c",
+        "event": "79f811c66190913cccd936e74e64bc223cd8726cc2c874133ba9ecf3124357c4",
+        "event_dated": "8a07a58ae997b07482abfc34c9e660834847445fbc7390b1401350fbb35065fe"
+      }
+    },
+    {
+      "input": "https://example.org/p?a=1&&b=2&",
+      "canonical": "https://example.org/p?a=1&b=2",
+      "fingerprints": {
+        "product": "83bb0828f2c8d619e8d75acad2971a6873ef51502aefc6252b207dc0aba09487",
+        "partner": "2d1e4a65987b2868b09f79daf6a0b52f23be1b4c7c2df23e32c278bfe8ed5d63",
+        "event": "6a790ec95d692f4386d2eabd27a606fa723b2e410d9c4e0a0a608cc3d68c5dd7",
+        "event_dated": "29bc08575d313e7ccc4dea80f7dc7fe7d893b090a72e3f32d1b6bf92bbd8baae"
+      }
+    },
+    {
+      "input": "https://example.org",
+      "canonical": "https://example.org/",
+      "fingerprints": {
+        "product": "5239ce2ec209574222651cdcd65fbf68386c4707cd0d420cdc6e9cead3cf9bf2",
+        "partner": "bff1699571e7a3de6d1ad5fedcc443f015f87146218bae1b2aaa83f5440a39e2",
+        "event": "88764292881a8e0328026e53e8e55a19ef29d4d7e1416e34fe087a46669171c6",
+        "event_dated": "5c228c12947164f65887f71b20ca445507bbb3a28347e26831a51bf1fcf0bbda"
+      }
+    },
+    {
+      "input": "https://example.org/",
+      "canonical": "https://example.org/",
+      "fingerprints": {
+        "product": "5239ce2ec209574222651cdcd65fbf68386c4707cd0d420cdc6e9cead3cf9bf2",
+        "partner": "bff1699571e7a3de6d1ad5fedcc443f015f87146218bae1b2aaa83f5440a39e2",
+        "event": "88764292881a8e0328026e53e8e55a19ef29d4d7e1416e34fe087a46669171c6",
+        "event_dated": "5c228c12947164f65887f71b20ca445507bbb3a28347e26831a51bf1fcf0bbda"
+      }
+    },
+    {
+      "input": "https://example.org//",
+      "canonical": "https://example.org/",
+      "fingerprints": {
+        "product": "5239ce2ec209574222651cdcd65fbf68386c4707cd0d420cdc6e9cead3cf9bf2",
+        "partner": "bff1699571e7a3de6d1ad5fedcc443f015f87146218bae1b2aaa83f5440a39e2",
+        "event": "88764292881a8e0328026e53e8e55a19ef29d4d7e1416e34fe087a46669171c6",
+        "event_dated": "5c228c12947164f65887f71b20ca445507bbb3a28347e26831a51bf1fcf0bbda"
+      }
+    },
+    {
+      "input": "https://example.org/a/b/",
+      "canonical": "https://example.org/a/b",
+      "fingerprints": {
+        "product": "6661ff0ef47a708bd03d26765dff0a9f8d31b2c070249808ba2c46e699ddecae",
+        "partner": "898d7f489146160db15ce8db2ebb9f256d66ff6a7ee0530f891a75c5b3968431",
+        "event": "ee5790723f31df6659df80af942ab9ad921ba566ed30b3234011f106f586922f",
+        "event_dated": "e065be169d9a29726a42acf129d9731b8611daa5bf9f8b72451d705e6fac65a0"
+      }
+    },
+    {
+      "input": "https://example.org/A/B",
+      "canonical": "https://example.org/A/B",
+      "fingerprints": {
+        "product": "bbabee2e1e5d7aea72fe8007b14ff600b980a6446023c86a1f80e6959f47ecc4",
+        "partner": "b95fe92a50e4921e69671ed508755dfbb41b40482d04d9569384886cc67b0673",
+        "event": "bd6ab974b00779b74c6451ebf703946c194ceac2b496848362c3f48fa43df70a",
+        "event_dated": "cc85ca0b59f88da1abc7a1c3a2ee9a8036198a16458efef56d0c35e9422d2892"
+      }
+    },
+    {
+      "input": "https://example.org/a b",
+      "canonical": "https://example.org/a%20b",
+      "fingerprints": {
+        "product": "0e4c69e3df703d2916984a0a0fe8c8bc4cbfc5463ab317ac653a7580de24774a",
+        "partner": "3bfd0003369a6528cc508982383e99cd1dfc81f5b257cf27938c46cf52ac4f74",
+        "event": "3bd9af00e242eed4e4c99f3b932a0fd9e49c82495a8f7e20f9f5e88b756bde2a",
+        "event_dated": "30cbf83f69e2ae94d9d8a2c370d894e280d7e7700062472874fab48a32e2c82c"
+      }
+    },
+    {
+      "input": "https://example.org/ñandú",
+      "canonical": "https://example.org/%C3%B1and%C3%BA",
+      "fingerprints": {
+        "product": "67cf1934e901b9d6b8f48a8352f3618b89cee831de4ac40fdb10a962df8ded9e",
+        "partner": "7cfe3d73dd42aacc8750c6b5826cc0c835eb0bbd47162c30a92ab6976df4ffc7",
+        "event": "79e99d7554fd861e0a50c1500956de16d3a201e0c545f9226622f88407b3af3d",
+        "event_dated": "198499486f84e45167cafccfcf58659b3461efc3ad0840f8ad2a3e6059dc4717"
+      }
+    },
+    {
+      "input": "https://example.org/a%20b/",
+      "canonical": "https://example.org/a%20b",
+      "fingerprints": {
+        "product": "0e4c69e3df703d2916984a0a0fe8c8bc4cbfc5463ab317ac653a7580de24774a",
+        "partner": "3bfd0003369a6528cc508982383e99cd1dfc81f5b257cf27938c46cf52ac4f74",
+        "event": "3bd9af00e242eed4e4c99f3b932a0fd9e49c82495a8f7e20f9f5e88b756bde2a",
+        "event_dated": "30cbf83f69e2ae94d9d8a2c370d894e280d7e7700062472874fab48a32e2c82c"
+      }
+    },
+    {
+      "input": "https://example.org/a?q=hola mundo",
+      "canonical": "https://example.org/a?q=hola%20mundo",
+      "fingerprints": {
+        "product": "2b791c21ebb38331ff69115f3b6840adbfbe695f72d12fa0b1ed1c6c863ab5a9",
+        "partner": "fe7f1b66cebfefa796e002eef4d4446d593261d253714c168e8e0e9484c0a580",
+        "event": "b1ada7ca14e090949fb4485f2c4392d3e09df27cdedc21079a14b9e921adeb5c",
+        "event_dated": "38397cb09809028814c4ea2cc7912c5e116b01b11daa20836c3d44c5ca9b97f0"
+      }
+    },
+    {
+      "input": "https://example.org/a?q=ñ",
+      "canonical": "https://example.org/a?q=%C3%B1",
+      "fingerprints": {
+        "product": "82a0101ab4ff7286830f065ac9c7578ee79409ddc96d8aeb408dc33ae1074a24",
+        "partner": "a51522e67d0ca6c23c90c4669ce71431c0ba94ef449dfb07f16207c2353297b3",
+        "event": "6ccb6e7290064008b43473e82ab9028acf95328026c5500811ecd77f88a6b4d6",
+        "event_dated": "ef950bc789a23356471b19b485c7bea71ecb76c938ff15be775af1cdf3710fe5"
+      }
+    },
+    {
+      "input": "https://Example.ORG.",
+      "canonical": "https://example.org/",
+      "fingerprints": {
+        "product": "5239ce2ec209574222651cdcd65fbf68386c4707cd0d420cdc6e9cead3cf9bf2",
+        "partner": "bff1699571e7a3de6d1ad5fedcc443f015f87146218bae1b2aaa83f5440a39e2",
+        "event": "88764292881a8e0328026e53e8e55a19ef29d4d7e1416e34fe087a46669171c6",
+        "event_dated": "5c228c12947164f65887f71b20ca445507bbb3a28347e26831a51bf1fcf0bbda"
+      }
+    },
+    {
+      "input": "https://sub.dominio.example.org/x",
+      "canonical": "https://sub.dominio.example.org/x",
+      "fingerprints": {
+        "product": "c3163175f091dc3b88a475375674289ea47ab485fb3820c336dd86533f95cbd7",
+        "partner": "b1e1f9f484f6613b1ef4ff325a540718990de0276d6cc27717fe233954d257fe",
+        "event": "93d35e9965a70907232654270a0ffa27597c4b800c4adc5f6baaa3db93a73725",
+        "event_dated": "664fee63d236f91ae38c60bd74eba3694a0054096c4040b0721cdfba7d4b2adb"
+      }
+    },
+    {
+      "input": "https://münchen.example/x",
+      "canonical": "https://xn--mnchen-3ya.example/x",
+      "fingerprints": {
+        "product": "ee0f1c3d62dc2cc331433ff86e17d41efb83661d56f2b357ee103d7887b541a0",
+        "partner": "49461e260c022c21444383b24f8f37f30a6a7681c6ccf46f3ee960506e5f9baf",
+        "event": "383babe4652ad02cf2fb92e1ae52101e97a4dab99b6fb1f0f7c1a9d1314e76ec",
+        "event_dated": "e014fc02fa7061007b1e14c53eefd70bb0d3a34875085bd35f10a5b95033b591"
+      }
+    },
+    {
+      "input": "https://xn--mnchen-3ya.example/x",
+      "canonical": "https://xn--mnchen-3ya.example/x",
+      "fingerprints": {
+        "product": "ee0f1c3d62dc2cc331433ff86e17d41efb83661d56f2b357ee103d7887b541a0",
+        "partner": "49461e260c022c21444383b24f8f37f30a6a7681c6ccf46f3ee960506e5f9baf",
+        "event": "383babe4652ad02cf2fb92e1ae52101e97a4dab99b6fb1f0f7c1a9d1314e76ec",
+        "event_dated": "e014fc02fa7061007b1e14c53eefd70bb0d3a34875085bd35f10a5b95033b591"
+      }
+    },
+    {
+      "input": "https://example.org/a/./b/../c",
+      "canonical": "https://example.org/a/c",
+      "fingerprints": {
+        "product": "75e487501d5c6755d8e779f4dbac2a1ba500868219f95ba03b8886b403bc08b8",
+        "partner": "313f05d4fc6f5ed1729878a67d5f0cf166511378df9181683137293f31fe8dd4",
+        "event": "02e5b805418176e7006bdd38f1f52baa34215048941351d01d9ec1abf5597b39",
+        "event_dated": "866f3fde7c2dac7e6a294edeb19f97d2f4212f75b003016ecd11b2d7da582fa1"
+      }
+    },
+    {
+      "input": "https://example.org/a/b/..",
+      "canonical": "https://example.org/a",
+      "fingerprints": {
+        "product": "2307573bc6541e84b47c34ec037b7601aafdebdb30686106b2cd4c3cc811654f",
+        "partner": "00298ecda2ec4dde7156c80357404c49a2a57e386cb68dd235e5e4781e6a42ca",
+        "event": "d65482982090f5d9d9767798098765d5bc41f18e8d37a55129e6779823c8f15b",
+        "event_dated": "74cb87a68bb3c73c0fb3b623ca9d908be29c13d08747c4354694c2cd9f802419"
+      }
+    },
+    {
+      "input": "https://example.org/../x",
+      "canonical": "https://example.org/x",
+      "fingerprints": {
+        "product": "b694dc7b5187989822fd722957a799899a7f2cb7106a4253dd0e4c6393dc59a3",
+        "partner": "e107c88fdf416091cd02f81238c82c9abd836863d28f7c07a06c581feffe349e",
+        "event": "8f24f5e61ffeb9620aa6cf82135aa5bb418b82add44e3deeda101ae28bf24697",
+        "event_dated": "9cde7c2b67d34bb4fdafb9998b2138ff0f2bd93999a8b47a1ab4d37405abad4d"
+      }
+    },
+    {
+      "input": "https://example.org/%7Euser/",
+      "canonical": "https://example.org/%7Euser",
+      "fingerprints": {
+        "product": "b337d9bdda82f579c690fde3d120d2ee71b1796e7259374043abb9f7df4770e8",
+        "partner": "26d0ce458e3a5108fc59a8123a9b62e2da07a5c0bf3ce9212a0a39dee10701ca",
+        "event": "1ad828bbb2d3485a3a30d21ff9b39d940e4e1bcd1e5c43ed2348bb30533b95aa",
+        "event_dated": "60e6ad058eb0173523f16003cbdeccc2393b556ae46b451c11cd21379fe52115"
+      }
+    },
+    {
+      "input": "https://example.org/a?x=1+2&y=%20",
+      "canonical": "https://example.org/a?x=1+2&y=%20",
+      "fingerprints": {
+        "product": "7801f0f88778c8fcd7153db1b2dd6a01d5fbe4c1fbddf832eadd17eeaf700445",
+        "partner": "cce894a72c60d45f851cd5e1b0ea54dface1b177afaf797b8e80021ae9a4c865",
+        "event": "f574e366a132ffff6e1a399894670010817eb1b3dbe3457c0592ae5875d6d6f4",
+        "event_dated": "5aa2998b3b8a5031b6af8595c7e0a760008aca98b42399cf57ac88fbaf7c6571"
+      }
+    },
+    {
+      "input": "https://example.org/a?q=%zz",
+      "canonical": "https://example.org/a?q=%zz",
+      "fingerprints": {
+        "product": "3455702343b49329f5f0d94d36667020cbf436821197490ef35cd0818bbd866a",
+        "partner": "65242828efdc794dc9d5e19cf1d6f90e9080fca7ccfd69ee1f46834159e7fbe5",
+        "event": "673d842c8bcb91c464fc4009c97fd489f6e1d4d23f50e999f330a03487dd309a",
+        "event_dated": "24a54dbe759b8bb2b65e8b235aafb5fd36c08539f13a9aa97f87d59c46265b86"
+      }
+    },
+    {
+      "input": "https://EXAMPLE.org:443/",
+      "canonical": "https://example.org/",
+      "fingerprints": {
+        "product": "5239ce2ec209574222651cdcd65fbf68386c4707cd0d420cdc6e9cead3cf9bf2",
+        "partner": "bff1699571e7a3de6d1ad5fedcc443f015f87146218bae1b2aaa83f5440a39e2",
+        "event": "88764292881a8e0328026e53e8e55a19ef29d4d7e1416e34fe087a46669171c6",
+        "event_dated": "5c228c12947164f65887f71b20ca445507bbb3a28347e26831a51bf1fcf0bbda"
+      }
+    },
+    {
+      "input": "https://example.org/a;b=c/d",
+      "canonical": "https://example.org/a;b=c/d",
+      "fingerprints": {
+        "product": "59933d4ea72c9a63d371995b0c3b5d4060adc40fc52c63206e613dccb3161f02",
+        "partner": "94fb14c9632138ca0df773e3d631451049e2e95906cdfb6dc78d6b85e889d58e",
+        "event": "9a3004bd30332950da488e40e91b7e6eb6815d5f4c45cd1f7e943eac2acce9af",
+        "event_dated": "bb28c47f75bf8eef2954a4fec4bd8ae7cbcef30512651ad846f1acd2e118a360"
+      }
+    },
+    {
+      "input": "https://example.org/a?b=c=d&a=z",
+      "canonical": "https://example.org/a?a=z&b=c=d",
+      "fingerprints": {
+        "product": "e26d91525e05a3c5ce7d3b87da9923d8c949a61ce66a8fdeff1641d36f48f25b",
+        "partner": "6f1233163636e411473790fd2a6b83918bca1f9d64b776c8563aa5ec7595a3a4",
+        "event": "31058b58fa00607e6aad12e3cdcbb80f68e55af10c7e6059febcca18c756ea96",
+        "event_dated": "811beffaf51f0e32f1d43b6f3fafd5fa1089b4c154faddb13f8a35873315f9b3"
+      }
+    },
+    {
+      "input": "https://example.org/a?z&y=&x=1",
+      "canonical": "https://example.org/a?x=1&y=&z",
+      "fingerprints": {
+        "product": "81f4c1f86a4ef9c9a75bdae02cfbfd464e28c063c32c2fd5eb04f22626e252aa",
+        "partner": "7b1885b74c63957520df6a4cf4978ff1f43ad088753d9387ea8b2e139a658f5d",
+        "event": "2cfae5c66b4fadf1a099450fa60c160dbd1ead01736ecc92f246cea1e764a77c",
+        "event_dated": "407161dce52800e3d091fefdd83fe79e1f7a39f6eee76f6563689d9cc0002c86"
+      }
+    },
+    {
+      "input": "https://example.org/path with spaces/?k=v w",
+      "canonical": "https://example.org/path%20with%20spaces?k=v%20w",
+      "fingerprints": {
+        "product": "c625b0fdacdf0fe889f20a2df1159fa202ec263eef9567e891981fe85ed3716f",
+        "partner": "258e1e08ce815f8517f32ad33077f70420bb824186e5495b4c76a93aed3670e5",
+        "event": "5acb8f92209e11c1f29e8588f76d5c529f3940b1bd20f348f04fd9caae35d1ca",
+        "event_dated": "a19bb43fe9a0d0bd3e1a3043f947a18771bc48a9acb033d97be2d305a910463f"
+      }
+    },
+    {
+      "input": "https://example.org/\tx\ny",
+      "canonical": "https://example.org/xy",
+      "fingerprints": {
+        "product": "d4d3ed30e1fa4dd64c0eb7917ea768b11010fab21edb8448f71b7f02593ce4d1",
+        "partner": "c025f1d19eaf5a624067f2e1a154fbefc7685614a40cc2729aa86cde41aec884",
+        "event": "005b6bed38101133813697ac1d6011f9bd5e33d7baeb553c2dae40a5e1c3e4f2",
+        "event_dated": "3fa7f22cca0bf7276d9c481e42b65da6c1e5ec3856223c6bb52b4e9f80f7801f"
+      }
+    },
+    {
+      "input": "https://example.org/a?utm_content=1&UTM_TERM=2&Fbclid=3",
+      "canonical": "https://example.org/a",
+      "fingerprints": {
+        "product": "2307573bc6541e84b47c34ec037b7601aafdebdb30686106b2cd4c3cc811654f",
+        "partner": "00298ecda2ec4dde7156c80357404c49a2a57e386cb68dd235e5e4781e6a42ca",
+        "event": "d65482982090f5d9d9767798098765d5bc41f18e8d37a55129e6779823c8f15b",
+        "event_dated": "74cb87a68bb3c73c0fb3b623ca9d908be29c13d08747c4354694c2cd9f802419"
+      }
+    },
+    {
+      "input": "http://example.org/x",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "ftp://example.org/x",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "https://user:pass@example.org/x",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "https://user@example.org/x",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "https://example.org:8443/x",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "https://localhost/x",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "https://a.localhost/x",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "https://srv.local/x",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "https://db.internal/x",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "https://intranet/x",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "https://10.0.0.5/x",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "https://127.0.0.1/x",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "https://169.254.169.254/x",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "https://172.16.0.1/x",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "https://192.168.1.1/x",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "https://100.64.0.1/x",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "https://0.0.0.0/x",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "https://224.0.0.1/x",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "https://8.8.8.8/x",
+      "canonical": "https://8.8.8.8/x",
+      "fingerprints": {
+        "product": "830ae0e6f64c29d41157d64fe7b5424057b08cb990b597f61ae5340d126ba8c8",
+        "partner": "634743fb8be18aeda8164566b95046910b496e613dedb6050798992f2f0d4792",
+        "event": "241df49507bdb2334185676b6b7dd24739ee3b9596238d116f2206db1e5fd619",
+        "event_dated": "7837438245dc2179171bd5c221f10ba31a17970c33a82c09001954d68beeacf8"
+      }
+    },
+    {
+      "input": "https://[::1]/x",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "https://2130706433/x",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "https://0x7f.0.0.1/x",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "data:text/html,hola",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "javascript:alert(1)",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "file:///etc/passwd",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "   ",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "no es una url",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "https://",
+      "canonical": null,
+      "fingerprints": null
+    },
+    {
+      "input": "https:///x",
+      "canonical": null,
+      "fingerprints": null
+    }
+  ]
+}

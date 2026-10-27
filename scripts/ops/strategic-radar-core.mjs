@@ -474,3 +474,165 @@ export function srTargetConfirmPlan(req, row, ctx) {
     writes: [{ method: 'PATCH', path: 'strategic_prod_targets?id=eq.' + row.id + '&status=eq.candidate&is_test=eq.' + (row.is_test === true ? 'true' : 'false'), body: { status: 'confirmed', repo_full_name: req.repo_full_name, deployment_url: req.deployment_url, health_url: req.health_url, provider: req.provider, verified_by: by, verified_at: nowIso, monitor_enabled: false, updated_at: nowIso }, prefer: 'return=representation', check_rows: true, check_error: 'stale_state', check_message: STALE }],
   };
 }
+
+// ---------- Ingesta de hallazgos de la IA (strategic_ingest · spec §6.1, §9.4, §17.2, §17.4) ----------
+/** Criterios y máximos de puntaje por categoría (§7). La IA NO envía un puntaje: envía criterios y el servidor suma. */
+export function srScoringSpec(kind) {
+  return ({ products: { license: 25, functionality: 25, integrations: 15, security: 15, deploy: 10, sales_fit: 10 }, partners: { fit: 30, mutual_benefit: 20, eligibility: 20, access: 15, terms: 15 }, events: { audience: 30, connections: 25, relevance: 20, logistics: 15, verification: 10 } })[kind] || null;
+}
+
+/** Fecha calendario (YYYY-MM-DD) de un instante en la zona dada (la del evento; UTC si no hay). */
+export function srLocalDate(ms, tz) {
+  try { return new Intl.DateTimeFormat('en-CA', { timeZone: tz || 'UTC', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms)); } catch { return new Date(ms).toISOString().slice(0, 10); }
+}
+
+/** Valida UN hallazgo y lo normaliza. Devuelve {error} (código estable) o {value}. No toca la base ni inventa nada: lo ausente queda null. */
+export function srIngestItem(kind, it, now) {
+  const x = it && typeof it === 'object' && !Array.isArray(it) ? it : null;
+  if (!x) return { error: 'item_invalido' };
+  const spec = srScoringSpec(kind);
+  const len = (v, min, max) => typeof v === 'string' && v.trim().length >= min && v.trim().length <= max;
+  if (!len(x.title, 5, 200)) return { error: 'title_invalido' };
+  if (!len(x.organization, 1, 200)) return { error: 'organization_missing' };
+  const url = srCanonicalUrl(x.canonical_url);
+  if (!url) return { error: 'url_invalida' };
+  if (!len(x.summary, 10, 2000)) return { error: 'summary_invalido' };
+  if (!len(x.business_case, 10, 2000)) return { error: 'business_case_invalido' };
+  if (!len(x.next_action, 5, 500)) return { error: 'next_action_invalido' };
+  if (x.target_customer != null && !len(x.target_customer, 1, 300)) return { error: 'target_customer_invalido' };
+  const sc = x.scoring && typeof x.scoring === 'object' && !Array.isArray(x.scoring) ? x.scoring : null;
+  if (!sc) return { error: 'scoring_faltante' };
+  for (const k of Object.keys(sc)) {
+    if (!Object.prototype.hasOwnProperty.call(spec, k)) return { error: 'scoring_no_corresponde' };
+    if (!(Number.isInteger(sc[k]) && sc[k] >= 0 && sc[k] <= spec[k])) return { error: 'scoring_fuera_de_rango' };
+  }
+  const ev = srValidateEvidence(x);
+  if (!ev.ok) return { error: ev.reasons[0] || 'evidence_missing' };
+  if (x.evidence.slice(0, 5).some((e) => e.source_published_at != null && e.source_published_at !== '' && !Number.isFinite(Date.parse(e.source_published_at)))) return { error: 'source_published_at_invalido' };
+  const evs = x.evidence.slice(0, 5).map((e) => ({ source_url: srCanonicalUrl(e.source_url), source_title: srStr(e.source_title).slice(0, 300), source_type: e.source_type, claim: srStr(e.claim).slice(0, 2000), excerpt: srStr(e.excerpt) ? srStr(e.excerpt).slice(0, 350) : null, source_published_at: e.source_published_at ? new Date(Date.parse(e.source_published_at)).toISOString() : null, verified_at: new Date(srParseDate(e.verified_at).ms).toISOString() }));
+  if (evs.some((e) => Date.parse(e.verified_at) > now + 5 * 60000)) return { error: 'verified_at_futuro' };
+  const blockers = x.critical_blockers == null ? [] : x.critical_blockers;
+  if (!Array.isArray(blockers) || blockers.length > 10 || blockers.some((b) => !len(b, 1, 200))) return { error: 'critical_blockers_invalidos' };
+  const hasReq = Array.isArray(x.requirements) ? x.requirements.length > 0 : x.requirements != null;
+  const hasLic = x.license_id != null || x.license_verified === true;
+  if (kind !== 'products' && (hasReq || hasLic)) return { error: 'campo_no_corresponde' };
+  if (kind === 'products' && (x.deadline_at != null || x.event_start_at != null || x.event_end_at != null || x.event_timezone != null || x.event_location != null || x.event_format != null)) return { error: 'campo_no_corresponde' };
+  if (kind === 'partners' && (x.event_start_at != null || x.event_end_at != null || x.event_timezone != null || x.event_location != null || x.event_format != null)) return { error: 'campo_no_corresponde' };
+  const base = { title: x.title.trim(), organization: x.organization.trim(), canonical_url: url, summary: x.summary.trim(), business_case: x.business_case.trim(), target_customer: x.target_customer ? x.target_customer.trim() : null, next_action: x.next_action.trim(), critical_blockers: blockers.map((b) => b.trim()), evidence: evs, license_id: null, license_verified: false, coverage_pct: null, event_start_at: null, event_end_at: null, deadline_at: null, event_timezone: null, event_location: null, event_format: null };
+  const dateOut = (raw) => { const p = srParseDate(raw); return p ? new Date(p.date_only ? Date.parse(p.date + 'T00:00:00Z') : p.ms).toISOString() : null; };
+  if (kind === 'products') {
+    const lic = x.license_id == null ? null : x.license_id;
+    if (lic !== null && !len(lic, 1, 100)) return { error: 'license_id_invalido' };
+    if (x.license_verified != null && typeof x.license_verified !== 'boolean') return { error: 'license_verified_invalido' };
+    if (x.license_verified === true && !lic) return { error: 'license_id_missing' };
+    const reqs = x.requirements == null ? [] : x.requirements;
+    if (!Array.isArray(reqs) || reqs.length > 10) return { error: 'requirements_invalidos' };
+    for (const q of reqs) {
+      if (!q || typeof q !== 'object' || !len(q.name, 1, 200) || ['implemented', 'partial', 'missing', 'unknown'].indexOf(q.state) < 0) return { error: 'requirement_invalido' };
+      if (q.evidence_url != null && !srCanonicalUrl(q.evidence_url)) return { error: 'requirement_url_invalida' };
+    }
+    const r = srScoreProduct({ ...x, scoring: sc, license_id: lic, license_verified: x.license_verified === true, requirements: reqs, critical_blockers: base.critical_blockers });
+    return { value: { ...base, license_id: lic, license_verified: x.license_verified === true, coverage_pct: r.coverage_pct, score: r.score, confidence: r.confidence, score_parts: { ...r.parts, coverage_provisional: r.coverage_provisional, nearly_ready: r.nearly_ready, requirements_count: reqs.length } } };
+  }
+  const dl = x.deadline_at == null || x.deadline_at === '' ? null : x.deadline_at;
+  if (dl !== null && !srParseDate(dl)) return { error: 'fecha_invalida' };
+  base.deadline_at = dl === null ? null : dateOut(dl);
+  if (kind === 'partners') {
+    const r = srScorePartner({ ...x, scoring: sc });
+    return { value: { ...base, score: r.score, confidence: r.confidence, score_parts: { ...r.parts, eligibility_proven: r.eligibility_proven } } };
+  }
+  const st = x.event_start_at == null || x.event_start_at === '' ? null : x.event_start_at, en = x.event_end_at == null || x.event_end_at === '' ? null : x.event_end_at;
+  if ((st !== null && !srParseDate(st)) || (en !== null && !srParseDate(en))) return { error: 'fecha_invalida' };
+  if (st === null && en !== null) return { error: 'fechas_incoherentes' };
+  if (st !== null && en !== null && srParseDate(en).ms < srParseDate(st).ms) return { error: 'fechas_incoherentes' };
+  let tz = null;
+  if (x.event_timezone != null && x.event_timezone !== '') {
+    tz = String(x.event_timezone);
+    try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); } catch { return { error: 'timezone_invalida' }; }
+  }
+  for (const k of ['event_location', 'event_format']) if (x[k] != null && !len(x[k], 1, 200)) return { error: k + '_invalido' };
+  base.event_start_at = st === null ? null : dateOut(st); base.event_end_at = en === null ? null : dateOut(en);
+  base.event_timezone = tz; base.event_location = x.event_location ? x.event_location.trim() : null; base.event_format = x.event_format ? x.event_format.trim() : null;
+  const r = srScoreEvent({ ...x, scoring: sc, event_start_at: st, event_end_at: en, event_timezone: tz }, now);
+  const sp = st === null ? null : srParseDate(st);
+  const edition = sp ? (sp.date_only ? sp.date : srLocalDate(sp.ms, tz)) : null;
+  return { value: { ...base, score: r.score, confidence: r.confidence, event_state: r.state, edition_date: edition, score_parts: { ...r.parts, date_precision: r.date_precision } } };
+}
+
+/**
+ * strategic_ingest {kind, run_id, items[], test}: valida cada hallazgo, calcula el puntaje EN EL SERVIDOR, deduplica por huella y guarda.
+ * Reingesta: solo avanza last_checked_at y evidencia nueva; NUNCA toca status, decisión, last_daily_at ni first_seen_at. Lo descartado/vencido solo sirve para deduplicar.
+ * ctx = {now, cfg, paused, existing[], evidence[], run, newId, validate_only}. La corrida se escribe AL FINAL: si algo falla antes, reintentar con el mismo run_id es seguro (idempotente).
+ */
+export function srIngestPlan(req, ctx) {
+  const r = req && typeof req === 'object' ? req : {}, c = ctx || {};
+  const now = c.now == null ? Date.now() : c.now, nowIso = new Date(now).toISOString();
+  const dbKind = srDbKind(r.kind);
+  if (!dbKind || ['products', 'partners', 'events'].indexOf(r.kind) < 0) return { error: 'kind_invalido', message: 'kind: products | partners | events.' };
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(r.run_id || ''))) return { error: 'run_id_invalido', message: 'run_id debe ser un UUID v4 generado antes de investigar.' };
+  const runId = String(r.run_id).toLowerCase();
+  const items = Array.isArray(r.items) ? r.items : null;
+  if (!items || !items.length) return { error: 'items_invalidos', message: 'items: lista no vacía.' };
+  const cap = Math.min(20, c.cfg && Number.isInteger(c.cfg.ai_max_items_per_run) ? c.cfg.ai_max_items_per_run : 12);
+  if (items.length > cap) return { error: 'demasiados_items', message: 'Máximo ' + cap + ' hallazgos por corrida.' };
+  if (!c.validate_only) {
+    if (c.paused === true) return { error: 'global_pause', message: 'Pausa general activa: no se guardan hallazgos.' };
+    if (!c.cfg) return { error: 'not_configured', message: 'El Radar no tiene configuración todavía: la investigación sigue apagada.' };
+    if (c.cfg[srFlag(r.kind)] !== true) return { error: 'flag_off', message: 'La investigación de ' + r.kind + ' está apagada.' };
+  }
+  if (c.run) {
+    if (c.run.kind !== r.kind) return { error: 'run_id_en_uso', message: 'Ese run_id ya se usó para otra categoría.' };
+    if (c.run.status === 'ok' || c.run.status === 'partial') return { resp: { ok: true, replayed: true, kind: r.kind, run_id: runId, accepted: c.run.accepted_count || 0, duplicates: c.run.duplicate_count || 0, rejected: [], failed: c.run.failed_count || 0 }, writes: [] };
+  }
+  const test = r.test === true, existing = Array.isArray(c.existing) ? c.existing : [], knownEv = Array.isArray(c.evidence) ? c.evidence : [];
+  const newId = typeof c.newId === 'function' ? c.newId : null;
+  if (!newId && !c.validate_only) return { error: 'sin_generador_de_ids', message: 'Falta el generador de ids.' };
+  const rejected = [], writes = [], seen = new Set();
+  let accepted = 0, duplicates = 0;
+  items.forEach((raw, index) => {
+    const v = srIngestItem(r.kind, raw, now);
+    if (v.error) { rejected.push({ index, reason: v.error }); return; }
+    const it = v.value, baseFp = srFingerprint(dbKind, it.canonical_url);
+    if (raw.fingerprint != null && raw.fingerprint !== baseFp) { rejected.push({ index, reason: 'huella_no_coincide' }); return; }
+    let fp = baseFp, match = null;
+    if (dbKind === 'event') {
+      const rows = existing.filter((e) => e.canonical_url === it.canonical_url);
+      const dateOf = (e) => (e.event_start_at ? (e.score_parts && e.score_parts.date_precision === 'date_only' ? String(e.event_start_at).slice(0, 10) : srLocalDate(Date.parse(e.event_start_at), e.event_timezone)) : null);
+      if (it.edition_date) {
+        match = rows.find((e) => !e.event_start_at || dateOf(e) === it.edition_date) || null;
+        if (!match && rows.length) fp = srFingerprint('event', it.canonical_url, it.edition_date);
+        else if (match) fp = match.fingerprint;
+      } else if (rows.length) { match = rows[0]; fp = match.fingerprint; }
+    }
+    if (!match) match = existing.find((e) => e.fingerprint === fp) || null;
+    if (seen.has(fp)) { duplicates++; return; }
+    seen.add(fp);
+    if (match && (match.is_test === true) !== test) { rejected.push({ index, reason: 'registro_test' }); return; }
+    const known = (id) => knownEv.filter((k) => k.opportunity_id === id);
+    const evRows = (id, only) => it.evidence.filter((e) => !only || !known(id).some((k) => k.source_url === e.source_url && k.claim === e.claim)).map((e) => ({ opportunity_id: id, ...e, is_test: test }));
+    if (match) {
+      duplicates++;
+      const fresh = evRows(match.id, true);
+      const body = { last_checked_at: nowIso, updated_at: nowIso };
+      if (fresh.length && ['new', 'shortlisted', 'working'].indexOf(match.status) >= 0) {
+        Object.assign(body, { title: it.title, organization: it.organization, summary: it.summary, business_case: it.business_case, target_customer: it.target_customer, next_action: it.next_action, score: it.score, score_parts: it.score_parts, confidence: it.confidence, license_id: it.license_id, license_verified: it.license_verified, coverage_pct: it.coverage_pct, critical_blockers: it.critical_blockers, event_start_at: it.event_start_at, event_end_at: it.event_end_at, deadline_at: it.deadline_at, event_timezone: it.event_timezone, event_location: it.event_location, event_format: it.event_format });
+        if (it.event_state === 'expired' && (match.status === 'new' || match.status === 'shortlisted')) body.status = 'expired';
+      }
+      writes.push({ method: 'PATCH', path: 'strategic_opportunities?id=eq.' + match.id + '&is_test=eq.' + (test ? 'true' : 'false'), body, prefer: 'return=minimal' });
+      if (fresh.length) writes.push({ method: 'POST', path: 'strategic_evidence?on_conflict=opportunity_id,source_url,claim', body: fresh, prefer: 'resolution=ignore-duplicates,return=minimal' });
+      return;
+    }
+    accepted++;
+    if (c.validate_only) return;
+    const id = newId();
+    const row = { id, kind: dbKind, fingerprint: fp, title: it.title, organization: it.organization, canonical_url: it.canonical_url, summary: it.summary, business_case: it.business_case, target_customer: it.target_customer, next_action: it.next_action, status: it.event_state === 'expired' ? 'expired' : 'new', score: it.score, score_parts: it.score_parts, confidence: it.confidence, license_id: it.license_id, license_verified: it.license_verified, coverage_pct: it.coverage_pct, critical_blockers: it.critical_blockers, event_start_at: it.event_start_at, event_end_at: it.event_end_at, deadline_at: it.deadline_at, event_timezone: it.event_timezone, event_location: it.event_location, event_format: it.event_format, first_seen_at: nowIso, last_checked_at: nowIso, is_test: test };
+    writes.push({ method: 'POST', path: 'strategic_opportunities', body: row, prefer: 'return=minimal' });
+    writes.push({ method: 'POST', path: 'strategic_evidence?on_conflict=opportunity_id,source_url,claim', body: evRows(id, false), prefer: 'resolution=ignore-duplicates,return=minimal' });
+  });
+  const status = rejected.length === 0 ? 'ok' : accepted + duplicates === 0 ? 'failed' : 'partial';
+  const resp = { ok: true, kind: r.kind, run_id: runId, accepted, duplicates, rejected, run_status: status, ...(c.validate_only ? { dry_run: true, would_accept: accepted } : {}) };
+  if (c.validate_only) return { resp, writes: [] };
+  const started = srParseDate(r.started_at);
+  writes.push({ method: 'POST', path: 'strategic_runs?on_conflict=id', body: { id: runId, kind: r.kind, trigger: test ? 'test' : (r.trigger === 'cron' ? 'cron' : 'manual'), status, started_at: started && !started.date_only && started.ms <= now ? new Date(started.ms).toISOString() : nowIso, finished_at: nowIso, scanned_count: items.length, accepted_count: accepted, duplicate_count: duplicates, failed_count: rejected.length, error_code: status === 'failed' ? 'all_rejected' : null, is_test: test }, prefer: 'resolution=merge-duplicates,return=minimal' });
+  return { resp, writes };
+}

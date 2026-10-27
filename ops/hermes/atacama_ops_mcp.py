@@ -831,6 +831,93 @@ def taller_help(piece_id: str, reason: str, test: bool = False) -> str:
     return _media({"action": "taller_help", "piece_id": piece_id, "reason": reason, "test": bool(test)}, timeout=60)
 
 
+# ----------------------------------------------------------------------------------------------------------------------------
+# RADAR ESTRATÉGICO (spec RADAR §9.1) — solo investigación y registro. NINGUNA de estas herramientas contacta, aplica, compra, inscribe,
+# escribe en GHL ni empuja a git: hablan únicamente con n8n 25 (strategic_gate · strategic_view · strategic_ingest) con la clave de ingesta de siempre.
+# ----------------------------------------------------------------------------------------------------------------------------
+_STRATEGIC_KINDS = ("production", "products", "partners", "events")
+
+
+def _strategic_err(code, message):
+    return json.dumps({"ok": False, "error": code, "message": message}, ensure_ascii=False)
+
+
+@mcp.tool()
+def strategic_radar_status(kind: str) -> str:
+    """RADAR ESTRATÉGICO — compuerta de una categoría (llámala PRIMERO). kind = products | partners | events | production.
+    Devuelve mode (run | skip), el motivo (bandera apagada, pausa general, cuota, corrida reciente…), max_items (cuántos hallazgos como máximo) y la última corrida.
+    Si mode=skip, termina sin investigar nada. No cambia nada."""
+    if kind not in _STRATEGIC_KINDS:
+        return _strategic_err("kind_invalido", "kind: products | partners | events | production")
+    try:
+        from atacama_common import post_ops
+        g = post_ops({"action": "strategic_gate", "params": {"kind": kind}}, timeout=60)
+    except Exception as ex:
+        return _strategic_err("red", "No pude consultar la compuerta del Radar: %s" % type(ex).__name__)
+    out = {k: g.get(k) for k in ("ok", "mode", "reason", "max_items", "error") if k in g}
+    try:
+        v = post_ops({"action": "strategic_view", "params": {"tab": kind}}, timeout=60)
+        s = v.get("strategic") or {}
+        runs = s.get("runs") or []
+        out["enabled"] = s.get("enabled")
+        out["last_run"] = {k: runs[0].get(k) for k in ("status", "finished_at", "accepted_count", "duplicate_count", "failed_count", "error_code")} if runs else None
+    except Exception:
+        out["last_run"] = None
+    return json.dumps(out, ensure_ascii=False)
+
+
+@mcp.tool()
+def strategic_radar_submit(kind: str, payload_json: str, test: bool = False, dry_run: bool = False) -> str:
+    """RADAR ESTRATÉGICO — guarda los hallazgos de UNA categoría (kind = products | partners | events). payload_json = {"items":[ ... ]} con el contrato cerrado:
+    title, organization, canonical_url (https), summary, business_case, target_customer, next_action, scoring (criterios, NO un puntaje total; el servidor suma),
+    evidence [{source_url, source_title, source_type: official|repository|documentation|secondary, claim, excerpt (≤350), source_published_at, verified_at (ISO real)}] (≥1 fuente primaria),
+    y según la categoría: products → requirements (10 exactos {name,state: implemented|partial|missing|unknown, evidence_url}), license_id, license_verified, critical_blockers;
+    partners → deadline_at (solo si está confirmado); events → event_start_at, event_end_at, deadline_at (ISO con zona, o solo fecha), event_timezone (IANA), event_location, event_format.
+    Máximo 12 ítems y 80 KB. NUNCA inventes datos: lo que no puedas verificar va como null y lo que no tenga fuente no se envía. La huella la calcula este código, no tú.
+    El servidor rechaza (y te dice por qué) lo que no cumpla: URL no https, sin fuente primaria, puntajes fuera de rango, fechas inválidas, campos de otra categoría.
+    test=true guarda como prueba (is_test) y NO salta las compuertas. dry_run=true valida sin guardar nada. No contacta, aplica ni inscribe a nadie."""
+    if kind not in ("products", "partners", "events"):
+        return _strategic_err("kind_invalido", "kind: products | partners | events")
+    try:
+        from strategic_lib import check_submit
+        items, err = check_submit(kind, payload_json)
+    except Exception as ex:
+        return _strategic_err("lib", "No pude revisar la carga: %s" % type(ex).__name__)
+    if err:
+        return _strategic_err("payload_invalido", err)
+    import datetime
+    body = {"action": "strategic_ingest", "params": {"kind": kind, "run_id": str(uuid.uuid4()), "items": items, "test": bool(test), "trigger": "cron",
+                                                       "started_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")}}
+    if dry_run:
+        body["dry_run"] = True
+    try:
+        from atacama_common import post_ops
+        r = post_ops(body, timeout=120)
+    except Exception as ex:
+        return _strategic_err("red", "No pude guardar los hallazgos: %s" % type(ex).__name__)
+    return json.dumps({k: r.get(k) for k in ("ok", "text", "kind", "run_id", "accepted", "duplicates", "rejected", "replayed", "run_status", "dry_run", "would_accept", "error") if k in r}, ensure_ascii=False)
+
+
+@mcp.tool()
+def strategic_radar_read(tab: str) -> str:
+    """RADAR ESTRATÉGICO — lo que ya hay guardado en una pestaña (solo lectura, sin claves): tab = production | products | partners | events.
+    Úsalo para no repetir hallazgos y para ver qué decidió Christian (shortlisted / working / dismissed). En producción solo muestra nombre, estado y última comprobación."""
+    if tab not in _STRATEGIC_KINDS:
+        return _strategic_err("tab_invalido", "tab: production | products | partners | events")
+    try:
+        from atacama_common import post_ops
+        r = post_ops({"action": "strategic_view", "params": {"tab": tab}}, timeout=60)
+    except Exception as ex:
+        return _strategic_err("red", "No pude leer el Radar: %s" % type(ex).__name__)
+    s = r.get("strategic") or {}
+    if tab == "production":
+        items = [{k: it.get(k) for k in ("logical_name", "status", "http_state", "last_checked_at")} for it in (s.get("items") or [])]
+    else:
+        items = [{k: it.get(k) for k in ("title", "canonical_url", "status", "score", "confidence", "last_checked_at", "deadline_at", "event_start_at")} for it in (s.get("items") or [])]
+    out = {"ok": r.get("ok"), "tab": tab, "enabled": s.get("enabled"), "source_state": s.get("source_state"), "summary": s.get("summary"), "items": items}
+    return json.dumps(out, ensure_ascii=False)[:20000]
+
+
 if __name__ == "__main__":
     mcp.run()
 

@@ -53,10 +53,10 @@ const opp = (o) => ({ id: 'o1', kind: 'event', title: 'Evento B2B Antofagasta', 
 const down = (id, minsAgo) => ({ target_id: id, checked_at: iso(NOW - minsAgo * MIN), result: 'down', is_test: false });
 
 // ---------- registro de acciones
-await ok('25: acciones del Radar = 3 de lectura de la web + 2 del monitor (targets, prod_check); la web NUNCA pide las del monitor', () => {
-  assert.deepEqual(ACTIONS.filter((a) => /^strategic_/.test(a)).sort(), ['strategic_gate', 'strategic_prod_check', 'strategic_targets', 'strategic_today', 'strategic_view']);
+await ok('25: acciones del Radar = 3 de lectura de la web + 3 de clave de ingesta (targets, prod_check, ingest); la web NUNCA pide las de ingesta', () => {
+  assert.deepEqual(ACTIONS.filter((a) => /^strategic_/.test(a)).sort(), ['strategic_gate', 'strategic_ingest', 'strategic_prod_check', 'strategic_targets', 'strategic_today', 'strategic_view']);
   const web = [readFileSync(new URL('../../src/lib/ops/v3-data.ts', import.meta.url), 'utf8'), readFileSync(new URL('../../src/lib/ops/strategic.ts', import.meta.url), 'utf8')].join('\n');
-  assert.ok(!/strategic_prod_check|strategic_targets|strategic_ingest/.test(web), 'el navegador/servidor web no llama a las acciones del monitor');
+  assert.ok(!/strategic_prod_check|strategic_targets|strategic_ingest/.test(web), 'el navegador/servidor web no llama a las acciones del monitor ni a la ingesta');
 });
 
 // ---------- lecturas
@@ -301,6 +301,65 @@ await ok('el monitor jamás puede escribir ops_alerts, contactar ni tocar GHL de
   for (const b of [chk(), { action: 'strategic_targets' }]) {
     const r = await live(b, { ...ON, sr_target: [MON], sr_targets: [MON] });
     assert.ok(r.writes.every((w) => w.path === 'strategic_prod_checks'));
+  }
+});
+
+// ---------- F5 · ingesta de hallazgos (clave de ingesta; nunca desde el navegador)
+const RUNID = '3f2b8c1e-5a6d-4e7f-9a0b-1c2d3e4f5a6b';
+const ONI = { sr_cfg: [CFG({ products_enabled: true, partners_enabled: true, events_enabled: true })] };
+const evi = (o = {}) => ({ source_url: 'https://github.com/acme/repo', source_title: 'Repositorio', source_type: 'repository', claim: 'Existe este código con licencia MIT', excerpt: 'MIT License', source_published_at: null, verified_at: new Date(Date.now() - 3600000).toISOString(), ...o });
+const prodItem = (o = {}) => ({ title: 'Agenda clínica abierta', organization: 'Acme', canonical_url: 'https://github.com/Acme/Agenda', summary: 'Gestiona citas y recordatorios para clínicas.', business_case: 'Reduce llamadas de recepción en clínicas pequeñas.', target_customer: 'Clínicas', next_action: 'Revisar la licencia con el dueño', scoring: { license: 25, functionality: 20, integrations: 10, security: 10, deploy: 8, sales_fit: 8 }, requirements: Array.from({ length: 10 }, (_, i) => ({ name: 'Req ' + i, state: 'implemented', evidence_url: 'https://github.com/acme/repo/blob/main/README.md' })), license_id: 'MIT', license_verified: true, critical_blockers: [], evidence: [evi()], ...o });
+const ing = (params, growth = {}, extra = {}) => live({ action: 'strategic_ingest', ...extra, params: { kind: 'products', run_id: RUNID, items: [prodItem()], test: false, ...params } }, { ...ONI, ...growth });
+
+await ok('ingest: lecturas solo de strategic_* de ESA categoría y con el run_id; params extra no inyectan nada', async () => {
+  const r = await ing({ url: 'https://evil.test', table: 'users', path: '../x', method: 'DELETE' });
+  assert.deepEqual(r.reads.map((x) => x.key).sort(), ['sr_cfg', 'sr_evidence', 'sr_existing', 'sr_run', 'sys_state']);
+  assert.ok(r.reads.every((x) => x.url.startsWith('https://uwquwjmiofixzugttals.supabase.co/rest/v1/') && !/evil|users/.test(x.url)));
+  assert.ok(r.reads.find((x) => x.key === 'sr_existing').url.includes('kind=eq.product&')); assert.ok(r.reads.find((x) => x.key === 'sr_run').url.includes('id=eq.' + RUNID));
+  assert.ok((await ing({ kind: 'oro' })).reads.every((x) => !/sr_existing|sr_run/.test(x.key)), 'kind inválido no lee nada de más');
+  assert.equal((await ing({ run_id: "x'; drop table--" })).reads.find((x) => x.key === 'sr_run').url.includes('drop'), false);
+});
+await ok('ingest: hallazgo válido → oportunidad + evidencia + corrida (al final), solo tablas strategic_*, sin alertas ni correo', async () => {
+  const r = await ing({});
+  assert.equal(r.out.ok, true); assert.equal(r.out.accepted, 1); assert.equal(r.out.duplicates, 0); assert.deepEqual(r.out.rejected, []);
+  assert.deepEqual(r.writes.map((w) => w.path), ['strategic_opportunities', 'strategic_evidence?on_conflict=opportunity_id,source_url,claim', 'strategic_runs?on_conflict=id']);
+  assert.equal(r.writes[0].body.score, 81); assert.equal(r.writes[0].body.status, 'new'); assert.match(r.writes[0].body.id, /^[0-9a-f-]{36}$/);
+  assert.ok(r.writes.every((w) => /^strategic_/.test(w.path)), 'ninguna escritura fuera del Radar');
+});
+await ok('ingest: compuertas del servidor (apagado, pausa, sin tablas); test=true NO las salta', async () => {
+  for (const [g, why] of [[{ sr_cfg: [CFG()] }, 'flag_off'], [{ sys_state: [{ id: 1, global_pause: true, meta: {} }] }, 'global_pause'], [{ sr_cfg: 'FAIL' }, 'source_unavailable'], [{ sr_cfg: [] }, 'not_configured']]) {
+    for (const test of [false, true]) { const r = await ing({ test }, g); assert.equal(r.out.ok, false, why); assert.equal(r.out.error, why); assert.equal(r.writes.length, 0); }
+  }
+});
+await ok('ingest: dry_run valida sin escribir y sin exigir bandera (la demostración previa a encender)', async () => {
+  const r = await ing({ items: [prodItem(), prodItem({ evidence: [] })] }, { sr_cfg: [CFG()] }, { dry_run: true });
+  assert.equal(r.out.ok, true); assert.equal(r.out.dry_run, true); assert.equal(r.out.would_accept, 1); assert.deepEqual(r.out.rejected, [{ index: 1, reason: 'evidence_missing' }]); assert.deepEqual(r.writes, []);
+});
+await ok('ingest: el mismo run_id ya registrado devuelve lo guardado sin escribir; uno vencido por fallo se puede reintentar', async () => {
+  const r = await ing({}, { sr_run: [{ id: RUNID, kind: 'products', status: 'ok', accepted_count: 2, duplicate_count: 1, failed_count: 0 }] });
+  assert.equal(r.out.replayed, true); assert.equal(r.out.accepted, 2); assert.deepEqual(r.writes, []);
+  assert.ok((await ing({}, { sr_run: [{ id: RUNID, kind: 'products', status: 'failed', accepted_count: 0, duplicate_count: 0, failed_count: 1 }] })).writes.length > 0);
+});
+await ok('ingest: reingesta de algo ya guardado no cambia estado ni decisión (descartado: solo last_checked_at)', async () => {
+  const fp = 'x'; // la huella real la calcula el servidor: se arma con la misma función
+  const { srFingerprint } = await import('./strategic-radar-core.mjs');
+  const row = (status) => ({ id: 'E1', fingerprint: srFingerprint('product', 'https://github.com/Acme/Agenda'), canonical_url: 'https://github.com/Acme/Agenda', status, is_test: false, event_start_at: null, event_timezone: null, score_parts: {} });
+  const r = await ing({ items: [prodItem({ evidence: [evi({ claim: 'Evidencia nueva sobre el mismo repo' })] })] }, { sr_existing: [row('dismissed')] });
+  assert.equal(r.out.accepted, 0); assert.equal(r.out.duplicates, 1);
+  const patch = r.writes.find((w) => w.method === 'PATCH');
+  assert.deepEqual(Object.keys(patch.body).sort(), ['last_checked_at', 'updated_at']); assert.ok(!r.writes.some((w) => w.method === 'POST' && w.path === 'strategic_opportunities'));
+  const w = await ing({ items: [prodItem({ evidence: [evi({ claim: 'Evidencia nueva sobre el mismo repo' })] })] }, { sr_existing: [row('working')] });
+  for (const k of ['status', 'decision_by', 'decision_at', 'last_daily_at', 'first_seen_at']) assert.ok(!(k in w.writes.find((x) => x.method === 'PATCH').body), k);
+  assert.equal(fp, 'x');
+});
+await ok('ingest: los rechazos se informan por índice y el resto se guarda (corrida parcial)', async () => {
+  const r = await ing({ items: [prodItem(), prodItem({ canonical_url: 'http://github.com/x/y' }), prodItem({ canonical_url: 'https://github.com/Other/Repo' })] });
+  assert.equal(r.out.ok, true); assert.equal(r.out.accepted, 2); assert.deepEqual(r.out.rejected, [{ index: 1, reason: 'url_invalida' }]); assert.equal(r.out.run_status, 'partial');
+  assert.equal(r.writes.at(-1).body.status, 'partial');
+});
+await ok('ingest: errores de petición (tope, kind, run_id) no escriben nada', async () => {
+  for (const [o, why] of [[{ items: Array(13).fill(prodItem()) }, 'demasiados_items'], [{ kind: 'oro' }, 'kind_invalido'], [{ run_id: 'no' }, 'run_id_invalido'], [{ items: [] }, 'items_invalidos']]) {
+    const r = await ing(o); assert.equal(r.out.ok, false, why); assert.equal(r.out.error, why); assert.equal(r.writes.length, 0);
   }
 });
 
