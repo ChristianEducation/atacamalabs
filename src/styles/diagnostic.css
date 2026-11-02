@@ -31,6 +31,28 @@
   color: var(--muted);
 }
 
+/* Bajada corta en pantallas angostas: el mismo mensaje en menos líneas. */
+.mk-dg-lead__short {
+  display: none;
+}
+@media (max-width: 559px) {
+  .mk-dg-head {
+    margin-bottom: 20px;
+  }
+  .mk-dg-lead {
+    margin-top: 12px;
+  }
+  .mk-dg-lead__full {
+    display: none;
+  }
+  .mk-dg-lead__short {
+    display: inline;
+  }
+  .mk-dg-context {
+    margin-top: 12px;
+  }
+}
+
 /* Lo que ya sabemos del origen (rubro, plan): contexto breve, no una pregunta. */
 .mk-dg-context {
   display: flex;
@@ -262,6 +284,27 @@
 .mk-dg-alert svg {
   flex: none;
   margin-top: 2px;
+}
+/* Campo opcional plegado: no suma un paso ni compite con los datos obligatorios. */
+.mk-dg-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: start;
+  min-height: 40px;
+  margin: -4px 0 0 -6px;
+  padding: 0 10px 0 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--blue-text);
+  cursor: pointer;
+}
+.mk-dg-more:hover {
+  color: var(--ink);
 }
 .mk-dg-privacy {
   margin: 0;

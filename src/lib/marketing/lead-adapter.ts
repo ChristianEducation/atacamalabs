@@ -176,6 +176,8 @@ export const MEETING_NAME = "Reunión de diagnóstico";
 /** Qué obtiene la persona al completar el formulario: la promesa de la pantalla, sin resultados ni plazos. */
 export const MEETING_LEAD =
   "Cuéntanos brevemente qué necesitas. En la reunión revisaremos tu caso, las posibles soluciones y los próximos pasos.";
+/** Misma promesa en pantallas angostas, para que las opciones se vean antes. */
+export const MEETING_LEAD_SHORT = "Cuéntanos qué necesitas y en la reunión revisamos tu caso y los próximos pasos.";
 
 /** Título de la página según lo que ya se sabe: siempre una invitación a conversar, nunca un examen. */
 export function headingFor(service: Service | "", plan: string): string {

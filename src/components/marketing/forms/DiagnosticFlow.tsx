@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { AlertCircle, ArrowLeft, CalendarCheck } from "lucide-react";
+import { AlertCircle, ArrowLeft, CalendarCheck, Plus } from "lucide-react";
 import { Button } from "../ui/Button";
 import { track, type CtaEventProps } from "@/lib/analytics";
 import type { Service } from "@/lib/marketing/cta-context";
@@ -11,6 +11,7 @@ import {
   ANSWER_MAX,
   EXTRA_MAX,
   MEETING_LEAD,
+  MEETING_LEAD_SHORT,
   MEETING_NAME,
   SERVICE_OPTIONS,
   WEB_GOAL_OPTIONS,
@@ -26,7 +27,7 @@ import {
 } from "@/lib/marketing/lead-adapter";
 
 type Step = "service" | "context" | "data" | "agenda";
-type Errors = Partial<Record<"answer" | "name" | "company" | "email" | "phone", string>>;
+type Errors = Partial<Record<"name" | "company" | "email" | "phone", string>>;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PLACEHOLDER_A_MEDIDA = "Cuéntanos brevemente cómo funciona hoy y qué te gustaría mejorar.";
@@ -64,6 +65,7 @@ export function DiagnosticFlow({ initial, agendaUrl }: { initial: DiagnosticCont
   const [step, setStep] = useState<Step>(initial.service ? "context" : "service");
   const [errors, setErrors] = useState<Errors>({});
   const [failure, setFailure] = useState<string | null>(null);
+  const [extraOpen, setExtraOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const stepRef = useRef<HTMLDivElement>(null);
@@ -127,15 +129,9 @@ export function DiagnosticFlow({ initial, agendaUrl }: { initial: DiagnosticCont
     go("data");
   }
 
+  /** La descripción es opcional en todos los recorridos: sin texto, el mensaje al backend usa su texto por defecto. */
   function submitContext(event: FormEvent) {
     event.preventDefault();
-    const text = values.answer.trim();
-    const required = values.service === "a-medida" || values.service === "general" || values.service === "";
-    if (required && text.length < 10) {
-      setErrors({ answer: "Con una frase basta. Si aún no lo tienes claro, cuéntanos qué te quita más tiempo." });
-      return;
-    }
-    setErrors({});
     completeContext({});
   }
 
@@ -228,7 +224,10 @@ export function DiagnosticFlow({ initial, agendaUrl }: { initial: DiagnosticCont
           <h1 id="page-title" className="mk-dg-title" ref={headingRef}>
             {heading}
           </h1>
-          <p className="mk-dg-lead">{MEETING_LEAD}</p>
+          <p className="mk-dg-lead">
+            <span className="mk-dg-lead__full">{MEETING_LEAD}</span>
+            <span className="mk-dg-lead__short">{MEETING_LEAD_SHORT}</span>
+          </p>
           {chips.length > 0 ? (
             <ul className="mk-dg-context" aria-label="Contexto de tu consulta">
               {chips.map((chip) => (
@@ -347,8 +346,8 @@ export function DiagnosticFlow({ initial, agendaUrl }: { initial: DiagnosticCont
                   <div className="mk-dg-field">
                     <label htmlFor={`${uid}-answer`} className="mk-dg-q">
                       {values.service === "a-medida"
-                        ? "¿Qué proceso quieres mejorar o automatizar?"
-                        : "Cuéntanos brevemente qué te gustaría mejorar."}
+                        ? "¿Qué proceso quieres mejorar o automatizar? (opcional)"
+                        : "Cuéntanos brevemente qué te gustaría mejorar (opcional)."}
                     </label>
                     <p id={`${uid}-answer-hint`} className="mk-dg-hint">
                       Con una frase basta. Si todavía no lo tienes claro, lo conversamos en la reunión.
@@ -363,14 +362,8 @@ export function DiagnosticFlow({ initial, agendaUrl }: { initial: DiagnosticCont
                       }
                       value={values.answer}
                       onChange={(event) => patch({ answer: event.target.value })}
-                      aria-invalid={Boolean(errors.answer) || undefined}
-                      aria-describedby={`${uid}-answer-hint${errors.answer ? ` ${uid}-answer-error` : ""}`}
+                      aria-describedby={`${uid}-answer-hint`}
                     />
-                    {errors.answer ? (
-                      <p id={`${uid}-answer-error`} className="mk-dg-error" role="alert">
-                        <AlertCircle size={14} aria-hidden /> {errors.answer}
-                      </p>
-                    ) : null}
                   </div>
                   <Button type="submit" arrow block>
                     Continuar
@@ -448,16 +441,27 @@ export function DiagnosticFlow({ initial, agendaUrl }: { initial: DiagnosticCont
                   </Field>
                 </div>
 
-                <Field id={`${uid}-extra`} label="¿Algo más que quieras contarnos? (opcional)">
-                  <textarea
-                    id={`${uid}-extra`}
-                    className="mk-dg-textarea"
-                    rows={3}
-                    maxLength={EXTRA_MAX}
-                    value={values.extra}
-                    onChange={(event) => patch({ extra: event.target.value })}
-                  />
-                </Field>
+                {extraOpen || values.extra ? (
+                  <Field id={`${uid}-extra`} label="¿Algo más que quieras contarnos? (opcional)">
+                    <textarea
+                      id={`${uid}-extra`}
+                      className="mk-dg-textarea"
+                      rows={3}
+                      maxLength={EXTRA_MAX}
+                      value={values.extra}
+                      onChange={(event) => patch({ extra: event.target.value })}
+                    />
+                  </Field>
+                ) : (
+                  <button
+                    type="button"
+                    className="mk-dg-more"
+                    aria-expanded={false}
+                    onClick={() => setExtraOpen(true)}
+                  >
+                    <Plus size={16} aria-hidden /> Agregar un comentario
+                  </button>
+                )}
 
                 <div className="mk-dg-honeypot" aria-hidden="true">
                   <label>
