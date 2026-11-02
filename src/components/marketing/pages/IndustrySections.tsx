@@ -71,7 +71,7 @@ export function IndustryPanel({
             })}
             arrow
           >
-            Quiero algo así
+            Agenda un diagnóstico
           </ButtonLink>
 
           <Link href={`/rubros/${industry.slug}`} className="mk-rbs__link mk-rb-more">

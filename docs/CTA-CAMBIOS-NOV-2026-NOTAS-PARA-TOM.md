@@ -77,3 +77,17 @@ Sin tocar (siguen igual): `/rubros` («Quiero algo así»), «Quiero sumar un ag
   prometer resultados ni plazos que el sitio no promete.
 - **Fuera de este trabajo:** el contenido de Instagram (hay menciones de la promo en `brand/` y
   `social/`), la base de conocimiento de Nayra/Lety (puede citar precios antiguos) y el contenedor GTM.
+
+## 5. Páginas por rubro (Bloque C, nov-2026)
+
+Aplica a `/rubros/<slug>` (9 páginas) y al botón de cada rubro en el hub `/rubros`.
+
+| Ubicación | Antes | Ahora | Evento al hacer clic |
+|---|---|---|---|
+| Rubro · hero y bloque «situación» | «Quiero algo así» → `rubros-<slug> / hero | situacion / diagnostico-rubro` | «Agenda un diagnóstico», **mismos ids** (`industria=<slug>`, `servicio=agentes`) | Ninguno (enlace directo); llega `diagnostic_started`. Sin cambios de medición. |
+| Rubro · cierre, botón principal | «Hablar con Nayra»: `rubros-<slug> / final-cta / hablar-con-nayra` (abría el chat) | «Agenda un diagnóstico»: `rubros-<slug> / final-cta / diagnostico-rubro` | **Dejó de emitir `cta_clicked`/`nayra_opened`** en ese botón; llega `diagnostic_started`. |
+| Rubro · cierre, enlace secundario | «Ver todos los rubros» | «Prueba a Nayra»: conserva el id `hablar-con-nayra` (serie continua del acceso a Nayra) | `cta_clicked` (`destination=nayra`) + `nayra_opened`. |
+| Hub `/rubros` · botón de cada rubro | «Quiero algo así» | «Agenda un diagnóstico» (mismos ids: `rubros / <slug> / diagnostico-rubro`) | Sin cambios. |
+
+- La serie `rubros-<slug> / final-cta / hablar-con-nayra` ahora mide solo a quienes eligen Nayra; antes mezclaba el CTA principal.
+- «Ver todos los rubros» ya no está en el cierre: el acceso sigue en el breadcrumb y el footer.
