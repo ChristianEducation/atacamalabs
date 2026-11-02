@@ -84,7 +84,7 @@ Aplica a `/rubros/<slug>` (9 páginas) y al botón de cada rubro en el hub `/rub
 
 | Ubicación | Antes | Ahora | Evento al hacer clic |
 |---|---|---|---|
-| Rubro · hero y bloque «situación» | «Quiero algo así» → `rubros-<slug> / hero | situacion / diagnostico-rubro` | «Agenda un diagnóstico», **mismos ids** (`industria=<slug>`, `servicio=agentes`) | Ninguno (enlace directo); llega `diagnostic_started`. Sin cambios de medición. |
+| Rubro · hero y bloque «situación» | «Quiero algo así» → `rubros-<slug> / hero y situacion / diagnostico-rubro` | «Agenda un diagnóstico», **mismos ids** (`industria=<slug>`, `servicio=agentes`) | Ninguno (enlace directo); llega `diagnostic_started`. Sin cambios de medición. |
 | Rubro · cierre, botón principal | «Hablar con Nayra»: `rubros-<slug> / final-cta / hablar-con-nayra` (abría el chat) | «Agenda un diagnóstico»: `rubros-<slug> / final-cta / diagnostico-rubro` | **Dejó de emitir `cta_clicked`/`nayra_opened`** en ese botón; llega `diagnostic_started`. |
 | Rubro · cierre, enlace secundario | «Ver todos los rubros» | «Prueba a Nayra»: conserva el id `hablar-con-nayra` (serie continua del acceso a Nayra) | `cta_clicked` (`destination=nayra`) + `nayra_opened`. |
 | Hub `/rubros` · botón de cada rubro | «Quiero algo así» | «Agenda un diagnóstico» (mismos ids: `rubros / <slug> / diagnostico-rubro`) | Sin cambios. |
