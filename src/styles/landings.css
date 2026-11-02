@@ -43,6 +43,43 @@
   margin-inline: auto;
 }
 
+/* «Qué necesita revisión humana»: la frase y tres límites concretos del rubro. */
+.mk-il-limits {
+  max-width: 1040px;
+}
+.mk-il-limits__list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.mk-il-limits__list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.mk-il-limits__list svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--blue);
+}
+@media (max-width: 899px) {
+  .mk-il-limits__list {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 620px;
+    margin-inline: auto;
+  }
+}
+
 .mk-al-caps {
   justify-content: center;
   margin-top: 20px;

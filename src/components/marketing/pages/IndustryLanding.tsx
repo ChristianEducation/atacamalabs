@@ -13,12 +13,23 @@ import { diagnosticHref } from "@/lib/marketing/cta-context";
 /**
  * Landing SEO de un rubro (/rubros/[slug]) — SEO_GROWTH_SPEC_V1 §9. Reutiliza
  * el mismo contenido de `industries.ts` que ya usa /rubros (pains, capabilities,
- * flow, IndustryDemo): nada se inventa ni se duplica a mano acá. El H1 de la
+ * flow, IndustryDemo, y por rubro `connections` y `oversight`): nada se inventa ni se
+ * duplica a mano acá. El CTA principal es siempre «Agenda un diagnóstico» hacia
+ * /diagnostico con el rubro; Nayra queda como acceso secundario. El H1 de la
  * página es el de `industry.seo`; `industry.headline` queda como bajada dentro
  * del cuerpo, igual que en el hub.
  */
 export function IndustryLanding({ industry }: { industry: IndustryExperience }) {
   const { seo } = industry;
+  /** CTA principal único de la página: /diagnostico con el rubro, el origen y la sección de este botón. */
+  const diagnosticFor = (section: string) =>
+    diagnosticHref({
+      source_page: `rubros-${industry.slug}`,
+      source_section: section,
+      source_cta: "diagnostico-rubro",
+      service: "agentes",
+      industry: industry.slug,
+    });
   const related = seo.relatedAgentIds
     .map((id) => AGENT_PAGES.find((page) => page.slug === id))
     .filter((page): page is NonNullable<typeof page> => Boolean(page));
@@ -40,18 +51,7 @@ export function IndustryLanding({ industry }: { industry: IndustryExperience }) 
         title={seo.h1}
         lead={seo.intro}
         center
-        actions={[
-          {
-            label: "Quiero algo así",
-            href: diagnosticHref({
-              source_page: `rubros-${industry.slug}`,
-              source_section: "hero",
-              source_cta: "diagnostico-rubro",
-              service: "agentes",
-              industry: industry.slug,
-            }),
-          },
-        ]}
+        actions={[{ label: "Agenda un diagnóstico", href: diagnosticFor("hero") }]}
       />
 
       <section className="mk-section mk-t-paper mk-rb-sec" aria-labelledby="il-situacion-title">
@@ -81,17 +81,11 @@ export function IndustryLanding({ industry }: { industry: IndustryExperience }) 
               ))}
             </ul>
 
-            <ButtonLink
-              href={diagnosticHref({
-                source_page: `rubros-${industry.slug}`,
-                source_section: "situacion",
-                source_cta: "diagnostico-rubro",
-                service: "agentes",
-                industry: industry.slug,
-              })}
-              arrow
-            >
-              Quiero algo así
+            <h2 className="mk-rb-sub">Cómo se conecta</h2>
+            <p className="mk-rb-connect">{industry.connections}</p>
+
+            <ButtonLink href={diagnosticFor("situacion")} arrow>
+              Agenda un diagnóstico
             </ButtonLink>
           </div>
 
@@ -107,8 +101,16 @@ export function IndustryLanding({ industry }: { industry: IndustryExperience }) 
             id="il-limites-title"
             center
             title="Qué necesita revisión humana"
-            lead="Cada agente trabaja con reglas y permisos definidos. Cuando una acción es sensible o necesita criterio humano, se detiene, pide aprobación o deriva a una persona con la conversación completa."
+            lead={industry.oversight.lead}
           />
+          <ul className="mk-il-limits__list">
+            {industry.oversight.items.map((item) => (
+              <li key={item}>
+                <Check size={14} strokeWidth={2.4} aria-hidden />
+                {item}
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
 
@@ -143,9 +145,10 @@ export function IndustryLanding({ industry }: { industry: IndustryExperience }) 
       <SoftCTA
         titleId="il-cta-title"
         title="¿Quieres ver esto trabajando en tu operación?"
-        body="Cuéntanos cómo trabajan hoy en tu empresa y te mostramos cómo se vería un agente conectado a tus herramientas."
-        primary={{
-          label: "Hablar con Nayra",
+        body="En el diagnóstico revisamos cómo trabajan hoy en tu empresa y cómo se vería un agente conectado a tus herramientas."
+        primary={{ label: "Agenda un diagnóstico", href: diagnosticFor("final-cta") }}
+        secondary={{
+          label: "Prueba a Nayra",
           href: "/diagnostico",
           agent: {
             source_page: `rubros-${industry.slug}`,
@@ -155,7 +158,6 @@ export function IndustryLanding({ industry }: { industry: IndustryExperience }) 
             industry: industry.slug,
           },
         }}
-        secondary={{ label: "Ver todos los rubros", href: "/rubros" }}
       />
     </>
   );

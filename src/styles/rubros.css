@@ -255,6 +255,14 @@
   margin-top: 2px;
   color: var(--blue);
 }
+/* «Cómo se conecta» (landing del rubro): una o dos frases, sin tarjetas. */
+.mk-rb-connect {
+  margin: 0 0 4px;
+  max-width: 52ch;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--muted);
+}
 .mk-rb-copy .mk-btn {
   margin-top: 24px;
 }
