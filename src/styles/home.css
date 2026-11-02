@@ -90,12 +90,87 @@
 .mk-home-hero__accent {
   color: var(--blue-text);
 }
+
+/*
+ * Palabra rotativa: las cuatro palabras comparten una misma celda de grilla,
+ * así el ancho es el de la más larga y el titular no salta al cambiar (cada
+ * palabra lleva su propio punto). Entra desde abajo y sale hacia arriba; los
+ * lectores de pantalla leen la frase completa del `h1`, no estas palabras.
+ */
+.mk-home-hero__words {
+  display: inline-grid;
+}
+.mk-home-hero__word {
+  grid-area: 1 / 1;
+  opacity: 0;
+  transform: translateY(0.3em);
+  transition:
+    opacity 500ms var(--ease-out),
+    transform 500ms var(--ease-out);
+}
+.mk-home-hero__word.is-active {
+  opacity: 1;
+  transform: none;
+}
+.mk-home-hero__word.is-leaving {
+  transform: translateY(-0.3em);
+}
+
+/* Frase de apoyo «24/7 por todos tus canales» + control de pausa de la animación. */
+.mk-home-hero__support {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: clamp(14px, 2.4svh, 22px);
+}
+.mk-home-hero__247 {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: clamp(22px, min(2.1vw, 4svh), 30px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.mk-home-hero__247 span {
+  color: var(--blue-text);
+}
+.mk-home-hero__pause {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 70%);
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    color 180ms ease,
+    border-color 180ms ease;
+}
+.mk-home-hero__pause[hidden] {
+  display: none;
+}
+.mk-home-hero__pause:hover {
+  color: var(--ink);
+  border-color: var(--muted);
+}
+.mk-home-hero__pause:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 3px;
+}
 .mk-home-hero__lead {
   margin: clamp(16px, 3svh, 26px) 0 clamp(20px, 3.6svh, 32px);
   max-width: 560px;
   font-size: clamp(17px, 1.4vw, 21px);
   line-height: 1.58;
   color: var(--muted);
+}
+.mk-home-hero__support + .mk-home-hero__lead {
+  margin-top: clamp(10px, 1.8svh, 16px);
 }
 .mk-home-hero__actions {
   display: flex;
@@ -105,8 +180,8 @@
 
 /*
  * Entrada en secuencia (~5 s, CSS puro; el texto nunca queda oculto esperando JS):
- * primero el video solo; luego eyebrow, título por líneas, bajada, botones y,
- * al final, «Prueba a Nayra».
+ * primero el video solo; luego eyebrow, título por líneas, frase 24/7, bajada,
+ * botones y, al final, «Prueba a Nayra».
  */
 @keyframes mk-home-in {
   from {
@@ -134,7 +209,10 @@
   animation-delay: 2600ms;
 }
 .mk-home-hero__copy > :nth-child(4) {
-  animation-delay: 3100ms;
+  animation-delay: 3000ms;
+}
+.mk-home-hero__copy > :nth-child(5) {
+  animation-delay: 3400ms;
 }
 
 /* CTA flotante «Prueba al agente»: pill glass con la paleta de marca. */
@@ -168,7 +246,7 @@
     box-shadow 180ms ease,
     background 180ms ease;
   /* Llega al final de la secuencia; un scroll lo adelanta (`is-ready`). */
-  animation: mk-try-in 600ms var(--ease-out) 4.3s both;
+  animation: mk-try-in 600ms var(--ease-out) 4.6s both;
 }
 .mk-home-hero__try.is-ready {
   animation-delay: 0s;
@@ -241,25 +319,27 @@
     max-width: 620px;
   }
   .mk-home-hero__title {
-    font-size: clamp(46px, 13vw, 70px);
+    font-size: clamp(40px, 12.4vw, 70px);
+  }
+  .mk-home-hero__247 {
+    font-size: 22px;
   }
   .mk-home-hero__lead {
     font-size: 17px;
   }
   /*
-   * Los dos botones bajan al borde inferior, en filas separadas (uno a la izquierda, Nayra a la derecha): el texto
-   * queda arriba, el video respira en el medio. «Ver cómo funciona» sobra aquí
-   * (la sección que abre es lo siguiente al hacer scroll).
+   * Los botones bajan al borde inferior, apilados (diagnóstico y «Ver cómo
+   * funciona» a la izquierda, Nayra a la derecha en su propia fila): el texto
+   * queda arriba y el video respira en el medio.
    */
   .mk-home-hero__copy {
     display: flex;
     flex-direction: column;
   }
   .mk-home-hero__actions {
+    flex-direction: column;
+    align-items: flex-start;
     margin-top: auto;
-  }
-  .mk-home-hero__actions .mk-btn--secondary {
-    display: none;
   }
   .mk-home-hero__try {
     left: auto;
@@ -307,11 +387,14 @@
     animation-delay: 1600ms;
   }
   .mk-home-hero__copy > :nth-child(4) {
-    animation-delay: 1900ms;
+    animation-delay: 1850ms;
+  }
+  .mk-home-hero__copy > :nth-child(5) {
+    animation-delay: 2100ms;
   }
   .mk-home-hero__try {
     animation-duration: 350ms;
-    animation-delay: 2650ms;
+    animation-delay: 2850ms;
   }
 }
 @keyframes mk-try-in {
@@ -342,6 +425,20 @@
   .mk-home-hero__try,
   .mk-home-hero__try-icon {
     transition: none;
+  }
+  /* Palabra rotativa: queda fija «Agentes de IA que trabajan.» y no hay nada que pausar. */
+  .mk-home-hero__word,
+  .mk-home-hero__word.is-active,
+  .mk-home-hero__word.is-leaving {
+    opacity: 0;
+    transform: none;
+    transition: none;
+  }
+  .mk-home-hero__words .mk-home-hero__word:last-child {
+    opacity: 1;
+  }
+  .mk-home-hero__pause {
+    display: none;
   }
 }
 
