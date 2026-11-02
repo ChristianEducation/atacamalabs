@@ -7,7 +7,7 @@ import { AgentCtaLink } from "../shell/AgentCtaLink";
 import { SectionHeading } from "../ui/Blocks";
 import { Reveal } from "../motion/Reveal";
 import { SnapCarousel } from "../ui/SnapCarousel";
-import { AGENT_PLANS, OCTOBER_BENEFIT, agentPlanContext, agentPrice } from "@/content/marketing/pricing";
+import { AGENT_PLANS, agentPlanContext, agentPrice } from "@/content/marketing/pricing";
 import { HOME_CONSUMPTION_NOTE } from "@/content/marketing/pricing-page";
 
 /**
@@ -73,9 +73,6 @@ export function HomePricing() {
                 <p className="mk-home-plan__price" aria-label={price.label}>
                   {price.amount}
                   <small>{price.unit}</small>
-                </p>
-                <p className="mk-home-plan__sub">
-                  <s>{price.regular}</s> · {OCTOBER_BENEFIT.label}
                 </p>
                 <p className="mk-home-plan__sub">{price.setup}</p>
                 <ul className="mk-home-plan__points">

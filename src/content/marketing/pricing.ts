@@ -14,16 +14,9 @@ import { diagnosticHref } from "@/lib/marketing/cta-context";
 export type AgentPlanId = "esencial" | "operacion" | "escala";
 export type WebPlanId = "landing" | "profesional" | "ecommerce";
 
-/** Beneficio de octubre: nuevas implementaciones contratadas hasta esta fecha. */
-export const OCTOBER_BENEFIT = {
-  label: "Beneficio octubre",
-  note: "Contrata hasta el 31/10/2026 y mantén esta mensualidad mientras continúes en el mismo plan.",
-} as const;
-
 /**
  * Agente adicional: mensualidad por cada agente que se suma a un plan (CLP + IVA).
  * ÚNICA fuente de verdad: Precios y el FAQ derivan el texto de esta constante.
- * No compite con la escalera de planes (Esencial + 2 = $287.000 > Operación $279.000).
  */
 export const ADDITIONAL_AGENT_MONTHLY = 69000;
 
@@ -49,9 +42,9 @@ interface PlanBase<Id extends string> {
 
 export interface AgentPlan extends PlanBase<AgentPlanId> {
   family: "agentes";
-  /** Mensualidad vigente (octubre) y regular, en CLP + IVA. */
+  /** Mensualidad oficial en CLP + IVA; `monthlyFrom` cuando es «desde». */
   monthly: number;
-  monthlyRegular: number;
+  monthlyFrom?: boolean;
   /** Implementación de pago único; `setupFrom` cuando es «desde». */
   setup: number;
   setupFrom?: boolean;
@@ -95,8 +88,7 @@ export const AGENT_PLANS: readonly AgentPlan[] = [
     name: "Esencial",
     description:
       "Para empresas que quieren empezar a automatizar su operación con un agente inteligente conectado a sus herramientas.",
-    monthly: 149000,
-    monthlyRegular: 199000,
+    monthly: 190000,
     setup: 297000,
     agents: "1",
     credit: "US$5",
@@ -144,8 +136,7 @@ export const AGENT_PLANS: readonly AgentPlan[] = [
     featured: true,
     description:
       "Para empresas que quieren automatizar más procesos y coordinar varios agentes dentro de una misma operación.",
-    monthly: 279000,
-    monthlyRegular: 349000,
+    monthly: 347000,
     setup: 497000,
     agents: "Hasta 3",
     credit: "US$15",
@@ -177,8 +168,8 @@ export const AGENT_PLANS: readonly AgentPlan[] = [
     name: "Escala",
     description:
       "Para operaciones que necesitan más agentes, más capacidad y automatización en distintas áreas de la empresa.",
-    monthly: 399000,
-    monthlyRegular: 499000,
+    monthly: 497000,
+    monthlyFrom: true,
     setup: 697000,
     setupFrom: true,
     agents: "Hasta 5",
@@ -322,7 +313,7 @@ export const WEB_PLANS: readonly WebPlan[] = [
   },
 ];
 
-/** Pesos chilenos con separador de miles: 149000 → «$149.000». */
+/** Pesos chilenos con separador de miles: 190000 → «$190.000». */
 export function clp(amount: number): string {
   return `$${new Intl.NumberFormat("es-CL", { maximumFractionDigits: 0 }).format(amount)}`;
 }
@@ -336,17 +327,25 @@ export function additionalAgentPrice() {
   };
 }
 
-/**
- * Líneas de precio de un plan, ya con el texto exacto del spec. La mensualidad de
- * agentes se muestra con el beneficio de octubre y el valor regular a su lado.
- */
+/** Mensualidad de un plan de agentes, con «Desde» cuando corresponde (Escala). */
+export function agentMonthly(plan: AgentPlan): string {
+  return `${plan.monthlyFrom ? "Desde " : ""}${clp(plan.monthly)}`;
+}
+
+/** Implementación de un plan de agentes, con «Desde» cuando corresponde. */
+export function agentSetup(plan: AgentPlan): string {
+  return `${plan.setupFrom ? "Desde " : ""}${clp(plan.setup)}`;
+}
+
+/** Líneas de precio de un plan, ya con el texto exacto del spec. */
 export function agentPrice(plan: AgentPlan) {
+  const monthly = agentMonthly(plan);
+  const lower = (text: string) => text.replace(/^Desde/, "desde");
   return {
-    amount: clp(plan.monthly),
+    amount: monthly,
     unit: "+ IVA / mes",
-    regular: `Regular: ${clp(plan.monthlyRegular)} / mes`,
-    setup: `Implementación: ${plan.setupFrom ? "desde " : ""}${clp(plan.setup)} + IVA · pago único`,
-    label: `${clp(plan.monthly)} más IVA al mes, implementación ${plan.setupFrom ? "desde " : ""}${clp(plan.setup)} más IVA, pago único`,
+    setup: `Implementación: ${lower(agentSetup(plan))} + IVA · pago único`,
+    label: `${lower(monthly)} más IVA al mes, implementación ${lower(agentSetup(plan))} más IVA, pago único`,
   };
 }
 

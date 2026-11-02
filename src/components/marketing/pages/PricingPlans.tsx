@@ -6,7 +6,6 @@ import { Reveal } from "../motion/Reveal";
 import { SnapCarousel } from "../ui/SnapCarousel";
 import { AgentCtaLink } from "../shell/AgentCtaLink";
 import {
-  OCTOBER_BENEFIT,
   agentPlanContext,
   agentPrice,
   webPlanHref,
@@ -74,10 +73,6 @@ function PlanCard({ plan, index }: { plan: Plan; index: number }) {
             <p className="mk-pp-card__amount">
               <strong>{price.amount}</strong>
               <span>{price.unit}</span>
-            </p>
-            <p className="mk-pp-card__regular">
-              <s>{price.regular}</s>
-              <em>{OCTOBER_BENEFIT.label}</em>
             </p>
             <p className="mk-pp-card__setup">{price.setup}</p>
           </>

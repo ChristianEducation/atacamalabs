@@ -6,7 +6,7 @@ import { SectionHeading } from "../ui/Blocks";
 import { SnapCarousel } from "../ui/SnapCarousel";
 import { PlanCards } from "./PricingPlans";
 import { PricingCompare } from "./PricingCompare";
-import { OCTOBER_BENEFIT, AGENT_PLANS, WEB_PLANS, additionalAgentPrice } from "@/content/marketing/pricing";
+import { AGENT_PLANS, WEB_PLANS, additionalAgentPrice } from "@/content/marketing/pricing";
 import { AgentCtaLink } from "../shell/AgentCtaLink";
 import {
   ADDITIONAL_AGENT_BLOCK,
@@ -38,7 +38,6 @@ export function AgentPlansSection() {
           lead={AGENT_PLANS_HEADING.lead}
         />
         <PlanCards plans={AGENT_PLANS} label="Planes de agentes" />
-        <p className="mk-pp-benefit">{OCTOBER_BENEFIT.note}</p>
         <p className="mk-pp-custom">
           {AGENT_PLANS_CUSTOM}{" "}
           <Link href={AGENT_PLANS_CUSTOM_LINK.href} className="mk-link">

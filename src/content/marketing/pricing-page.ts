@@ -4,7 +4,14 @@
  * comparativas, el cobro de agentes y las preguntas frecuentes.
  */
 
-import { ADDITIONAL_AGENT_MONTHLY, clp } from "./pricing";
+import {
+  ADDITIONAL_AGENT_MONTHLY,
+  AGENT_PLANS,
+  agentMonthly,
+  agentSetup,
+  clp,
+  type AgentPlan,
+} from "./pricing";
 
 export const PRICING_META = {
   title: "Precios de agentes de IA y páginas web | Atacama Labs",
@@ -116,6 +123,13 @@ export interface CompareRow {
   price?: boolean;
 }
 
+/** Una celda por plan de agentes, leída del catálogo (una sola fuente de precios). */
+const planCells = (pick: (plan: AgentPlan) => string): readonly [Cell, Cell, Cell] => [
+  pick(AGENT_PLANS[0]),
+  pick(AGENT_PLANS[1]),
+  pick(AGENT_PLANS[2]),
+];
+
 export const AGENT_COMPARE = {
   title: "Compara los planes de Agentes.",
   caption: "Comparación de planes de agentes",
@@ -133,9 +147,8 @@ export const AGENT_COMPARE = {
     { label: "Integraciones especiales", values: ["Cotizable", "Según alcance", "Según alcance"] },
     { label: "Integraciones financieras Chile: SII, Previred y bancos", values: [false, true, true] },
     { label: "Soporte", values: ["Estándar", "Prioritario", "Prioritario"] },
-    { label: "Implementación", values: ["$297.000", "$497.000", "Desde $697.000"], price: true },
-    { label: "Mensual regular", values: ["$199.000", "$349.000", "Desde $499.000"], price: true },
-    { label: "Mensual octubre", values: ["$149.000", "$279.000", "$399.000"], price: true },
+    { label: "Implementación", values: planCells(agentSetup), price: true },
+    { label: "Mensual", values: planCells(agentMonthly), price: true },
   ],
   note: "Todos los valores + IVA.",
 } as const satisfies {
@@ -332,11 +345,6 @@ export const FAQ_ITEMS: Record<FaqGroupId, readonly { question: string; answer: 
     {
       question: "¿Puedo cambiar de plan?",
       answer: "Sí. El cambio puede aplicarse al siguiente ciclo de facturación.",
-    },
-    {
-      question: "¿El precio de octubre se mantiene?",
-      answer:
-        "Sí. Si contratas hasta el 31/10/2026, mantienes la mensualidad promocional mientras continúes de forma ininterrumpida en el mismo plan. Si cancelas o cambias de plan, se aplicarán las condiciones vigentes en ese momento.",
     },
     {
       question: "¿Cuánto cuesta un agente adicional?",
