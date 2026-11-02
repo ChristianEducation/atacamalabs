@@ -10,10 +10,13 @@ import {
   AGENT_GOAL_OPTIONS,
   ANSWER_MAX,
   EXTRA_MAX,
-  PLAN_LABEL,
+  MEETING_LEAD,
+  MEETING_NAME,
   SERVICE_OPTIONS,
   WEB_GOAL_OPTIONS,
   WEB_TYPE_OPTIONS,
+  contextChips,
+  exampleFor,
   headingFor,
   newRequestId,
   submitDiagnostic,
@@ -27,6 +30,7 @@ type Errors = Partial<Record<"answer" | "name" | "company" | "email" | "phone", 
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PLACEHOLDER_A_MEDIDA = "Cuéntanos brevemente cómo funciona hoy y qué te gustaría mejorar.";
+const PLACEHOLDER_GENERAL = "Por ejemplo: respondemos tarde los mensajes de clientes, o queremos ordenar una tarea manual.";
 
 const FAILURES: Record<Exclude<SubmitOutcome["kind"], "created" | "replay" | "validation">, string> = {
   conflict: "Ya recibimos una solicitud parecida. Revisa tus datos e inténtalo nuevamente.",
@@ -128,7 +132,7 @@ export function DiagnosticFlow({ initial, agendaUrl }: { initial: DiagnosticCont
     const text = values.answer.trim();
     const required = values.service === "a-medida" || values.service === "general" || values.service === "";
     if (required && text.length < 10) {
-      setErrors({ answer: "Cuéntanos un poco más para llegar preparados." });
+      setErrors({ answer: "Con una frase basta. Si aún no lo tienes claro, cuéntanos qué te quita más tiempo." });
       return;
     }
     setErrors({});
@@ -189,7 +193,9 @@ export function DiagnosticFlow({ initial, agendaUrl }: { initial: DiagnosticCont
   }
 
   const heading = headingFor(values.service, values.plan);
-  const planLabel = values.plan ? PLAN_LABEL[values.plan] : null;
+  const chips = contextChips(initial.industry, values.service, values.plan);
+  /** Ejemplo de la caja de texto: el del rubro de origen si lo hay. */
+  const example = exampleFor(initial.industry);
 
   const back =
     step === "context" && !serviceKnown ? (
@@ -206,26 +212,30 @@ export function DiagnosticFlow({ initial, agendaUrl }: { initial: DiagnosticCont
     <div className="mk-dg-wrap">
       {step === "agenda" ? (
         <header className="mk-dg-head" aria-live="polite">
-          <p className="mk-eyebrow">DIAGNÓSTICO</p>
+          <p className="mk-eyebrow">REUNIÓN DE DIAGNÓSTICO</p>
           <h1 id="page-title" className="mk-dg-title" ref={headingRef}>
             Listo, {values.name.trim().split(/\s+/)[0]}.
           </h1>
           <p className="mk-dg-lead">
             {agendaUrl
-              ? "Ya tenemos el contexto. Elige cuándo conversamos."
+              ? "Ya tenemos el contexto. Elige el día y la hora que mejor te acomoden."
               : "Ya tenemos tu solicitud y el contexto de tu caso."}
           </p>
         </header>
       ) : (
         <header className="mk-dg-head">
-          <p className="mk-eyebrow">DIAGNÓSTICO</p>
+          <p className="mk-eyebrow">REUNIÓN DE DIAGNÓSTICO</p>
           <h1 id="page-title" className="mk-dg-title" ref={headingRef}>
             {heading}
           </h1>
-          <p className="mk-dg-lead">
-            Te tomará menos de un minuto. Con unas pocas respuestas podremos llegar a la conversación entendiendo tu
-            caso.
-          </p>
+          <p className="mk-dg-lead">{MEETING_LEAD}</p>
+          {chips.length > 0 ? (
+            <ul className="mk-dg-context" aria-label="Contexto de tu consulta">
+              {chips.map((chip) => (
+                <li key={chip}>{chip}</li>
+              ))}
+            </ul>
+          ) : null}
         </header>
       )}
 
@@ -234,7 +244,6 @@ export function DiagnosticFlow({ initial, agendaUrl }: { initial: DiagnosticCont
           <div className="mk-dg-progress">
             <p>
               Paso {stepNumber} de {totalSteps}
-              {planLabel ? <span className="mk-dg-progress__plan"> · {planLabel}</span> : null}
             </p>
             <div className="mk-dg-progress__bar" aria-hidden>
               {Array.from({ length: totalSteps }, (_, index) => (
@@ -247,7 +256,7 @@ export function DiagnosticFlow({ initial, agendaUrl }: { initial: DiagnosticCont
         <div className="mk-dg-step" key={step} ref={stepRef} tabIndex={-1}>
           {step === "service" ? (
             <fieldset className="mk-dg-fieldset">
-              <legend className="mk-dg-q">¿Qué quieres mejorar?</legend>
+              <legend className="mk-dg-q">¿Con qué te gustaría que te ayudemos?</legend>
               <div className="mk-dg-choices">
                 {SERVICE_OPTIONS.map((option) => (
                   <button
@@ -269,7 +278,7 @@ export function DiagnosticFlow({ initial, agendaUrl }: { initial: DiagnosticCont
               {back}
               {values.service === "agentes" && !initial.interest ? (
                 <fieldset className="mk-dg-fieldset">
-                  <legend className="mk-dg-q">¿Qué quieres que haga tu agente?</legend>
+                  <legend className="mk-dg-q">¿Qué te gustaría mejorar primero?</legend>
                   <div className="mk-dg-choices mk-dg-choices--2">
                     {AGENT_GOAL_OPTIONS.map((option) => (
                       <button
@@ -289,7 +298,7 @@ export function DiagnosticFlow({ initial, agendaUrl }: { initial: DiagnosticCont
               {values.service === "web" ? (
                 <fieldset className="mk-dg-fieldset">
                   <legend className="mk-dg-q">
-                    {initial.plan ? "¿Qué quieres conseguir principalmente?" : "¿Qué necesitas?"}
+                    {initial.plan ? "¿Qué quieres conseguir con tu web?" : "¿Qué tipo de página necesitas?"}
                   </legend>
                   <div className={initial.plan ? "mk-dg-choices mk-dg-choices--2" : "mk-dg-choices"}>
                     {(initial.plan ? WEB_GOAL_OPTIONS : WEB_TYPE_OPTIONS).map((option) => (
@@ -315,13 +324,14 @@ export function DiagnosticFlow({ initial, agendaUrl }: { initial: DiagnosticCont
                 <form className="mk-dg-form" onSubmit={submitContext} noValidate>
                   <div className="mk-dg-field">
                     <label htmlFor={`${uid}-answer`} className="mk-dg-q">
-                      Cuéntanos brevemente qué quieres delegar.
+                      Cuéntanos brevemente qué te gustaría resolver (opcional).
                     </label>
                     <textarea
                       id={`${uid}-answer`}
                       className="mk-dg-textarea"
                       rows={4}
                       maxLength={ANSWER_MAX}
+                      placeholder={example}
                       value={values.answer}
                       onChange={(event) => patch({ answer: event.target.value })}
                     />
@@ -340,16 +350,21 @@ export function DiagnosticFlow({ initial, agendaUrl }: { initial: DiagnosticCont
                         ? "¿Qué proceso quieres mejorar o automatizar?"
                         : "Cuéntanos brevemente qué te gustaría mejorar."}
                     </label>
+                    <p id={`${uid}-answer-hint`} className="mk-dg-hint">
+                      Con una frase basta. Si todavía no lo tienes claro, lo conversamos en la reunión.
+                    </p>
                     <textarea
                       id={`${uid}-answer`}
                       className="mk-dg-textarea"
                       rows={5}
                       maxLength={ANSWER_MAX}
-                      placeholder={values.service === "a-medida" ? PLACEHOLDER_A_MEDIDA : undefined}
+                      placeholder={
+                        example ?? (values.service === "a-medida" ? PLACEHOLDER_A_MEDIDA : PLACEHOLDER_GENERAL)
+                      }
                       value={values.answer}
                       onChange={(event) => patch({ answer: event.target.value })}
                       aria-invalid={Boolean(errors.answer) || undefined}
-                      aria-describedby={errors.answer ? `${uid}-answer-error` : undefined}
+                      aria-describedby={`${uid}-answer-hint${errors.answer ? ` ${uid}-answer-error` : ""}`}
                     />
                     {errors.answer ? (
                       <p id={`${uid}-answer-error`} className="mk-dg-error" role="alert">
@@ -369,7 +384,7 @@ export function DiagnosticFlow({ initial, agendaUrl }: { initial: DiagnosticCont
             <>
               {back}
               <form className="mk-dg-form" onSubmit={submitData} noValidate>
-                <p className="mk-dg-q">¿Cómo te contactamos?</p>
+                <p className="mk-dg-q">¿Cómo coordinamos la reunión?</p>
 
                 {failure ? (
                   <p className="mk-dg-alert" role="alert">
@@ -424,6 +439,7 @@ export function DiagnosticFlow({ initial, agendaUrl }: { initial: DiagnosticCont
                       type="tel"
                       inputMode="tel"
                       autoComplete="tel"
+                      placeholder="+56 9 1234 5678"
                       value={values.phone}
                       onChange={(event) => patch({ phone: event.target.value })}
                       aria-invalid={Boolean(errors.phone) || undefined}
@@ -470,14 +486,14 @@ export function DiagnosticFlow({ initial, agendaUrl }: { initial: DiagnosticCont
                 <p className="mk-dg-meeting">
                   <CalendarCheck size={18} aria-hidden />
                   <span>
-                    <strong>Reunión de activación</strong> · revisamos tu necesidad, validamos el alcance y resolvemos
-                    tus dudas.
+                    <strong>{MEETING_NAME}</strong> · conversamos sobre tu caso, las posibles soluciones y los próximos
+                    pasos. Los horarios se muestran en tu zona horaria.
                   </span>
                 </p>
               ) : null}
               {agendaUrl ? (
                 <iframe
-                  title="Agenda de la reunión de activación"
+                  title={`Agenda de la ${MEETING_NAME.toLowerCase()}`}
                   src={agendaSrc(agendaUrl, values)}
                   className="mk-dg-frame"
                 />

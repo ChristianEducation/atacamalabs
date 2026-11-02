@@ -8,7 +8,7 @@
  *    contrato (20–1200 caracteres) más el contexto estructurado y `diagnostic_data`.
  */
 
-import { resolveIndustry, type IndustrySlug } from "@/content/marketing/industries";
+import { getIndustry, resolveIndustry, type IndustrySlug } from "@/content/marketing/industries";
 import { getAttribution } from "./attribution";
 import {
   AGENT_PLAN_KEYS,
@@ -22,37 +22,51 @@ import {
 
 /* ---------- Opciones de la pantalla ---------- */
 
+/**
+ * Los textos de las opciones están escritos para alguien que no conoce el
+ * vocabulario de IA: hablan del trabajo que se quiere mejorar, no del producto.
+ * Los `id` son el contrato (analítica, `diagnostic_data`, lead) y no cambian.
+ */
 export const SERVICE_OPTIONS: readonly { id: Exclude<Service, "general"> | "general"; label: string }[] = [
-  { id: "agentes", label: "Agentes" },
-  { id: "a-medida", label: "Automatizar un proceso / A Medida" },
-  { id: "web", label: "Página Web" },
-  { id: "general", label: "No estoy seguro" },
+  { id: "agentes", label: "Atender, agendar o vender con un agente de IA" },
+  { id: "a-medida", label: "Automatizar un proceso de mi empresa" },
+  { id: "web", label: "Crear o renovar mi página web" },
+  { id: "general", label: "Todavía no estoy seguro" },
 ];
 
 export const AGENT_GOAL_OPTIONS: readonly { id: Interest; label: string }[] = [
-  { id: "comercial", label: "Vender" },
-  { id: "atencion", label: "Atender consultas" },
-  { id: "agendamiento", label: "Agendar" },
-  { id: "cobranza", label: "Cobrar" },
-  { id: "administracion-finanzas", label: "Administración / Finanzas" },
+  { id: "atencion", label: "Responder consultas y atender clientes" },
+  { id: "comercial", label: "Captar interesados y hacer seguimiento" },
+  { id: "agendamiento", label: "Gestionar citas y reservas" },
+  { id: "cobranza", label: "Recordar pagos y gestionar cobranza" },
+  { id: "administracion-finanzas", label: "Reducir tareas administrativas" },
   { id: "procesos", label: "Automatizar otro proceso" },
-  { id: "unsure", label: "No estoy seguro" },
+  { id: "unsure", label: "Todavía no estoy seguro" },
 ];
 
 export const WEB_TYPE_OPTIONS: readonly { id: string; label: string }[] = [
-  { id: "landing", label: "Landing" },
-  { id: "profesional", label: "Web Profesional" },
-  { id: "ecommerce", label: "Ecommerce" },
-  { id: "unsure", label: "No estoy seguro" },
+  { id: "landing", label: "Una página simple para presentar mi oferta (Landing)" },
+  { id: "profesional", label: "Varias páginas para explicar mi empresa (Web Profesional)" },
+  { id: "ecommerce", label: "Una tienda para vender por internet (Ecommerce)" },
+  { id: "unsure", label: "Todavía no estoy seguro" },
 ];
 
 export const WEB_GOAL_OPTIONS: readonly { id: string; label: string }[] = [
-  { id: "conseguir-contactos", label: "Conseguir contactos" },
-  { id: "mostrar-servicios", label: "Mostrar servicios" },
-  { id: "vender-online", label: "Vender online" },
-  { id: "renovar-web", label: "Renovar una web existente" },
-  { id: "otro", label: "Otro" },
+  { id: "conseguir-contactos", label: "Que más personas me contacten" },
+  { id: "mostrar-servicios", label: "Mostrar mis servicios o productos" },
+  { id: "vender-online", label: "Vender por internet" },
+  { id: "renovar-web", label: "Renovar mi web actual" },
+  { id: "otro", label: "Otro objetivo o todavía no lo sé" },
 ];
+
+/** Texto estable de cada meta en el `message` que recibe el backend (no depende de cómo se muestre la opción). */
+const WEB_GOAL_SUMMARY: Record<string, string> = {
+  "conseguir-contactos": "Conseguir contactos",
+  "mostrar-servicios": "Mostrar servicios",
+  "vender-online": "Vender online",
+  "renovar-web": "Renovar una web existente",
+  otro: "Otro",
+};
 
 export const SERVICE_LABEL: Record<Service, string> = {
   agentes: "Agentes",
@@ -156,13 +170,42 @@ export function parseDiagnosticQuery(query: Record<string, Raw>): DiagnosticCont
   };
 }
 
-/** Título de la página según lo que ya se sabe (spec §21). */
+/** Nombre comercial único de la reunión que se agenda al final. */
+export const MEETING_NAME = "Reunión de diagnóstico";
+
+/** Qué obtiene la persona al completar el formulario: la promesa de la pantalla, sin resultados ni plazos. */
+export const MEETING_LEAD =
+  "Cuéntanos brevemente qué necesitas. En la reunión revisaremos tu caso, las posibles soluciones y los próximos pasos.";
+
+/** Título de la página según lo que ya se sabe: siempre una invitación a conversar, nunca un examen. */
 export function headingFor(service: Service | "", plan: string): string {
-  if (service === "web" && plan === "ecommerce") return "Cuéntanos sobre tu Ecommerce.";
-  if (service === "web") return "Cuéntanos sobre tu nueva web.";
-  if (service === "a-medida") return "Cuéntanos qué proceso quieres mejorar.";
-  if (service === "agentes") return "Cuéntanos qué quieres delegar.";
-  return "Cuéntanos qué quieres mejorar.";
+  if (service === "web" && plan === "ecommerce") return "Conversemos sobre tu Ecommerce.";
+  if (service === "web") return "Conversemos sobre tu nueva web.";
+  return "Conversemos sobre tu negocio.";
+}
+
+/**
+ * Lo que ya sabemos del origen, en pocas palabras: rubro y plan/formato. Se
+ * muestra como contexto de la consulta; no genera preguntas ni pasos.
+ */
+export function contextChips(industry: IndustrySlug | "", service: Service | "", plan: string): string[] {
+  const chips: string[] = [];
+  const name = industry ? getIndustry(industry)?.name : undefined;
+  if (name) chips.push(`Rubro: ${name}`);
+  if (plan && PLAN_LABEL[plan]) {
+    chips.push(service === "web" ? `Formato: ${PLAN_LABEL[plan]}` : `Plan: ${PLAN_LABEL[plan]}`);
+  }
+  return chips;
+}
+
+/**
+ * Ejemplo para la caja de texto cuando se conoce el rubro: reutiliza la primera
+ * situación que ya describe la página del rubro (nada inventado).
+ */
+export function exampleFor(industry: IndustrySlug | ""): string | undefined {
+  const pain = industry ? getIndustry(industry)?.pains[0] : undefined;
+  if (!pain) return undefined;
+  return `Por ejemplo: ${pain.charAt(0).toLowerCase()}${pain.slice(1)}`;
 }
 
 /* ---------- Envío ---------- */
@@ -211,7 +254,7 @@ export function buildMessage(values: DiagnosticValues, source: string): string {
     if (values.service === "agentes" && values.interest && values.interest !== "unsure") {
       body = `Quiere un agente para ${INTEREST_LABEL[values.interest].toLowerCase()}.`;
     } else if (values.service === "web") {
-      const goal = WEB_GOAL_OPTIONS.find((g) => g.id === values.webGoal)?.label;
+      const goal = WEB_GOAL_SUMMARY[values.webGoal];
       body = goal ? `Quiere una web. Objetivo principal: ${goal.toLowerCase()}.` : "Quiere cotizar una web.";
     } else {
       body = "Quiere conversar sobre su caso.";
