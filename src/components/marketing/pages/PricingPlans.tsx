@@ -4,7 +4,7 @@ import { Badge } from "../ui/Badge";
 import { ButtonLink } from "../ui/Button";
 import { Reveal } from "../motion/Reveal";
 import { SnapCarousel } from "../ui/SnapCarousel";
-import { AgentCtaLink } from "../shell/AgentCtaLink";
+import { diagnosticHref } from "@/lib/marketing/cta-context";
 import {
   agentPlanContext,
   agentPrice,
@@ -103,13 +103,13 @@ function PlanCard({ plan, index }: { plan: Plan; index: number }) {
 
       <div className="mk-pp-card__cta">
         {agent ? (
-          <AgentCtaLink
-            context={agentPlanContext(agent, "precios", "agentes")}
+          <ButtonLink
+            href={diagnosticHref(agentPlanContext(agent, "precios", "agentes"))}
             variant={agent.featured ? "primary" : "secondary"}
-            className="mk-btn--block"
+            block
           >
             {agent.cta}
-          </AgentCtaLink>
+          </ButtonLink>
         ) : (
           <ButtonLink
             href={webPlanHref(plan as WebPlan, "precios", "web")}
