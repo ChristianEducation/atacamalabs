@@ -16,6 +16,7 @@ import "../styles/section-themes.css";
 import "../styles/hero-shell.css";
 import "../styles/home.css";
 import "../styles/home-selector.css";
+import "../styles/home-value.css";
 import "../styles/web.css";
 import "../styles/custom.css";
 import "../styles/services-menu.css";

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { HomeHero } from "@/components/marketing/pages/HomeHero";
 import { HomeIntegrations } from "@/components/marketing/pages/HomeIntegrations";
 import { HomeSelector } from "@/components/marketing/pages/HomeSelector";
+import { HomeValue } from "@/components/marketing/pages/HomeValue";
 import { HomePricing } from "@/components/marketing/pages/HomePricing";
 import { HomeCTA } from "@/components/marketing/pages/HomeCTA";
 import { pageMetadata } from "@/lib/seo-metadata";
@@ -16,8 +17,8 @@ export const metadata: Metadata = pageMetadata({
 
 /**
  * Home — ATACAMA_LABS_HOME_SPEC_V1 §2. Orden: Hero → Integraciones →
- * Selector + demos → Precios → CTA final. No se agregan bloques fuera de este
- * orden.
+ * Selector + demos → Valor comercial → Precios → CTA final. El valor comercial
+ * (MASTER_PLAN_CONVERSION §5) es el único bloque agregado a ese orden.
  */
 export default function Home() {
   return (
@@ -27,6 +28,7 @@ export default function Home() {
       <HomeHero />
       <HomeIntegrations />
       <HomeSelector />
+      <HomeValue />
       <HomePricing />
       <HomeCTA />
     </>
