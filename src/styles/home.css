@@ -708,6 +708,83 @@
   letter-spacing: 0;
   color: var(--muted);
 }
+.mk-home-plan__price small.is-from {
+  margin: 0 6px 0 0;
+}
+
+/* ---------- Cómo trabajamos (bajo la franja de integraciones) ---------- */
+.mk-home-how {
+  margin-top: clamp(44px, 6vw, 80px);
+  text-align: center;
+}
+.mk-home-how .mk-eyebrow {
+  margin-bottom: 12px;
+}
+.mk-home-how__title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: clamp(24px, 2.6vw, 34px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.mk-home-how__steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px 28px;
+  margin: clamp(28px, 4vw, 44px) 0 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+.mk-home-how__step {
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.mk-home-how__num {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--blue-text);
+}
+.mk-home-how__step h4 {
+  margin: 8px 0 6px;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.mk-home-how__step p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.mk-home-how__close {
+  margin: clamp(28px, 4vw, 40px) auto 0;
+  max-width: 62ch;
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--muted);
+  text-wrap: balance;
+}
+.mk-home-how__more {
+  margin: 8px 0 0;
+}
+@media (max-width: 1000px) {
+  .mk-home-how__steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 560px) {
+  .mk-home-how__steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 
 /* Franja sutil (una sola fila) reutilizada fuera del Home. */
 .mk-home-tools--slim {

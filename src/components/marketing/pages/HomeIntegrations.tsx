@@ -1,4 +1,7 @@
 import { HOME_TOOLS, type HomeTool } from "@/content/marketing/integrations";
+import { AGENTS_ONBOARDING_HEADING, AGENTS_STAGES } from "@/content/marketing/agents";
+import { ButtonLink } from "../ui/Button";
+import { Reveal } from "../motion/Reveal";
 
 function ToolItem({ tool, repeat }: { tool: HomeTool; repeat?: boolean }) {
   return (
@@ -30,10 +33,45 @@ function Row({ tools, label, reverse }: { tools: readonly HomeTool[]; label: str
 }
 
 /**
+ * «Cómo trabajamos» dentro de la franja de integraciones: las mismas cuatro
+ * etapas de /agentes (`AGENTS_STAGES`, fuente única de la terminología), en
+ * versión compacta y con un enlace al detalle. No es una sección aparte: cuenta
+ * cómo se conectan las herramientas que la franja acaba de mostrar.
+ */
+function HowWeWork() {
+  return (
+    <Reveal className="mk-container mk-home-how">
+      <p className="mk-eyebrow">Cómo trabajamos</p>
+      <h3 className="mk-home-how__title">{AGENTS_ONBOARDING_HEADING.title}</h3>
+      <ol className="mk-home-how__steps">
+        {AGENTS_STAGES.map((stage) => (
+          <li key={stage.number} className="mk-home-how__step">
+            <span className="mk-home-how__num" aria-hidden>
+              {stage.number}
+            </span>
+            <h4>{stage.title}</h4>
+            <p>{stage.body}</p>
+          </li>
+        ))}
+      </ol>
+      <p className="mk-home-how__close">
+        Te acompañamos en la puesta en marcha. Tú defines las reglas y los permisos, y el agente deriva a una persona
+        cuando hace falta.
+      </p>
+      <p className="mk-home-how__more">
+        <ButtonLink href="/agentes#implementacion" variant="tertiary" arrow>
+          Ver cómo es la implementación
+        </ButtonLink>
+      </p>
+    </Reveal>
+  );
+}
+
+/**
  * Franja de integraciones del Home — HOME_SPEC_V1 §5. Dos filas de marquee en
  * sentidos opuestos, lentas, sin cards ni controles visibles. Cada fila lleva
  * marcas distintas (nunca la misma arriba y abajo). Reduce movimiento:
- * composición estática.
+ * composición estática. Debajo, «Cómo trabajamos» (MASTER_PLAN_CONVERSION §5).
  */
 export function HomeIntegrations() {
   const first = HOME_TOOLS.filter((_, i) => i % 2 === 0);
@@ -49,6 +87,7 @@ export function HomeIntegrations() {
         <Row tools={first} label="Herramientas conectables, fila 1" />
         <Row tools={second} label="Herramientas conectables, fila 2" reverse />
       </div>
+      <HowWeWork />
     </section>
   );
 }
