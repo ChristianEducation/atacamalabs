@@ -3,10 +3,10 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Badge } from "../ui/Badge";
 import { ButtonLink } from "../ui/Button";
-import { AgentCtaLink } from "../shell/AgentCtaLink";
 import { SectionHeading } from "../ui/Blocks";
 import { Reveal } from "../motion/Reveal";
 import { SnapCarousel } from "../ui/SnapCarousel";
+import { diagnosticHref } from "@/lib/marketing/cta-context";
 import { AGENT_PLANS, agentPlanContext, agentPrice } from "@/content/marketing/pricing";
 import { HOME_CONSUMPTION_NOTE } from "@/content/marketing/pricing-page";
 
@@ -51,7 +51,7 @@ export function HomePricing() {
           id="home-pricing-title"
           center
           title="Empieza con lo que necesitas hoy."
-          lead="Elige un alcance inicial y escala cuando tu operación lo necesite."
+          lead="Elige un alcance inicial y escala cuando tu operación lo necesite. El alcance se define contigo en el diagnóstico."
         />
 
         <SnapCarousel className="mk-home-plans" label="Planes" start={HOME_PLANS.findIndex((plan) => plan.featured)}>
@@ -71,6 +71,7 @@ export function HomePricing() {
                 </div>
                 <p className="mk-home-plan__desc">{plan.description}</p>
                 <p className="mk-home-plan__price" aria-label={price.label}>
+                  {price.prefix ? <small className="is-from">{price.prefix}</small> : null}
                   {price.amount}
                   <small>{price.unit}</small>
                 </p>
@@ -83,13 +84,13 @@ export function HomePricing() {
                     </li>
                   ))}
                 </ul>
-                <AgentCtaLink
-                  context={agentPlanContext(source, "home", "pricing")}
+                <ButtonLink
+                  href={diagnosticHref(agentPlanContext(source, "home", "pricing"))}
                   variant={plan.featured ? "primary" : "secondary"}
-                  className="mk-btn--block"
+                  block
                 >
                   Quiero este plan
-                </AgentCtaLink>
+                </ButtonLink>
               </Reveal>
             );
           })}

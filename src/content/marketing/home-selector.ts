@@ -17,7 +17,7 @@ export interface HomeSelectorItem {
 
 export const HOME_SELECTOR_HEADING = {
   title: "¿Qué quieres que haga tu agente?",
-  lead: "Elige una tarea y mira cómo trabaja.",
+  lead: "Elige una tarea y mira cómo trabaja: menos repetición para tu equipo y un siguiente paso claro en cada conversación.",
 } as const;
 
 export const HOME_SELECTOR: readonly HomeSelectorItem[] = [

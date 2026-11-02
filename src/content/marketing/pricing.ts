@@ -342,7 +342,9 @@ export function agentPrice(plan: AgentPlan) {
   const monthly = agentMonthly(plan);
   const lower = (text: string) => text.replace(/^Desde/, "desde");
   return {
-    amount: monthly,
+    /** «Desde» (Escala) va aparte del importe para que la tarjeta no se parta en dos líneas. */
+    prefix: plan.monthlyFrom ? "Desde" : "",
+    amount: clp(plan.monthly),
     unit: "+ IVA / mes",
     setup: `Implementación: ${lower(agentSetup(plan))} + IVA · pago único`,
     label: `${lower(monthly)} más IVA al mes, implementación ${lower(agentSetup(plan))} más IVA, pago único`,

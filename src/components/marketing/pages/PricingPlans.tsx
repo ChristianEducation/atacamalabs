@@ -71,6 +71,7 @@ function PlanCard({ plan, index }: { plan: Plan; index: number }) {
         {price && agent ? (
           <>
             <p className="mk-pp-card__amount">
+              {price.prefix ? <span>{price.prefix}</span> : null}
               <strong>{price.amount}</strong>
               <span>{price.unit}</span>
             </p>
