@@ -105,8 +105,8 @@
   opacity: 0;
   transform: translateY(0.3em);
   transition:
-    opacity 500ms var(--ease-out),
-    transform 500ms var(--ease-out);
+    opacity 400ms var(--ease-out),
+    transform 400ms var(--ease-out);
 }
 .mk-home-hero__word.is-active {
   opacity: 1;
@@ -116,7 +116,7 @@
   transform: translateY(-0.3em);
 }
 
-/* Frase de apoyo «24/7 por todos tus canales» (la pausa de la animación no tiene control visible). */
+/* Frase de apoyo «24/7 por todos tus canales». */
 .mk-home-hero__support {
   display: flex;
   align-items: center;
@@ -133,44 +133,6 @@
   color: var(--ink);
 }
 .mk-home-hero__247 span {
-  color: var(--blue-text);
-}
-/*
- * Pausa sin control visual: «Pausar animación» existe para teclado y lectores
- * de pantalla y solo se ve cuando recibe el foco (como un enlace de salto). El
- * mouse pausa al pasar sobre el titular y el dedo con un toque (HomeHero.tsx).
- */
-.mk-home-hero__pause {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-.mk-home-hero__pause:focus-visible {
-  position: static;
-  width: auto;
-  height: auto;
-  margin: 0;
-  padding: 6px 14px;
-  overflow: visible;
-  clip: auto;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink);
-  cursor: pointer;
-  outline: 2px solid var(--blue);
-  outline-offset: 3px;
-}
-.mk-home-hero__pause[aria-pressed="true"]:focus-visible {
-  background: var(--blue-soft);
   color: var(--blue-text);
 }
 .mk-home-hero__lead {
@@ -437,7 +399,7 @@
   .mk-home-hero__try-icon {
     transition: none;
   }
-  /* Palabra rotativa: queda fija «Agentes de IA que trabajan.» y no hay nada que pausar. */
+  /* Palabra rotativa: queda fija «Agentes de IA que trabajan.» y no corre la rotación. */
   .mk-home-hero__word,
   .mk-home-hero__word.is-active,
   .mk-home-hero__word.is-leaving {
@@ -447,9 +409,6 @@
   }
   .mk-home-hero__words .mk-home-hero__word:last-child {
     opacity: 1;
-  }
-  .mk-home-hero__pause {
-    display: none;
   }
 }
 

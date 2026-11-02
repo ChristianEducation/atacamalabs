@@ -12,9 +12,9 @@ import { useReducedMotion } from "../motion/reduced-motion";
 const WORDS = ["atienden", "agendan", "venden", "trabajan"] as const;
 const SPOKEN = "atienden, agendan, venden y trabajan.";
 
-/** Cuánto se queda cada palabra y cuándo termina de entrar la línea 2 (ver home.css). */
-const DWELL_MS = 2200;
-const ENTRANCE_END_MS = { desktop: 2700, compact: 1650 } as const;
+/** Cuánto se queda cada palabra y cuánto se lee la primera antes del primer cambio. */
+const DWELL_MS = 1200;
+const FIRST_HOLD_MS = 900;
 
 const DIAGNOSTIC_HREF = diagnosticHref({
   source_page: "home",
@@ -33,13 +33,11 @@ const DIAGNOSTIC_HREF = diagnosticHref({
  * Accesibilidad de la palabra rotativa: las palabras visibles van en
  * `aria-hidden` y el `h1` trae una frase solo para lectores de pantalla, así
  * se lee una vez completa y nunca se anuncian los cambios (el DOM no cambia de
- * texto; solo cambia la clase de la palabra activa). Pausa y reanudación sin
- * control visual: con el mouse se pausa al pasar sobre el titular; con el dedo,
- * un toque en el titular alterna pausa/reanudación; con teclado o lector de
- * pantalla existe un botón «Pausar animación» que solo se ve al recibir el
- * foco. La rotación también se detiene sola con la pestaña oculta o el hero
- * fuera de pantalla, y con movimiento reducido el CSS deja fija «trabajan.» y
- * no corre ningún temporizador.
+ * texto; solo cambia la clase de la palabra activa). El titular es texto
+ * animado y nada más: no tiene controles ni acciones. La rotación solo se
+ * detiene sola con la pestaña oculta o el hero fuera de pantalla, y con
+ * movimiento reducido el CSS deja fija «trabajan.» y no corre ningún
+ * temporizador. Arranca poco después de que la línea 2 termina de aparecer.
  *
  * El video arranca desde JS después del primer paint (sin `autoplay` ni
  * `preload="auto"`): con esos atributos, Lighthouse mide el LCP como el
@@ -52,14 +50,11 @@ const DIAGNOSTIC_HREF = diagnosticHref({
  */
 export function HomeHero() {
   const sectionRef = useRef<HTMLElement>(null);
+  const accentRef = useRef<HTMLSpanElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const reduced = useReducedMotion();
-  const [paused, setPaused] = useState(false);
-  const [hovered, setHovered] = useState(false);
-  const lastPointer = useRef("mouse");
   const [onScreen, setOnScreen] = useState(true);
   const [tabVisible, setTabVisible] = useState(true);
-  const [ready, setReady] = useState(false);
   const [word, setWord] = useState({ index: 0, previous: -1 });
 
   useEffect(() => {
@@ -68,12 +63,6 @@ export function HomeHero() {
       /* autoplay bloqueado por el navegador: el póster se queda, sin ruido en consola. */
     });
   }, [reduced]);
-
-  // El botón de pausa solo existe cuando hay JS que lo atienda.
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => setReady(true));
-    return () => cancelAnimationFrame(frame);
-  }, []);
 
   useEffect(() => {
     const node = sectionRef.current;
@@ -89,14 +78,17 @@ export function HomeHero() {
     return () => document.removeEventListener("visibilitychange", onChange);
   }, []);
 
-  const running = !reduced && !paused && !hovered && onScreen && tabVisible;
+  const running = !reduced && onScreen && tabVisible;
 
   useEffect(() => {
     if (!running) return;
-    const compact = window.matchMedia("(max-width: 840px)").matches;
-    const entranceEnd = compact ? ENTRANCE_END_MS.compact : ENTRANCE_END_MS.desktop;
-    // La primera palabra se lee completa una vez que la línea entra; después, ritmo fijo.
-    const delay = Math.max(DWELL_MS, entranceEnd + DWELL_MS - performance.now());
+    // El primer cambio llega FIRST_HOLD_MS después de que la línea 2 termina de
+    // aparecer (se lee de su propia animación CSS, no de un tiempo supuesto).
+    // Si ya terminó (p. ej. al volver a la pestaña), ritmo fijo.
+    const entrance = accentRef.current?.getAnimations()[0];
+    const end = Number(entrance?.effect?.getComputedTiming().endTime ?? 0);
+    const now = typeof entrance?.currentTime === "number" ? entrance.currentTime : end;
+    const delay = end > now ? end - now + FIRST_HOLD_MS : DWELL_MS;
     const timer = window.setTimeout(() => {
       setWord((current) => ({ index: (current.index + 1) % WORDS.length, previous: current.index }));
     }, delay);
@@ -124,21 +116,9 @@ export function HomeHero() {
         <div className="mk-home-hero__inner">
           <div className="mk-home-hero__copy">
             <p className="mk-eyebrow">Agentes de IA para empresas</p>
-            <h1
-              id="hero-title"
-              className="mk-home-hero__title"
-              onPointerEnter={(event) => event.pointerType === "mouse" && setHovered(true)}
-              onPointerLeave={() => setHovered(false)}
-              onPointerDown={(event) => {
-                lastPointer.current = event.pointerType;
-              }}
-              onClick={() => {
-                // Con el dedo no hay «pasar sobre»: un toque en el titular pausa o reanuda.
-                if (lastPointer.current !== "mouse") setPaused((value) => !value);
-              }}
-            >
+            <h1 id="hero-title" className="mk-home-hero__title">
               <span>Agentes de IA</span>
-              <span className="mk-home-hero__accent">
+              <span ref={accentRef} className="mk-home-hero__accent">
                 que <span className="mk-sr-only">{SPOKEN}</span>
                 <span className="mk-home-hero__words" aria-hidden="true">
                   {WORDS.map((item, index) => (
@@ -160,15 +140,6 @@ export function HomeHero() {
               <p className="mk-home-hero__247">
                 <span>24/7</span> por todos tus canales
               </p>
-              <button
-                type="button"
-                className="mk-home-hero__pause"
-                aria-pressed={paused}
-                hidden={!ready}
-                onClick={() => setPaused((value) => !value)}
-              >
-                Pausar animación
-              </button>
             </div>
             <p className="mk-home-hero__lead">
               Implementamos agentes que se conectan con tus herramientas, automatizan procesos y ejecutan tareas reales
