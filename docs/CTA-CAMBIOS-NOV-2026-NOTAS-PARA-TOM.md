@@ -91,3 +91,16 @@ Aplica a `/rubros/<slug>` (9 páginas) y al botón de cada rubro en el hub `/rub
 
 - La serie `rubros-<slug> / final-cta / hablar-con-nayra` ahora mide solo a quienes eligen Nayra; antes mezclaba el CTA principal.
 - «Ver todos los rubros» ya no está en el cierre: el acceso sigue en el breadcrumb y el footer.
+
+## 6. Pantalla `/diagnostico` (Bloque D, nov-2026)
+
+Solo cambian textos; los eventos (`diagnostic_started`, `diagnostic_service_selected`,
+`diagnostic_step_completed`, `diagnostic_submitted`, `calendar_viewed`), sus propiedades y los `id` de servicio,
+interés, plan y meta web **no cambian**. Las opciones se muestran con lenguaje más llano (p. ej. «Atender,
+agendar o vender con un agente de IA» para `servicio=agentes`), pero siguen enviando el mismo valor. Detalle
+completo en `docs/DIAGNOSTICO-BLOQUE-D-NOTAS.md`.
+
+- La reunión se llama «Reunión de diagnóstico» en el sitio; el calendario embebido de GHL sigue mostrando
+  «Reunión de activación» hasta que se renombre en GHL.
+- El plan ya no aparece en la línea «Paso 1 de 2 · Esencial» sino como chip «Plan: Esencial» en el encabezado
+  (y «Rubro: Salud» si viene de un rubro). No hay evento asociado.
