@@ -18,7 +18,7 @@ Los `id` (analítica, `diagnostic_data`, lead) no cambian; solo el texto que ve 
 | Agentes con interés ya conocido | «Cuéntanos brevemente qué quieres delegar.» | «Cuéntanos brevemente qué te gustaría resolver (opcional).» (ya era opcional; ahora lo dice) |
 | Web con plan | «¿Qué quieres conseguir principalmente?» Conseguir contactos · Mostrar servicios · Vender online · Renovar una web existente · Otro | «¿Qué quieres conseguir con tu web?» Que más personas me contacten · Mostrar mis servicios o productos · Vender por internet · Renovar mi web actual · Otro objetivo o todavía no lo sé |
 | Web sin plan | «¿Qué necesitas?» Landing · Web Profesional · Ecommerce · No estoy seguro | «¿Qué tipo de página necesitas?» Una página simple para presentar mi oferta (Landing) · Varias páginas para explicar mi empresa (Web Profesional) · Una tienda para vender por internet (Ecommerce) · Todavía no estoy seguro |
-| A medida / general | Caja de texto obligatoria, error «Cuéntanos un poco más para llegar preparados.» | Misma caja y misma regla (≥ 10 caracteres), con apoyo «Con una frase basta. Si todavía no lo tienes claro, lo conversamos en la reunión.», ejemplo en la caja y error «Con una frase basta…» |
+| A medida / general | Caja de texto obligatoria (≥ 10 caracteres), error «Cuéntanos un poco más para llegar preparados.» | Caja **opcional** («(opcional)» en la pregunta), con apoyo «Con una frase basta. Si todavía no lo tienes claro, lo conversamos en la reunión.» y ejemplo en la caja (ver §6) |
 | Datos | «¿Cómo te contactamos?» | «¿Cómo coordinamos la reunión?»; ejemplo de formato en WhatsApp (+56 9 1234 5678) |
 | Agenda | «Reunión de activación · revisamos tu necesidad, validamos el alcance y resolvemos tus dudas.» | «Reunión de diagnóstico · conversamos sobre tu caso, las posibles soluciones y los próximos pasos. Los horarios se muestran en tu zona horaria.» |
 
@@ -79,17 +79,35 @@ también salen en los correos de confirmación de GHL. Para unificarlo hay que e
 `calendarId` (`D3CUkoKxRyze3Kpt8sa9`), no por el nombre, así que renombrar el calendario no lo rompe.
 Descripción sugerida: «Conversamos sobre tu caso, las posibles soluciones y los próximos pasos.»
 
-## 5. Decisiones que no se tomaron (necesitan autorización)
+## 5. Decisiones del Bloque D (resueltas)
 
-1. **Caja de texto obligatoria en A Medida / «No estoy seguro» (≥ 10 caracteres).** Es la única pregunta que
-   frena a quien no sabe qué necesita. El backend no la exige (hay mensaje por defecto: «Quiere conversar
-   sobre su caso.»). Recomendación: hacerla opcional, como ya es en Agentes. No se cambió.
-2. **«¿Algo más que quieras contarnos? (opcional)»** en el paso de datos se suma a la pregunta anterior y es
-   la parte más repetitiva. Recomendación: plegarla detrás de un enlace «Agregar un comentario». No se cambió.
-3. **Nombre, empresa, email y WhatsApp obligatorios.** Los cuatro son requisito del backend y de Lead Sync
-   (contacto en GHL, reserva con el mismo email/teléfono). Recomendación: mantenerlos; si se quiere bajar
-   fricción, la empresa sería el candidato a opcional (requiere revisar Lead Sync).
-4. **Móvil:** con rubro o plan, el encabezado ocupa casi una pantalla y las opciones de agentes (7) quedan
-   bajo el pliegue. Si se quiere, se puede compactar el encabezado en móvil (bajada más corta) sin tocar el
-   formulario.
-5. **GHL:** renombrar calendario y descripción (sección 4) y revisar la zona del usuario (sección 3).
+Christian las resolvió el 3-nov-2026 (ver §6 para lo implementado):
+
+1. **Caja de texto en A Medida / «Todavía no estoy seguro»:** pasa a opcional.
+2. **«¿Algo más que quieras contarnos?»:** campo opcional plegado bajo «Agregar un comentario».
+3. **Nombre, empresa, email y WhatsApp:** siguen obligatorios. Lead Sync no se toca.
+4. **Móvil:** bajada más corta para ver antes las opciones.
+5. **Agenda y zona horaria de GHL:** sin cambios; el widget ya detecta la zona del visitante.
+
+## 6. Ajustes de cierre (3-nov-2026)
+
+- **Texto opcional:** `submitContext` ya no valida largo; se puede continuar sin escribir. El backend sigue
+  recibiendo un `message` de ≥ 20 caracteres siempre: lo arma `buildMessage` con el encabezado de contexto
+  («[Servicio: General · Origen: directo]») y, si no hay texto, «Quiere conversar sobre su caso.». El contrato
+  de `/api/leads` y su validación no se tocaron. Sin texto no se envía `process_description` ni `general_note`
+  en `diagnostic_data` (antes siempre venían). La etiqueta de la pregunta ahora dice «(opcional)».
+- **Comentario plegado:** en el paso de datos solo se ve «+ Agregar un comentario». Al abrirlo aparece el mismo
+  campo (`extra`, ≤ 500 caracteres); si se escribe algo y se vuelve atrás, sigue abierto. No suma pasos ni
+  cambia el payload (`extra_note` y «Nota adicional» solo viajan si hay texto, como antes).
+- **Móvil (< 560 px):** la bajada pasa a «Cuéntanos qué necesitas y en la reunión revisamos tu caso y los
+  próximos pasos.» (misma promesa, dos líneas) y se ajustan márgenes del encabezado. En escritorio queda la
+  bajada completa. En 390 × 844, con rubro o plan, entran 5 de las 7 opciones de agentes en la primera pantalla.
+- **Intacto:** campos y validaciones del paso de datos, pasos, ids, analítica, agenda (iframe, parámetros,
+  zona horaria) y todo lo de GHL, Supabase, n8n y Nayra.
+
+## 7. Calendario de GHL: renombrar desde el panel
+
+Se cambiará el nombre del calendario a **«Reunión de diagnóstico»** desde el panel de GHL (*Calendars →
+Calendar Settings*; descripción sugerida en §4). Lo hace una persona del equipo; no se hizo desde código. No se
+ajustan horarios en UTC ni se anticipa una corrección por horario de verano: primero hay que verificar la
+configuración real del calendario y del usuario asignado (§3), con cupos reales, antes de cambiar nada.

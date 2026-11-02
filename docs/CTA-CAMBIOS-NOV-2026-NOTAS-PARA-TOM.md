@@ -102,5 +102,9 @@ completo en `docs/DIAGNOSTICO-BLOQUE-D-NOTAS.md`.
 
 - La reunión se llama «Reunión de diagnóstico» en el sitio; el calendario embebido de GHL sigue mostrando
   «Reunión de activación» hasta que se renombre en GHL.
+- La descripción de lo que se quiere resolver es opcional en todos los recorridos. Sin texto, `diagnostic_data`
+  no trae `process_description` ni `general_note` y el `message` usa un texto por defecto («Quiere conversar sobre
+  su caso.»): en reportes, un lead sin esos campos no es un dato faltante. El comentario extra va plegado bajo
+  «Agregar un comentario» (`extra_note` solo si se escribe).
 - El plan ya no aparece en la línea «Paso 1 de 2 · Esencial» sino como chip «Plan: Esencial» en el encabezado
   (y «Rubro: Salud» si viene de un rubro). No hay evento asociado.
