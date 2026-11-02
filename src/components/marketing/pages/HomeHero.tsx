@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, Pause, Play } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { diagnosticHref } from "@/lib/marketing/cta-context";
 import { ButtonLink } from "../ui/Button";
@@ -13,7 +13,7 @@ const WORDS = ["atienden", "agendan", "venden", "trabajan"] as const;
 const SPOKEN = "atienden, agendan, venden y trabajan.";
 
 /** Cuánto se queda cada palabra y cuándo termina de entrar la línea 2 (ver home.css). */
-const DWELL_MS = 3200;
+const DWELL_MS = 2200;
 const ENTRANCE_END_MS = { desktop: 2700, compact: 1650 } as const;
 
 const DIAGNOSTIC_HREF = diagnosticHref({
@@ -33,10 +33,13 @@ const DIAGNOSTIC_HREF = diagnosticHref({
  * Accesibilidad de la palabra rotativa: las palabras visibles van en
  * `aria-hidden` y el `h1` trae una frase solo para lectores de pantalla, así
  * se lee una vez completa y nunca se anuncian los cambios (el DOM no cambia de
- * texto; solo cambia la clase de la palabra activa). La persona puede pausar y
- * reanudar con el botón junto a la frase 24/7. La rotación también se detiene
- * sola con la pestaña oculta o el hero fuera de pantalla, y con movimiento
- * reducido el CSS deja fija «trabajan.» y no corre ningún temporizador.
+ * texto; solo cambia la clase de la palabra activa). Pausa y reanudación sin
+ * control visual: con el mouse se pausa al pasar sobre el titular; con el dedo,
+ * un toque en el titular alterna pausa/reanudación; con teclado o lector de
+ * pantalla existe un botón «Pausar animación» que solo se ve al recibir el
+ * foco. La rotación también se detiene sola con la pestaña oculta o el hero
+ * fuera de pantalla, y con movimiento reducido el CSS deja fija «trabajan.» y
+ * no corre ningún temporizador.
  *
  * El video arranca desde JS después del primer paint (sin `autoplay` ni
  * `preload="auto"`): con esos atributos, Lighthouse mide el LCP como el
@@ -52,6 +55,8 @@ export function HomeHero() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const reduced = useReducedMotion();
   const [paused, setPaused] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const lastPointer = useRef("mouse");
   const [onScreen, setOnScreen] = useState(true);
   const [tabVisible, setTabVisible] = useState(true);
   const [ready, setReady] = useState(false);
@@ -84,7 +89,7 @@ export function HomeHero() {
     return () => document.removeEventListener("visibilitychange", onChange);
   }, []);
 
-  const running = !reduced && !paused && onScreen && tabVisible;
+  const running = !reduced && !paused && !hovered && onScreen && tabVisible;
 
   useEffect(() => {
     if (!running) return;
@@ -119,7 +124,19 @@ export function HomeHero() {
         <div className="mk-home-hero__inner">
           <div className="mk-home-hero__copy">
             <p className="mk-eyebrow">Agentes de IA para empresas</p>
-            <h1 id="hero-title" className="mk-home-hero__title">
+            <h1
+              id="hero-title"
+              className="mk-home-hero__title"
+              onPointerEnter={(event) => event.pointerType === "mouse" && setHovered(true)}
+              onPointerLeave={() => setHovered(false)}
+              onPointerDown={(event) => {
+                lastPointer.current = event.pointerType;
+              }}
+              onClick={() => {
+                // Con el dedo no hay «pasar sobre»: un toque en el titular pausa o reanuda.
+                if (lastPointer.current !== "mouse") setPaused((value) => !value);
+              }}
+            >
               <span>Agentes de IA</span>
               <span className="mk-home-hero__accent">
                 que <span className="mk-sr-only">{SPOKEN}</span>
@@ -147,11 +164,10 @@ export function HomeHero() {
                 type="button"
                 className="mk-home-hero__pause"
                 aria-pressed={paused}
-                aria-label="Pausar la animación del titular"
                 hidden={!ready}
                 onClick={() => setPaused((value) => !value)}
               >
-                {paused ? <Play size={14} strokeWidth={2.2} aria-hidden /> : <Pause size={14} strokeWidth={2.2} aria-hidden />}
+                Pausar animación
               </button>
             </div>
             <p className="mk-home-hero__lead">
