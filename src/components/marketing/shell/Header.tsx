@@ -23,7 +23,7 @@ export function Header({ portalUrl }: { portalUrl: string | null }) {
   const pathname = usePathname() ?? "/";
   // El CTA del header conserva la página de origen (spec final §7.1).
   const cta = {
-    label: "Agendar diagnóstico",
+    label: "Agenda un diagnóstico",
     href: diagnosticHref({
       source_page: sourceFromPath(pathname),
       source_section: "header",
@@ -223,7 +223,7 @@ export function Header({ portalUrl }: { portalUrl: string | null }) {
           <Link href="/rubros">Rubros</Link>
           <Link href="/conocenos">Conócenos</Link>
           <Link href="/precios">Precios</Link>
-          <Link href="/diagnostico?source=noscript&section=header&cta=agendar-diagnostico">Agendar diagnóstico</Link>
+          <Link href="/diagnostico?source=noscript&section=header&cta=agendar-diagnostico">Agenda un diagnóstico</Link>
         </nav>
       </noscript>
 

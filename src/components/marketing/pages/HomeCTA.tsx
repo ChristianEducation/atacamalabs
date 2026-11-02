@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import type { AgentCtaContext } from "@/lib/marketing/agent-cta";
+import { diagnosticHref } from "@/lib/marketing/cta-context";
 import { ButtonLink } from "../ui/Button";
 import { AgentCtaLink } from "../shell/AgentCtaLink";
 import { Reveal } from "../motion/Reveal";
@@ -72,11 +73,20 @@ export function HomeCTA() {
     <SoftCTA
       titleId="home-cta-title"
       title="¿Qué le delegarías mañana?"
-      body="Cuéntanos qué proceso quieres mejorar y te mostramos cómo podría trabajarlo un agente de Atacama Labs."
+      body="Cuéntanos qué proceso quieres mejorar. En el diagnóstico vemos cómo podría trabajarlo un agente de Atacama Labs."
       primary={{
-        label: "Hablar con Nayra",
+        label: "Agenda un diagnóstico",
+        href: diagnosticHref({
+          source_page: "home",
+          source_section: "final-cta",
+          source_cta: "agendar-diagnostico",
+          service: "agentes",
+        }),
+      }}
+      secondary={{
+        label: "Prueba a Nayra",
         href: "/diagnostico",
-        agent: { source_page: "home", source_section: "final-cta", source_cta: "hablar-con-nayra", service: "agentes" },
+        agent: { source_page: "home", source_section: "final-cta", source_cta: "prueba-a-nayra", service: "agentes" },
       }}
     />
   );
