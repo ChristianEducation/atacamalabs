@@ -352,8 +352,7 @@ export const FAQ_ITEMS: Record<FaqGroupId, readonly { question: string; answer: 
     },
     {
       question: "¿Me conviene agregar agentes o cambiar de plan?",
-      answer:
-        "Depende de la cantidad de agentes y del alcance de la operación. Si necesitas varios agentes, normalmente un plan superior resulta más conveniente. Te recomendamos la configuración adecuada antes de contratar.",
+      answer: `Depende de lo que necesite tu operación. Sumar un agente (${clp(ADDITIONAL_AGENT_MONTHLY)} + IVA al mes) amplía la capacidad dentro de tu plan actual, y suele convenir cuando necesitas uno o pocos agentes más con las mismas condiciones. Cambiar de plan conviene cuando además necesitas lo que trae el plan superior: más crédito de IA mensual, soporte prioritario, integraciones especiales o financieras Chile, o varios procesos trabajando en paralelo. En ambos casos revisamos contigo la configuración adecuada antes de contratar.`,
     },
     {
       question: "¿Qué pasa si necesito más de 5 agentes?",
