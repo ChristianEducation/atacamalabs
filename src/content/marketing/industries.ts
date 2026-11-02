@@ -79,6 +79,14 @@ export interface IndustryExperience {
   receipt: IndustryReceipt;
   flow: readonly string[];
   capabilities: readonly string[];
+  /**
+   * Cómo se conecta con los sistemas que el rubro ya usa (MASTER_PLAN_CONVERSION
+   * §6). Solo lo que ya sostienen las capacidades y las preguntas frecuentes
+   * del rubro: nada se agrega aquí que no esté dicho en otra parte.
+   */
+  connections: string;
+  /** «Qué necesita revisión humana» de este rubro: una frase y tres límites concretos. */
+  oversight: { lead: string; items: readonly [string, string, string] };
   featured?: boolean;
   seo: IndustrySeo;
 }
@@ -110,6 +118,16 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
       "Confirmaciones, recordatorios y reconfirmación",
       "Derivación con contexto",
     ],
+    connections:
+      "Calendarios estándar como Google Calendar u Outlook se conectan directo. Si usas un software clínico o de agenda propio, se evalúa según la integración que tenga disponible.",
+    oversight: {
+      lead: "Lo clínico lo decide tu equipo. El agente trabaja en lo administrativo y, cuando una consulta necesita criterio profesional, la deriva con la conversación completa.",
+      items: [
+        "Diagnósticos y recomendaciones médicas: no los entrega el agente; los define tu equipo clínico.",
+        "Consultas que requieren criterio profesional: se derivan al equipo con la conversación completa.",
+        "Qué puede responder y cuándo interviene una persona: lo defines tú.",
+      ],
+    },
     seo: {
       title: "Agentes de IA para clínicas y centros de salud | Atacama Labs",
       description:
@@ -134,7 +152,7 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
         {
           question: "¿Reduce los no shows?",
           answer:
-            "Puede ayudar recordando y reconfirmando citas antes de la hora agendada, que es donde suelen perderse la mayoría de las horas sin aviso.",
+            "Puede ayudar recordando y reconfirmando citas antes de la hora agendada, que es el momento en que suelen perderse las horas sin aviso.",
         },
         {
           question: "¿Se conecta con el sistema de agenda que ya uso?",
@@ -168,6 +186,16 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
     receipt: { title: "Interés registrado", chips: ["CRM", "Próximo paso creado"] },
     flow: ["WhatsApp", "Agente", "Catálogo", "CRM", "Agenda"],
     capabilities: ["Consultar fichas disponibles", "Calificar interesados", "Coordinar visitas", "Hacer seguimiento"],
+    connections:
+      "Consulta tu catálogo o sistema de fichas y registra cada interesado en tu CRM: HubSpot, Salesforce, Zoho u otros con integración disponible.",
+    oversight: {
+      lead: "Tu equipo comercial decide a quién atender y cómo. El agente responde con la información que tiene cargada, califica según tus criterios y pasa al corredor con la conversación completa.",
+      items: [
+        "Qué interesados pasan a un corredor: según los criterios que defines (sector, presupuesto, tipo de propiedad).",
+        "Información de cada propiedad: solo la de tu catálogo o tus fichas conectadas.",
+        "Cuando el interesado necesita a una persona: el corredor recibe la conversación completa.",
+      ],
+    },
     seo: {
       title: "Agentes de IA para inmobiliarias | Atacama Labs",
       description:
@@ -229,6 +257,16 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
       "Agendamiento de reuniones",
       "Recordatorios y procesos administrativos",
     ],
+    connections:
+      "Responde con la información que tu institución le entrega y, si se conecta a tu calendario, agenda reuniones con apoderados. Cada solicitud queda registrada para el equipo de admisión.",
+    oversight: {
+      lead: "El equipo de admisión revisa cada caso particular. El agente responde con la información que tu institución le entrega y deja la solicitud registrada, con contexto, para que una persona la continúe.",
+      items: [
+        "Qué información comparte: solo la que tu institución le entrega (requisitos, fechas, aranceles y otros datos publicados).",
+        "Situaciones particulares de admisión o matrícula: quedan registradas para que las revise el equipo.",
+        "Datos de estudiantes y familias: se usan según las reglas y permisos que definas.",
+      ],
+    },
     seo: {
       title: "Agentes de IA para colegios y educación | Atacama Labs",
       description:
@@ -289,6 +327,16 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
       "Enviar enlace de pago si existe integración",
       "Consultar estado y postventa",
     ],
+    connections:
+      "Se conecta a tu catálogo o sistema de inventario y a tu plataforma de ecommerce (Shopify, WooCommerce u otra), según qué tan abierta esté su API o sus integraciones.",
+    oversight: {
+      lead: "El agente prepara el pedido y consulta su estado; lo que sale del flujo normal lo decide tu equipo. Cuando hace falta una persona, la conversación se deriva con su contexto.",
+      items: [
+        "Stock y precios: responde con lo que tu catálogo o inventario tiene registrado.",
+        "Pagos: envía el enlace cuando hay una integración de pagos; el cobro ocurre en tu plataforma de pago.",
+        "Casos de postventa que requieren a una persona: se derivan con el contexto de la conversación.",
+      ],
+    },
     seo: {
       title: "Agentes de IA para retail y ecommerce | Atacama Labs",
       description:
@@ -362,6 +410,16 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
       "Registrar en Sheets, Supabase o el sistema conectado",
     ],
     featured: true,
+    connections:
+      "Registra cada pedido en el sistema que conectes: una planilla (Sheets), Supabase o el software que ya use tu cocina o administración.",
+    oversight: {
+      lead: "Las reglas del negocio las defines tú. El agente las aplica antes de confirmar cada pedido y, si algo no calza con ellas, lo deriva a una persona de administración o cocina.",
+      items: [
+        "Menú del día, horarios de corte y cantidades por turno: los defines tú; el agente los aplica.",
+        "Pagos: se envían o verifican solo si la integración existe.",
+        "Pedidos que no calzan con las reglas definidas: se derivan a una persona.",
+      ],
+    },
     seo: {
       title: "Agentes de IA para restaurantes y alimentación | Atacama Labs",
       description:
@@ -388,7 +446,7 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
         },
         {
           question: "¿Sirve para casinos escolares con pedidos recurrentes?",
-          answer: "Sí, es uno de los casos donde más orden aporta: pedidos que se repiten día a día con variaciones puntuales.",
+          answer: "Sí: son pedidos que se repiten día a día con variaciones puntuales, donde las reglas definidas y el registro ordenado se notan.",
         },
       ],
     },
@@ -423,6 +481,16 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
       "Responder planes y horarios",
       "Registrar todo en el CRM",
     ],
+    connections:
+      "Lee las señales de tu CRM (por ejemplo, el tiempo sin asistir), reserva en tu sistema de reservas o calendario y deja cada gestión registrada en el CRM.",
+    oversight: {
+      lead: "Tú defines cuándo el agente escribe y qué ofrece. Reactiva, recuerda y reserva dentro de esas reglas, y deja todo registrado para que tu equipo vea cada gestión.",
+      items: [
+        "Cuándo escribe primero: según la señal de tu CRM que definas (por ejemplo, sin asistir hace 14 días).",
+        "Mensualidades: recuerda el pago pendiente; el cobro depende de la integración de pago que tengas conectada.",
+        "Cupos: reserva solo si está conectado a tu sistema de reservas o calendario.",
+      ],
+    },
     seo: {
       title: "Agentes de IA para gimnasios y centros deportivos | Atacama Labs",
       description:
@@ -491,6 +559,16 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
       "Coordinar reuniones",
       "Registrar y hacer seguimiento",
     ],
+    connections:
+      "Recibe consultas por WhatsApp o la web, agenda reuniones en tu calendario y deja cada consulta registrada en tu CRM, con los antecedentes recopilados.",
+    oversight: {
+      lead: "La asesoría la entrega tu equipo profesional. El agente recibe la consulta, recopila los antecedentes que definas y deja la conversación lista para que una persona continúe con contexto.",
+      items: [
+        "Asesoría y opinión profesional: no las da el agente; las entrega tu equipo.",
+        "Antecedentes que recopila antes de derivar: los defines tú (tipo de necesidad, urgencia, contexto inicial).",
+        "Reunión y siguiente paso: el agente los coordina y el equipo continúa con el contexto.",
+      ],
+    },
     seo: {
       title: "Agentes de IA para servicios profesionales | Atacama Labs",
       description:
@@ -560,6 +638,16 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
       "Coordinar reuniones o visitas",
       "Traspasar contexto a comercial y operaciones",
     ],
+    connections:
+      "Funciona por WhatsApp, correo o ambos, según el canal que uses con tus clientes y proveedores, y registra cada solicitud en tu CRM para que comercial y operaciones partan del mismo contexto.",
+    oversight: {
+      lead: "Tu equipo comercial y de operaciones mantiene las decisiones. El agente recopila el alcance y traspasa la solicitud con todo el contexto, según las reglas de derivación que definas.",
+      items: [
+        "Precio y cotización final: los prepara tu equipo comercial con el alcance que el agente reunió.",
+        "Traspaso entre comercial y operaciones: con el contexto completo, para que nadie pregunte de nuevo.",
+        "Quién continúa cada solicitud: según las reglas de derivación que definas.",
+      ],
+    },
     seo: {
       title: "Agentes de IA para empresas B2B e industria | Atacama Labs",
       description:
@@ -630,6 +718,16 @@ export const INDUSTRY_LIST: readonly IndustryExperience[] = [
       "Preparar o ejecutar acciones autorizadas",
       "Trabajar con SII, bancos o Previred cuando la integración concreta esté disponible y configurada",
     ],
+    connections:
+      "Consulta el sistema conectado y trabaja con bancos, Previred o tu software contable cuando exista una integración configurada.",
+    oversight: {
+      lead: "Las acciones sensibles quedan sujetas a tus reglas y permisos. Por defecto el agente consulta y muestra la información disponible; lo que implica actuar pasa por una aprobación o se deriva a una persona.",
+      items: [
+        "Emitir documentos o hacer trámites con el SII: solo si hay una integración concreta y configurada, y bajo tus reglas.",
+        "Consultas de estado y documentos: por defecto, muestra información disponible, sin acciones sensibles.",
+        "Cobros y antecedentes pendientes: el estado queda registrado para que tu equipo haga seguimiento.",
+      ],
+    },
     seo: {
       title: "Agentes de IA para contabilidad y finanzas | Atacama Labs",
       description:
