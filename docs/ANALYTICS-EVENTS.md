@@ -37,7 +37,7 @@ meeting_scheduled      [FUENTE AUTORITATIVA: backend/GHL — nunca el frontend]
 
 | Evento                         | Disparador                                              | Propiedades                                               | Destino    | Key event |
 | ------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------- | ---------- | --------- |
-| `cta_clicked`                   | Cualquier CTA que abre Nayra o `/diagnostico`             | `source_page, source_section, source_cta, service, interest, plan, campaign, destination` | GA4 (GTM)  | No        |
+| `cta_clicked`                   | CTA que abre Nayra (`AgentCtaLink`). Los enlaces directos a `/diagnostico` no lo emiten: su origen se mide con `diagnostic_started` | `source_page, source_section, source_cta, service, interest, plan, campaign, destination` | GA4 (GTM)  | No        |
 | `nayra_opened`                  | El widget de Nayra abre de verdad (no el fallback)         | igual a `cta_clicked` (sin `destination`)                   | GA4 (GTM)  | No        |
 | `diagnostic_started`            | Se monta `/diagnostico` con contexto resuelto              | `source_page, source_section, source_cta, service, interest, plan, campaign` | GA4 (GTM)  | No        |
 | `diagnostic_service_selected`   | Se elige el servicio en el paso 1                          | igual + `service`                                            | GA4 (GTM)  | No        |
