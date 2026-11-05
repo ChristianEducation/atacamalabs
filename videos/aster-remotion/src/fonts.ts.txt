@@ -1,0 +1,34 @@
+import { continueRender, delayRender, staticFile } from 'remotion';
+import { DM as DM_FAMILY } from '../fonts'; // DM Sans (marca) — también dispara su carga
+
+// Misma pareja tipográfica que atacamalabs.cl: Newsreader (títulos) + DM Sans (UI y cuerpo).
+export const DM = DM_FAMILY;
+export const SERIF = '"Newsreader", Georgia, serif';
+export const MONO = 'ui-monospace, SFMono-Regular, Consolas, monospace';
+
+const h = delayRender('Newsreader');
+Promise.all([
+  new FontFace('Newsreader', `url(${staticFile('fonts/Newsreader-latin-wght.woff2')}) format("woff2")`, { weight: '200 800', style: 'normal' }).load(),
+  new FontFace('Newsreader', `url(${staticFile('fonts/Newsreader-latin-wght-italic.woff2')}) format("woff2")`, { weight: '200 800', style: 'italic' }).load(),
+])
+  .then((faces) => {
+    faces.forEach((ff) => (document.fonts as unknown as { add(f: FontFace): void }).add(ff));
+    continueRender(h);
+  })
+  .catch(() => continueRender(h));
+
+// Tokens oficiales (src/styles/tokens.css de atacamalabs.cl)
+export const C = {
+  ink: '#121a2b',
+  blue: '#0f5ced',
+  blueOnDark: '#9db9ff',
+  paper: '#fbf8f2',
+  sand: '#f6f1e8',
+  dark: '#041228',
+  darkSurface: '#0b1d3a',
+  darkLine: '#22385c',
+  darkText: '#f3f5f8',
+  darkMuted: '#a3afbd',
+  line: '#ddd9d1',
+  muted: '#62656b',
+};

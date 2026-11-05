@@ -1,9 +1,11 @@
 {
-  "_nota": "Config de la landing /aster. Cambiar video/poster/subtitulos aqui sin tocar componentes. video=null muestra la tarjeta de respaldo.",
+  "_nota": "Config de la landing /aster. Cambiar rutas aquí sin tocar componentes. Si falta un video, la página muestra el póster.",
   "whatsappE164": "56936108103",
-  "video": null,
-  "poster": "/aster/poster.jpg",
-  "captions": null,
-  "captionsLang": "es",
+  "video": "/aster/video/aster-demo.mp4",
+  "videoPoster": "/aster/video/poster-video.jpg",
+  "loop": "/aster/video/hero-loop.mp4",
+  "loopPoster": "/aster/video/poster-hero.jpg",
+  "pdfImage": "/aster/documento-bp204.jpg",
+  "pdfFile": "/aster/informe-ejemplo-bp204.pdf",
   "mainSiteUrl": "https://atacamalabs.cl"
 }
