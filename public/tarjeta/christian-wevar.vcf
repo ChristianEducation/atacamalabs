@@ -1,0 +1,12 @@
+BEGIN:VCARD
+VERSION:3.0
+N:Wevar;Christian;;;
+FN:Christian Wevar
+ORG:Atacama Labs
+TITLE:Fundador
+TEL;TYPE=CELL:+56982290663
+EMAIL;TYPE=WORK:contacto@atacamalabs.cl
+URL:https://atacamalabs.cl
+ADR;TYPE=WORK:;;;Antofagasta;;;Chile
+NOTE:Agentes\, sistemas y automatización para empresas.
+END:VCARD
