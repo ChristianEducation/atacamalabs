@@ -1,7 +1,15 @@
 # ENTREGA FINAL · Landing `/aster` y video «De lo que ocurre en terreno a una acción real»
 5-nov-2026 · rama `feat/aster-demo-documents-2026` (commits locales; sin push a `main`, sin publicar).
 
-## 1. Qué quedó (estado honesto)
+
+## 0. ACTUALIZACIÓN v2 · enfoque comercial (5-nov)
+Cambio de dirección pedido por Christian: la página y el video venden **agentes que dan seguimiento, conectan sistemas y detectan pendientes con menos trabajo administrativo**, no un generador de PDF.
+- **Landing:** hero «Lo que ocurre en terreno no debería quedarse en un informe», CTA «Prueba un agente» + «Hablemos de tu operación»; 3 beneficios (menos tiempo reportando · pendientes que no se pierden · información conectada); ejemplos de señales que un agente puede cruzar; integraciones (ERP, CMMS/EAM, seguridad, sistemas internos, correo y agenda, mensajería); **la demostración de WhatsApp + PDF aparece una sola vez** («Ya funciona hoy»), con la aclaración de que seguimiento, cruce de datos y alertas se construyen al integrar con los sistemas del cliente; cierre general (no solo minería). Sin CRM.
+- **Video:** 45 s, mismos planos Higgsfield (sin regenerar nada; **créditos sin cambio: 62,5 de 100**), textos nuevos en Remotion: «Cada turno deja información importante» → «Una observación. Una falla. Un pendiente.» → «Pero reportar no siempre significa resolver» (Reportado ✓ / Resuelto ○) → «¿Y si bastara con contarlo?» (audio) → «Un agente lo registra y organiza» → evidencia del PDF (4 s, «Ya funciona hoy») → «Conectado a tus sistemas, puede dar seguimiento y detectar alertas» (ERP, CMMS/EAM, Seguridad, Sistemas internos → Seguimiento / Alertas, con líneas punteadas = posible) → «Menos administración. Más tiempo para lo importante.» + «Tecnología para el trabajo real».
+- **Archivos v2:** `aster-9x16-master.mp4`, `aster-16x9-master.mp4`, `aster-demo-9x16-web.mp4` en `D:\ATACAMA-ASTER-ENTREGABLES\` (los de la v1 quedan en `v1-anterior\`).
+- Las secciones 1–7 de abajo describen la v1 (diseño técnico, verificación y pendientes); los pendientes siguen vigentes.
+
+## 1. Qué quedó (v1) (estado honesto)
 | Entregable | Estado |
 |---|---|
 | Landing `/aster` rediseñada con el sistema de atacamalabs.cl (tokens, Newsreader + DM Sans, botones `mk-btn`) | **Terminado y verificado** en navegador a 375/390/768/1440 px (ver §6) |

@@ -1,6 +1,6 @@
 # Video ASTER (Remotion) — «De lo que ocurre en terreno a una acción real»
 
-Código fuente de la composición (los archivos llevan sufijo `.txt` para que el `tsc` del sitio no los compile; al copiarlos al proyecto Remotion, quita el `.txt`) (43,5 s, 1080×1920, 30 fps). Vive en el proyecto Remotion de Atacama Labs
+Código fuente de la composición (los archivos llevan sufijo `.txt` para que el `tsc` del sitio no los compile; al copiarlos al proyecto Remotion, quita el `.txt`) (45 s, 1080×1920, 30 fps; versión 2 «comercial» del 5-nov). Vive en el proyecto Remotion de Atacama Labs
 (`video-studio/atacama-video`, Remotion 4.0.484) y se registra en su `src/Root.tsx`:
 
 ```tsx

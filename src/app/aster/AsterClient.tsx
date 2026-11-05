@@ -65,7 +65,7 @@ export function DemoVideo({ src, poster }: { src: string | null; poster: string 
         playsInline
         preload="none"
         onError={() => setFailed(true)}
-        aria-label="Video de 43 segundos: de un audio en terreno a un documento entregado por WhatsApp"
+        aria-label="Video de 45 segundos: cómo un agente de IA registra lo que ocurre en un turno, lo organiza y, conectado a tus sistemas, da seguimiento y detecta alertas"
       />
     </div>
   );

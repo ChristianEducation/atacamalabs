@@ -3,7 +3,7 @@ import { AbsoluteFill, Easing, Img, OffthreadVideo, Sequence, interpolate, stati
 import { C, DM, MONO, SERIF } from './fonts';
 
 export const ASTER_FPS = 30;
-export const ASTER_DURATION = 1305; // 43,5 s
+export const ASTER_DURATION = 1350; // 45 s
 const clampOpts = { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' } as const;
 const ease = Easing.bezier(0.22, 1, 0.36, 1);
 const p = (f: number, a: number, b: number) => interpolate(f, [a, b], [0, 1], { ...clampOpts, easing: ease });
@@ -45,7 +45,7 @@ const Eyebrow: React.FC<{ text: string; at: number; color?: string; style?: Reac
 const Words: React.FC<{ text: string; at: number; size?: number; step?: number; accent?: number[]; color?: string; style?: React.CSSProperties }> = ({ text, at, size = 92, step = 6, accent = [], color = '#fff', style }) => {
   const f = useCurrentFrame();
   return (
-    <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: size, lineHeight: 1.04, letterSpacing: '-0.03em', color, ...style }}>
+    <div style={{ fontFamily: SERIF, fontWeight: 500, fontSize: size, lineHeight: 1.04, letterSpacing: '-0.03em', color, textShadow: '0 4px 28px rgba(4,18,40,0.55)', ...style }}>
       {text.split(' ').map((w, i) => {
         const o = p(f, at + i * step, at + i * step + 16);
         return (
@@ -54,17 +54,6 @@ const Words: React.FC<{ text: string; at: number; size?: number; step?: number; 
           </span>
         );
       })}
-    </div>
-  );
-};
-
-const Chip: React.FC<{ text: string; at: number; out?: number }> = ({ text, at, out }) => {
-  const f = useCurrentFrame();
-  const o = Math.min(p(f, at, at + 12), out ? 1 - p(f, out, out + 10) : 1);
-  return (
-    <div style={{ opacity: o, transform: `translateY(${(1 - o) * 14}px)`, display: 'inline-flex', alignItems: 'center', gap: 16, padding: '18px 30px', borderRadius: 999, background: 'rgba(4,18,40,0.55)', border: '1px solid rgba(255,255,255,0.28)', backdropFilter: 'blur(8px)', fontFamily: SERIF, fontSize: 56, fontWeight: 500, letterSpacing: '-0.02em', color: '#fff' }}>
-      <span style={{ width: 14, height: 14, borderRadius: 99, background: C.blueOnDark }} />
-      {text}
     </div>
   );
 };
@@ -92,6 +81,7 @@ const Brand: React.FC<{ at?: number; width?: number }> = ({ at = 0, width = 300 
 
 /* ───────────── ESCENAS ───────────── */
 
+/** 0–5,7 s · «Cada turno deja información importante.» */
 const S1: React.FC = () => (
   <Scene>
     <Plate src="aster/plates/p1_territorio.mp4" drift={[1.02, 1.1]} />
@@ -99,42 +89,47 @@ const S1: React.FC = () => (
       <Brand at={6} width={340} />
     </div>
     <div style={{ position: 'absolute', left: 80, right: 80, bottom: 250 }}>
-      <Eyebrow text="Antes del primer reporte" at={26} />
-      <Words text="El trabajo ocurre todos los días." at={40} size={108} accent={[3, 4]} style={{ marginTop: 28 }} />
+      <Words text="Cada turno deja información importante." at={20} size={112} accent={[3, 4]} />
     </div>
   </Scene>
 );
 
-const S2a: React.FC = () => (
+/** 5,4–13,3 s · «Una observación. Una falla. Un pendiente.» (tres planos, una frase cada uno) */
+const Beat: React.FC<{ src: string; text: string; accent?: number[]; drift?: [number, number] }> = ({ src, text, accent, drift = [1.0, 1.08] }) => (
   <Scene>
-    <Plate src="aster/plates/p2_mantenimiento.mp4" drift={[1.0, 1.08]} />
-    <div style={{ position: 'absolute', left: 80, bottom: 230, display: 'flex', flexDirection: 'column', gap: 22 }}>
-      <Chip text="Inspecciones" at={10} out={62} />
-      <div style={{ position: 'absolute', left: 0, top: 0 }}>
-        <Chip text="Mantenimiento" at={64} />
+    <Plate src={src} drift={drift} />
+    <div style={{ position: 'absolute', left: 80, right: 80, bottom: 250 }}>
+      <Words text={text} at={6} size={128} step={9} accent={accent} />
+    </div>
+  </Scene>
+);
+
+/** 13–18 s · «Pero reportar no siempre significa resolver.» */
+const SC: React.FC = () => {
+  const f = useCurrentFrame();
+  const a = p(f, 78, 94);
+  const b = p(f, 96, 112);
+  return (
+    <Scene>
+      <Plate src="aster/plates/p2_mantenimiento.mp4" drift={[1.06, 1.1]} dim={0.55} blur={10} />
+      <div style={{ position: 'absolute', left: 80, right: 80, top: 0, bottom: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <Words text="Pero reportar no siempre significa resolver." at={8} size={104} step={7} accent={[5]} />
+        <div style={{ display: 'flex', gap: 20, marginTop: 64 }}>
+          <div style={{ opacity: a, transform: `translateY(${(1 - a) * 14}px)`, display: 'inline-flex', alignItems: 'center', gap: 16, padding: '18px 30px', borderRadius: 999, background: C.blue, fontFamily: DM, fontWeight: 600, fontSize: 40, color: '#fff' }}>
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.2 4.2L19 7" /></svg>
+            Reportado
+          </div>
+          <div style={{ opacity: b, transform: `translateY(${(1 - b) * 14}px)`, display: 'inline-flex', alignItems: 'center', gap: 16, padding: '18px 30px', borderRadius: 999, border: '3px dashed rgba(255,255,255,0.7)', fontFamily: DM, fontWeight: 600, fontSize: 40, color: '#fff' }}>
+            <span style={{ width: 28, height: 28, borderRadius: 99, border: '3px solid rgba(255,255,255,0.7)' }} />
+            Resuelto
+          </div>
+        </div>
       </div>
-    </div>
-  </Scene>
-);
+    </Scene>
+  );
+};
 
-const S2b: React.FC = () => (
-  <Scene>
-    <Plate src="aster/plates/p3_logistica.mp4" drift={[1.0, 1.07]} />
-    <div style={{ position: 'absolute', left: 80, bottom: 230 }}>
-      <Chip text="Operaciones" at={8} />
-    </div>
-  </Scene>
-);
-
-const S2c: React.FC = () => (
-  <Scene>
-    <Plate src="aster/plates/p5_control.mp4" drift={[1.0, 1.07]} />
-    <div style={{ position: 'absolute', left: 80, bottom: 230 }}>
-      <Chip text="Control y seguimiento" at={8} />
-    </div>
-  </Scene>
-);
-
+/** 17,7–23,4 s · «¿Y si bastara con contarlo?» + el audio */
 const TRANSCRIPT = 'Hoy revisamos la bomba BP204 y se escuchó un ruido extraño. Avisé al supervisor.';
 const S3: React.FC = () => {
   const f = useCurrentFrame();
@@ -142,16 +137,16 @@ const S3: React.FC = () => {
   return (
     <Scene>
       <Plate src="aster/plates/p4_operador.mp4" drift={[1.0, 1.06]} />
-      <div style={{ position: 'absolute', left: 80, right: 80, top: 120 }}>
-        <Eyebrow text="Un audio de terreno" at={10} />
+      <div style={{ position: 'absolute', left: 80, right: 80, top: 130 }}>
+        <Words text="¿Y si bastara con contarlo?" at={4} size={92} step={7} accent={[4]} />
       </div>
       <div style={{ position: 'absolute', left: 60, right: 60, bottom: 200 }}>
-        <Wave speakFrom={18} speakTo={150} />
+        <Wave speakFrom={22} speakTo={150} />
         <div style={{ marginTop: 34, padding: '30px 38px', borderRadius: 28, background: 'rgba(4,18,40,0.62)', border: '1px solid rgba(255,255,255,0.22)', backdropFilter: 'blur(8px)', fontFamily: DM, fontSize: 44, lineHeight: 1.3, color: '#fff', minHeight: 170 }}>
           {words.map((w, i) => {
-            const o = p(f, 24 + i * 7, 24 + i * 7 + 8);
+            const o = p(f, 28 + i * 7, 28 + i * 7 + 8);
             const key = /BP204|ruido|extraño\.?|supervisor\.?/i.test(w);
-            const hl = key ? p(f, 118 + (i % 5) * 6, 134 + (i % 5) * 6) : 0;
+            const hl = key ? p(f, 122 + (i % 5) * 6, 138 + (i % 5) * 6) : 0;
             return <span key={i} style={{ opacity: o, marginRight: '0.28em', display: 'inline-block', padding: '0 10px', borderRadius: 10, background: `rgba(15,92,237,${0.85 * hl})`, color: '#fff', fontWeight: key && hl > 0.5 ? 700 : 400 }}>{w}</span>;
           })}
         </div>
@@ -160,6 +155,7 @@ const S3: React.FC = () => {
   );
 };
 
+/** 23–29,5 s · «Un agente lo registra y organiza.» */
 const ROWS: [string, string][] = [
   ['Equipo', 'Bomba BP204'],
   ['Hecho identificado', 'Ruido extraño durante la revisión'],
@@ -169,28 +165,20 @@ const ROWS: [string, string][] = [
 ];
 const S4: React.FC = () => {
   const f = useCurrentFrame();
-  const steps = ['Entiende.', 'Organiza.', 'Ejecuta.'];
   return (
     <Scene>
       <Plate src="aster/plates/p4_operador.mp4" drift={[1.06, 1.06]} dim={0.66} blur={12} />
-      <div style={{ position: 'absolute', left: 80, right: 80, top: 190, display: 'flex', gap: 34 }}>
-        {steps.map((s, i) => {
-          const o = p(f, 10 + i * 26, 10 + i * 26 + 16);
-          return (
-            <div key={s} style={{ opacity: o, transform: `translateY(${(1 - o) * 20}px)`, fontFamily: SERIF, fontWeight: 500, fontSize: 70, letterSpacing: '-0.03em', color: i === 2 ? C.blueOnDark : '#fff', fontStyle: i === 2 ? 'italic' : 'normal' }}>
-              {s}
-            </div>
-          );
-        })}
+      <div style={{ position: 'absolute', left: 80, right: 80, top: 150 }}>
+        <Words text="Un agente lo registra y organiza." at={4} size={78} step={6} accent={[5]} />
       </div>
-      <div style={{ position: 'absolute', left: 70, right: 70, top: 450, borderRadius: 32, background: C.paper, padding: '46px 52px', boxShadow: '0 40px 90px rgba(0,0,0,0.45)', opacity: p(f, 14, 34), transform: `translateY(${(1 - p(f, 14, 34)) * 40}px)` }}>
+      <div style={{ position: 'absolute', left: 70, right: 70, top: 470, borderRadius: 32, background: C.paper, padding: '46px 52px', boxShadow: '0 40px 90px rgba(0,0,0,0.45)', opacity: p(f, 14, 34), transform: `translateY(${(1 - p(f, 14, 34)) * 40}px)` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 18, paddingBottom: 30, borderBottom: `1px solid ${C.line}` }}>
           <Img src={staticFile('aster/brand/isotipo-azul.svg')} style={{ width: 62 }} />
           <div style={{ fontFamily: DM, fontWeight: 600, fontSize: 36, color: C.ink }}>Agente Atacama Labs</div>
           <div style={{ marginLeft: 'auto', fontFamily: MONO, fontSize: 24, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.blue }}>Organizando</div>
         </div>
         {ROWS.map(([k, v], i) => {
-          const at = 44 + i * 24;
+          const at = 40 + i * 22;
           const o = p(f, at, at + 14);
           return (
             <div key={k} style={{ padding: '30px 0', borderBottom: i < ROWS.length - 1 ? `1px solid ${C.line}` : 'none', opacity: o, transform: `translateX(${(1 - o) * 30}px)`, display: 'flex', alignItems: 'center', gap: 24 }}>
@@ -207,18 +195,18 @@ const S4: React.FC = () => {
   );
 };
 
+/** 29–33 s · evidencia, una sola vez: el agente ya ejecuta una tarea real (documento entregado por WhatsApp). */
 const S5: React.FC = () => {
   const f = useCurrentFrame();
-  const enter = p(f, 6, 40);
-  const reveal = p(f, 12, 56);
-  const pill = p(f, 100, 124);
+  const enter = p(f, 4, 28);
+  const reveal = p(f, 8, 44);
+  const pill = p(f, 62, 84);
   return (
     <Scene>
       <AbsoluteFill style={{ background: `radial-gradient(1200px 900px at 50% 40%, ${C.darkSurface} 0%, ${C.dark} 70%)` }} />
-      <div style={{ position: 'absolute', left: 80, right: 80, top: 120 }}>
-        <Words text="Un audio." at={4} size={84} step={6} />
-        <Words text="Un documento." at={26} size={84} step={6} />
-        <Words text="Una acción real." at={50} size={84} step={6} accent={[1, 2]} />
+      <div style={{ position: 'absolute', left: 80, right: 80, top: 112 }}>
+        <Eyebrow text="Ya funciona hoy" at={2} color={C.darkMuted} />
+        <Words text="De un audio a un documento." at={8} size={80} step={6} accent={[4, 5]} style={{ marginTop: 22 }} />
       </div>
       <div style={{ position: 'absolute', left: '50%', top: 500, width: 740, marginLeft: -370, transform: `translateY(${(1 - enter) * 260}px)`, opacity: enter, filter: 'drop-shadow(0 40px 60px rgba(0,0,0,0.5))' }}>
         <div style={{ position: 'relative', width: 740, height: 1047, clipPath: `inset(0 0 ${(1 - reveal) * 100}% 0)` }}>
@@ -237,81 +225,79 @@ const S5: React.FC = () => {
   );
 };
 
-const NODES_DEMO: { label: string; logo: string; x: number }[] = [
-  { label: 'WhatsApp', logo: 'aster/brand/whatsapp.svg', x: 290 },
-  { label: 'Google Drive', logo: 'aster/brand/gdrive.svg', x: 790 },
-];
-const NODES_POSSIBLE: { label: string; x: number; y: number }[] = [
-  { label: 'ERP', x: 280, y: 1330 },
-  { label: 'CRM', x: 800, y: 1330 },
-  { label: 'Mantenimiento', x: 280, y: 1500 },
-  { label: 'Correo y agenda', x: 800, y: 1500 },
-  { label: 'Inventario', x: 540, y: 1670 },
+/** 33–38,7 s · «Conectado a tus sistemas, puede dar seguimiento y detectar alertas.» */
+const SYSTEMS: { label: string; sub?: string; x: number; y: number }[] = [
+  { label: 'ERP', sub: 'Órdenes y compras', x: 280, y: 690 },
+  { label: 'Mantenimiento', sub: 'CMMS / EAM', x: 800, y: 690 },
+  { label: 'Seguridad', sub: 'Prevención y riesgos', x: 280, y: 1210 },
+  { label: 'Sistemas internos', sub: 'Planillas y bases', x: 800, y: 1210 },
 ];
 const S6: React.FC = () => {
   const f = useCurrentFrame();
   const CX = 540;
-  const CY = 960;
+  const CY = 930;
+  const branch = p(f, 96, 118);
+  const pulse = 0.5 + 0.5 * Math.sin(f * 0.22);
+  const alertIn = p(f, 128, 146);
+  const followIn = p(f, 118, 136);
   return (
     <Scene>
       <AbsoluteFill style={{ background: C.dark }} />
       <AbsoluteFill style={{ backgroundImage: `linear-gradient(${C.darkLine} 1px, transparent 1px), linear-gradient(90deg, ${C.darkLine} 1px, transparent 1px)`, backgroundSize: '90px 90px', opacity: 0.28 }} />
-      <div style={{ position: 'absolute', left: 80, right: 80, top: 120 }}>
-        <Words text="Conectado a tus sistemas." at={4} size={84} accent={[2, 3]} />
+      <div style={{ position: 'absolute', left: 80, right: 80, top: 110 }}>
+        <Words text="Conectado a tus sistemas, puede dar seguimiento y detectar alertas." at={4} size={68} step={4} accent={[6, 9]} />
       </div>
       <svg width={1080} height={1920} style={{ position: 'absolute', inset: 0 }}>
-        {NODES_DEMO.map((n, i) => {
-          const o = p(f, 24 + i * 6, 52 + i * 6);
-          return <line key={n.label} x1={CX} y1={CY} x2={n.x} y2={620} stroke={C.blueOnDark} strokeWidth={4} strokeLinecap="round" strokeDasharray="1" pathLength={1} style={{ strokeDashoffset: 1 - o }} />;
+        {SYSTEMS.map((n, i) => {
+          const o = p(f, 36 + i * 8, 62 + i * 8);
+          return <line key={n.label} x1={CX} y1={CY} x2={n.x} y2={n.y} stroke={C.darkMuted} strokeWidth={3} strokeDasharray="10 12" style={{ opacity: o * 0.9 }} />;
         })}
-        {NODES_POSSIBLE.map((n, i) => {
-          const o = p(f, 60 + i * 8, 90 + i * 8);
-          return <line key={n.label} x1={CX} y1={CY} x2={n.x} y2={n.y - 56} stroke={C.darkMuted} strokeWidth={3} strokeDasharray="10 12" style={{ opacity: o * 0.85 }} />;
-        })}
+        <line x1={CX} y1={CY + 130} x2={CX} y2={1400} stroke={C.blueOnDark} strokeWidth={4} strokeLinecap="round" pathLength={1} strokeDasharray="1" style={{ strokeDashoffset: 1 - branch }} />
+        <line x1={330} y1={1400} x2={750} y2={1400} stroke={C.blueOnDark} strokeWidth={4} strokeLinecap="round" pathLength={1} strokeDasharray="1" style={{ strokeDashoffset: 1 - branch }} />
+        <line x1={330} y1={1400} x2={330} y2={1450} stroke={C.blueOnDark} strokeWidth={4} strokeLinecap="round" style={{ opacity: followIn }} />
+        <line x1={750} y1={1400} x2={750} y2={1450} stroke={C.blueOnDark} strokeWidth={4} strokeLinecap="round" style={{ opacity: alertIn }} />
       </svg>
-      <div style={{ position: 'absolute', left: 80, top: 410, opacity: p(f, 16, 34) }}>
-        <Eyebrow text="Hoy en la demostración" at={16} />
-      </div>
-      {NODES_DEMO.map((n, i) => {
-        const o = p(f, 26 + i * 6, 46 + i * 6);
+      {SYSTEMS.map((n, i) => {
+        const o = p(f, 30 + i * 8, 52 + i * 8);
         return (
-          <div key={n.label} style={{ position: 'absolute', left: n.x - 190, top: 520, width: 380, height: 200, borderRadius: 28, background: C.paper, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, opacity: o, transform: `scale(${0.92 + 0.08 * o})` }}>
-            <Img src={staticFile(n.logo)} style={{ width: 64, height: 64 }} />
-            <span style={{ fontFamily: DM, fontWeight: 600, fontSize: 36, color: C.ink }}>{n.label}</span>
+          <div key={n.label} style={{ position: 'absolute', left: n.x - 190, top: n.y - 66, width: 380, height: 132, borderRadius: 28, border: `3px dashed ${C.darkMuted}`, background: 'rgba(11,29,58,0.92)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: o, transform: `translateY(${(1 - o) * 20}px)` }}>
+            <span style={{ fontFamily: DM, fontWeight: 600, fontSize: 38, color: C.darkText }}>{n.label}</span>
+            <span style={{ fontFamily: MONO, fontSize: 22, letterSpacing: '0.08em', color: C.darkMuted, marginTop: 6 }}>{n.sub}</span>
           </div>
         );
       })}
-      <div style={{ position: 'absolute', left: CX - 150, top: CY - 150, width: 300, height: 300, borderRadius: 999, background: C.paper, display: 'grid', placeItems: 'center', boxShadow: `0 0 0 14px rgba(157,185,255,0.14), 0 0 120px rgba(15,92,237,0.45)`, opacity: p(f, 10, 30), transform: `scale(${0.85 + 0.15 * p(f, 10, 30)})` }}>
-        <Img src={staticFile('aster/brand/isotipo-azul.svg')} style={{ width: 170 }} />
+      <div style={{ position: 'absolute', left: CX - 130, top: CY - 130, width: 260, height: 260, borderRadius: 999, background: C.paper, display: 'grid', placeItems: 'center', boxShadow: `0 0 0 14px rgba(157,185,255,0.14), 0 0 120px rgba(15,92,237,0.45)`, opacity: p(f, 10, 30), transform: `scale(${0.85 + 0.15 * p(f, 10, 30)})` }}>
+        <Img src={staticFile('aster/brand/isotipo-azul.svg')} style={{ width: 150 }} />
       </div>
-      <div style={{ position: 'absolute', left: 0, right: 0, top: CY + 172, textAlign: 'center', fontFamily: DM, fontWeight: 600, fontSize: 34, color: C.darkText, opacity: p(f, 24, 44) }}>Agente Atacama Labs</div>
-      <div style={{ position: 'absolute', left: 64, top: 1206, opacity: p(f, 56, 74), background: C.dark, padding: '8px 18px 8px 16px', borderRadius: 999 }}>
-        <Eyebrow text="Posible en tu empresa" at={56} color={C.darkMuted} />
+      <div style={{ position: 'absolute', left: 330 - 180, top: 1450, width: 360, height: 112, borderRadius: 999, background: C.paper, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, fontFamily: DM, fontWeight: 600, fontSize: 38, color: C.ink, opacity: followIn, transform: `translateY(${(1 - followIn) * 20}px)` }}>
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke={C.blue} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.2 4.2L19 7" /></svg>
+        Seguimiento
       </div>
-      {NODES_POSSIBLE.map((n, i) => {
-        const o = p(f, 70 + i * 8, 92 + i * 8);
-        return (
-          <div key={n.label} style={{ position: 'absolute', left: n.x - 190, top: n.y - 56, width: 380, height: 112, borderRadius: 999, border: `3px dashed ${C.darkMuted}`, display: 'grid', placeItems: 'center', fontFamily: DM, fontWeight: 600, fontSize: 36, color: C.darkText, opacity: o, transform: `translateY(${(1 - o) * 20}px)`, background: 'rgba(11,29,58,0.8)' }}>
-            {n.label}
-          </div>
-        );
-      })}
+      <div style={{ position: 'absolute', left: 750 - 180, top: 1450, width: 360, height: 112, borderRadius: 999, background: C.blue, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, fontFamily: DM, fontWeight: 600, fontSize: 38, color: '#fff', opacity: alertIn, transform: `translateY(${(1 - alertIn) * 20}px)`, boxShadow: `0 0 0 ${10 + pulse * 14}px rgba(15,92,237,${0.28 - pulse * 0.16})` }}>
+        <span style={{ width: 16, height: 16, borderRadius: 99, background: '#fff' }} />
+        Alertas
+      </div>
     </Scene>
   );
 };
 
+/** 38,4–45 s · «Menos administración. Más tiempo para lo importante.» + cierre de marca */
 const S7: React.FC = () => {
   const f = useCurrentFrame();
   return (
     <Scene fade={10}>
       <AbsoluteFill style={{ background: `radial-gradient(1100px 900px at 50% 45%, ${C.darkSurface} 0%, ${C.dark} 72%)` }} />
-      <div style={{ position: 'absolute', left: 0, right: 0, top: 740, display: 'flex', justifyContent: 'center' }}>
-        <Img src={staticFile('aster/brand/logo-horizontal-fondo-oscuro.svg')} style={{ width: 820, opacity: p(f, 6, 30), transform: `translateY(${(1 - p(f, 6, 30)) * 20}px)` }} />
+      <div style={{ position: 'absolute', left: 80, right: 80, top: 450 }}>
+        <Words text="Menos administración." at={4} size={90} step={7} />
+        <Words text="Más tiempo para lo importante." at={34} size={90} step={7} accent={[3, 4]} style={{ marginTop: 18 }} />
       </div>
-      <div style={{ position: 'absolute', left: 80, right: 80, top: 940, textAlign: 'center' }}>
-        <Words text="Tecnología para el trabajo real." at={34} size={72} step={7} accent={[3, 4]} style={{ display: 'inline-block' }} />
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 1130, display: 'flex', justifyContent: 'center' }}>
+        <Img src={staticFile('aster/brand/logo-horizontal-fondo-oscuro.svg')} style={{ width: 760, opacity: p(f, 84, 108), transform: `translateY(${(1 - p(f, 84, 108)) * 20}px)` }} />
       </div>
-      <div style={{ position: 'absolute', left: 0, right: 0, top: 1240, textAlign: 'center', fontFamily: MONO, fontSize: 34, letterSpacing: '0.14em', color: C.darkMuted, opacity: p(f, 84, 104) }}>
+      <div style={{ position: 'absolute', left: 80, right: 80, top: 1250, textAlign: 'center' }}>
+        <Words text="Tecnología para el trabajo real." at={110} size={56} step={6} accent={[3, 4]} style={{ display: 'inline-block' }} />
+      </div>
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 1400, textAlign: 'center', fontFamily: MONO, fontSize: 32, letterSpacing: '0.14em', color: C.darkMuted, opacity: p(f, 150, 170) }}>
         ATACAMALABS.CL
       </div>
     </Scene>
@@ -320,15 +306,16 @@ const S7: React.FC = () => {
 
 export const AsterDemo: React.FC = () => (
   <AbsoluteFill style={{ background: C.dark }}>
-    <Sequence from={0} durationInFrames={198}><S1 /></Sequence>
-    <Sequence from={190} durationInFrames={140}><S2a /></Sequence>
-    <Sequence from={322} durationInFrames={80}><S2b /></Sequence>
-    <Sequence from={394} durationInFrames={84}><S2c /></Sequence>
-    <Sequence from={470} durationInFrames={180}><S3 /></Sequence>
-    <Sequence from={642} durationInFrames={215}><S4 /></Sequence>
-    <Sequence from={849} durationInFrames={190}><S5 /></Sequence>
-    <Sequence from={1031} durationInFrames={152}><S6 /></Sequence>
-    <Sequence from={1175} durationInFrames={130}><S7 /></Sequence>
+    <Sequence from={0} durationInFrames={170}><S1 /></Sequence>
+    <Sequence from={162} durationInFrames={84}><Beat src="aster/plates/p2_mantenimiento.mp4" text="Una observación." accent={[1]} /></Sequence>
+    <Sequence from={238} durationInFrames={84}><Beat src="aster/plates/p3_logistica.mp4" text="Una falla." accent={[1]} /></Sequence>
+    <Sequence from={314} durationInFrames={84}><Beat src="aster/plates/p5_control.mp4" text="Un pendiente." accent={[1]} /></Sequence>
+    <Sequence from={390} durationInFrames={150}><SC /></Sequence>
+    <Sequence from={532} durationInFrames={170}><S3 /></Sequence>
+    <Sequence from={694} durationInFrames={190}><S4 /></Sequence>
+    <Sequence from={876} durationInFrames={116}><S5 /></Sequence>
+    <Sequence from={984} durationInFrames={176}><S6 /></Sequence>
+    <Sequence from={1152} durationInFrames={198}><S7 /></Sequence>
   </AbsoluteFill>
 );
 
