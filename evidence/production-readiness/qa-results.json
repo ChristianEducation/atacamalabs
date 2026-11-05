@@ -1,0 +1,5269 @@
+{
+  "baseUrl": "http://localhost:3000",
+  "startedAt": "2026-09-30T00:31:23.742Z",
+  "checks": [
+    {
+      "name": "/ [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/ [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/ [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/ [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/ [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/ [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/plataforma [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/plataforma [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/plataforma [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/plataforma [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/plataforma [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/plataforma [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/a-medida [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/a-medida [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/a-medida [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/a-medida [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/a-medida [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/a-medida [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/paginas-web [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/paginas-web [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/paginas-web [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/paginas-web [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/paginas-web [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/paginas-web [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/precios [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/precios [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/precios [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/precios [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/precios [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/precios [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/conocenos [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/conocenos [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/conocenos [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/conocenos [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/conocenos [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/conocenos [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/diagnostico [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/diagnostico [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/diagnostico [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/diagnostico [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/diagnostico [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/diagnostico [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/privacidad [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/privacidad [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/privacidad [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/privacidad [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/privacidad [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/privacidad [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/terminos [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/terminos [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/terminos [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/terminos [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/terminos [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/terminos [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/salud [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/salud [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/salud [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/salud [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/salud [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/salud [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/inmobiliarias [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/inmobiliarias [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/inmobiliarias [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/inmobiliarias [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/inmobiliarias [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/inmobiliarias [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/educacion [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/educacion [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/educacion [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/educacion [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/educacion [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/educacion [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/retail-ecommerce [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/retail-ecommerce [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/retail-ecommerce [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/retail-ecommerce [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/retail-ecommerce [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/retail-ecommerce [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/gimnasios [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/gimnasios [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/gimnasios [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/gimnasios [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/gimnasios [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/gimnasios [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/servicios-profesionales [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/servicios-profesionales [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/servicios-profesionales [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/servicios-profesionales [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/servicios-profesionales [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/servicios-profesionales [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/b2b-industria [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/b2b-industria [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/b2b-industria [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/b2b-industria [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/b2b-industria [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/b2b-industria [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/comercial [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/comercial [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/comercial [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/comercial [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/comercial [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/comercial [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/cobranza [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/cobranza [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/cobranza [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/cobranza [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/cobranza [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/cobranza [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/administrativo-financiero [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/administrativo-financiero [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/administrativo-financiero [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/administrativo-financiero [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/administrativo-financiero [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/administrativo-financiero [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/atencion [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/atencion [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/atencion [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/atencion [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/atencion [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/atencion [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/agendamiento [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/agendamiento [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/agendamiento [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/agendamiento [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/agendamiento [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/agendamiento [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/procesos [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/procesos [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/procesos [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/procesos [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/procesos [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/procesos [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/whatsapp [320px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/whatsapp [320px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/whatsapp [320px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/whatsapp [320px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/whatsapp [320px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/whatsapp [320px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/ [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/ [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/ [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/ [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/ [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/ [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/ [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/plataforma [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/plataforma [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/plataforma [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/plataforma [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/plataforma [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/plataforma [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/plataforma [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/a-medida [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/a-medida [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/a-medida [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/a-medida [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/a-medida [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/a-medida [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/a-medida [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/paginas-web [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/paginas-web [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/paginas-web [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/paginas-web [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/paginas-web [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/paginas-web [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/paginas-web [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/precios [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/precios [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/precios [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/precios [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/precios [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/precios [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/precios [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/conocenos [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/conocenos [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/conocenos [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/conocenos [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/conocenos [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/conocenos [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/conocenos [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/diagnostico [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/diagnostico [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/diagnostico [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/diagnostico [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/diagnostico [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/diagnostico [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/diagnostico [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/privacidad [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/privacidad [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/privacidad [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/privacidad [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/privacidad [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/privacidad [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/privacidad [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/terminos [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/terminos [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/terminos [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/terminos [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/terminos [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/terminos [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/terminos [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/salud [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/salud [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/salud [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/salud [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/salud [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/salud [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/salud [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/inmobiliarias [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/inmobiliarias [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/inmobiliarias [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/inmobiliarias [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/inmobiliarias [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/inmobiliarias [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/inmobiliarias [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/educacion [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/educacion [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/educacion [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/educacion [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/educacion [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/educacion [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/educacion [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/retail-ecommerce [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/retail-ecommerce [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/retail-ecommerce [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/retail-ecommerce [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/retail-ecommerce [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/retail-ecommerce [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/retail-ecommerce [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/gimnasios [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/gimnasios [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/gimnasios [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/gimnasios [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/gimnasios [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/gimnasios [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/gimnasios [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/servicios-profesionales [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/servicios-profesionales [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/servicios-profesionales [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/servicios-profesionales [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/servicios-profesionales [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/servicios-profesionales [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/servicios-profesionales [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/b2b-industria [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/b2b-industria [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/b2b-industria [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/b2b-industria [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/b2b-industria [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/b2b-industria [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/b2b-industria [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/comercial [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/comercial [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/comercial [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/comercial [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/comercial [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/comercial [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/comercial [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/cobranza [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/cobranza [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/cobranza [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/cobranza [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/cobranza [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/cobranza [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/cobranza [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/administrativo-financiero [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/administrativo-financiero [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/administrativo-financiero [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/administrativo-financiero [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/administrativo-financiero [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/administrativo-financiero [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/administrativo-financiero [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/atencion [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/atencion [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/atencion [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/atencion [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/atencion [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/atencion [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/atencion [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/agendamiento [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/agendamiento [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/agendamiento [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/agendamiento [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/agendamiento [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/agendamiento [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/agendamiento [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/procesos [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/procesos [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/procesos [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/procesos [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/procesos [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/procesos [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/procesos [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/whatsapp [390px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/whatsapp [390px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/whatsapp [390px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/whatsapp [390px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/whatsapp [390px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/whatsapp [390px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/whatsapp [390px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/ [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/ [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/ [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/ [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/ [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/ [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/plataforma [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/plataforma [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/plataforma [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/plataforma [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/plataforma [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/plataforma [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/a-medida [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/a-medida [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/a-medida [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/a-medida [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/a-medida [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/a-medida [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/paginas-web [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/paginas-web [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/paginas-web [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/paginas-web [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/paginas-web [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/paginas-web [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/precios [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/precios [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/precios [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/precios [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/precios [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/precios [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/conocenos [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/conocenos [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/conocenos [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/conocenos [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/conocenos [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/conocenos [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/diagnostico [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/diagnostico [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/diagnostico [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/diagnostico [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/diagnostico [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/diagnostico [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/privacidad [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/privacidad [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/privacidad [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/privacidad [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/privacidad [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/privacidad [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/terminos [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/terminos [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/terminos [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/terminos [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/terminos [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/terminos [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/salud [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/salud [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/salud [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/salud [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/salud [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/salud [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/inmobiliarias [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/inmobiliarias [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/inmobiliarias [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/inmobiliarias [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/inmobiliarias [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/inmobiliarias [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/educacion [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/educacion [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/educacion [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/educacion [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/educacion [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/educacion [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/retail-ecommerce [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/retail-ecommerce [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/retail-ecommerce [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/retail-ecommerce [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/retail-ecommerce [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/retail-ecommerce [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/gimnasios [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/gimnasios [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/gimnasios [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/gimnasios [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/gimnasios [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/gimnasios [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/servicios-profesionales [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/servicios-profesionales [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/servicios-profesionales [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/servicios-profesionales [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/servicios-profesionales [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/servicios-profesionales [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/b2b-industria [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/b2b-industria [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/b2b-industria [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/b2b-industria [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/b2b-industria [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/b2b-industria [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/comercial [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/comercial [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/comercial [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/comercial [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/comercial [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/comercial [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/cobranza [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/cobranza [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/cobranza [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/cobranza [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/cobranza [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/cobranza [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/administrativo-financiero [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/administrativo-financiero [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/administrativo-financiero [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/administrativo-financiero [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/administrativo-financiero [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/administrativo-financiero [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/atencion [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/atencion [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/atencion [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/atencion [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/atencion [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/atencion [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/agendamiento [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/agendamiento [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/agendamiento [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/agendamiento [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/agendamiento [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/agendamiento [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/procesos [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/procesos [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/procesos [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/procesos [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/procesos [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/procesos [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/whatsapp [768px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/whatsapp [768px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/whatsapp [768px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/whatsapp [768px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/whatsapp [768px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/whatsapp [768px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/ [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/ [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/ [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/ [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/ [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/ [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/ [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/plataforma [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/plataforma [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/plataforma [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/plataforma [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/plataforma [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/plataforma [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/plataforma [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/a-medida [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/a-medida [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/a-medida [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/a-medida [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/a-medida [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/a-medida [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/a-medida [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/paginas-web [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/paginas-web [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/paginas-web [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/paginas-web [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/paginas-web [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/paginas-web [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/paginas-web [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/precios [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/precios [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/precios [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/precios [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/precios [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/precios [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/precios [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/conocenos [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/conocenos [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/conocenos [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/conocenos [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/conocenos [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/conocenos [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/conocenos [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/diagnostico [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/diagnostico [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/diagnostico [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/diagnostico [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/diagnostico [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/diagnostico [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/diagnostico [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/privacidad [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/privacidad [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/privacidad [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/privacidad [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/privacidad [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/privacidad [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/privacidad [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/terminos [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/terminos [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/terminos [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/terminos [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/terminos [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/terminos [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/terminos [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/salud [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/salud [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/salud [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/salud [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/salud [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/salud [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/salud [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/inmobiliarias [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/inmobiliarias [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/inmobiliarias [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/inmobiliarias [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/inmobiliarias [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/inmobiliarias [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/inmobiliarias [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/educacion [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/educacion [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/educacion [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/educacion [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/educacion [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/educacion [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/educacion [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/retail-ecommerce [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/retail-ecommerce [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/retail-ecommerce [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/retail-ecommerce [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/retail-ecommerce [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/retail-ecommerce [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/retail-ecommerce [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/gimnasios [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/gimnasios [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/gimnasios [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/gimnasios [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/gimnasios [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/gimnasios [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/gimnasios [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/servicios-profesionales [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/servicios-profesionales [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/servicios-profesionales [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/servicios-profesionales [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/servicios-profesionales [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/servicios-profesionales [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/servicios-profesionales [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/b2b-industria [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/b2b-industria [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/b2b-industria [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/b2b-industria [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/b2b-industria [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/b2b-industria [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/b2b-industria [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/comercial [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/comercial [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/comercial [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/comercial [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/comercial [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/comercial [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/comercial [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/cobranza [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/cobranza [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/cobranza [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/cobranza [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/cobranza [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/cobranza [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/cobranza [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/administrativo-financiero [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/administrativo-financiero [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/administrativo-financiero [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/administrativo-financiero [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/administrativo-financiero [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/administrativo-financiero [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/administrativo-financiero [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/atencion [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/atencion [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/atencion [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/atencion [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/atencion [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/atencion [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/atencion [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/agendamiento [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/agendamiento [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/agendamiento [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/agendamiento [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/agendamiento [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/agendamiento [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/agendamiento [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/procesos [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/procesos [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/procesos [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/procesos [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/procesos [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/procesos [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/procesos [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/whatsapp [1366px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/whatsapp [1366px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/whatsapp [1366px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/whatsapp [1366px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/whatsapp [1366px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/whatsapp [1366px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/whatsapp [1366px] accesibilidad (axe, sin violaciones serious/critical)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/ [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/ [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/ [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/ [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/ [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/ [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/plataforma [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/plataforma [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/plataforma [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/plataforma [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/plataforma [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/plataforma [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/a-medida [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/a-medida [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/a-medida [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/a-medida [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/a-medida [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/a-medida [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/paginas-web [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/paginas-web [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/paginas-web [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/paginas-web [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/paginas-web [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/paginas-web [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/precios [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/precios [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/precios [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/precios [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/precios [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/precios [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/conocenos [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/conocenos [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/conocenos [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/conocenos [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/conocenos [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/conocenos [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/diagnostico [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/diagnostico [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/diagnostico [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/diagnostico [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/diagnostico [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/diagnostico [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/privacidad [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/privacidad [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/privacidad [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/privacidad [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/privacidad [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/privacidad [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/terminos [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/terminos [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/terminos [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/terminos [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/terminos [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/terminos [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/salud [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/salud [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/salud [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/salud [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/salud [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/salud [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/inmobiliarias [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/inmobiliarias [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/inmobiliarias [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/inmobiliarias [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/inmobiliarias [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/inmobiliarias [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/educacion [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/educacion [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/educacion [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/educacion [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/educacion [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/educacion [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/retail-ecommerce [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/retail-ecommerce [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/retail-ecommerce [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/retail-ecommerce [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/retail-ecommerce [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/retail-ecommerce [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/gimnasios [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/gimnasios [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/gimnasios [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/gimnasios [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/gimnasios [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/gimnasios [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/servicios-profesionales [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/servicios-profesionales [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/servicios-profesionales [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/servicios-profesionales [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/servicios-profesionales [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/servicios-profesionales [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/b2b-industria [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/b2b-industria [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/b2b-industria [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/b2b-industria [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/b2b-industria [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/b2b-industria [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/comercial [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/comercial [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/comercial [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/comercial [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/comercial [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/comercial [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/cobranza [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/cobranza [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/cobranza [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/cobranza [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/cobranza [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/cobranza [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/administrativo-financiero [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/administrativo-financiero [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/administrativo-financiero [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/administrativo-financiero [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/administrativo-financiero [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/administrativo-financiero [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/atencion [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/atencion [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/atencion [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/atencion [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/atencion [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/atencion [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/agendamiento [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/agendamiento [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/agendamiento [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/agendamiento [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/agendamiento [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/agendamiento [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/procesos [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/procesos [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/procesos [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/procesos [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/procesos [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/procesos [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/whatsapp [1440px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/whatsapp [1440px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/whatsapp [1440px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/whatsapp [1440px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/whatsapp [1440px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/whatsapp [1440px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/ [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/ [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/ [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/ [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/ [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/ [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/plataforma [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/plataforma [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/plataforma [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/plataforma [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/plataforma [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/plataforma [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/a-medida [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/a-medida [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/a-medida [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/a-medida [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/a-medida [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/a-medida [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/paginas-web [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/paginas-web [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/paginas-web [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/paginas-web [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/paginas-web [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/paginas-web [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/precios [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/precios [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/precios [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/precios [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/precios [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/precios [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/conocenos [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/conocenos [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/conocenos [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/conocenos [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/conocenos [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/conocenos [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/diagnostico [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/diagnostico [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/diagnostico [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/diagnostico [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/diagnostico [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/diagnostico [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/privacidad [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/privacidad [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/privacidad [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/privacidad [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/privacidad [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/privacidad [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/terminos [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/terminos [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/terminos [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/terminos [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/terminos [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/terminos [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/salud [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/salud [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/salud [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/salud [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/salud [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/salud [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/inmobiliarias [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/inmobiliarias [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/inmobiliarias [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/inmobiliarias [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/inmobiliarias [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/inmobiliarias [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/educacion [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/educacion [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/educacion [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/educacion [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/educacion [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/educacion [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/retail-ecommerce [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/retail-ecommerce [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/retail-ecommerce [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/retail-ecommerce [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/retail-ecommerce [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/retail-ecommerce [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/alimentacion-casinos [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/gimnasios [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/gimnasios [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/gimnasios [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/gimnasios [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/gimnasios [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/gimnasios [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/servicios-profesionales [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/servicios-profesionales [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/servicios-profesionales [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/servicios-profesionales [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/servicios-profesionales [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/servicios-profesionales [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/b2b-industria [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/b2b-industria [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/b2b-industria [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/b2b-industria [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/b2b-industria [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/b2b-industria [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros/contabilidad-finanzas [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/comercial [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/comercial [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/comercial [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/comercial [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/comercial [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/comercial [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/cobranza [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/cobranza [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/cobranza [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/cobranza [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/cobranza [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/cobranza [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/administrativo-financiero [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/administrativo-financiero [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/administrativo-financiero [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/administrativo-financiero [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/administrativo-financiero [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/administrativo-financiero [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/atencion [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/atencion [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/atencion [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/atencion [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/atencion [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/atencion [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/agendamiento [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/agendamiento [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/agendamiento [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/agendamiento [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/agendamiento [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/agendamiento [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/procesos [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/procesos [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/procesos [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/procesos [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/procesos [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/procesos [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/agentes/whatsapp [1920px] → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/agentes/whatsapp [1920px] sin overflow horizontal",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/whatsapp [1920px] un solo H1",
+      "pass": true,
+      "detail": "h1Count=1"
+    },
+    {
+      "name": "/agentes/whatsapp [1920px] landmarks (header/main/footer)",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/whatsapp [1920px] skip link presente",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/agentes/whatsapp [1920px] cero enlaces href=\"#\" vacíos",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "name": "/ carga con prefers-reduced-motion",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "/rubros carga con prefers-reduced-motion",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "redirect /contacto → 30x",
+      "pass": true,
+      "detail": "status=308"
+    },
+    {
+      "name": "redirect /contacto destino contiene \"/diagnostico\"",
+      "pass": true,
+      "detail": "location=/diagnostico"
+    },
+    {
+      "name": "redirect /privacy → 30x",
+      "pass": true,
+      "detail": "status=308"
+    },
+    {
+      "name": "redirect /privacy destino contiene \"/privacidad\"",
+      "pass": true,
+      "detail": "location=/privacidad"
+    },
+    {
+      "name": "redirect /agenda → 30x",
+      "pass": true,
+      "detail": "status=308"
+    },
+    {
+      "name": "redirect /agenda destino contiene \"/diagnostico\"",
+      "pass": true,
+      "detail": "location=/diagnostico#agenda"
+    },
+    {
+      "name": "redirect /nosotros → 30x",
+      "pass": true,
+      "detail": "status=308"
+    },
+    {
+      "name": "redirect /nosotros destino contiene \"/conocenos\"",
+      "pass": true,
+      "detail": "location=/conocenos"
+    },
+    {
+      "name": "redirect /industrias → 30x",
+      "pass": true,
+      "detail": "status=308"
+    },
+    {
+      "name": "redirect /industrias destino contiene \"/rubros\"",
+      "pass": true,
+      "detail": "location=/rubros"
+    },
+    {
+      "name": "redirect /rubros/servicios-b2b → 30x",
+      "pass": true,
+      "detail": "status=308"
+    },
+    {
+      "name": "redirect /rubros/servicios-b2b destino contiene \"/rubros/b2b-industria\"",
+      "pass": true,
+      "detail": "location=/rubros/b2b-industria"
+    },
+    {
+      "name": "redirect /rubros/fitness-bienestar → 30x",
+      "pass": true,
+      "detail": "status=308"
+    },
+    {
+      "name": "redirect /rubros/fitness-bienestar destino contiene \"/rubros/gimnasios\"",
+      "pass": true,
+      "detail": "location=/rubros/gimnasios"
+    },
+    {
+      "name": "sitemap.xml → 200",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "sitemap.xml sin /diagnostico",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "sitemap.xml sin lastmod falso",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "robots.txt → 200",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "robots.txt sin disallow global",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "opengraph-image → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "icon.svg → 200",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "icon1 (PNG 48x48) → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "/diagnostico → noindex,follow",
+      "pass": true,
+      "detail": null
+    },
+    {
+      "name": "ruta inexistente → 404",
+      "pass": true,
+      "detail": "status=404"
+    }
+  ],
+  "finishedAt": "2026-09-30T00:36:43.970Z",
+  "total": 1052,
+  "failures": 0
+}

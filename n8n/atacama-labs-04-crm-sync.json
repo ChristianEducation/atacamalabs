@@ -1,742 +1,742 @@
 {
- "name": "Atacama Labs — 04 CRM Sync (TEST)",
- "nodes": [
-  {
-   "id": "242d9f01-c419-4bf2-afc1-c38e10d6f273",
-   "name": "Manual Trigger",
-   "type": "n8n-nodes-base.manualTrigger",
-   "typeVersion": 1,
-   "position": [
-    -1180,
-    -60
-   ],
-   "parameters": {}
-  },
-  {
-   "id": "a6b39b67-d5c0-4d7e-888e-24417c9abb91",
-   "name": "When Executed by Another Workflow",
-   "type": "n8n-nodes-base.executeWorkflowTrigger",
-   "typeVersion": 1.1,
-   "position": [
-    -1180,
-    140
-   ],
-   "parameters": {
-    "workflowInputs": {
-     "values": [
-      {
-       "name": "icp_pack_id",
-       "type": "string"
+  "name": "Atacama Labs — 04 CRM Sync (TEST)",
+  "nodes": [
+    {
+      "id": "242d9f01-c419-4bf2-afc1-c38e10d6f273",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1180,
+        -60
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "a6b39b67-d5c0-4d7e-888e-24417c9abb91",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1180,
+        140
+      ],
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "icp_pack_id",
+              "type": "string"
+            },
+            {
+              "name": "icp_pack_slug",
+              "type": "string"
+            },
+            {
+              "name": "limit",
+              "type": "number"
+            },
+            {
+              "name": "account_ids",
+              "type": "array"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "df684d91-7489-4ff2-b212-fd899eef78f1",
+      "name": "Init ICP Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -960,
+        -60
+      ],
+      "parameters": {
+        "jsCode": "const incoming = $input.first()?.json ?? {};\nconst icpPackId = incoming.icp_pack_id || null;\nconst icpPackSlug = incoming.icp_pack_slug || null;\nif (!icpPackId && !icpPackSlug) throw new Error('SEGURIDAD: icp_pack_id o icp_pack_slug es obligatorio (sin valor por defecto). Abortando.');\nconst filter = icpPackId ? `id=eq.${icpPackId}` : `slug=eq.${icpPackSlug}`;\nreturn [{json:{ icp_pack_url: `https://uwquwjmiofixzugttals.supabase.co/rest/v1/icp_packs?${filter}&select=id,slug,status,crm&limit=1` }}];"
+      }
+    },
+    {
+      "id": "f8b06572-776c-4155-9c0f-8daa4f2de982",
+      "name": "Fetch ICP Pack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -740,
+        -60
+      ],
+      "parameters": {
+        "url": "={{ $json.icp_pack_url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 15000
+        }
       },
-      {
-       "name": "icp_pack_slug",
-       "type": "string"
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      }
+    },
+    {
+      "id": "bdaf40cc-c459-4085-b04a-504ae29b6d53",
+      "name": "Parse ICP Pack",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -520,
+        -60
+      ],
+      "parameters": {
+        "jsCode": "const res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nconst row = Array.isArray(body) ? body[0] : body;\nif (status < 200 || status >= 300 || !row || !row.id) throw new Error(`ICP Pack no encontrado (HTTP ${status || 'unknown'}).`);\nif (row.status !== 'active') throw new Error(`ICP Pack '${row.slug}' esta en estado '${row.status}', no 'active'.`);\nif (!row.crm || !row.crm.pipeline_id || !row.crm.prospect_entry_stage_id || !row.crm.fields) throw new Error(`ICP Pack '${row.slug}' no tiene crm.pipeline_id/new_stage_id/fields configurados.`);\nreturn [{ json: { icp_pack_id: row.id, icp_pack_slug: row.slug, crm: row.crm } }];"
+      }
+    },
+    {
+      "id": "23f20b6b-a0ba-47ef-81dd-95e0834b4d86",
+      "name": "Assert Expected Pack",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -300,
+        -60
+      ],
+      "parameters": {
+        "jsCode": "const EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nconst EXPECTED_ICP_PACK_SLUG = 'atacama-labs-test';\nconst row = $json;\nif (row.icp_pack_id !== EXPECTED_ICP_PACK_ID || row.icp_pack_slug !== EXPECTED_ICP_PACK_SLUG) {\n  throw new Error(`SEGURIDAD: ICP pack resuelto (${row.icp_pack_slug} / ${row.icp_pack_id}) NO coincide con el esperado (${EXPECTED_ICP_PACK_SLUG} / ${EXPECTED_ICP_PACK_ID}). Abortando antes de leer o escribir nada.`);\n}\nreturn [{ json: { ...row, EXPECTED_ICP_PACK_ID, EXPECTED_ICP_PACK_SLUG } }];"
+      }
+    },
+    {
+      "id": "d299ce9f-9408-4402-a27e-30a1564ab3a4",
+      "name": "Fetch Approved Prospects",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -80,
+        -60
+      ],
+      "parameters": {
+        "url": "={{ 'https://uwquwjmiofixzugttals.supabase.co/rest/v1/prospects?icp_pack_id=eq.' + 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46' + '&status=eq.ready_to_contact&crm_candidate=eq.true&ghl_opportunity_id=is.null&select=id,icp_pack_id&limit=25' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 20000
+        }
       },
-      {
-       "name": "limit",
-       "type": "number"
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      }
+    },
+    {
+      "id": "3fc1c0ef-a778-4024-a68f-e7824dd0f17f",
+      "name": "Build Approved List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        140,
+        -60
+      ],
+      "parameters": {
+        "jsCode": "const res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nif (status < 200 || status >= 300) throw new Error(`Fetch approved prospects failed: HTTP ${status || 'unknown'}`);\nconst rows = Array.isArray(body) ? body : [];\nreturn rows.map(r => ({ json: r }));"
+      }
+    },
+    {
+      "id": "16fbf173-21c2-4cf0-afb6-e0d2ecdb36c1",
+      "name": "Assert Expected Pack (before enqueue)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        -60
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nconst item = $json;\nif (item.icp_pack_id !== EXPECTED_ICP_PACK_ID) throw new Error(`SEGURIDAD: prospect ${item.id} tiene icp_pack_id (${item.icp_pack_id}) distinto del esperado (${EXPECTED_ICP_PACK_ID}). Abortando antes de encolar.`);\nreturn { json: item };"
+      }
+    },
+    {
+      "id": "e0a4ff5d-3c4a-4a73-98fd-08d6efa32785",
+      "name": "Enqueue Prospect Sync",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        580,
+        -60
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/rpc/enqueue_prospect_sync",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { p_prospect_id: $json.id } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 15000
+        }
       },
-      {
-       "name": "account_ids",
-       "type": "array"
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
       }
-     ]
-    }
-   }
-  },
-  {
-   "id": "df684d91-7489-4ff2-b212-fd899eef78f1",
-   "name": "Init ICP Config",
-   "type": "n8n-nodes-base.code",
-   "typeVersion": 2,
-   "position": [
-    -960,
-    -60
-   ],
-   "parameters": {
-    "jsCode": "const incoming = $input.first()?.json ?? {};\nconst icpPackId = incoming.icp_pack_id || null;\nconst icpPackSlug = incoming.icp_pack_slug || null;\nif (!icpPackId && !icpPackSlug) throw new Error('SEGURIDAD: icp_pack_id o icp_pack_slug es obligatorio (sin valor por defecto). Abortando.');\nconst filter = icpPackId ? `id=eq.${icpPackId}` : `slug=eq.${icpPackSlug}`;\nreturn [{json:{ icp_pack_url: `https://uwquwjmiofixzugttals.supabase.co/rest/v1/icp_packs?${filter}&select=id,slug,status,crm&limit=1` }}];"
-   }
-  },
-  {
-   "id": "f8b06572-776c-4155-9c0f-8daa4f2de982",
-   "name": "Fetch ICP Pack",
-   "type": "n8n-nodes-base.httpRequest",
-   "typeVersion": 4.2,
-   "position": [
-    -740,
-    -60
-   ],
-   "parameters": {
-    "url": "={{ $json.icp_pack_url }}",
-    "authentication": "predefinedCredentialType",
-    "nodeCredentialType": "supabaseApi",
-    "options": {
-     "response": {
-      "response": {
-       "fullResponse": true,
-       "neverError": true,
-       "responseFormat": "json"
-      }
-     },
-     "timeout": 15000
-    }
-   },
-   "credentials": {
-    "supabaseApi": {
-     "id": "XOmXUuyLVSazDIh5",
-     "name": "Atacama Labs - Supabase"
-    }
-   }
-  },
-  {
-   "id": "bdaf40cc-c459-4085-b04a-504ae29b6d53",
-   "name": "Parse ICP Pack",
-   "type": "n8n-nodes-base.code",
-   "typeVersion": 2,
-   "position": [
-    -520,
-    -60
-   ],
-   "parameters": {
-    "jsCode": "const res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nconst row = Array.isArray(body) ? body[0] : body;\nif (status < 200 || status >= 300 || !row || !row.id) throw new Error(`ICP Pack no encontrado (HTTP ${status || 'unknown'}).`);\nif (row.status !== 'active') throw new Error(`ICP Pack '${row.slug}' esta en estado '${row.status}', no 'active'.`);\nif (!row.crm || !row.crm.pipeline_id || !row.crm.new_stage_id || !row.crm.fields) throw new Error(`ICP Pack '${row.slug}' no tiene crm.pipeline_id/new_stage_id/fields configurados.`);\nreturn [{ json: { icp_pack_id: row.id, icp_pack_slug: row.slug, crm: row.crm } }];"
-   }
-  },
-  {
-   "id": "23f20b6b-a0ba-47ef-81dd-95e0834b4d86",
-   "name": "Assert Expected Pack",
-   "type": "n8n-nodes-base.code",
-   "typeVersion": 2,
-   "position": [
-    -300,
-    -60
-   ],
-   "parameters": {
-    "jsCode": "const EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nconst EXPECTED_ICP_PACK_SLUG = 'atacama-labs-test';\nconst row = $json;\nif (row.icp_pack_id !== EXPECTED_ICP_PACK_ID || row.icp_pack_slug !== EXPECTED_ICP_PACK_SLUG) {\n  throw new Error(`SEGURIDAD: ICP pack resuelto (${row.icp_pack_slug} / ${row.icp_pack_id}) NO coincide con el esperado (${EXPECTED_ICP_PACK_SLUG} / ${EXPECTED_ICP_PACK_ID}). Abortando antes de leer o escribir nada.`);\n}\nreturn [{ json: { ...row, EXPECTED_ICP_PACK_ID, EXPECTED_ICP_PACK_SLUG } }];"
-   }
-  },
-  {
-   "id": "d299ce9f-9408-4402-a27e-30a1564ab3a4",
-   "name": "Fetch Approved Prospects",
-   "type": "n8n-nodes-base.httpRequest",
-   "typeVersion": 4.2,
-   "position": [
-    -80,
-    -60
-   ],
-   "parameters": {
-    "url": "={{ 'https://uwquwjmiofixzugttals.supabase.co/rest/v1/prospects?icp_pack_id=eq.' + 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46' + '&status=eq.ready_to_contact&crm_candidate=eq.true&ghl_opportunity_id=is.null&select=id,icp_pack_id&limit=25' }}",
-    "authentication": "predefinedCredentialType",
-    "nodeCredentialType": "supabaseApi",
-    "options": {
-     "response": {
-      "response": {
-       "fullResponse": true,
-       "neverError": true,
-       "responseFormat": "json"
-      }
-     },
-     "timeout": 20000
-    }
-   },
-   "credentials": {
-    "supabaseApi": {
-     "id": "XOmXUuyLVSazDIh5",
-     "name": "Atacama Labs - Supabase"
-    }
-   }
-  },
-  {
-   "id": "3fc1c0ef-a778-4024-a68f-e7824dd0f17f",
-   "name": "Build Approved List",
-   "type": "n8n-nodes-base.code",
-   "typeVersion": 2,
-   "position": [
-    140,
-    -60
-   ],
-   "parameters": {
-    "jsCode": "const res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nif (status < 200 || status >= 300) throw new Error(`Fetch approved prospects failed: HTTP ${status || 'unknown'}`);\nconst rows = Array.isArray(body) ? body : [];\nreturn rows.map(r => ({ json: r }));"
-   }
-  },
-  {
-   "id": "16fbf173-21c2-4cf0-afb6-e0d2ecdb36c1",
-   "name": "Assert Expected Pack (before enqueue)",
-   "type": "n8n-nodes-base.code",
-   "typeVersion": 2,
-   "position": [
-    360,
-    -60
-   ],
-   "parameters": {
-    "mode": "runOnceForEachItem",
-    "jsCode": "const EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nconst item = $json;\nif (item.icp_pack_id !== EXPECTED_ICP_PACK_ID) throw new Error(`SEGURIDAD: prospect ${item.id} tiene icp_pack_id (${item.icp_pack_id}) distinto del esperado (${EXPECTED_ICP_PACK_ID}). Abortando antes de encolar.`);\nreturn { json: item };"
-   }
-  },
-  {
-   "id": "e0a4ff5d-3c4a-4a73-98fd-08d6efa32785",
-   "name": "Enqueue Prospect Sync",
-   "type": "n8n-nodes-base.httpRequest",
-   "typeVersion": 4.2,
-   "position": [
-    580,
-    -60
-   ],
-   "parameters": {
-    "method": "POST",
-    "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/rpc/enqueue_prospect_sync",
-    "authentication": "predefinedCredentialType",
-    "nodeCredentialType": "supabaseApi",
-    "sendHeaders": true,
-    "headerParameters": {
-     "parameters": [
-      {
-       "name": "Content-Type",
-       "value": "application/json"
-      }
-     ]
     },
-    "sendBody": true,
-    "specifyBody": "json",
-    "jsonBody": "={{ { p_prospect_id: $json.id } }}",
-    "options": {
-     "response": {
-      "response": {
-       "fullResponse": true,
-       "neverError": true,
-       "responseFormat": "text"
-      }
-     },
-     "timeout": 15000
-    }
-   },
-   "credentials": {
-    "supabaseApi": {
-     "id": "XOmXUuyLVSazDIh5",
-     "name": "Atacama Labs - Supabase"
-    }
-   }
-  },
-  {
-   "id": "06920fa6-7057-42d9-8c51-b827248ada51",
-   "name": "Claim Sync Jobs",
-   "type": "n8n-nodes-base.httpRequest",
-   "typeVersion": 4.2,
-   "position": [
-    800,
-    260
-   ],
-   "parameters": {
-    "method": "POST",
-    "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/rpc/claim_sync_jobs",
-    "authentication": "predefinedCredentialType",
-    "nodeCredentialType": "supabaseApi",
-    "sendHeaders": true,
-    "headerParameters": {
-     "parameters": [
-      {
-       "name": "Content-Type",
-       "value": "application/json"
-      }
-     ]
-    },
-    "sendBody": true,
-    "specifyBody": "json",
-    "jsonBody": "={{ { p_icp_pack_slug: \"atacama-labs-test\", p_limit: 5, p_source_type: \"prospect\" } }}",
-    "options": {
-     "timeout": 30000
-    }
-   },
-   "credentials": {
-    "supabaseApi": {
-     "id": "XOmXUuyLVSazDIh5",
-     "name": "Atacama Labs - Supabase"
-    }
-   }
-  },
-  {
-   "id": "0bcc366c-d40f-4bae-afb2-d9022172f155",
-   "name": "Already Has GHL IDs?",
-   "type": "n8n-nodes-base.if",
-   "typeVersion": 2,
-   "position": [
-    1020,
-    260
-   ],
-   "parameters": {
-    "conditions": {
-     "options": {
-      "caseSensitive": true,
-      "leftValue": "",
-      "typeValidation": "loose"
-     },
-     "combinator": "and",
-     "conditions": [
-      {
-       "leftValue": "={{ $json.ghl_contact_id }}",
-       "rightValue": "",
-       "operator": {
-        "type": "string",
-        "operation": "notEmpty"
-       }
+    {
+      "id": "06920fa6-7057-42d9-8c51-b827248ada51",
+      "name": "Claim Sync Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        260
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/rpc/claim_sync_jobs",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { p_icp_pack_slug: \"atacama-labs-test\", p_limit: 5, p_source_type: \"prospect\" } }}",
+        "options": {
+          "timeout": 30000
+        }
       },
-      {
-       "leftValue": "={{ $json.ghl_opportunity_id }}",
-       "rightValue": "",
-       "operator": {
-        "type": "string",
-        "operation": "notEmpty"
-       }
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
       }
-     ]
-    }
-   }
-  },
-  {
-   "id": "da87b942-93c7-4d66-94d6-fa7462ac18d0",
-   "name": "Upsert GHL Contact",
-   "type": "n8n-nodes-base.httpRequest",
-   "typeVersion": 4.2,
-   "position": [
-    1240,
-    380
-   ],
-   "parameters": {
-    "method": "POST",
-    "url": "https://services.leadconnectorhq.com/contacts/upsert",
-    "authentication": "genericCredentialType",
-    "genericAuthType": "httpHeaderAuth",
-    "sendHeaders": true,
-    "headerParameters": {
-     "parameters": [
-      {
-       "name": "Version",
-       "value": "2021-07-28"
+    },
+    {
+      "id": "0bcc366c-d40f-4bae-afb2-d9022172f155",
+      "name": "Already Has GHL IDs?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1020,
+        260
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.ghl_contact_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "leftValue": "={{ $json.ghl_opportunity_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "da87b942-93c7-4d66-94d6-fa7462ac18d0",
+      "name": "Upsert GHL Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1240,
+        380
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/contacts/upsert",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { locationId: \"pxHuOsiz2i3lM6BtC9IM\", name: $json.name, email: $json.email || undefined, phone: $json.phone || undefined, companyName: $json.company || undefined, source: \"atacama-labs-prospecting\" } }}",
+        "options": {
+          "timeout": 30000
+        }
       },
-      {
-       "name": "Accept",
-       "value": "application/json"
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "8VKPDkZYHtODhRtk",
+          "name": "Atacama Labs - GHL Header Auth"
+        }
       }
-     ]
     },
-    "sendBody": true,
-    "specifyBody": "json",
-    "jsonBody": "={{ { locationId: \"pxHuOsiz2i3lM6BtC9IM\", name: $json.name, email: $json.email || undefined, phone: $json.phone || undefined, companyName: $json.company || undefined, source: \"atacama-labs-prospecting\" } }}",
-    "options": {
-     "timeout": 30000
-    }
-   },
-   "credentials": {
-    "httpHeaderAuth": {
-     "id": "8VKPDkZYHtODhRtk",
-     "name": "Atacama Labs - GHL Header Auth"
-    }
-   }
-  },
-  {
-   "id": "6419c901-5df5-4083-9d3e-9cfead125366",
-   "name": "Contact OK?",
-   "type": "n8n-nodes-base.if",
-   "typeVersion": 2,
-   "position": [
-    1460,
-    380
-   ],
-   "parameters": {
-    "conditions": {
-     "options": {
-      "caseSensitive": true,
-      "leftValue": "",
-      "typeValidation": "loose"
-     },
-     "combinator": "and",
-     "conditions": [
-      {
-       "leftValue": "={{ $json.error }}",
-       "rightValue": "",
-       "operator": {
-        "type": "string",
-        "operation": "empty"
-       }
+    {
+      "id": "6419c901-5df5-4083-9d3e-9cfead125366",
+      "name": "Contact OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1460,
+        380
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty"
+              }
+            }
+          ]
+        }
       }
-     ]
-    }
-   }
-  },
-  {
-   "id": "96e1a02f-7643-4bf4-9d56-a5b6b1ffc273",
-   "name": "Create GHL Opportunity",
-   "type": "n8n-nodes-base.httpRequest",
-   "typeVersion": 4.2,
-   "position": [
-    1680,
-    380
-   ],
-   "parameters": {
-    "method": "POST",
-    "url": "https://services.leadconnectorhq.com/opportunities/",
-    "authentication": "genericCredentialType",
-    "genericAuthType": "httpHeaderAuth",
-    "sendHeaders": true,
-    "headerParameters": {
-     "parameters": [
-      {
-       "name": "Version",
-       "value": "2021-07-28"
+    },
+    {
+      "id": "96e1a02f-7643-4bf4-9d56-a5b6b1ffc273",
+      "name": "Create GHL Opportunity",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        380
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/opportunities/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { locationId: \"pxHuOsiz2i3lM6BtC9IM\", pipelineId: $('Assert Expected Pack').first().json.crm.pipeline_id, pipelineStageId: $('Assert Expected Pack').first().json.crm.prospect_entry_stage_id, name: $('Claim Sync Jobs').item.json.name + \" - \" + ($('Claim Sync Jobs').item.json.company || \"Atacama Labs\"), status: \"open\", contactId: $json.contact.id, customFields: [ { id: $('Assert Expected Pack').first().json.crm.fields.fuente, field_value: $('Claim Sync Jobs').item.json.source || \"other_confirmed\" }, { id: $('Assert Expected Pack').first().json.crm.fields.solucion_de_interes, field_value: $('Claim Sync Jobs').item.json.solution || \"unsure\" }, { id: $('Assert Expected Pack').first().json.crm.fields.lead_id, field_value: $('Claim Sync Jobs').item.json.lead_id } ] } }}",
+        "options": {
+          "timeout": 30000
+        }
       },
-      {
-       "name": "Accept",
-       "value": "application/json"
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "8VKPDkZYHtODhRtk",
+          "name": "Atacama Labs - GHL Header Auth"
+        }
       }
-     ]
     },
-    "sendBody": true,
-    "specifyBody": "json",
-    "jsonBody": "={{ { locationId: \"pxHuOsiz2i3lM6BtC9IM\", pipelineId: $('Assert Expected Pack').first().json.crm.pipeline_id, pipelineStageId: $('Assert Expected Pack').first().json.crm.new_stage_id, name: $('Claim Sync Jobs').item.json.name + \" - \" + ($('Claim Sync Jobs').item.json.company || \"Atacama Labs\"), status: \"open\", contactId: $json.contact.id, customFields: [ { id: $('Assert Expected Pack').first().json.crm.fields.fuente, field_value: $('Claim Sync Jobs').item.json.source || \"other_confirmed\" }, { id: $('Assert Expected Pack').first().json.crm.fields.solucion_de_interes, field_value: $('Claim Sync Jobs').item.json.solution || \"unsure\" }, { id: $('Assert Expected Pack').first().json.crm.fields.lead_id, field_value: $('Claim Sync Jobs').item.json.lead_id } ] } }}",
-    "options": {
-     "timeout": 30000
-    }
-   },
-   "credentials": {
-    "httpHeaderAuth": {
-     "id": "8VKPDkZYHtODhRtk",
-     "name": "Atacama Labs - GHL Header Auth"
-    }
-   }
-  },
-  {
-   "id": "5414c032-5c32-456f-8c04-e1b11c4afbdd",
-   "name": "Opportunity OK?",
-   "type": "n8n-nodes-base.if",
-   "typeVersion": 2,
-   "position": [
-    1900,
-    380
-   ],
-   "parameters": {
-    "conditions": {
-     "options": {
-      "caseSensitive": true,
-      "leftValue": "",
-      "typeValidation": "loose"
-     },
-     "combinator": "and",
-     "conditions": [
-      {
-       "leftValue": "={{ $json.error }}",
-       "rightValue": "",
-       "operator": {
-        "type": "string",
-        "operation": "empty"
-       }
+    {
+      "id": "5414c032-5c32-456f-8c04-e1b11c4afbdd",
+      "name": "Opportunity OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1900,
+        380
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty"
+              }
+            }
+          ]
+        }
       }
-     ]
-    }
-   }
-  },
-  {
-   "id": "368e008e-2b49-4416-b1b2-794562b502c4",
-   "name": "Complete Success",
-   "type": "n8n-nodes-base.httpRequest",
-   "typeVersion": 4.2,
-   "position": [
-    2120,
-    260
-   ],
-   "parameters": {
-    "method": "POST",
-    "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/rpc/complete_sync_job",
-    "authentication": "predefinedCredentialType",
-    "nodeCredentialType": "supabaseApi",
-    "sendHeaders": true,
-    "headerParameters": {
-     "parameters": [
-      {
-       "name": "Content-Type",
-       "value": "application/json"
-      }
-     ]
     },
-    "sendBody": true,
-    "specifyBody": "json",
-    "jsonBody": "={{ { p_job_id: $('Already Has GHL IDs?').item.json.job_id, p_success: true, p_ghl_contact_id: $json.opportunity ? $json.opportunity.contactId : $('Already Has GHL IDs?').item.json.ghl_contact_id, p_ghl_opportunity_id: $json.opportunity ? $json.opportunity.id : $('Already Has GHL IDs?').item.json.ghl_opportunity_id } }}",
-    "options": {
-     "timeout": 30000
-    }
-   },
-   "credentials": {
-    "supabaseApi": {
-     "id": "XOmXUuyLVSazDIh5",
-     "name": "Atacama Labs - Supabase"
-    }
-   }
-  },
-  {
-   "id": "eb81d3dd-fb29-4e77-8a39-125dec088f7f",
-   "name": "Complete Failure (Contact)",
-   "type": "n8n-nodes-base.httpRequest",
-   "typeVersion": 4.2,
-   "position": [
-    1680,
-    560
-   ],
-   "parameters": {
-    "method": "POST",
-    "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/rpc/complete_sync_job",
-    "authentication": "predefinedCredentialType",
-    "nodeCredentialType": "supabaseApi",
-    "sendHeaders": true,
-    "headerParameters": {
-     "parameters": [
-      {
-       "name": "Content-Type",
-       "value": "application/json"
+    {
+      "id": "368e008e-2b49-4416-b1b2-794562b502c4",
+      "name": "Complete Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2120,
+        260
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/rpc/complete_sync_job",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { p_job_id: $('Already Has GHL IDs?').item.json.job_id, p_success: true, p_ghl_contact_id: $json.opportunity ? $json.opportunity.contactId : $('Already Has GHL IDs?').item.json.ghl_contact_id, p_ghl_opportunity_id: $json.opportunity ? $json.opportunity.id : $('Already Has GHL IDs?').item.json.ghl_opportunity_id } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
       }
-     ]
     },
-    "sendBody": true,
-    "specifyBody": "json",
-    "jsonBody": "={{ { p_job_id: $('Already Has GHL IDs?').item.json.job_id, p_success: false, p_error: (\"ghl_contact_upsert_failed: \" + JSON.stringify($json.error || {}).slice(0, 200)) } }}",
-    "options": {
-     "timeout": 30000
-    }
-   },
-   "credentials": {
-    "supabaseApi": {
-     "id": "XOmXUuyLVSazDIh5",
-     "name": "Atacama Labs - Supabase"
-    }
-   }
-  },
-  {
-   "id": "1785855e-2e14-4946-9577-9b43db385665",
-   "name": "Complete Failure (Opportunity)",
-   "type": "n8n-nodes-base.httpRequest",
-   "typeVersion": 4.2,
-   "position": [
-    2120,
-    500
-   ],
-   "parameters": {
-    "method": "POST",
-    "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/rpc/complete_sync_job",
-    "authentication": "predefinedCredentialType",
-    "nodeCredentialType": "supabaseApi",
-    "sendHeaders": true,
-    "headerParameters": {
-     "parameters": [
-      {
-       "name": "Content-Type",
-       "value": "application/json"
+    {
+      "id": "eb81d3dd-fb29-4e77-8a39-125dec088f7f",
+      "name": "Complete Failure (Contact)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        560
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/rpc/complete_sync_job",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { p_job_id: $('Already Has GHL IDs?').item.json.job_id, p_success: false, p_error: (\"ghl_contact_upsert_failed: \" + JSON.stringify($json.error || {}).slice(0, 200)) } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
       }
-     ]
     },
-    "sendBody": true,
-    "specifyBody": "json",
-    "jsonBody": "={{ { p_job_id: $('Already Has GHL IDs?').item.json.job_id, p_success: false, p_error: (\"ghl_opportunity_create_failed: \" + JSON.stringify($json.error || {}).slice(0, 200)) } }}",
-    "options": {
-     "timeout": 30000
+    {
+      "id": "1785855e-2e14-4946-9577-9b43db385665",
+      "name": "Complete Failure (Opportunity)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2120,
+        500
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/rpc/complete_sync_job",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { p_job_id: $('Already Has GHL IDs?').item.json.job_id, p_success: false, p_error: (\"ghl_opportunity_create_failed: \" + JSON.stringify($json.error || {}).slice(0, 200)) } }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      }
     }
-   },
-   "credentials": {
-    "supabaseApi": {
-     "id": "XOmXUuyLVSazDIh5",
-     "name": "Atacama Labs - Supabase"
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Init ICP Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Init ICP Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Init ICP Config": {
+      "main": [
+        [
+          {
+            "node": "Fetch ICP Pack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch ICP Pack": {
+      "main": [
+        [
+          {
+            "node": "Parse ICP Pack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse ICP Pack": {
+      "main": [
+        [
+          {
+            "node": "Assert Expected Pack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assert Expected Pack": {
+      "main": [
+        [
+          {
+            "node": "Fetch Approved Prospects",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Claim Sync Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Approved Prospects": {
+      "main": [
+        [
+          {
+            "node": "Build Approved List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Approved List": {
+      "main": [
+        [
+          {
+            "node": "Assert Expected Pack (before enqueue)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assert Expected Pack (before enqueue)": {
+      "main": [
+        [
+          {
+            "node": "Enqueue Prospect Sync",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claim Sync Jobs": {
+      "main": [
+        [
+          {
+            "node": "Already Has GHL IDs?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Already Has GHL IDs?": {
+      "main": [
+        [
+          {
+            "node": "Complete Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Upsert GHL Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert GHL Contact": {
+      "main": [
+        [
+          {
+            "node": "Contact OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contact OK?": {
+      "main": [
+        [
+          {
+            "node": "Create GHL Opportunity",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Complete Failure (Contact)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create GHL Opportunity": {
+      "main": [
+        [
+          {
+            "node": "Opportunity OK?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Opportunity OK?": {
+      "main": [
+        [
+          {
+            "node": "Complete Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Complete Failure (Opportunity)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
-   }
-  }
- ],
- "connections": {
-  "Manual Trigger": {
-   "main": [
-    [
-     {
-      "node": "Init ICP Config",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
   },
-  "When Executed by Another Workflow": {
-   "main": [
-    [
-     {
-      "node": "Init ICP Config",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Init ICP Config": {
-   "main": [
-    [
-     {
-      "node": "Fetch ICP Pack",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Fetch ICP Pack": {
-   "main": [
-    [
-     {
-      "node": "Parse ICP Pack",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Parse ICP Pack": {
-   "main": [
-    [
-     {
-      "node": "Assert Expected Pack",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Assert Expected Pack": {
-   "main": [
-    [
-     {
-      "node": "Fetch Approved Prospects",
-      "type": "main",
-      "index": 0
-     },
-     {
-      "node": "Claim Sync Jobs",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Fetch Approved Prospects": {
-   "main": [
-    [
-     {
-      "node": "Build Approved List",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Build Approved List": {
-   "main": [
-    [
-     {
-      "node": "Assert Expected Pack (before enqueue)",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Assert Expected Pack (before enqueue)": {
-   "main": [
-    [
-     {
-      "node": "Enqueue Prospect Sync",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Claim Sync Jobs": {
-   "main": [
-    [
-     {
-      "node": "Already Has GHL IDs?",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Already Has GHL IDs?": {
-   "main": [
-    [
-     {
-      "node": "Complete Success",
-      "type": "main",
-      "index": 0
-     }
-    ],
-    [
-     {
-      "node": "Upsert GHL Contact",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Upsert GHL Contact": {
-   "main": [
-    [
-     {
-      "node": "Contact OK?",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Contact OK?": {
-   "main": [
-    [
-     {
-      "node": "Create GHL Opportunity",
-      "type": "main",
-      "index": 0
-     }
-    ],
-    [
-     {
-      "node": "Complete Failure (Contact)",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Create GHL Opportunity": {
-   "main": [
-    [
-     {
-      "node": "Opportunity OK?",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Opportunity OK?": {
-   "main": [
-    [
-     {
-      "node": "Complete Success",
-      "type": "main",
-      "index": 0
-     }
-    ],
-    [
-     {
-      "node": "Complete Failure (Opportunity)",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  }
- },
- "settings": {}
+  "settings": {}
 }

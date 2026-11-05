@@ -1,0 +1,38 @@
+{
+  "chosen": [
+    {
+      "signal_id": "1f927a4b-c986-4928-ac00-abd7c0db1a35",
+      "channel": "instagram",
+      "format": "carrusel",
+      "why": "Traduce una novedad técnica en una explicación útil para empresas que atienden conversaciones largas por WhatsApp."
+    },
+    {
+      "signal_id": "1d057913-7546-4db7-a83d-e41014b37ab4",
+      "channel": "linkedin_page",
+      "format": "texto",
+      "why": "Conecta una novedad de control de consumo con un problema operativo reconocible en automatizaciones de correo."
+    }
+  ],
+  "discarded": [
+    {
+      "signal_id": "4bc8618e-73d3-4635-aae7-ec1a068f376d",
+      "why": "Es demasiado específico de la API de Claude y su valor para una pyme queda menos directo que otras señales."
+    },
+    {
+      "signal_id": "9988e2db-7463-47fa-ab26-babd826d91f4",
+      "why": "La validación de audience en tokens MCP es relevante para arquitecturas técnicas, pero demasiado especializada para la audiencia principal."
+    },
+    {
+      "signal_id": "58b15cd8-7dcb-4f2f-bca2-f56aceb5428d",
+      "why": "La optimización interna de Agent Builder y prompt caching es demasiado técnica y el ángulo se acerca a eficiencia de infraestructura."
+    },
+    {
+      "signal_id": "aa1808e7-3e26-4ff3-9767-a4d251ade528",
+      "why": "El detalle de timeouts durante OAuth es técnico y cuesta convertirlo en una pieza clara para dueños y gerentes de pymes."
+    },
+    {
+      "signal_id": "7f9d2422-880f-4361-8122-e6448d26a08e",
+      "why": "Es la misma novedad de compactación que la señal elegida, por lo que se descarta para no repetirla."
+    }
+  ]
+}

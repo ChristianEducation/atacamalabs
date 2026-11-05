@@ -1,0 +1,15 @@
+[
+  {
+    "created_at": "2026-10-20T02:07:20.665121Z",
+    "display_name": "Sonilo Music",
+    "id": "62281b34-76d2-4364-9279-eb416a892906",
+    "job_type": "sonilo_music",
+    "min_result_url": null,
+    "params": {
+      "duration": 15,
+      "prompt": "Bright feel-good marketing background music: warm bouncy bass, crisp tight percussion, playful marimba and synth arpeggio, confident and optimistic, clean mix, no vocals, instrumental"
+    },
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3EbqVNfY8krnXzjJxDYBMWhIUwo/hf_20261020_020720_62281b34-76d2-4364-9279-eb416a892906.m4a",
+    "status": "completed"
+  }
+]

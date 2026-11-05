@@ -1,0 +1,45 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><style>
+@font-face{font-family:"DM Sans";src:url("__FONT__") format("woff2");font-weight:100 1000}
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--blue:#0f5ced;--ink:#0b1e3f;--coral:#ff7a59}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#f3f6fd}
+body{font-family:"DM Sans",sans-serif;-webkit-font-smoothing:antialiased;color:var(--ink)}
+#st{position:absolute;inset:0;overflow:hidden;background:#f3f6fd}
+.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(15,92,237,.10) 2px,transparent 2px),linear-gradient(90deg,rgba(15,92,237,.10) 2px,transparent 2px);background-size:120px 120px}
+#glow{position:absolute;left:100px;top:700px;width:900px;height:900px;border-radius:50%;background:radial-gradient(circle,rgba(88,166,255,.30),rgba(88,166,255,0) 66%)}
+.h{position:absolute;left:90px;top:300px;width:900px;font-size:92px;font-weight:700;letter-spacing:-.035em;line-height:1.03}
+.h .w{display:inline-block;opacity:0;white-space:pre}.h em{font-style:normal;color:var(--blue)}
+.q{position:absolute;left:90px;width:900px;background:#fff;border:3px solid #d5e0f6;border-radius:44px;padding:36px 44px;box-shadow:0 26px 60px rgba(26,60,142,.16);opacity:0}
+.q .r1{display:flex;align-items:center;gap:26px}
+.pdf{background:#e5484d;color:#fff;border-radius:16px;font-size:30px;font-weight:700;padding:24px 16px;flex:none}
+.q .nm{font-size:44px;font-weight:700;letter-spacing:-.01em}.q .sb{font-size:30px;color:#5f7094;margin-top:4px}
+.q .num{margin-left:auto;text-align:right}.q .num b{font-size:110px;font-weight:700;letter-spacing:-.04em;line-height:1}.q .num span{display:block;font-size:34px;color:#5f7094;margin-top:-6px}
+.bad{display:inline-block;margin-top:24px;border:3px solid var(--coral);color:var(--coral);font-weight:700;font-size:32px;padding:8px 24px;border-radius:40px;opacity:0}
+#nadie{position:absolute;left:90px;top:1330px;width:900px;font-size:84px;font-weight:700;letter-spacing:-.035em;color:var(--ink);opacity:0}
+#nadie em{font-style:normal;color:var(--coral)}
+#logo{position:absolute;left:50%;top:1560px;width:440px;transform:translateX(-50%);opacity:0}
+</style></head><body><div id="st"><div class="grid" id="g"></div><div id="glow"></div>
+<div class="h" id="h"><span class="w">¿Y </span><span class="w">qué </span><span class="w">pasó </span><span class="w">con </span><span class="w">la </span><br><span class="w">cotización </span><span class="w"><em>de </em></span><br><span class="w"><em>hace </em></span><span class="w"><em>cuatro </em></span><span class="w"><em>días?</em></span></div>
+<div class="q" id="q1" style="top:880px"><div class="r1"><div class="pdf">PDF</div><div><div class="nm">Cotización 1024.pdf</div><div class="sb">Enviada por WhatsApp</div></div><div class="num"><b id="n1">0</b><span id="u1">días</span></div></div><div class="bad" id="b1">✓✓ Visto · sin respuesta</div></div>
+<div id="nadie">Nadie la <em>retomó.</em></div>
+<img id="logo" src="__LOGO__">
+</div><script>
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const seg = (T, a, b) => clamp((T - a) / (b - a));
+const eout = (t) => 1 - Math.pow(1 - t, 3);
+const back = (t, s = 1.7) => { t = clamp(t); const c3 = s + 1; return 1 + c3 * Math.pow(t - 1, 3) + s * Math.pow(t - 1, 2); };
+function draw(T) {
+  $('g').style.backgroundPosition = (T * 10) + 'px ' + (-T * 8) + 'px';
+  $('glow').style.transform = 'translate(' + (Math.sin(T * 0.8) * 30) + 'px,' + (Math.cos(T * 0.8) * 24) + 'px)';
+  Array.from($('h').querySelectorAll('.w')).forEach((w, i) => { const u = seg(T, 0.15 + i * 0.09, 0.15 + i * 0.09 + 0.45), s = back(u, 1.6); w.style.opacity = clamp(u * 2.5); w.style.transform = 'translateY(' + ((1 - s) * 44) + 'px)'; w.style.filter = u < 1 ? 'blur(' + ((1 - u) * 8) + 'px)' : 'none'; });
+  const a = back(seg(T, 1.5, 2.1), 1.6); $('q1').style.opacity = clamp(a * 3); $('q1').style.transform = 'translateX(' + ((1 - a) * 160) + 'px)';
+  const flip = seg(T, 3.9, 4.5);
+  if (flip < 0.5) { $('n1').textContent = Math.round(4 * eout(seg(T, 2.0, 3.0))); $('u1').textContent = 'días'; } else { $('n1').textContent = '1'; $('u1').textContent = 'semana'; }
+  $('n1').style.transform = 'scaleY(' + (Math.abs(Math.cos(flip * Math.PI)) * (flip > 0 && flip < 1 ? 1 : 1)) + ')'; $('n1').style.display = 'inline-block';
+  const b1 = back(seg(T, 3.0, 3.5), 2.0); $('b1').style.opacity = clamp(b1 * 3); $('b1').style.transform = 'scale(' + (0.7 + 0.3 * b1) + ')';
+  const n = back(seg(T, 4.8, 5.4), 1.7); $('nadie').style.opacity = clamp(n * 3); $('nadie').style.transform = 'translateY(' + ((1 - n) * 40) + 'px)';
+  const lg = back(seg(T, 5.6, 6.2), 1.5); $('logo').style.opacity = clamp(lg * 3); $('logo').style.transform = 'translateX(-50%) translateY(' + ((1 - lg) * 40) + 'px)';
+}
+window.draw = draw;
+</script></body></html>

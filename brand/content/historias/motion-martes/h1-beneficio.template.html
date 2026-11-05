@@ -1,0 +1,54 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><style>
+@font-face{font-family:"DM Sans";src:url("__FONT__") format("woff2");font-weight:100 1000}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#1a3c8e}
+body{font-family:"DM Sans",sans-serif;-webkit-font-smoothing:antialiased;color:#fff}
+#st{position:absolute;left:0;top:0;width:1080px;height:1920px;overflow:hidden;background:linear-gradient(160deg,#0f5ced 0%,#1a3c8e 100%)}
+.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.10) 2px,transparent 2px),linear-gradient(90deg,rgba(255,255,255,.10) 2px,transparent 2px);background-size:120px 120px}
+#glow{position:absolute;left:-200px;top:1000px;width:900px;height:900px;border-radius:50%;background:radial-gradient(circle,rgba(88,166,255,.5),rgba(88,166,255,0) 70%)}
+#glow2{position:absolute;left:380px;top:520px;width:800px;height:800px;border-radius:50%;background:radial-gradient(circle,rgba(255,197,61,.22),rgba(255,197,61,0) 65%)}
+#badge{position:absolute;left:90px;top:262px;background:#ffc53d;color:#10224f;font-weight:700;font-size:34px;letter-spacing:.12em;padding:16px 34px;border-radius:60px;opacity:0;transform-origin:0 50%;overflow:hidden;white-space:nowrap}
+#shine{position:absolute;top:0;bottom:0;left:-90px;width:70px;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.75),rgba(255,255,255,0));transform:skewX(-18deg)}
+.h{position:absolute;left:90px;top:392px;width:900px;font-size:100px;font-weight:600;letter-spacing:-.032em;line-height:1.04;color:#fff}
+.h em{font-style:normal;color:#58a6ff}.h .w{display:inline-block;opacity:0;white-space:pre}
+#n31{position:absolute;left:78px;top:690px;font-size:430px;font-weight:700;letter-spacing:-.06em;line-height:1;color:#ffc53d;opacity:0;transform-origin:50% 70%}
+#de{position:absolute;left:590px;top:760px;font-size:88px;font-weight:500;line-height:1;opacity:0}
+#oct{position:absolute;left:590px;top:858px;font-size:114px;font-weight:600;letter-spacing:-.03em;line-height:1;opacity:0}
+#sub{position:absolute;left:90px;top:1190px;width:900px;font-size:48px;color:#e6efff;line-height:1.3;opacity:0}
+#sub b{font-weight:600;color:#fff}
+#url{position:absolute;left:0;width:100%;top:1640px;text-align:center;font-size:32px;font-weight:500;color:#ffc53d;letter-spacing:.14em;opacity:0}
+#logo{position:absolute;left:50%;top:1470px;width:700px;transform:translateX(-50%);opacity:0}
+</style></head><body><div id="st">
+<div class="grid" id="g"></div><div id="glow"></div><div id="glow2"></div>
+<div id="badge">BENEFICIO OCTUBRE<div id="shine"></div></div>
+<div class="h" id="h"><span class="w">Contrata </span><span class="w">tu </span><span class="w">agente</span><br><span class="w"><em>antes del</em></span></div>
+<div id="n31">31</div><div id="de">de</div><div id="oct">octubre</div>
+<div id="sub">y mantén tu mensualidad <b>mientras sigas en el mismo plan.</b></div>
+<div id="url">ATACAMALABS.CL</div>
+<img id="logo" src="__LOGO_DARK__">
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const seg = (T, a, b) => clamp((T - a) / (b - a));
+const eout = (t) => 1 - Math.pow(1 - t, 3);
+const back = (t, s = 1.7) => { t = clamp(t); const c3 = s + 1; return 1 + c3 * Math.pow(t - 1, 3) + s * Math.pow(t - 1, 2); };
+const bounce = (t) => { t = clamp(t); const n = 7.5625, d = 2.75; if (t < 1 / d) return n * t * t; if (t < 2 / d) { t -= 1.5 / d; return n * t * t + .75; } if (t < 2.5 / d) { t -= 2.25 / d; return n * t * t + .9375; } t -= 2.625 / d; return n * t * t + .984375; };
+function draw(T) {
+  $('g').style.backgroundPosition = (T * 10) + 'px ' + (-T * 8) + 'px';
+  $('glow').style.transform = 'translate(' + (T * 30) + 'px,' + (-T * 16) + 'px)';
+  $('glow2').style.opacity = clamp(seg(T, 1.4, 2.4)) * (0.75 + 0.25 * Math.sin(T * 2.2));
+  const bu = back(seg(T, 0.1, 0.65), 2.0); $('badge').style.opacity = clamp(bu * 3); $('badge').style.transform = 'scale(' + (0.6 + 0.4 * bu) + ')';
+  $('shine').style.left = (-90 + 640 * seg(T, 2.7, 3.5)) + 'px';
+  Array.from($('h').querySelectorAll('.w')).forEach((w, i) => { const u = seg(T, 0.5 + i * 0.2, 0.5 + i * 0.2 + 0.5), s = back(u, 1.6); w.style.opacity = clamp(u * 2.5); w.style.transform = 'translateY(' + ((1 - s) * 44) + 'px)'; w.style.filter = u < 1 ? 'blur(' + ((1 - u) * 8) + 'px)' : 'none'; });
+  // el 31 cae con rebote
+  const u = seg(T, 1.3, 2.1); const fl = T > 2.3 ? Math.sin((T - 2.3) * 2.2) * 5 : 0;
+  $('n31').style.opacity = clamp(u * 6); $('n31').style.transform = 'translateY(' + (-620 * (1 - bounce(u)) + fl) + 'px) scale(' + (1 + 0.12 * (1 - u)) + ')';
+  const d1 = back(seg(T, 2.0, 2.5), 1.5), d2 = back(seg(T, 2.15, 2.7), 1.5);
+  $('de').style.opacity = clamp(d1 * 3); $('de').style.transform = 'translateX(' + ((1 - d1) * 70) + 'px)';
+  $('oct').style.opacity = clamp(d2 * 3); $('oct').style.transform = 'translateX(' + ((1 - d2) * 90) + 'px)';
+  const su = eout(seg(T, 2.9, 3.5)); $('sub').style.opacity = su; $('sub').style.transform = 'translateY(' + ((1 - su) * 26) + 'px)';
+  const lu = back(seg(T, 4.2, 4.9), 1.5); $('logo').style.opacity = clamp(lu * 3); $('logo').style.transform = 'translateX(-50%) translateY(' + ((1 - lu) * 40) + 'px) scale(' + (0.9 + 0.1 * lu) + ')'; $('url').style.opacity = eout(seg(T, 4.7, 5.2));
+}
+window.draw = draw;
+</script></body></html>

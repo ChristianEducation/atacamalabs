@@ -1,0 +1,59 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><style>
+@font-face{font-family:"DM Sans";src:url("__FONT__") format("woff2");font-weight:100 1000}
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--blue:#0f5ced;--ink:#0b1e3f;--amber:#ffc53d;--coral:#ff7a59}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#1a3c8e}
+body{font-family:"DM Sans",sans-serif;-webkit-font-smoothing:antialiased;color:#fff}
+#st{position:absolute;inset:0;overflow:hidden;background:linear-gradient(160deg,#0f5ced 0%,#1a3c8e 100%)}
+.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.10) 2px,transparent 2px),linear-gradient(90deg,rgba(255,255,255,.10) 2px,transparent 2px);background-size:120px 120px}
+#glow{position:absolute;left:-220px;top:1000px;width:1000px;height:1000px;border-radius:50%;background:radial-gradient(circle,rgba(88,166,255,.5),rgba(88,166,255,0) 68%)}
+#lab{position:absolute;left:90px;top:270px;background:var(--amber);color:#10224f;font-weight:700;font-size:30px;letter-spacing:.12em;padding:14px 30px;border-radius:50px;opacity:0}
+.h{position:absolute;left:90px;top:370px;width:900px;font-size:88px;font-weight:600;letter-spacing:-.035em;line-height:1.04}
+.h .w{display:inline-block;opacity:0;white-space:pre}
+#dots{position:absolute;left:220px;top:540px;width:640px;height:640px}
+.dot{position:absolute;width:50px;height:50px;border-radius:50%;background:#fff;opacity:0}
+#big{position:absolute;left:90px;top:1190px;font-size:250px;font-weight:700;letter-spacing:-.06em;line-height:1;color:var(--coral);opacity:0}
+#big small{font-size:140px}
+#lost{position:absolute;left:560px;top:1290px;font-size:96px;font-weight:600;letter-spacing:-.03em;opacity:0}
+#ia{position:absolute;left:90px;top:1500px;width:900px;background:#fff;border-radius:44px;padding:30px 50px;box-shadow:0 30px 70px rgba(5,18,60,.35);opacity:0;color:var(--ink)}
+#ia .a{font-size:36px;font-weight:600;color:#5f7094}#ia .b{font-size:88px;font-weight:700;letter-spacing:-.03em;color:var(--blue);line-height:1.05}
+#foot{position:absolute;left:90px;width:900px;top:1700px;font-size:25px;line-height:1.3;color:#b9c9f0;opacity:0}
+#logo{position:absolute;left:50%;top:1790px;width:360px;transform:translateX(-50%);opacity:0}
+</style></head><body><div id="st"><div class="grid" id="g"></div><div id="glow"></div>
+<div id="lab">AGENTE HUMANO VS. AGENTE DE IA</div>
+<div class="h" id="h"><span class="w">De </span><span class="w">cada </span><span class="w">100 </span><span class="w">llamadas…</span></div>
+<div id="dots"></div>
+<div id="big"></div><div id="lost">se pierden.</div>
+<div id="ia"><div class="a">Con un agente de IA:</div><div class="b">menos de 3</div></div>
+<div id="foot">Cifras de referencia de HighLevel (GHL). Los resultados varían según cada negocio.</div>
+<img id="logo" src="__LOGO_DARK__">
+</div><script>
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const seg = (T, a, b) => clamp((T - a) / (b - a));
+const eout = (t) => 1 - Math.pow(1 - t, 3);
+const back = (t, s = 1.7) => { t = clamp(t); const c3 = s + 1; return 1 + c3 * Math.pow(t - 1, 3) + s * Math.pow(t - 1, 2); };
+const dots = []; for (let i = 0; i < 100; i++) { const d = document.createElement('div'); d.className = 'dot'; d.style.left = ((i % 10) * 64) + 'px'; d.style.top = (Math.floor(i / 10) * 64) + 'px'; $('dots').append(d); dots.push(d); }
+// 62 puntos «perdidos» (orden fijo pseudoaleatorio, determinista)
+const order = Array.from({ length: 100 }, (_, i) => i).sort((a, b) => ((a * 37) % 101) - ((b * 37) % 101));
+const lostSet = order.slice(0, 62); const rank = {}; lostSet.forEach((k, r) => rank[k] = r);
+const keep = lostSet.slice(0, 2);
+function draw(T) {
+  $('g').style.backgroundPosition = (T * 10) + 'px ' + (-T * 8) + 'px';
+  const l = back(seg(T, 0.1, 0.6), 1.8); $('lab').style.opacity = clamp(l * 3); $('lab').style.transform = 'scale(' + (0.7 + 0.3 * l) + ')';
+  Array.from($('h').querySelectorAll('.w')).forEach((w, i) => { const u = seg(T, 0.3 + i * 0.13, 0.3 + i * 0.13 + 0.45), s = back(u, 1.6); w.style.opacity = clamp(u * 2.5); w.style.transform = 'translateY(' + ((1 - s) * 40) + 'px)'; });
+  dots.forEach((d, i) => {
+    const u = back(seg(T, 1.0 + i * 0.008, 1.0 + i * 0.008 + 0.35), 2); d.style.opacity = clamp(u * 3); let col = '#fff', sc = 0.5 + 0.5 * u;
+    if (i in rank) { const r = rank[i]; const t0 = 2.3 + r * 0.016; const k = seg(T, t0, t0 + 0.2); if (k > 0) { col = '#ff7a59'; sc *= 1 + 0.25 * Math.sin(k * Math.PI); } const back0 = 4.3 + (r % 20) * 0.02; const kb = seg(T, back0, back0 + 0.25); if (kb > 0 && r >= 2) col = kb > 0.5 ? '#fff' : col; if (kb > 0 && r < 2) col = '#ffc53d'; }
+    d.style.background = col; d.style.transform = 'scale(' + sc + ')';
+  });
+  const n = Math.round(62 * eout(seg(T, 2.3, 3.4)));
+  const b = back(seg(T, 2.3, 2.8), 1.6); const fade = 1 - seg(T, 4.3, 4.7);
+  $('big').innerHTML = n + '<small>%</small>'; $('big').style.opacity = clamp(b * 3) * fade; $('big').style.transform = 'translateY(' + ((1 - b) * 40) + 'px)';
+  const lo = back(seg(T, 3.4, 3.9), 1.7); $('lost').style.opacity = clamp(lo * 3) * fade; $('lost').style.transform = 'translateY(' + ((1 - lo) * 30) + 'px)';
+  const ia = back(seg(T, 4.5, 5.2), 1.7); $('ia').style.opacity = clamp(ia * 3); $('ia').style.transform = 'translateY(' + ((1 - ia) * 60) + 'px) scale(' + (0.92 + 0.08 * ia) + ')';
+  $('foot').style.opacity = eout(seg(T, 0.6, 1.2));
+  const lg = back(seg(T, 5.4, 6.0), 1.5); $('logo').style.opacity = clamp(lg * 3); $('logo').style.transform = 'translateX(-50%) translateY(' + ((1 - lg) * 30) + 'px)';
+}
+window.draw = draw;
+</script></body></html>

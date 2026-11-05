@@ -1,0 +1,42 @@
+[
+  {
+    "created_at": "2026-10-20T02:14:36.578023Z",
+    "display_name": "Eleven v4",
+    "id": "8135d904-9cae-4117-8a58-c50809742d1f",
+    "job_type": "elevenlabs_v4",
+    "min_result_url": null,
+    "params": {
+      "batch_size": 1,
+      "dialogue": [
+        {
+          "text": "¿Te suena? ... Con Atacama Labs, tu agenda se confirma y los huecos se llenan. ... Agenda una demo en atacamalabs punto cl.",
+          "voice_id": "c2acff45-84b2-4974-892d-89fa2d4e5598",
+          "voice_type": "preset"
+        }
+      ],
+      "prompt": "¿Te suena? ... Con Atacama Labs, tu agenda se confirma y los huecos se llenan. ... Agenda una demo en atacamalabs punto cl.",
+      "similarity_boost": null,
+      "stability": null,
+      "voices": [
+        {
+          "age": "middle_aged",
+          "gender": "male",
+          "id": "c2acff45-84b2-4974-892d-89fa2d4e5598",
+          "name": "Brooks",
+          "source": "https://d1xarpci4ikg0w.cloudfront.net/audio_voice_preset/preview/205ba406-f52c-4b61-b3f8-fd04cf683af5.mp3",
+          "supported_models": [
+            "elevenlabs",
+            "minimax",
+            "seed_speech",
+            "qwen_audio"
+          ],
+          "thumbnail_url": "https://d1xarpci4ikg0w.cloudfront.net/audio_voice/thumbnail/7b2e43a9-5952-4419-a08f-438d2d3d3b77.webp",
+          "type": "preset",
+          "waveform_url": "https://d1xarpci4ikg0w.cloudfront.net/waveform/96c30e97-2d29-48d8-8db4-9e03704dc8fb.json"
+        }
+      ]
+    },
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3EbqVNfY8krnXzjJxDYBMWhIUwo/hf_20261020_021436_8135d904-9cae-4117-8a58-c50809742d1f.mp3",
+    "status": "completed"
+  }
+]

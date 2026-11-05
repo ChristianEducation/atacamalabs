@@ -1,0 +1,15 @@
+[
+  {
+    "created_at": "2026-10-20T02:07:20.624369Z",
+    "display_name": "Sonilo Music",
+    "id": "4ea5e6ee-ecde-44b2-a5e6-5449ebe0aea4",
+    "job_type": "sonilo_music",
+    "min_result_url": null,
+    "params": {
+      "duration": 15,
+      "prompt": "Upbeat modern commercial pop-tech background music for a short product reel: bright plucky synths, light finger snaps and claps, steady 118 bpm groove, positive and energetic, clean mix, builds slightly, no vocals, instrumental"
+    },
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3EbqVNfY8krnXzjJxDYBMWhIUwo/hf_20261020_020720_4ea5e6ee-ecde-44b2-a5e6-5449ebe0aea4.m4a",
+    "status": "completed"
+  }
+]

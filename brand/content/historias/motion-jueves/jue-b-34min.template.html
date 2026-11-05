@@ -1,0 +1,47 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><style>
+@font-face{font-family:"DM Sans";src:url("__FONT__") format("woff2");font-weight:100 1000}
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--blue:#0f5ced;--ink:#0b1e3f;--amber:#ffc53d}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#f3f6fd}
+body{font-family:"DM Sans",sans-serif;-webkit-font-smoothing:antialiased;color:#0b1e3f}
+#st{position:absolute;inset:0;overflow:hidden;background:#f3f6fd}
+.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(15,92,237,.10) 2px,transparent 2px),linear-gradient(90deg,rgba(15,92,237,.10) 2px,transparent 2px);background-size:120px 120px}
+#glow{position:absolute;left:-220px;top:1000px;width:1000px;height:1000px;border-radius:50%;background:radial-gradient(circle,rgba(88,166,255,.30),rgba(88,166,255,0) 68%)}
+#lab{position:absolute;left:90px;top:270px;background:var(--amber);color:#10224f;font-weight:700;font-size:30px;letter-spacing:.12em;padding:14px 30px;border-radius:50px;opacity:0}
+.h{position:absolute;left:90px;top:370px;width:900px;font-size:100px;font-weight:600;letter-spacing:-.035em;line-height:1.04}
+.h .w{display:inline-block;opacity:0;white-space:pre}.h em{font-style:normal;color:#0f5ced}
+.card{position:absolute;left:90px;width:900px;border-radius:50px;padding:44px 56px;opacity:0}
+#c1{top:760px;background:#fff;color:var(--ink);border:4px solid #d5e0f6;box-shadow:0 26px 60px rgba(26,60,142,.16)}
+#c2{top:1160px;background:var(--blue);color:#fff;box-shadow:0 30px 70px rgba(15,92,237,.38)}
+.card .a{font-size:40px;font-weight:600;opacity:.75}.card .n{font-size:190px;font-weight:700;letter-spacing:-.045em;line-height:1.02}
+#bar{position:absolute;left:56px;right:56px;bottom:30px;height:14px;border-radius:8px;background:#e1e9f8;overflow:hidden}#bar i{display:block;height:100%;width:0;background:#16233f;border-radius:8px}
+#foot{position:absolute;left:90px;width:900px;top:1700px;font-size:25px;line-height:1.3;color:#5f7094;opacity:0}
+#logo{position:absolute;left:50%;top:1790px;width:360px;transform:translateX(-50%);opacity:0}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+</style></head><body><div id="st"><div class="grid" id="g"></div><div id="glow"></div>
+<div id="lab">AGENTE HUMANO VS. AGENTE DE IA</div>
+<div class="h" id="h"><span class="w">¿Cuánto </span><span class="w">tarda</span><br><span class="w"><em>en responder?</em></span></div>
+<div class="card" id="c1"><div class="a">Agente humano</div><div class="n" id="n1">0 min</div><div id="bar"><i id="bi"></i></div></div>
+<div class="card" id="c2"><div class="a">Agente de IA</div><div class="n" id="n2">&lt;1 s</div></div>
+<div id="foot">Cifras de referencia de HighLevel (GHL). Los resultados varían según cada negocio.</div>
+<img id="logo" src="__LOGO__"><div id="flash"></div>
+</div><script>
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const seg = (T, a, b) => clamp((T - a) / (b - a));
+const eout = (t) => 1 - Math.pow(1 - t, 3);
+const back = (t, s = 1.7) => { t = clamp(t); const c3 = s + 1; return 1 + c3 * Math.pow(t - 1, 3) + s * Math.pow(t - 1, 2); };
+function draw(T) {
+  $('g').style.backgroundPosition = (T * 10) + 'px ' + (-T * 8) + 'px';
+  const l = back(seg(T, 0.1, 0.6), 1.8); $('lab').style.opacity = clamp(l * 3); $('lab').style.transform = 'scale(' + (0.7 + 0.3 * l) + ')';
+  Array.from($('h').querySelectorAll('.w')).forEach((w, i) => { const u = seg(T, 0.3 + i * 0.17, 0.3 + i * 0.17 + 0.45), s = back(u, 1.6); w.style.opacity = clamp(u * 2.5); w.style.transform = 'translateY(' + ((1 - s) * 40) + 'px)'; });
+  const c1 = back(seg(T, 1.0, 1.6), 1.5); $('c1').style.opacity = clamp(c1 * 3); $('c1').style.transform = 'translateX(' + ((1 - c1) * -140) + 'px)';
+  const k = eout(seg(T, 1.5, 3.4)); $('n1').textContent = Math.round(34 * k) + ' min'; $('bi').style.width = (k * 100) + '%';
+  const c2 = back(seg(T, 3.6, 4.2), 1.6); $('c2').style.opacity = clamp(c2 * 3); $('c2').style.transform = 'translateX(' + ((1 - c2) * 140) + 'px) scale(' + (0.94 + 0.06 * c2) + ')';
+  const fl = seg(T, 3.9, 4.15); $('flash').style.opacity = fl > 0 && fl < 1 ? 0.55 * Math.sin(fl * Math.PI) : 0;
+  const pop = T > 4.2 ? 1 + 0.03 * Math.sin((T - 4.2) * 6) * Math.max(0, 1 - (T - 4.2) / 1.2) : 1; $('n2').style.transform = 'scale(' + pop + ')'; $('n2').style.transformOrigin = '0 60%';
+  $('foot').style.opacity = eout(seg(T, 0.6, 1.2));
+  const lg = back(seg(T, 5.2, 5.8), 1.5); $('logo').style.opacity = clamp(lg * 3); $('logo').style.transform = 'translateX(-50%) translateY(' + ((1 - lg) * 30) + 'px)';
+}
+window.draw = draw;
+</script></body></html>

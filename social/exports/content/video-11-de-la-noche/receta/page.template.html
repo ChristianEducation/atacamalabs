@@ -1,0 +1,398 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><style>
+@font-face{font-family:"DM Sans";src:url("__FONT__") format("woff2");font-weight:100 1000}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#000}
+body{font-family:"DM Sans",sans-serif;-webkit-font-smoothing:antialiased;color:#0b1e3f}
+#stage{position:absolute;left:0;top:0;width:1080px;height:1920px;overflow:hidden;background:#eef3fe}
+#bg{position:absolute;inset:0;background:radial-gradient(62% 40% at 50% 50%,rgba(15,92,237,.17),rgba(15,92,237,0) 72%),linear-gradient(180deg,#eef3fe,#e3ecfc)}
+#grid{position:absolute;inset:0;background-image:linear-gradient(rgba(15,92,237,.12) 2px,transparent 2px),linear-gradient(90deg,rgba(15,92,237,.12) 2px,transparent 2px),linear-gradient(rgba(15,92,237,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(15,92,237,.055) 1px,transparent 1px);background-size:120px 120px,120px 120px,40px 40px,40px 40px}
+.abs{position:absolute}
+.pill{position:absolute;left:30px;top:84px;height:58px;padding:0 28px;border-radius:40px;font-weight:700;font-size:26px;letter-spacing:.06em;display:flex;align-items:center;white-space:nowrap}
+.pill.blue{background:#0f5ced;color:#fff;box-shadow:0 10px 24px rgba(15,92,237,.35)}
+.pill.dark{background:#2b1a0b;color:#f1dfbd;border:2px solid #7c5a30;font-family:"Courier New",monospace;font-weight:700;letter-spacing:.1em}
+/* ---------- panel derecho ---------- */
+#right{position:absolute;left:540px;top:0;width:540px;height:1920px;overflow:hidden}
+#rClock{position:absolute;left:34px;top:164px;font-weight:700;font-size:40px;letter-spacing:-.01em;color:#0b1e3f}
+#dots .d{position:absolute;top:163px;width:54px;height:54px;border-radius:50%;border:4px solid #0f5ced;background:#fff;color:#0f5ced;font-weight:700;font-size:28px;display:flex;align-items:center;justify-content:center}
+#dotline{position:absolute;left:327px;top:188px;width:140px;height:5px;background:rgba(15,92,237,.3);border-radius:3px}
+#card{position:absolute;left:30px;top:250px;width:480px;height:1240px;border-radius:44px;background:#e9f0fc;box-shadow:0 30px 60px rgba(11,30,63,.2);overflow:hidden}
+#hdr{position:absolute;left:0;top:0;width:480px;height:100px;background:#fff;border-bottom:2px solid #dbe4f5}
+#hdr .av{position:absolute;left:24px;top:20px;width:60px;height:60px;border-radius:50%;background:#fff;border:2px solid #dbe4f5;overflow:hidden}
+#hdr .av img{position:absolute;left:10px;top:10px;width:40px;height:40px}
+#hdr .t1{position:absolute;left:100px;top:16px;font-weight:700;font-size:30px}
+#hdr .t2{position:absolute;left:100px;top:56px;font-weight:500;font-size:22px;color:#1e9d3d}
+.bub{position:absolute;padding:18px 22px 16px;border-radius:26px;font-size:30px;line-height:1.22;font-weight:500;box-shadow:0 3px 8px rgba(11,30,63,.1)}
+.bub .tm{display:block;text-align:right;font-size:18px;color:#7a869b;margin-top:6px;font-weight:500}
+#b1{left:22px;top:130px;width:340px;background:#fff;border-top-left-radius:6px;transform-origin:0 0}
+#b2{right:22px;top:290px;width:370px;background:#d9fdd3;border-top-right-radius:6px;transform-origin:100% 0}
+#b3{right:22px;top:460px;width:390px;background:#d9fdd3;border-top-right-radius:6px;transform-origin:100% 0}
+#typing{position:absolute;right:22px;top:290px;width:130px;height:68px;border-radius:26px;background:#d9fdd3;border-top-right-radius:6px;display:flex;align-items:center;justify-content:center;gap:10px}
+#typing i{display:block;width:14px;height:14px;border-radius:50%;background:#6b8a6e}
+#sheet{position:absolute;left:0;top:480px;width:480px;height:760px;background:#fff;border-radius:44px 44px 0 0;box-shadow:0 -16px 40px rgba(11,30,63,.18)}
+#sheet .grab{position:absolute;left:200px;top:14px;width:80px;height:7px;border-radius:4px;background:#d3dcee}
+#sheet .ttl{position:absolute;left:30px;top:34px;font-weight:700;font-size:34px}
+#sheet .prog{position:absolute;left:30px;top:90px;width:420px;height:8px;border-radius:4px;background:#e1e9f8}
+#sheet .prog i{position:absolute;left:0;top:0;height:8px;border-radius:4px;background:#1e9d3d}
+.step{position:absolute;left:0;top:112px;width:480px;height:640px}
+.step h4{position:absolute;left:30px;top:6px;font-size:32px;font-weight:700;color:#0b1e3f}
+.row{position:absolute;left:30px;width:420px;height:84px;border-radius:22px;border:3px solid #dbe4f5;background:#fff;font-size:32px;font-weight:500;display:flex;align-items:center;padding-left:78px}
+.row .rd{position:absolute;left:24px;top:24px;width:30px;height:30px;border-radius:50%;border:3px solid #b8c5de}
+.row .rd i{position:absolute;left:5px;top:5px;width:14px;height:14px;border-radius:50%;background:#0f5ced;opacity:0}
+.btn{position:absolute;left:30px;top:490px;width:420px;height:84px;border-radius:50px;background:#1e9d3d;color:#fff;font-weight:700;font-size:32px;display:flex;align-items:center;justify-content:center}
+.sum{position:absolute;left:30px;top:64px;width:420px;height:300px;border-radius:26px;background:#f2f6fe;border:3px solid #dbe4f5;padding:26px 28px;font-size:30px;line-height:1.35}
+.sum b{display:block;font-size:22px;letter-spacing:.08em;color:#6b7a96;font-weight:600;margin-top:12px}
+.sum span{font-weight:700;font-size:34px}
+.tap{position:absolute;width:110px;height:110px;margin:-55px 0 0 -55px;border-radius:50%;border:6px solid #0f5ced;background:rgba(15,92,237,.28);opacity:0;z-index:20}
+#cap2{position:absolute;left:30px;top:1545px;width:480px;font-weight:700;font-size:48px;line-height:1.1;letter-spacing:-.02em;color:#0f5ced}
+.res{position:absolute;left:30px;width:480px;height:210px;border-radius:36px;background:#fff;box-shadow:0 22px 44px rgba(11,30,63,.16);border:2px solid #dbe4f5}
+.res svg{position:absolute;left:26px;top:45px}
+.res .a{position:absolute;left:170px;top:48px;font-weight:700;font-size:38px;letter-spacing:-.01em}
+.res .b{position:absolute;left:170px;top:102px;width:290px;font-weight:500;font-size:27px;line-height:1.2;color:#44546f}
+.res .ck{position:absolute;right:-14px;top:-18px;width:62px;height:62px;border-radius:50%;background:#1e9d3d;border:5px solid #fff;box-shadow:0 8px 16px rgba(30,157,61,.4)}
+#win{position:absolute;left:30px;top:1090px;width:480px;font-weight:700;font-size:92px;line-height:.98;letter-spacing:-.04em;color:#0b1e3f}
+#win em{font-style:normal;color:#0f5ced}
+/* ---------- panel izquierdo ---------- */
+#left{position:absolute;left:0;top:0;width:1080px;height:1920px;overflow:hidden;background:#0b0704;box-shadow:12px 0 40px rgba(0,0,0,.35)}
+#world{position:absolute;left:0;top:0;width:1520px;height:2688px;transform-origin:0 0}
+#world>*{position:absolute}
+#oficina{left:0;top:0;width:1520px;height:2688px}
+#dust{left:0;top:0}
+#glow{left:0;top:0;width:1520px;height:2688px;mix-blend-mode:screen}
+#dawn{left:0;top:0;width:1520px;height:2688px;mix-blend-mode:screen}
+#phSh{background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,.65),rgba(0,0,0,0) 70%)}
+#ph{height:300px;transform-origin:50% 100%}
+.wave{border:7px solid rgba(240,222,180,.75);border-radius:50%}
+#vig{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 48%,rgba(0,0,0,0) 42%,rgba(8,4,0,.62) 100%)}
+#grain{position:absolute;inset:-60px;background-image:url(__GRAIN__);background-size:256px 256px;opacity:.13;mix-blend-mode:overlay}
+#lUI{position:absolute;left:0;top:0;width:540px;height:1920px}
+#lClock{position:absolute;left:36px;top:166px;font-family:"Courier New",monospace;font-weight:700;font-size:42px;color:#f1dfbd;text-shadow:0 2px 8px #000}
+.cap{position:absolute;left:30px;width:490px;font-family:"Courier New",monospace;font-weight:700;font-size:46px;line-height:1.15;color:#f6e7c8;text-shadow:0 3px 12px rgba(0,0,0,.95),0 0 3px #000}
+#note{position:absolute;left:36px;top:300px;width:470px;padding:34px 30px 34px;background:#efe0bd;border:2px solid #b89a63;border-radius:6px;box-shadow:0 22px 40px rgba(0,0,0,.55);font-family:"Courier New",monospace;color:#2d1c0a;transform:rotate(-2.5deg);background-image:repeating-linear-gradient(0deg,rgba(120,85,40,.14) 0 2px,transparent 2px 46px)}
+#note .n1{font-size:28px;font-weight:700;letter-spacing:.08em;color:#7c5a30}
+#note .n2{font-size:44px;font-weight:700;line-height:1.12;margin-top:14px}
+#note .pin{position:absolute;left:218px;top:-18px;width:34px;height:34px;border-radius:50%;background:#a3271c;box-shadow:0 6px 10px rgba(0,0,0,.5)}
+#clerk{position:absolute;top:920px;height:820px;filter:drop-shadow(0 18px 18px rgba(0,0,0,.5))}
+#clerkSh{position:absolute;top:1722px;width:360px;height:44px;border-radius:50%;background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,.6),rgba(0,0,0,0) 70%)}
+#divider{position:absolute;left:537px;top:0;width:6px;height:1920px;background:#0f5ced;box-shadow:0 0 26px rgba(15,92,237,.85);transform-origin:50% 0;opacity:0}
+/* ---------- hub y cierre ---------- */
+#hub{position:absolute;left:0;top:0;overflow:visible}
+.sh{filter:drop-shadow(0 8px 12px rgba(11,30,63,.28))}
+#endcard{position:absolute;left:0;top:0;width:1080px;height:1920px;opacity:0}
+/* ---------- gancho ---------- */
+#hook{position:absolute;left:0;top:0;width:1080px;height:1920px}
+#scrim{position:absolute;inset:0;background:linear-gradient(rgba(0,0,0,.6),rgba(0,0,0,.05) 32%,rgba(0,0,0,.05) 58%,rgba(0,0,0,.7))}
+#hTitle{position:absolute;left:0;width:1080px;top:470px;text-align:center;font-weight:700;font-size:132px;line-height:1.0;letter-spacing:-.04em;color:#f6e7c8;text-shadow:0 6px 30px rgba(0,0,0,.8)}
+#notif{position:absolute;left:70px;top:1010px;width:940px;height:236px;border-radius:50px;background:rgba(250,250,252,.96);box-shadow:0 30px 70px rgba(0,0,0,.6)}
+#notif .ic{position:absolute;left:34px;top:34px;width:112px;height:112px}
+#notif .nt{position:absolute;left:176px;top:30px;font-weight:600;font-size:30px;color:#6c7488;letter-spacing:.02em}
+#notif .nn{position:absolute;left:176px;top:68px;font-weight:700;font-size:46px;color:#0b1e3f}
+#notif .nm{position:absolute;left:176px;top:130px;width:740px;font-weight:500;font-size:46px;color:#25314a;white-space:nowrap}
+#hL1{position:absolute;left:0;width:1080px;top:1390px;text-align:center;font-weight:700;font-size:74px;letter-spacing:-.03em;color:#fff;text-shadow:0 4px 20px rgba(0,0,0,.7)}
+#hL2{position:absolute;left:0;width:1080px;top:1500px;text-align:center}
+#hL2 span{display:inline-block;background:#0f5ced;color:#fff;font-weight:800;font-size:130px;letter-spacing:-.04em;padding:6px 52px 18px;border-radius:30px;box-shadow:0 20px 50px rgba(15,92,237,.55)}
+#black{position:absolute;inset:0;background:#000;pointer-events:none}
+</style></head><body><div id="stage">
+<div id="bg"></div><div id="grid"></div>
+
+<div id="right">
+ <div id="rPill" class="pill blue">CON AGENTE DE ATACAMA</div>
+ <div id="rClock">23:00</div>
+ <div id="dotline"></div>
+ <div id="dots"><div class="d" style="left:300px">1</div><div class="d" style="left:373px">2</div><div class="d" style="left:446px">3</div></div>
+ <div id="card">
+  <div id="hdr"><div class="av"><img src="__ISO__"></div><div class="t1">Tu negocio</div><div class="t2">● en línea · agente de IA</div></div>
+  <div id="b1" class="bub">Hola, ¿tienen hora para mañana?<span class="tm">23:00</span></div>
+  <div id="typing"><i></i><i></i><i></i></div>
+  <div id="b2" class="bub">¡Hola! Agenda tu hora en 3 toques.<span class="tm">23:00</span></div>
+  <div id="b3" class="bub">Listo, te esperamos el martes 20 a las 10:30 <span style="color:#1e9d3d;font-weight:700">✓✓</span><span class="tm">23:01</span></div>
+  <div id="sheet"><div class="grab"></div><div class="ttl">Agendar hora</div><div class="prog"><i id="progf"></i></div>
+   <div id="s1" class="step"><h4>¿Qué necesitas?</h4>
+    <div class="row" id="s1r0" style="top:70px"><span class="rd"><i></i></span>Primera visita</div>
+    <div class="row" style="top:172px"><span class="rd"><i></i></span>Control</div>
+    <div class="row" style="top:274px"><span class="rd"><i></i></span>Otro motivo</div>
+    <div class="btn" style="background:#b9dcc2">Continuar</div></div>
+   <div id="s2" class="step"><h4>¿Cuándo te acomoda?</h4>
+    <div class="row" id="s2r0" style="top:70px"><span class="rd"><i></i></span>Mar 20 · 10:30</div>
+    <div class="row" style="top:172px"><span class="rd"><i></i></span>Mar 20 · 11:30</div>
+    <div class="row" style="top:274px"><span class="rd"><i></i></span>Mié 21 · 09:00</div>
+    <div class="btn" style="background:#b9dcc2">Continuar</div></div>
+   <div id="s3" class="step"><h4>Confirma tu hora</h4>
+    <div class="sum"><b>SERVICIO</b><span>Primera visita</span><b>CUÁNDO</b><span>Martes 20 · 10:30</span></div>
+    <div class="btn" id="s3b">Confirmar</div></div>
+  </div>
+ </div>
+ <div id="cap2">Responde en segundos.</div>
+ <div id="res">
+  <div class="res" style="top:340px"><svg width="120" height="120" viewBox="-6 -6 172 172" id="ri0"></svg><div class="a">Agenda</div><div class="b">Mar 20 · 10:30 · cliente nuevo</div><div class="ck"><svg viewBox="0 0 52 52" width="52" height="52" style="position:absolute;left:0;top:0"><path d="M14 27 L23 36 L39 17" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+  <div class="res" style="top:580px"><svg width="120" height="120" viewBox="-6 -6 172 172" id="ri1"></svg><div class="a">Planilla</div><div class="b">Cliente agregado a tu base</div><div class="ck"><svg viewBox="0 0 52 52" width="52" height="52" style="position:absolute;left:0;top:0"><path d="M14 27 L23 36 L39 17" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+  <div class="res" style="top:820px"><svg width="120" height="120" viewBox="-6 -6 172 172" id="ri2"></svg><div class="a">Correo</div><div class="b">Confirmación enviada al cliente</div><div class="ck"><svg viewBox="0 0 52 52" width="52" height="52" style="position:absolute;left:0;top:0"><path d="M14 27 L23 36 L39 17" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+ </div>
+ <div id="win">Agendado mientras <em>dormías.</em></div>
+ <div class="tap" id="tp1" style="left:270px;top:952px"></div>
+ <div class="tap" id="tp2" style="left:270px;top:952px"></div>
+ <div class="tap" id="tp3" style="left:270px;top:1372px"></div>
+</div>
+
+<svg id="hub" width="1080" height="1920" viewBox="0 0 1080 1920">
+ <g id="lines" fill="none" stroke="#1747d9" stroke-width="7" stroke-linecap="round"></g>
+ <g id="nodes"></g><g id="pulses"></g><g id="center" class="sh"></g>
+</svg>
+
+<div id="left">
+ <div id="world">
+  <img id="oficina" src="__OFICINA__">
+  <canvas id="dust" width="1520" height="2688"></canvas>
+  <div id="glow"></div><div id="dawn"></div>
+  <div id="phSh"></div>
+  <img id="ph" src="__TEL__">
+  <div class="wave" id="w0"></div><div class="wave" id="w1"></div><div class="wave" id="w2"></div>
+ </div>
+ <div id="vig"></div><div id="grain"></div>
+ <div id="lUI">
+  <div id="lPill" class="pill dark">SIN AGENTE</div>
+  <div id="lClock">23:00</div>
+  <div id="note"><div class="pin"></div><div class="n1" id="n1">ANOCHE · 23:00</div><div class="n2" id="n2"></div></div>
+  <div id="clerkSh"></div><img id="clerk" src="__OFI__">
+  <div class="cap" id="c1" style="top:1480px"></div>
+  <div class="cap" id="c2" style="top:1546px"></div>
+  <div class="cap" id="c3" style="top:1612px"></div>
+  <div class="cap" id="c4" style="top:1810px"></div>
+ </div>
+</div>
+<div id="divider"></div>
+
+<div id="endcard">
+ <img src="__LOGO__" style="position:absolute;left:150px;top:700px;width:780px">
+ <div style="position:absolute;left:0;width:1080px;top:890px;text-align:center;font:500 100px 'DM Sans';letter-spacing:-.03em;color:#16233f">Agentes que <span style="position:relative;font-weight:700;color:#0f5ced">trabajan.<i id="ul" style="position:absolute;left:2%;bottom:-4px;height:7px;width:0;background:#0f5ced;border-radius:4px"></i></span></div>
+ <div id="tag2" style="position:absolute;left:0;width:1080px;top:1050px;text-align:center;font:600 56px 'DM Sans';letter-spacing:-.02em;color:#16233f;opacity:0">También a las <span style="color:#0f5ced;font-weight:700">11 de la noche.</span></div>
+ <div id="url" style="position:absolute;left:0;width:1080px;top:1190px;text-align:center;font:600 38px 'DM Sans';letter-spacing:.22em;color:#0f5ced;opacity:0">ATACAMALABS.CL</div>
+</div>
+
+<div id="hook">
+ <div id="scrim"></div>
+ <svg id="hClk" class="abs" style="left:440px;top:232px" width="200" height="200" viewBox="-100 -100 200 200">
+  <circle r="88" fill="rgba(20,10,0,.55)" stroke="#f6e7c8" stroke-width="8"/>
+  <g stroke="#f6e7c8" stroke-width="6" stroke-linecap="round" id="hTicks"></g>
+  <line x1="0" y1="0" x2="0" y2="-66" stroke="#f6e7c8" stroke-width="7" stroke-linecap="round"/>
+  <line x1="0" y1="0" x2="-27" y2="-47" stroke="#f6e7c8" stroke-width="10" stroke-linecap="round"/>
+  <circle r="8" fill="#f6e7c8"/>
+ </svg>
+ <div id="hTitle">Son las 11<br>de la noche.</div>
+ <div id="notif">
+  <svg class="ic" viewBox="0 0 160 160" id="hIcon"></svg>
+  <div class="nt">WHATSAPP · ahora</div><div class="nn">Cliente nuevo</div>
+  <div class="nm">Hola, ¿tienen hora para mañana?</div>
+ </div>
+ <div id="hL1">Tu cliente quiere agendar.</div>
+ <div id="hL2"><span>Ahora.</span></div>
+</div>
+<div id="black"></div>
+</div>
+<script>
+const TM = __TM__;
+const ICON = __ICONS__;
+const ISO = "__ISO__";
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const seg = (T, a, b) => clamp((T - a) / (b - a));
+const eio = (t) => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const eout = (t) => 1 - Math.pow(1 - t, 3);
+const pop = (u) => (u <= 0 ? 0 : clamp(1 - Math.exp(-7.5 * u) * Math.cos(12 * u), 0, 1.25));
+const NS = 'http://www.w3.org/2000/svg';
+
+// ---- construcción estática ----
+$('ri0').innerHTML = ICON.calendar; $('ri1').innerHTML = ICON.sheets; $('ri2').innerHTML = ICON.gmail;
+$('hIcon').innerHTML = ICON.whatsapp;
+{ let s = ''; for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6, r1 = 74, r2 = i % 3 === 0 ? 62 : 68; s += '<line x1="' + (Math.sin(a) * r1) + '" y1="' + (-Math.cos(a) * r1) + '" x2="' + (Math.sin(a) * r2) + '" y2="' + (-Math.cos(a) * r2) + '"/>'; } $('hTicks').innerHTML = s; }
+const NODES = [
+  { id: 'cal',  kind: 'calendar', from: [540, 558], to: [540, 520], size: 190, move: [0.15, 0.95], pop: 0 },
+  { id: 'doc',  kind: 'doc',      from: [540, 940], to: [170, 1160], size: 190, move: [0.15, 0.95] },
+  { id: 'mail', kind: 'gmail',    from: [540, 1393], to: [910, 1160], size: 190, move: [0.15, 0.95], morphFrom: 'calendar', morph: [0.45, 0.8] },
+  { id: 'wa',   kind: 'whatsapp', to: [170, 760], size: 190, pop: 0.75 },
+  { id: 'sh',   kind: 'sheets',   to: [910, 760], size: 190, pop: 0.95 },
+  { id: 'tk',   kind: 'tasks',    to: [540, 1400], size: 190, pop: 1.15 },
+];
+const gNodes = $('nodes'), gLines = $('lines'), gPulses = $('pulses'), gCenter = $('center');
+const nodeEls = {}, lineEls = {};
+for (const n of NODES) {
+  const g = document.createElementNS(NS, 'g'); g.setAttribute('class', 'sh');
+  const inner = document.createElementNS(NS, 'g'); inner.innerHTML = ICON[n.kind];
+  const inner2 = document.createElementNS(NS, 'g'); inner2.innerHTML = n.morphFrom ? ICON[n.morphFrom] : '';
+  g.append(inner2, inner); gNodes.append(g); nodeEls[n.id] = { g, inner, inner2 };
+  const l = document.createElementNS(NS, 'path'); l.setAttribute('pathLength', '1'); l.setAttribute('stroke-dasharray', '1'); gLines.append(l); lineEls[n.id] = l;
+}
+gCenter.innerHTML = '<circle r="172" fill="#ffffff"/><circle r="150" fill="#f3f7ff"/><image href="' + ISO + '" x="-96" y="-96" width="192" height="192"/>';
+const pulses = [];
+for (let i = 0; i < 6; i++) { const c = document.createElementNS(NS, 'circle'); c.setAttribute('r', '13'); c.setAttribute('fill', '#2a5bff'); c.setAttribute('stroke', '#fff'); c.setAttribute('stroke-width', '4'); gPulses.append(c); pulses.push(c); }
+const SEQ = ['wa', 'cal', 'sh', 'mail', 'tk', 'doc'];
+const C = { x: 540, y: 960 };
+function npos(n, t) { if (!n.from) return n.to; const [a, b] = n.move; const u = eio(clamp((t - a) / (b - a))); return [lerp(n.from[0], n.to[0], u), lerp(n.from[1], n.to[1], u)]; }
+
+// polvo determinista
+function mulberry(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const rr = mulberry(11); const DUST = [];
+for (let i = 0; i < 90; i++) DUST.push({ x: 650 + rr() * 800, y: 250 + rr() * 1300, r: 2 + rr() * 3.4, sx: 8 + rr() * 22, ph: rr() * 6.28, ph2: rr() * 6.28, sp: .25 + rr() * .5, fy: 6 + rr() * 14 });
+const dctx = $('dust').getContext('2d');
+
+const typed = (el, text, t0, cps, T, op) => { const n = clamp(Math.floor((T - t0) * cps), 0, text.length); el.textContent = text.slice(0, n); el.style.opacity = T >= t0 ? op : 0; };
+const bub = (el, t0, T, from) => { const s = pop(T - t0); el.style.opacity = T >= t0 ? 1 : 0; el.style.transform = 'scale(' + (0.7 + 0.3 * Math.min(1, s)) + ')'; };
+function tapfx(el, t0, T) {
+  if (T < t0 - 0.2 || T > t0 + 0.55) { el.style.opacity = 0; return; }
+  if (T < t0) { const u = seg(T, t0 - 0.2, t0); el.style.opacity = u * .9; el.style.transform = 'scale(' + lerp(1.5, .85, u) + ')'; }
+  else { const u = (T - t0) / 0.55; el.style.opacity = (1 - u) * .95; el.style.transform = 'scale(' + (.85 + 1.2 * eout(u)) + ')'; }
+}
+
+function draw(T) {
+  // fundido inicial
+  $('black').style.opacity = 1 - clamp(T / 0.45);
+  // ----- panel izquierdo -----
+  const sp = eio(seg(T, TM.splitStart, TM.splitEnd));
+  const Pw = lerp(1080, 540, sp);
+  const slide = eio(seg(T, TM.wipe, TM.wipe + 0.6));
+  const L = $('left'); L.style.width = Pw + 'px'; L.style.transform = 'translateX(' + (-slide * 580) + 'px)';
+  const k = 1920 / 2688;
+  const Z0 = 1 + 0.03 * seg(T, 0, TM.splitStart);
+  const Z = Z0 * lerp(1, 1.04, sp) + 0.10 * clamp((T - 2.7) / 14);
+  const Fx = lerp(760, 880, sp), Fy = 1344, sc = k * Z;
+  $('world').style.transform = 'translate(' + (Pw / 2 - Fx * sc) + 'px,' + (960 - Fy * sc) + 'px) scale(' + sc + ')';
+  const mu = eio(seg(T, TM.morning - 0.3, TM.morning + 0.9));
+  $('world').style.filter = 'brightness(' + lerp(1.08, 1.5, mu) + ') saturate(' + lerp(1, 1.12, mu) + ')';
+  const flick = 0.05 + 0.025 * Math.sin(T * 2.1) + 0.015 * Math.sin(T * 7.3);
+  $('glow').style.background = 'radial-gradient(ellipse 620px 900px at 1290px 520px,rgba(255,243,205,' + (flick * (1 - mu) + .9 * mu) + '),rgba(255,243,205,0) 100%)';
+  $('dawn').style.background = 'linear-gradient(105deg,rgba(255,226,160,0) 20%,rgba(255,222,150,.5) 100%)'; $('dawn').style.opacity = mu;
+  $('vig').style.opacity = lerp(1, 0.55, mu);
+  // teléfono
+  const ph = $('ph'), phSh = $('phSh');
+  const landU = seg(T, 3.3, 3.72);
+  const fall = T < 3.3 ? -460 : -460 * Math.pow(1 - eio(Math.min(1, landU * 1.0)), 2);
+  const bounce = T > 3.72 ? Math.exp(-(T - 3.72) * 14) * Math.sin((T - 3.72) * 38) * -14 : 0;
+  let ringIdx = -1; for (let i = 0; i < TM.rings.length; i++) if (T >= TM.rings[i] && T < TM.rings[i] + TM.ringDur) ringIdx = i;
+  let ang = 0, jy = 0, ringP = 0;
+  if (ringIdx >= 0) { const rt = T - TM.rings[ringIdx]; const env = clamp(rt / 0.08) * (1 - clamp((rt - (TM.ringDur - 0.1)) / 0.1)); ang = Math.sin(rt * Math.PI * 2 * 13) * 2.8 * env; jy = Math.abs(Math.sin(rt * Math.PI * 2 * 13)) * -5 * env; ringP = rt; }
+  ph.style.height = '380px'; ph.style.left = (1010 - 86) + 'px'; ph.style.top = (1445 - 380) + 'px';
+  ph.style.opacity = T >= 3.3 ? 1 : 0;
+  ph.style.filter = 'brightness(' + lerp(.78, 1, mu) + ') sepia(.25)';
+  const sq = T > 3.72 ? 1 + Math.exp(-(T - 3.72) * 14) * Math.sin((T - 3.72) * 38) * -0.03 : 1;
+  ph.style.transform = 'translateY(' + (fall + bounce + jy) + 'px) rotate(' + ang + 'deg) scaleY(' + sq + ')';
+  phSh.style.left = (1010 - 120) + 'px'; phSh.style.top = (1445 - 20) + 'px'; phSh.style.width = '240px'; phSh.style.height = '42px';
+  phSh.style.opacity = T >= 3.3 ? clamp(0.3 + 0.7 * landU) : 0;
+  for (let i = 0; i < 3; i++) {
+    const w = $('w' + i);
+    if (ringIdx >= 0) { const p = ((ringP * 1.6) + i / 3) % 1; const s = lerp(70, 300, eout(p)); w.style.opacity = (1 - p) * .7 * (1 - mu); w.style.left = (1010 - s / 2) + 'px'; w.style.top = (1110 - s / 2) + 'px'; w.style.width = s + 'px'; w.style.height = s + 'px'; }
+    else w.style.opacity = 0;
+  }
+  // polvo
+  dctx.clearRect(0, 0, 1520, 2688);
+  for (const d of DUST) {
+    const x = d.x + Math.sin(T * d.sp + d.ph) * d.sx, y = ((d.y + T * d.fy) % 1300) + 250;
+    const a = (0.25 + 0.45 * (0.5 + 0.5 * Math.sin(T * 1.7 + d.ph2))) * (1 - 0.35 * mu);
+    dctx.fillStyle = 'rgba(250,236,200,' + a + ')'; dctx.beginPath(); dctx.arc(x, y, d.r, 0, 6.283); dctx.fill();
+  }
+  // grano de película
+  const gs = Math.floor(T * 24); $('grain').style.backgroundPosition = ((gs * 97) % 256) + 'px ' + ((gs * 61) % 256) + 'px';
+  // UI izquierda
+  const lui = seg(T, 2.3, 2.8); $('lUI').style.opacity = lui;
+  $('lClock').textContent = T < TM.morning ? '23:0' + Math.min(7, Math.floor(lerp(0, 8, seg(T, 4.0, 11.6)))) : '9:00 a. m.';
+  $('lClock').style.opacity = T < 3.9 ? 0 : 1;
+  const capOp = 1 - seg(T, 11.7, 12.2);
+  typed($('c1'), 'Suena…', TM.rings[0] + 0.1, 14, T, capOp);
+  typed($('c2'), 'Nadie contesta.', TM.rings[2] - 0.3, 18, T, capOp);
+  typed($('c3'), 'El cliente busca a otro.', TM.rings[3] + 0.15, 20, T, capOp);
+  typed($('c4'), 'Se perdió el cliente.', TM.lost, 20, T, T >= TM.lost ? 1 : 0);
+  // oficinista
+  const cu = eout(seg(T, TM.walk0, TM.walk1)); const cx = lerp(-470, 52, cu);
+  const vn = Math.pow(1 - seg(T, TM.walk0, TM.walk1), 2); const moving = T >= TM.walk0 && T < TM.walk1;
+  const ph9 = Math.sin(T * 9.5); const bobA = moving ? Math.min(1, vn * 3 + 0.25) : 0;
+  const clerk = $('clerk'); clerk.style.opacity = T >= TM.walk0 - 0.05 ? 1 : 0;
+  clerk.style.left = cx + 'px'; clerk.style.transform = 'translateY(' + (-Math.abs(ph9) * 16 * bobA) + 'px) rotate(' + (ph9 * 1.3 * bobA) + 'deg)';
+  clerk.style.transformOrigin = '50% 100%';
+  $('clerkSh').style.left = (cx + 20) + 'px'; $('clerkSh').style.opacity = clerk.style.opacity;
+  // nota
+  const nu = pop(T - TM.note); const note = $('note');
+  note.style.opacity = T >= TM.note ? 1 : 0; note.style.transform = 'rotate(-2.5deg) scale(' + (0.6 + 0.4 * Math.min(1, nu)) + ')';
+  typed($('n2'), 'Escribió. Nadie respondió.', TM.note + 0.3, 24, T, 1);
+  // pastilla y fade del panel completo
+  // ----- panel derecho -----
+  const R = $('right');
+  const rop = (1 - seg(T, TM.wipe - 0.4, TM.wipe + 0.2));
+  R.style.opacity = rop;
+  $('rPill').style.opacity = 1;
+  $('rClock').textContent = T < TM.morning ? (T >= TM.tap3 ? '23:01' : '23:00') : '9:00 a. m.';
+  const showDots = T < TM.morning - 0.1; $('dots').style.opacity = showDots ? 1 : 0; $('dotline').style.opacity = showDots ? 1 : 0;
+  const taps = [TM.tap1, TM.tap2, TM.tap3];
+  [...$('dots').children].forEach((d, i) => {
+    const on = T >= taps[i]; const s = on ? 1 + 0.3 * Math.sin(clamp((T - taps[i]) / 0.3) * Math.PI) : 1;
+    d.style.background = on ? '#0f5ced' : '#fff'; d.style.color = on ? '#fff' : '#0f5ced'; d.style.transform = 'scale(' + s + ')';
+  });
+  // tarjeta y burbujas
+  const cardOut = seg(T, TM.morning - 0.1, TM.morning + 0.4);
+  const card = $('card'); card.style.opacity = 1 - cardOut; card.style.transform = 'translateY(' + (-50 * eio(cardOut)) + 'px) scale(' + (1 - 0.04 * cardOut) + ')';
+  bub($('b1'), TM.cust, T);
+  const tv = T >= 4.3 && T < TM.agent; $('typing').style.opacity = tv ? 1 : 0;
+  [...$('typing').children].forEach((d, i) => { d.style.transform = 'translateY(' + (Math.sin(T * 9 - i * 0.9) * -6) + 'px)'; });
+  bub($('b2'), TM.agent, T);
+  bub($('b3'), TM.done, T);
+  const sIn = eio(seg(T, TM.sheet, TM.sheet + 0.5)); const sOut = eio(seg(T, TM.tap3 + 0.25, TM.tap3 + 0.7));
+  $('sheet').style.transform = 'translateY(' + (100 * (1 - sIn) + 100 * sOut) + '%)';
+  $('progf').style.width = (lerp(0, 100, (1 + eio(seg(T, TM.step2 - 0.2, TM.step2 + 0.2)) + eio(seg(T, TM.step3 - 0.2, TM.step3 + 0.2))) / 3)) + '%';
+  const stepVis = (id, a, b) => { const el = $(id); const o = seg(T, a, a + 0.25) * (1 - seg(T, b - 0.25, b)); el.style.opacity = o; el.style.transform = 'translateX(' + ((1 - seg(T, a, a + 0.3)) * 40 - seg(T, b - 0.3, b) * 40) + 'px)'; };
+  stepVis('s1', TM.sheet + 0.2, TM.step2); stepVis('s2', TM.step2, TM.step3); stepVis('s3', TM.step3, 99);
+  const sel = (id, on) => { const el = $(id); el.style.borderColor = on ? '#0f5ced' : '#dbe4f5'; el.style.background = on ? '#eaf1fd' : '#fff'; el.querySelector('.rd').style.borderColor = on ? '#0f5ced' : '#b8c5de'; el.querySelector('i').style.opacity = on ? 1 : 0; };
+  sel('s1r0', T >= TM.tap1); sel('s2r0', T >= TM.tap2);
+  document.querySelectorAll('.step .btn').forEach((b, i) => { if (i < 2) { const on = (i === 0 && T >= TM.tap1) || (i === 1 && T >= TM.tap2); b.style.background = on ? '#1e9d3d' : '#b9dcc2'; } });
+  $('s3b').style.transform = 'scale(' + (T >= TM.tap3 && T < TM.tap3 + 0.2 ? 0.94 : 1) + ')';
+  tapfx($('tp1'), TM.tap1, T); tapfx($('tp2'), TM.tap2, T); tapfx($('tp3'), TM.tap3, T);
+  // leyenda bajo la tarjeta
+  const c2 = $('cap2'); c2.style.opacity = seg(T, TM.done + 0.2, TM.done + 0.6) * (1 - cardOut); c2.style.transform = 'translateY(' + ((1 - seg(T, TM.done + 0.2, TM.done + 0.6)) * 20) + 'px)';
+  // resultados (9:00)
+  for (let i = 0; i < 3; i++) {
+    const r = $('res').children[i]; const t0 = TM.cards[i]; const s = pop(T - t0);
+    r.style.opacity = T >= t0 ? 1 : 0; r.style.transform = 'translateX(' + ((1 - eout(seg(T, t0, t0 + 0.4))) * 70) + 'px) scale(' + (0.9 + 0.1 * Math.min(1, s)) + ')';
+    const ck = r.querySelector('.ck'); const cs = pop(T - t0 - 0.3); ck.style.transform = 'scale(' + Math.min(1.1, cs) + ')'; ck.style.opacity = T >= t0 + 0.3 ? 1 : 0;
+  }
+  const w = $('win'); const wu = seg(T, TM.win, TM.win + 0.5); w.style.opacity = wu; w.style.transform = 'translateY(' + ((1 - eout(wu)) * 30) + 'px)';
+  // ----- divisor -----
+  const dv = $('divider'); dv.style.opacity = T >= TM.splitStart ? 1 - seg(T, TM.wipe + 0.4, TM.wipe + 0.9) : 0;
+  dv.style.transform = 'scaleY(' + eio(seg(T, TM.splitStart, TM.splitStart + 0.5)) + ')';
+  // ----- gancho -----
+  const hk = 1 - seg(T, TM.splitStart, TM.splitStart + 0.45); $('hook').style.opacity = hk; $('hook').style.display = hk <= 0 ? 'none' : 'block';
+  const tu = seg(T, 0.3, 0.8); $('hTitle').style.opacity = tu; $('hTitle').style.transform = 'translateY(' + ((1 - eout(tu)) * 36) + 'px)';
+  $('hClk').style.opacity = seg(T, 0.2, 0.6); $('hClk').style.transform = 'scale(' + (0.7 + 0.3 * Math.min(1, pop(T - 0.2))) + ')';
+  const nu2 = T >= TM.hookNotif ? eout(seg(T, TM.hookNotif, TM.hookNotif + 0.45)) : 0;
+  const shake = T > TM.hookNotif + 0.4 && T < TM.hookNotif + 0.85 ? Math.sin((T - TM.hookNotif) * 60) * 1.4 * (1 - seg(T, TM.hookNotif + 0.4, TM.hookNotif + 0.85)) : 0;
+  $('notif').style.opacity = nu2 > 0 ? 1 : 0; $('notif').style.transform = 'translateY(' + ((1 - nu2) * -420) + 'px) rotate(' + shake + 'deg)';
+  const l1 = seg(T, TM.hookText, TM.hookText + 0.4); $('hL1').style.opacity = l1; $('hL1').style.transform = 'translateY(' + ((1 - eout(l1)) * 26) + 'px)';
+  const l2 = pop(T - (TM.hookText + 0.3)); $('hL2').style.opacity = T >= TM.hookText + 0.3 ? 1 : 0; $('hL2').style.transform = 'scale(' + (0.6 + 0.4 * Math.min(1.2, l2)) + ')';
+  // ----- hub (cierre) -----
+  const t = T - TM.hub0; const hubIn = seg(T, TM.hub0 - 0.3, TM.hub0 + 0.1);
+  $('hub').style.opacity = hubIn;
+  if (hubIn > 0) {
+    const endU = eio(clamp((t - 3.5) / 0.7)), logoU = eout(clamp((t - 4.5) / 0.7));
+    const absorb = (p) => [lerp(p[0], C.x, endU), lerp(p[1], C.y, endU)];
+    for (const n of NODES) {
+      const els = nodeEls[n.id]; let p = npos(n, t); let s = 1; let op = 1;
+      if (n.pop !== undefined) { s = n.pop === 0 ? 1 : pop(t - n.pop); op = n.pop === 0 ? 1 : (t >= n.pop ? 1 : 0); }
+      const idx = SEQ.indexOf(n.id); const ts = 2.0 + idx * 0.25; const bump = 1 + 0.10 * Math.sin(clamp((t - (ts + 0.2)) / 0.3) * Math.PI) * (t < 3.5 ? 1 : 0);
+      s *= bump; const q = absorb(p); s *= 1 - 0.55 * endU; op *= 1 - clamp((endU - 0.55) / 0.45);
+      els.g.setAttribute('transform', 'translate(' + q[0] + ' ' + q[1] + ') scale(' + (s * n.size / 160) + ') translate(-80 -80)'); els.g.setAttribute('opacity', op);
+      if (n.morphFrom) { const m = clamp((t - n.morph[0]) / (n.morph[1] - n.morph[0])); els.inner.setAttribute('opacity', m); els.inner2.setAttribute('opacity', 1 - m); }
+      const lp = lineEls[n.id]; const d0 = n.pop === undefined || n.pop === 0 ? 1.2 : n.pop + 0.35; const prog = eio(clamp((t - Math.max(d0, 1.2)) / 0.55)); const fade = 1 - clamp((endU - 0.2) / 0.5);
+      lp.setAttribute('d', 'M' + C.x + ' ' + C.y + ' L' + q[0] + ' ' + q[1]); lp.setAttribute('stroke-dashoffset', 1 - prog); lp.setAttribute('opacity', fade * (prog > 0 ? 1 : 0));
+    }
+    const cs = pop(t - 1.1) * (1 + 0.18 * endU); const cOp = 1 - clamp((t - 4.0) / 0.45);
+    gCenter.setAttribute('transform', 'translate(' + C.x + ' ' + C.y + ') scale(' + cs + ')'); gCenter.setAttribute('opacity', cOp);
+    pulses.forEach((c, i) => {
+      const id = SEQ[i]; const n = NODES.find((x) => x.id === id); const p = npos(n, t); const s0 = 2.0 + i * 0.25;
+      const u = clamp((t - s0) / 0.55); const vis = t >= s0 && t < s0 + 0.6 && t < 3.5;
+      const dist = Math.hypot(C.x - p[0], C.y - p[1]); const f0 = 118 / dist, f1 = 1 - 176 / dist; const f = lerp(f0, f1, eio(u));
+      c.setAttribute('cx', lerp(p[0], C.x, f)); c.setAttribute('cy', lerp(p[1], C.y, f)); c.setAttribute('opacity', vis ? 1 : 0);
+    });
+  }
+  const end = $('endcard'); const lu = eout(clamp((t - 4.5) / 0.7)); end.style.opacity = lu; end.style.transform = 'translateY(' + ((1 - lu) * 26) + 'px)';
+  $('ul').style.width = (96 * eout(clamp((t - 5.1) / 0.5))) + '%';
+  $('url').style.opacity = eout(clamp((t - 5.3) / 0.5));
+  const t2 = eout(seg(T, TM.tag2, TM.tag2 + 0.6)); $('tag2').style.opacity = t2; $('tag2').style.transform = 'translateY(' + ((1 - t2) * 20) + 'px)';
+}
+window.draw = draw;
+</script></body></html>

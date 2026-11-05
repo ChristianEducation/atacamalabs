@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>Atacama Labs — Un agente, cada rubro</title>
+    <script src="assets/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "DM Sans"; src: url("assets/fonts/DMSans-latin-wght.woff2") format("woff2"); font-weight: 100 1000; font-style: normal; }
+      /* Boceto de movimiento (sin llamita todavía): ráfaga de fotos, un rubro por foto, en colores de marca + cuadrícula. El isotipo oficial hace de «sujeto» provisional. */
+      :root { --real: #1a3c8e; --blue: #0f5ced; --sky: #58a6ff; --mist: #f3f6fd; --ink: #0b1e3f; --white: #ffffff; --line: rgba(15, 92, 237, 0.10); }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #ffffff; }
+      #main { position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--mist); font-family: "DM Sans", sans-serif; -webkit-font-smoothing: antialiased; }
+      .layer { position: absolute; inset: 0; }
+      .gridbg { background-image: linear-gradient(var(--line) 2px, transparent 2px), linear-gradient(90deg, var(--line) 2px, transparent 2px); background-size: 120px 120px; }
+      .ln { display: block; overflow: hidden; padding: 0.04em 0 0.16em; margin-bottom: -0.16em; }
+      .ln i { display: block; font-style: normal; }
+      .hide { visibility: hidden; opacity: 0; }
+
+      /* 0 · intro: visor de cámara sobre la cuadrícula */
+      #intro { z-index: 1; background: var(--mist); }
+      #iq { position: absolute; left: 112px; right: 64px; top: 760px; font-size: 138px; font-weight: 500; line-height: 1.02; letter-spacing: -0.032em; color: var(--blue); }
+      #ihud { position: absolute; right: 136px; top: 130px; font-size: 26px; font-weight: 600; letter-spacing: 0.16em; color: var(--ink); opacity: 0; }
+      .plogo { position: absolute; left: 136px; top: 130px; width: 300px; height: 29px; background: url("assets/logo-light.svg") left center / contain no-repeat; }
+      .br { position: absolute; width: 96px; height: 96px; border: 0 solid currentColor; display: block; }
+      .br.tl { top: 64px; left: 64px; border-top-width: 7px; border-left-width: 7px; }
+      .br.tr { top: 64px; right: 64px; border-top-width: 7px; border-right-width: 7px; }
+      .br.bl { bottom: 64px; left: 64px; border-bottom-width: 7px; border-left-width: 7px; }
+      .br.bb { bottom: 64px; right: 64px; border-bottom-width: 7px; border-right-width: 7px; }
+
+      /* 1 · ráfaga: cada foto es un rubro (arriba el nombre, abajo el «sujeto») */
+      #shots { z-index: 3; position: absolute; inset: 0; }
+      .shot { position: absolute; inset: 0; visibility: hidden; opacity: 0; }
+      .half { position: absolute; left: 0; width: 1080px; height: 960px; overflow: hidden; }
+      .ht { top: 0; }
+      .hb { top: 960px; }
+      .gd { position: absolute; inset: 0; background-image: linear-gradient(var(--gl) 2px, transparent 2px), linear-gradient(90deg, var(--gl) 2px, transparent 2px); background-size: 120px 120px; }
+      .word { position: absolute; left: 84px; right: 40px; bottom: 150px; font-weight: 600; letter-spacing: -0.035em; line-height: 0.95; white-space: nowrap; }
+      .af { position: absolute; left: 50%; top: 150px; width: 620px; height: 360px; margin-left: -310px; border: 4px solid currentColor; border-radius: 8px; opacity: 0; }
+      .iso { position: absolute; left: 50%; top: 214px; width: 520px; height: 256px; margin-left: -260px; -webkit-mask: url("assets/isotipo.svg") center / contain no-repeat; mask: url("assets/isotipo.svg") center / contain no-repeat; }
+      .cnt { position: absolute; left: 100px; bottom: 100px; font-size: 40px; font-weight: 600; letter-spacing: 0.12em; }
+
+      /* 2 · hoja de contacto */
+      #sheet { z-index: 4; background: var(--mist); }
+      #sheetIn { position: absolute; inset: 0; }
+      #st { position: absolute; left: 84px; right: 64px; top: 150px; font-size: 112px; font-weight: 500; line-height: 1.02; letter-spacing: -0.032em; color: var(--blue); }
+      #st .l2 { color: var(--ink); }
+      .mini { position: absolute; width: 300px; height: 533px; overflow: hidden; border-radius: 18px; box-shadow: 0 18px 40px rgba(5, 18, 60, 0.18); opacity: 0; }
+      .mini .mh { position: absolute; left: 0; width: 300px; height: 267px; overflow: hidden; }
+      .mini .mt { top: 0; } .mini .mb { top: 266px; height: 267px; }
+      .mini .mw { position: absolute; left: 22px; bottom: 26px; font-size: 31px; font-weight: 600; letter-spacing: -0.02em; white-space: nowrap; }
+      .mini .mi { position: absolute; left: 50%; top: 84px; width: 170px; height: 84px; margin-left: -85px; -webkit-mask: url("assets/isotipo.svg") center / contain no-repeat; mask: url("assets/isotipo.svg") center / contain no-repeat; }
+
+      /* 3 · cierre: la cámara enfoca el logo */
+      #end { z-index: 5; background: #ffffff; }
+      #logoWrap { position: absolute; left: 150px; top: 836px; width: 780px; height: 80px; overflow: hidden; opacity: 0; }
+      #close-logo { position: absolute; left: 0; top: 0; width: 780px; }
+      #sweep { position: absolute; top: -20px; bottom: -20px; left: -200px; width: 140px; background: linear-gradient(100deg, rgba(255,255,255,0), rgba(255,255,255,0.95), rgba(255,255,255,0)); transform: skewX(-18deg); }
+      #tag { opacity: 0; position: absolute; left: 0; width: 1080px; top: 950px; text-align: center; font-size: 78px; font-weight: 400; letter-spacing: -0.02em; color: var(--ink); white-space: nowrap; }
+      #tag .ln { display: inline-block; }
+      #tag b { position: relative; font-weight: 600; color: var(--blue); }
+      #tag .ul { position: absolute; left: 0; right: 0; bottom: -4px; height: 5px; background: var(--blue); transform-origin: left center; border-radius: 3px; }
+      #url { position: absolute; left: 0; width: 1080px; top: 1096px; text-align: center; font-size: 40px; font-weight: 500; letter-spacing: 0.14em; color: var(--blue); opacity: 0; }
+      #ebr { color: var(--blue); }
+      #ebr .br { position: absolute; width: 70px; height: 70px; opacity: 0; }
+      #flash { z-index: 100; background: #ffffff; opacity: 0; pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <div id="main" data-composition-id="main" data-start="0" data-duration="8.4" data-width="1080" data-height="1920" data-fps="30">
+      <div id="intro" class="layer gridbg">
+        <div class="plogo"></div>
+        <div id="ihud">RÁFAGA · 6 FOTOS</div>
+        <div id="iq"><span class="ln"><i>¿En qué rubro</i></span><span class="ln"><i>trabajas?</i></span></div>
+        <div id="ivf" style="color: var(--blue)"><i class="br tl ib"></i><i class="br tr ib"></i><i class="br bl ib"></i><i class="br bb ib"></i></div>
+      </div>
+
+      <div id="shots"></div>
+
+      <div id="sheet" class="layer gridbg hide" data-layout-allow-overflow>
+        <div id="sheetIn">
+          <div id="st"><span class="ln"><i>Mismo agente.</i></span><span class="ln l2"><i>Otro uniforme.</i></span></div>
+        </div>
+      </div>
+
+      <div id="end" class="layer gridbg hide" data-layout-allow-overflow>
+        <div class="layer" style="background: radial-gradient(ellipse 70% 26% at 50% 50%, rgba(15, 92, 237, 0.16), rgba(15, 92, 237, 0) 70%)"></div>
+        <div id="logoWrap" data-layout-allow-overflow><img id="close-logo" src="assets/logo-light.svg" alt="Atacama Labs" /><div id="sweep" data-layout-allow-overflow></div></div>
+        <div id="tag" data-layout-allow-overflow data-layout-allow-occlusion><span class="ln" data-layout-allow-overflow><i>Agentes que <b>trabajan.<span class="ul"></span></b></i></span></div>
+        <div id="url">ATACAMALABS.CL</div>
+        <div id="ebr" class="layer">
+          <i class="br tl eb" style="top: 770px; left: 96px"></i><i class="br tr eb" style="top: 770px; right: 96px"></i>
+          <i class="br bl eb" style="top: 1085px; bottom: auto; left: 96px"></i><i class="br bb eb" style="top: 1085px; bottom: auto; right: 96px"></i>
+        </div>
+      </div>
+
+      <div id="flash" class="layer"></div>
+      <audio id="sfx" src="assets/audio.wav" data-start="0" data-duration="8.4" data-track-index="9"></audio>
+    </div>
+    <script>
+      window.__timelines = window.__timelines || {};
+      const C = { real: "#1a3c8e", brand: "#0f5ced", sky: "#58a6ff", mist: "#f3f6fd" };
+      const GL = { real: "rgba(255,255,255,.14)", brand: "rgba(255,255,255,.16)", sky: "rgba(255,255,255,.34)", mist: "rgba(15,92,237,.12)" };
+      // cada mitad escribe con el color de la mitad opuesta; el «sujeto» lleva el color de la mitad de arriba
+      const R = [
+        { n: "SALUD", fs: 196, top: "real", bot: "sky", tt: "sky", ic: "real" },
+        { n: "INMOBILIARIAS", fs: 112, top: "mist", bot: "brand", tt: "brand", ic: "mist" },
+        { n: "MINERÍA", fs: 156, top: "brand", bot: "mist", tt: "mist", ic: "brand" },
+        { n: "GIMNASIOS", fs: 132, top: "sky", bot: "real", tt: "real", ic: "sky" },
+        { n: "EDUCACIÓN", fs: 132, top: "real", bot: "mist", tt: "mist", ic: "real" },
+        { n: "ALIMENTACIÓN", fs: 128, top: "mist", bot: "real", tt: "real", ic: "sky" },
+      ];
+      const shotsEl = document.getElementById("shots");
+      R.forEach((r, i) => {
+        shotsEl.insertAdjacentHTML("beforeend",
+          `<div class="shot" id="s${i}" data-layout-allow-overflow>
+             <div class="half ht" style="background:${C[r.top]};--gl:${GL[r.top]};color:${C[r.tt]}"><div class="gd"></div><i class="br tl"></i><i class="br tr"></i><div class="word" style="font-size:${r.fs}px">${r.n}</div></div>
+             <div class="half hb" style="background:${C[r.bot]};--gl:${GL[r.bot]};color:${C[r.ic]}"><div class="gd"></div><i class="br bl"></i><i class="br bb"></i><div class="af"></div><div class="iso" style="background:${C[r.ic]}"></div><div class="cnt">0${i + 1} / 06</div></div>
+           </div>`);
+      });
+      // hoja de contacto: 3 × 2
+      const sheetIn = document.getElementById("sheetIn");
+      const XS = [60, 390, 720], YS = [470, 1035];
+      R.forEach((r, i) => {
+        sheetIn.insertAdjacentHTML("beforeend",
+          `<div class="mini" id="m${i}" style="left:${XS[i % 3]}px;top:${YS[Math.floor(i / 3)]}px" data-layout-allow-overflow>
+             <div class="mh mt" style="background:${C[r.top]};color:${C[r.tt]}"><div class="mw">${r.n}</div></div>
+             <div class="mh mb" style="background:${C[r.bot]}"><div class="mi" style="background:${C[r.ic]}"></div></div>
+           </div>`);
+      });
+
+      const tl = gsap.timeline({ paused: true });
+      const flash = (t, peak = 0.9, dur = 0.16) =>
+        tl.fromTo("#flash", { opacity: peak }, { opacity: 0, duration: dur, ease: "power2.out", immediateRender: false }, t);
+
+      // 0 · visor: las esquinas se cierran, la pregunta sube desde la máscara
+      tl.fromTo(".ib.tl", { x: -80, y: -80, opacity: 0 }, { x: 0, y: 0, opacity: 1, duration: 0.55, ease: "expo.out" }, 0);
+      tl.fromTo(".ib.tr", { x: 80, y: -80, opacity: 0 }, { x: 0, y: 0, opacity: 1, duration: 0.55, ease: "expo.out" }, 0.04);
+      tl.fromTo(".ib.bl", { x: -80, y: 80, opacity: 0 }, { x: 0, y: 0, opacity: 1, duration: 0.55, ease: "expo.out" }, 0.08);
+      tl.fromTo(".ib.bb", { x: 80, y: 80, opacity: 0 }, { x: 0, y: 0, opacity: 1, duration: 0.55, ease: "expo.out" }, 0.12);
+      tl.fromTo("#iq .ln i", { yPercent: 118 }, { yPercent: 0, duration: 0.8, ease: "expo.out", stagger: 0.12 }, 0.12);
+      tl.fromTo("#ihud", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0.4);
+
+      tl.set("#intro", { autoAlpha: 0 }, 1.26);
+      // 1 · ráfaga de 6 fotos, una cada 0,42 s; cada disparo = corte + flash + pequeño golpe de cámara
+      R.forEach((r, i) => {
+        const t = 1.2 + i * 0.42, s = "#s" + i;
+        tl.set(s, { autoAlpha: 1 }, t);
+        flash(t, 0.85, 0.15);
+        tl.fromTo("#shots", { scale: 1.05 }, { scale: 1, duration: 0.22, ease: "expo.out", transformOrigin: "50% 50%", immediateRender: false }, t);
+        if (i > 0) tl.set("#s" + (i - 1), { autoAlpha: 0 }, t + 0.06);   // la foto anterior ya quedó tapada
+        tl.fromTo(s + " .word", { x: -70, opacity: 0 }, { x: 0, opacity: 1, duration: 0.24, ease: "expo.out" }, t);
+        tl.fromTo(s + " .iso", { scale: 1.28, rotation: -7 }, { scale: 1, rotation: 0, duration: 0.28, ease: "expo.out", transformOrigin: "50% 50%" }, t);
+        tl.fromTo(s + " .af", { scale: 1.4, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.2, ease: "expo.out" }, t + 0.02);
+      });
+
+      // 2 · las 6 fotos caen en la hoja de contacto
+      tl.set("#sheet", { autoAlpha: 1 }, 3.95);
+      tl.set("#shots", { autoAlpha: 0 }, 4.02);
+      flash(3.95, 0.9, 0.18);
+      // ráfaga que acelera: 0,14 · 0,12 · 0,10 · 0,09 · 0,08 s entre disparos
+      const MT = [4.08, 4.22, 4.34, 4.44, 4.53, 4.61];
+      MT.forEach((t, i) => {
+        tl.fromTo("#m" + i, { scale: 0.55, opacity: 0, y: 36 }, { scale: 1, opacity: 1, y: 0, duration: 0.3, ease: "back.out(1.5)" }, t);
+        flash(t, 0.3, 0.09);
+      });
+      tl.fromTo("#st .ln i", { yPercent: 118 }, { yPercent: 0, duration: 0.8, ease: "expo.out", stagger: 0.12 }, 4.2);
+      tl.fromTo("#sheetIn", { scale: 1 }, { scale: 1.035, duration: 1.7, ease: "none", transformOrigin: "50% 50%" }, 4.05);
+
+      // 3 · el golpe: disparo final, la cámara enfoca el logo
+      tl.set("#end", { autoAlpha: 1 }, 5.75);
+      tl.set("#sheet", { autoAlpha: 0 }, 5.82);
+      flash(5.75, 1, 0.55);
+      tl.fromTo(".eb.tl", { x: -110, y: -110, opacity: 0 }, { x: 0, y: 0, opacity: 1, duration: 0.5, ease: "expo.out" }, 5.85);
+      tl.fromTo(".eb.tr", { x: 110, y: -110, opacity: 0 }, { x: 0, y: 0, opacity: 1, duration: 0.5, ease: "expo.out" }, 5.88);
+      tl.fromTo(".eb.bl", { x: -110, y: 110, opacity: 0 }, { x: 0, y: 0, opacity: 1, duration: 0.5, ease: "expo.out" }, 5.91);
+      tl.fromTo(".eb.bb", { x: 110, y: 110, opacity: 0 }, { x: 0, y: 0, opacity: 1, duration: 0.5, ease: "expo.out" }, 5.94);
+      tl.fromTo("#logoWrap", { opacity: 0, scale: 0.94, filter: "blur(14px)" }, { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.8, ease: "expo.out", transformOrigin: "50% 50%" }, 5.9);
+      tl.fromTo("#sweep", { x: 0 }, { x: 1150, duration: 1.0, ease: "power2.inOut" }, 6.4);
+      tl.fromTo("#tag", { opacity: 0 }, { opacity: 1, duration: 0.01 }, 6.29);
+      tl.fromTo("#tag .ln i", { yPercent: 118 }, { yPercent: 0, duration: 0.8, ease: "expo.out" }, 6.3);
+      tl.fromTo("#tag .ul", { scaleX: 0 }, { scaleX: 1, duration: 0.7, ease: "expo.inOut" }, 6.8);
+      tl.fromTo("#url", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }, 7.0);
+      // un último «clic» de enfoque: las esquinas laten una vez
+      tl.fromTo("#ebr", { scale: 1 }, { scale: 1.035, duration: 0.18, ease: "power2.out", yoyo: true, repeat: 1, transformOrigin: "50% 50%" }, 6.95);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

@@ -1,0 +1,238 @@
+/*
+ * Valor comercial del Home (MASTER_PLAN_CONVERSION §5). Tres tarjetas con el
+ * lenguaje de la sección de herramientas de /agentes: tarjeta clara (degradado
+ * blanco → azul muy tenue), borde suave, esquinas de 22 px, pixel art y acentos
+ * azul Atacama. La ilustración es pequeña y vive en un recuadro propio.
+ */
+.mk-hv {
+  padding-block: clamp(56px, 7vw, 96px);
+}
+.mk-hv .mk-hv__cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  max-width: 1120px;
+  margin: clamp(36px, 5vw, 56px) auto 0;
+  padding: 0;
+  list-style: none;
+}
+.mk-hv__cards > li {
+  display: flex;
+}
+.mk-hv-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 18px 18px 26px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: linear-gradient(180deg, #fff, #f8faff);
+  box-shadow: 0 34px 70px -44px rgb(18 26 43 / 35%);
+  transition: border-color 300ms ease;
+}
+.mk-hv-card:hover {
+  border-color: rgb(15 92 237 / 40%);
+}
+.mk-hv-card__art {
+  display: grid;
+  place-items: center;
+  height: 132px;
+  margin-bottom: 22px;
+  padding: 12px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgb(15 92 237 / 4%);
+}
+.mk-hv-card__num {
+  margin: 0 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--blue);
+}
+.mk-hv-card__title {
+  margin: 6px 8px 8px;
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.mk-hv-card__body {
+  margin: 0 8px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+/* 01 · el agente en su puesto y su panel de gestión */
+.mk-hv-scene {
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  shape-rendering: crispEdges;
+}
+
+/* 02 · mensaje → registro → agenda → acción */
+.mk-hv-flow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  max-width: 296px;
+}
+.mk-hv-flow__node {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+}
+.mk-hv-flow .mk-at__icon {
+  width: 42px;
+  height: 42px;
+  padding: 4px;
+  background: #fff;
+}
+.mk-hv-flow__node span {
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--muted);
+}
+.mk-hv-flow__link {
+  flex: 1 1 0;
+  min-width: 6px;
+  height: 0;
+  margin: 21px 3px 0;
+  border-top: 1.5px dashed rgb(15 92 237 / 38%);
+}
+
+/* 03 · validación → conexión → puesta en marcha */
+.mk-hv-steps {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 252px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mk-hv-steps li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
+  padding: 5px 0;
+}
+.mk-hv-steps li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 25px;
+  width: 2px;
+  height: 10px;
+  background: rgb(15 92 237 / 28%);
+}
+.mk-hv-tick {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  shape-rendering: crispEdges;
+}
+.mk-hv-live {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid #22a06b;
+  border-radius: 6px;
+  background: #fff;
+}
+.mk-hv-live b {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: #22a06b;
+}
+.mk-hv-steps span {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ink);
+}
+.mk-hv-steps em {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-style: normal;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+/* Movimiento sobrio: un paso del flujo se enciende a la vez; la última etapa «respira». */
+@keyframes mk-hv-lit {
+  0% {
+    border-color: var(--line);
+    background: #fff;
+    box-shadow: none;
+  }
+  4%,
+  22% {
+    border-color: rgb(15 92 237 / 55%);
+    background: rgb(15 92 237 / 10%);
+    box-shadow: 0 0 0 4px rgb(15 92 237 / 10%);
+  }
+  28%,
+  100% {
+    border-color: var(--line);
+    background: #fff;
+    box-shadow: none;
+  }
+}
+@keyframes mk-hv-live {
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mk-hv-flow__node .mk-at__icon {
+    animation: mk-hv-lit 4.8s ease-in-out infinite;
+    animation-delay: calc(var(--i, 0) * 1.2s);
+  }
+  .mk-hv-live b {
+    animation: mk-hv-live 1.8s ease-in-out infinite;
+  }
+}
+
+@media (max-width: 899px) {
+  .mk-hv .mk-hv__cards {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    max-width: 560px;
+  }
+  .mk-hv-card__art {
+    height: 124px;
+    margin-bottom: 18px;
+  }
+}
+@media (max-width: 380px) {
+  .mk-hv-card {
+    padding: 14px 14px 22px;
+  }
+  .mk-hv-card__art {
+    padding: 8px;
+  }
+  .mk-hv-flow .mk-at__icon {
+    width: 38px;
+    height: 38px;
+  }
+  .mk-hv-flow__link {
+    margin-top: 19px;
+  }
+}

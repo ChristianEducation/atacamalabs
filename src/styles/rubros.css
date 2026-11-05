@@ -1,0 +1,830 @@
+/*
+ * /rubros y franja de industrias en /agentes (RUBROS_Y_FOOTER_SPEC_V1).
+ * Regla: informativo e ilustrativo, movimiento mínimo. El estado base de cada
+ * demo es el FINAL (el texto siempre está); las animaciones solo declaran el
+ * punto de partida cuando hay JS y no se pidió reducir movimiento.
+ */
+
+/* ---------- Hero: solo texto y un buen degradé ---------- */
+.mk-hero--rubros {
+  padding: clamp(64px, 9vw, 112px) 0 clamp(72px, 9vw, 112px);
+  background:
+    radial-gradient(58% 90% at 86% -8%, rgb(15 92 237 / 26%), transparent 66%),
+    radial-gradient(44% 70% at 8% 12%, rgb(245 185 66 / 13%), transparent 68%),
+    radial-gradient(60% 55% at 50% 108%, rgb(15 92 237 / 12%), transparent 72%),
+    linear-gradient(
+      180deg,
+      var(--section-sand) 0%,
+      var(--section-paper) 42%,
+      var(--section-blue-mist) 82%,
+      var(--section-paper) 100%
+    );
+}
+.mk-hero--rubros .mk-hero__copy {
+  align-items: center;
+  max-width: 860px;
+  margin-inline: auto;
+  text-align: center;
+}
+.mk-hero--rubros .mk-hero__h1 {
+  font-size: clamp(44px, 6.6vw, 84px);
+  line-height: 1.02;
+}
+.mk-hero--rubros .mk-hero__lead {
+  max-width: 54ch;
+  margin-inline: auto;
+}
+.mk-hero--rubros .mk-hero__trust {
+  max-width: 54ch;
+}
+
+/* ---------- Selector pegado: pastilla de vidrio ---------- */
+.mk-rb {
+  position: relative;
+}
+.mk-rb-nav {
+  position: sticky;
+  top: calc(var(--header-h) + 10px);
+  z-index: 20;
+  padding-block: 16px 4px;
+  pointer-events: none;
+}
+.mk-rb-nav .mk-container {
+  display: flex;
+  justify-content: center;
+}
+/* El <nav> semántico entre .mk-container y .mk-rb-nav__tabs no tiene estilos
+   propios, pero como flex item su min-width automático ("auto") toma el
+   ancho de contenido de los 9 tabs y no deja que nada de abajo se achique
+   (QA §29, overflow en /rubros). */
+.mk-rb-nav .mk-container > nav {
+  min-width: 0;
+}
+.mk-rb-nav__tabs {
+  pointer-events: auto;
+  /* Sin `width` explícito (ni fit-content): como flex item, un `width`
+     definido — incluso fit-content — fija el flex-basis y Chromium no lo
+     encoge por debajo de eso pese a min-width:0. `.mk-sel-tabs` (Home) ya
+     resuelve esto mismo sin `width`; mismo patrón acá (QA §29, overflow). */
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 6px;
+  gap: 2px;
+  border: 1px solid rgb(255 255 255 / 75%);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgb(255 255 255 / 68%), rgb(255 255 255 / 36%));
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  backdrop-filter: blur(22px) saturate(170%);
+  box-shadow:
+    0 14px 36px -16px rgb(18 26 43 / 32%),
+    0 1px 3px rgb(18 26 43 / 8%),
+    inset 0 1px 0 rgb(255 255 255 / 90%);
+  /* Los 9 rubros no caben en pantallas angostas (QA §29): la pastilla
+     desliza en vez de desbordar la página. Mismo look, sin scrollbar visible. */
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.mk-rb-nav__tabs::-webkit-scrollbar {
+  display: none;
+}
+.mk-rb-nav__list {
+  display: flex;
+  gap: 2px;
+}
+.mk-rb-nav .mk-sel-tab {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  text-decoration: none;
+  min-height: 40px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border-color: transparent;
+  transition:
+    color 200ms ease,
+    background 200ms ease,
+    box-shadow 200ms ease;
+}
+.mk-rb-nav .mk-sel-tab::before {
+  display: none;
+}
+.mk-rb-nav .mk-sel-tab:hover {
+  transform: none;
+  border-color: transparent;
+  background: rgb(255 255 255 / 55%);
+}
+.mk-rb-nav .mk-sel-tab[aria-selected="true"] {
+  color: var(--blue-text);
+  background: rgb(255 255 255 / 94%);
+  box-shadow:
+    0 6px 16px -8px rgb(15 92 237 / 45%),
+    inset 0 0 0 1px rgb(15 92 237 / 14%);
+}
+
+/* ---------- Sección de rubro ---------- */
+.mk-rb-sec {
+  padding-block: clamp(40px, 5vw, 72px);
+}
+.mk-rb-sec[hidden] {
+  display: none;
+}
+.mk-rb-stagewrap {
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+.mk-rb-stagewrap[data-leaving] {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+.mk-rb-stagewrap.is-entering .mk-rb-sec:not([hidden]) {
+  animation: mk-rb-panel-in 260ms var(--ease-out) both;
+}
+@keyframes mk-rb-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+.mk-rb-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+@media (min-width: 960px) {
+  .mk-rb-grid {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: 56px;
+    align-items: center;
+  }
+}
+.mk-rb-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 14px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--blue-text);
+}
+.mk-rb-eyebrow span {
+  color: var(--subtle);
+}
+.mk-rb-title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: clamp(30px, 4vw, 44px);
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.mk-rb-lead {
+  margin: 16px 0 0;
+  max-width: 52ch;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.mk-rb-context {
+  margin: 10px 0 0;
+  max-width: 52ch;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--subtle);
+}
+.mk-rb-sub {
+  margin: 26px 0 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--subtle);
+}
+.mk-rb-pains,
+.mk-rb-caps {
+  margin: 0 0 4px;
+  padding: 0;
+  list-style: none;
+}
+.mk-rb-pains li {
+  position: relative;
+  padding: 7px 0 7px 18px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.mk-rb-pains li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 16px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--subtle);
+  opacity: 0.6;
+}
+.mk-rb-caps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.mk-rb-caps li {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--ink);
+}
+.mk-rb-caps svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--blue);
+}
+/* «Cómo se conecta» (landing del rubro): una o dos frases, sin tarjetas. */
+.mk-rb-connect {
+  margin: 0 0 4px;
+  max-width: 52ch;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.mk-rb-copy .mk-btn {
+  margin-top: 24px;
+}
+/* Enlace crawlable hub → landing propia del rubro (SEO_GROWTH_SPEC_V1 §10). */
+.mk-rb-copy .mk-rb-more {
+  display: flex;
+  margin-top: 14px;
+}
+
+/* ---------- Demo: «Así trabaja tu agente» ---------- */
+.mk-rb-demo {
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 30px 70px -40px rgb(18 26 43 / 28%);
+}
+.mk-rb-demo__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.mk-rb-demo__avatar {
+  display: grid;
+  place-items: end center;
+  flex: none;
+  width: 72px;
+  height: 72px;
+  padding-top: 6px;
+  border: 1px solid rgb(15 92 237 / 18%);
+  border-radius: 16px;
+  background: linear-gradient(160deg, #eaf1ff, #dbe7ff);
+  overflow: hidden;
+}
+.mk-rb-demo__role {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.mk-rb-demo__label {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--subtle);
+}
+.mk-rb-demo__body {
+  display: grid;
+  gap: 14px;
+}
+@media (min-width: 640px) {
+  .mk-rb-demo__body.has-aside {
+    grid-template-columns: minmax(0, 1.4fr) minmax(150px, 0.8fr);
+    align-items: start;
+  }
+}
+.mk-rb-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mk-rb-msg {
+  max-width: 88%;
+}
+.mk-rb-msg.is-agent {
+  align-self: flex-end;
+}
+.mk-rb-msg__who {
+  display: block;
+  margin: 0 8px 3px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--subtle);
+}
+.mk-rb-msg.is-agent .mk-rb-msg__who {
+  text-align: right;
+}
+.mk-rb-msg p {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 16px;
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+.mk-rb-msg.is-person p {
+  border-bottom-left-radius: 6px;
+  background: var(--surface-alt, #efeae1);
+  color: var(--ink);
+}
+.mk-rb-msg.is-agent p {
+  border-bottom-right-radius: 6px;
+  background: rgb(15 92 237 / 9%);
+  box-shadow: inset 0 0 0 1px rgb(15 92 237 / 16%);
+  color: var(--ink);
+}
+
+/* Señal del sistema: el agente toma la iniciativa (Gimnasios). */
+.mk-rb-chatcol {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mk-rb-trigger {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 9px 14px;
+  border: 1px dashed var(--line-strong, var(--line));
+  border-radius: 12px;
+  background: var(--paper);
+}
+.mk-rb-trigger__label {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--blue-text);
+}
+.mk-rb-trigger p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+/* Pieza lateral que se completa: ticket · ficha · estado. */
+.mk-rb-aside {
+  padding: 14px 16px;
+  border: 1px dashed var(--line-strong, var(--line));
+  border-radius: 14px;
+  background: var(--paper);
+}
+.mk-rb-aside__title {
+  margin: 0 0 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.mk-rb-aside ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.mk-rb-aside li {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+}
+.mk-rb-aside.is-ticket li {
+  flex-direction: row;
+  border-bottom: 0;
+  padding: 2px 0;
+  font-size: 14.5px;
+}
+.mk-rb-aside li:last-child {
+  border-bottom: 0;
+}
+.mk-rb-aside li span {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--subtle);
+}
+.mk-rb-aside li.is-muted {
+  color: var(--muted);
+}
+.mk-rb-aside__status {
+  position: relative;
+  display: grid;
+  margin: 12px 0 0;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.mk-rb-aside__wait,
+.mk-rb-aside__done {
+  grid-area: 1 / 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+.mk-rb-aside__wait {
+  background: rgb(18 26 43 / 7%);
+  color: var(--muted);
+  opacity: 0;
+}
+.mk-rb-aside__done {
+  background: rgb(19 116 86 / 12%);
+  color: var(--success);
+}
+
+/* Flujo: herramientas que usa el agente */
+.mk-rb-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 22px;
+  margin: 18px 0 0;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--line);
+  list-style: none;
+}
+.mk-rb-flow li {
+  position: relative;
+  padding: 5px 11px;
+  border: 1px solid rgb(15 92 237 / 22%);
+  border-radius: 999px;
+  background: rgb(15 92 237 / 7%);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--blue-text);
+}
+.mk-rb-flow li + li::before {
+  content: "";
+  position: absolute;
+  left: -17px;
+  top: 50%;
+  width: 12px;
+  height: 1px;
+  background: rgb(15 92 237 / 45%);
+}
+
+/* Recibo de acción */
+.mk-rb-receipt {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid rgb(19 116 86 / 25%);
+  border-radius: 14px;
+  background: rgb(19 116 86 / 6%);
+}
+.mk-rb-receipt__label {
+  margin: 0 0 6px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--success);
+}
+.mk-rb-receipt__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.mk-rb-receipt__ic {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--success);
+  color: #fff;
+}
+.mk-rb-receipt__id {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.mk-rb-receipt ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.mk-rb-receipt li {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid var(--line);
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.mk-rb-demo__note {
+  margin: 14px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--subtle);
+}
+
+/*
+ * Reproducción única (data-phase = armed | play). Sin JS o con reducir
+ * movimiento el estado es `static`: todo visible, nada se mueve.
+ */
+.mk-rb-demo[data-phase="armed"] .mk-rb-msg,
+.mk-rb-demo[data-phase="armed"] .mk-rb-trigger,
+.mk-rb-demo[data-phase="armed"] .mk-rb-aside li,
+.mk-rb-demo[data-phase="armed"] .mk-rb-receipt {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.mk-rb-demo[data-phase="armed"] .mk-rb-flow li {
+  opacity: 0.4;
+  background: transparent;
+  border-color: var(--line);
+  color: var(--subtle);
+}
+.mk-rb-demo[data-phase="armed"] .mk-rb-aside__wait {
+  opacity: 1;
+}
+.mk-rb-demo[data-phase="armed"] .mk-rb-aside__done {
+  opacity: 0;
+}
+
+.mk-rb-demo[data-phase="play"] .mk-rb-msg,
+.mk-rb-demo[data-phase="play"] .mk-rb-trigger {
+  animation: mk-rb-in 420ms var(--ease-out) both;
+  animation-delay: calc(180ms + var(--i, 0) * 650ms);
+}
+.mk-rb-demo[data-phase="play"] .mk-rb-aside li {
+  animation: mk-rb-in 380ms var(--ease-out) both;
+  animation-delay: calc(360ms + var(--at, 0) * 650ms);
+}
+.mk-rb-demo[data-phase="play"] .mk-rb-flow li {
+  animation: mk-rb-lit 400ms ease both;
+  animation-delay: calc(520ms + var(--n, 0) * 420ms);
+}
+.mk-rb-demo[data-phase="play"] .mk-rb-receipt {
+  animation: mk-rb-in 460ms var(--ease-out) both;
+  animation-delay: calc(360ms + var(--msgs, 4) * 650ms);
+}
+.mk-rb-demo[data-phase="play"] .mk-rb-aside__wait {
+  animation: mk-rb-wait calc(360ms + var(--msgs, 4) * 650ms) ease both;
+  animation-delay: 300ms;
+}
+.mk-rb-demo[data-phase="play"] .mk-rb-aside__done {
+  animation: mk-rb-done 380ms ease both;
+  animation-delay: calc(360ms + var(--msgs, 4) * 650ms);
+}
+@keyframes mk-rb-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes mk-rb-lit {
+  from {
+    opacity: 0.4;
+    background: transparent;
+    border-color: var(--line);
+    color: var(--subtle);
+  }
+}
+@keyframes mk-rb-wait {
+  0%,
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes mk-rb-done {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ---------- Otro rubro ---------- */
+.mk-rb-other {
+  scroll-margin-top: calc(var(--header-h) + 64px);
+}
+.mk-rb-other__box {
+  max-width: 720px;
+  margin-inline: auto;
+  text-align: center;
+}
+.mk-rb-other__box .mk-rb-lead {
+  margin-inline: auto;
+}
+.mk-rb-other__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 26px;
+}
+
+/* ---------- Franja en /agentes ---------- */
+.mk-rbs__bar {
+  display: flex;
+  justify-content: center;
+  margin-top: 28px;
+}
+@media (max-width: 899px) {
+  .mk-rbs__bar {
+    justify-content: flex-start;
+    margin-inline: calc(var(--gutter, 16px) * -1);
+    padding-inline: var(--gutter, 16px);
+  }
+}
+.mk-rbs__scene {
+  display: grid;
+  gap: 24px;
+  margin: 22px auto 0;
+  max-width: 1000px;
+  padding: 26px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: #fff;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+@media (min-width: 860px) {
+  .mk-rbs__scene {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    align-items: center;
+    gap: 40px;
+    padding: 34px 38px;
+  }
+}
+.mk-rbs__scene[data-leaving] {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+.mk-rbs__scene.is-entering .mk-rbs__copy {
+  animation: mk-rbs-in 260ms var(--ease-out) both;
+}
+.mk-rbs__name {
+  margin: 0 0 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--blue-text);
+}
+.mk-rbs__headline {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-weight: 500;
+  font-size: clamp(24px, 3vw, 32px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.mk-rbs__caps {
+  display: grid;
+  gap: 6px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.mk-rbs__caps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14.5px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.mk-rbs__caps svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--blue);
+}
+.mk-rbs__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 20px;
+  min-height: 44px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--blue-text);
+  text-decoration: none;
+}
+.mk-rbs__link svg {
+  transition: transform 200ms var(--ease-out);
+}
+.mk-rbs__link:hover svg,
+.mk-rbs__link:focus-visible svg {
+  transform: translateX(3px);
+}
+.mk-rbs__flow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0 0 0 4px;
+  list-style: none;
+}
+.mk-rbs__flow li {
+  position: relative;
+  padding: 9px 14px;
+  border: 1px solid rgb(15 92 237 / 22%);
+  border-radius: 12px;
+  background: rgb(15 92 237 / 7%);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--blue-text);
+}
+.mk-rbs__flow li + li::before {
+  content: "";
+  position: absolute;
+  left: 22px;
+  top: -9px;
+  width: 1px;
+  height: 8px;
+  background: rgb(15 92 237 / 40%);
+}
+.mk-rbs__scene.is-entering .mk-rbs__flow li {
+  animation: mk-rbs-in 320ms var(--ease-out) both;
+  animation-delay: calc(60ms + var(--n, 0) * 90ms);
+}
+@keyframes mk-rbs-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mk-rb-demo .mk-rb-msg,
+  .mk-rb-demo .mk-rb-trigger,
+  .mk-rb-demo .mk-rb-aside li,
+  .mk-rb-demo .mk-rb-flow li,
+  .mk-rb-demo .mk-rb-receipt,
+  .mk-rb-demo .mk-rb-aside__wait,
+  .mk-rb-demo .mk-rb-aside__done,
+  .mk-rb-stagewrap,
+  .mk-rb-stagewrap .mk-rb-sec,
+  .mk-rbs__scene,
+  .mk-rbs__scene .mk-rbs__copy,
+  .mk-rbs__scene .mk-rbs__flow li {
+    animation: none !important;
+    transition: none !important;
+  }
+  .mk-rb-demo[data-phase] .mk-rb-msg,
+  .mk-rb-demo[data-phase] .mk-rb-trigger,
+  .mk-rb-demo[data-phase] .mk-rb-aside li,
+  .mk-rb-demo[data-phase] .mk-rb-receipt {
+    opacity: 1;
+    transform: none;
+  }
+}

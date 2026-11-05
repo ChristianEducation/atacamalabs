@@ -1,0 +1,417 @@
+{
+  "name": "Atacama Labs - 09 Prospect Approve (TEST)",
+  "nodes": [
+    {
+      "id": "862bf506-8eb0-44a6-8bd1-dd3c34ec4fcc",
+      "name": "Approve Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "00000000-0000-0000-0000-000000000000",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "atacama-prospects-approve-test",
+        "authentication": "headerAuth",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "INGEST_KEY_CREDENTIAL_ID",
+          "name": "Atacama Labs - Ingest Key"
+        }
+      }
+    },
+    {
+      "id": "3bd36467-1418-4cde-bb2c-d3383295787b",
+      "name": "Validate Approval",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nconst first = $input.first().json ?? {};\nconst body = first.body ?? first;\nif (body.icp_pack_id !== EXPECTED_ICP_PACK_ID) throw new Error('SEGURIDAD: icp_pack_id no coincide con el pack de este workflow.');\nconst ids = Array.isArray(body.prospect_ids) ? body.prospect_ids.map(String) : [];\nif (!ids.length || ids.length > 20) throw new Error('prospect_ids: entre 1 y 20 ids');\nif (!ids.every((i) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(i))) throw new Error('prospect_ids invalidos');\nconst approver = String(body.approved_by || '').trim().slice(0, 60);\nif (!approver) throw new Error('approved_by obligatorio');\nreturn [{ json: { icp_pack_id: EXPECTED_ICP_PACK_ID, approved_by: approver, prospect_ids: ids,\n  patch_url: 'https://uwquwjmiofixzugttals.supabase.co/rest/v1/prospects?icp_pack_id=eq.' + EXPECTED_ICP_PACK_ID + '&id=in.(' + ids.join(',') + ')&classification=eq.hot&crm_candidate=eq.true&status=eq.new&select=id,account_id,status' } }];"
+      }
+    },
+    {
+      "id": "e5f2e792-e30c-471d-a142-9744759f1200",
+      "name": "Mark Ready To Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $json.patch_url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { status: \"ready_to_contact\", last_activity_at: new Date().toISOString() } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 20000
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      }
+    },
+    {
+      "id": "801417c1-acca-4a56-a51e-eff2ab51e687",
+      "name": "Build Approved List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const v = $('Validate Approval').first().json;\nconst res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nif (status < 200 || status >= 300) throw new Error('No se pudo marcar como aprobados (HTTP ' + status + ')');\nconst rows = Array.isArray(res.body) ? res.body : [];\nconst skipped = v.prospect_ids.filter((id) => !rows.find((r) => r.id === id));\nreturn [{ json: { icp_pack_id: v.icp_pack_id, approved_by: v.approved_by, approved: rows.length, approved_prospect_ids: rows.map((r) => r.id), account_ids: rows.map((r) => r.account_id), skipped_not_eligible: skipped } }];"
+      }
+    },
+    {
+      "id": "b4b46764-4b35-433f-91d0-3da4c2b48930",
+      "name": "Any Approved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        960,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ ($json.approved > 0) ? \"yes\" : \"no\" }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a3745f11-18fa-4f6a-994a-e03ace99369d",
+      "name": "Run 04 CRM Sync",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        -100
+      ],
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "CRM_SYNC_WORKFLOW_ID",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "value": {
+            "icp_pack_id": "={{ $json.icp_pack_id }}",
+            "account_ids": "={{ $json.account_ids }}",
+            "limit": 20
+          },
+          "schema": []
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "da23f26b-29da-43c1-8095-fbb4e3e90dc7",
+      "name": "Split Per Account",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        -100
+      ],
+      "parameters": {
+        "jsCode": "// 05 trabaja bien con un prospecto por ejecucion: se lanza una vez por cuenta aprobada.\nconst a = $('Build Approved List').first().json;\nreturn a.account_ids.map((id) => ({ json: { icp_pack_id: a.icp_pack_id, account_ids: [id] } }));"
+      }
+    },
+    {
+      "id": "c13f483b-e40e-4865-bb65-a3db02cd647e",
+      "name": "Run 05 Outreach Draft",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1680,
+        -100
+      ],
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "OUTREACH_DRAFT_WORKFLOW_ID",
+          "mode": "id"
+        },
+        "mode": "each",
+        "workflowInputs": {
+          "value": {
+            "icp_pack_id": "={{ $json.icp_pack_id }}",
+            "account_ids": "={{ $json.account_ids }}",
+            "limit": 1
+          },
+          "schema": []
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "c652d6dc-0243-4a56-9193-10893cf56417",
+      "name": "Fetch Prospect Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        -100
+      ],
+      "executeOnce": true,
+      "parameters": {
+        "url": "={{ 'https://uwquwjmiofixzugttals.supabase.co/rest/v1/prospects?id=in.(' + $('Build Approved List').first().json.approved_prospect_ids.join(',') + ')&select=id,status,ghl_contact_id,ghl_opportunity_id' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 20000
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      }
+    },
+    {
+      "id": "5ef70b09-6347-4930-b0fd-be1eed52b90f",
+      "name": "Fetch Draft Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2160,
+        -100
+      ],
+      "executeOnce": true,
+      "parameters": {
+        "url": "={{ 'https://uwquwjmiofixzugttals.supabase.co/rest/v1/outreach?prospect_id=in.(' + $('Build Approved List').first().json.approved_prospect_ids.join(',') + ')&select=prospect_id,status,channel,subject,sent_at' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 20000
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      }
+    },
+    {
+      "id": "21c7e018-dc99-414f-bfa3-5fdeece0eeda",
+      "name": "Response (approved)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        -100
+      ],
+      "executeOnce": true,
+      "parameters": {
+        "jsCode": "const a = $('Build Approved List').first().json;\nconst pr = $('Fetch Prospect Status').first().json;\nconst dr = $input.first().json;\nconst prospects = Array.isArray(pr.body) ? pr.body : [];\nconst drafts = Array.isArray(dr.body) ? dr.body : [];\nconst result = a.approved_prospect_ids.map((id) => {\n  const p = prospects.find((x) => x.id === id) ?? {};\n  const d = drafts.filter((x) => x.prospect_id === id);\n  return { prospect_id: id, status: p.status ?? null, in_crm: Boolean(p.ghl_opportunity_id), draft: d.find((x) => x.status === 'draft')?.subject ?? null, sent: d.some((x) => x.sent_at) };\n});\nreturn [{ json: { ok: true, approved: a.approved, approved_by: a.approved_by, skipped_not_eligible: a.skipped_not_eligible, result, note: 'Solo borradores: no se envia ningun mensaje.' } }];"
+      }
+    },
+    {
+      "id": "058b98b4-a22f-4054-8a16-298d8a8a4e07",
+      "name": "Response (none eligible)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        100
+      ],
+      "parameters": {
+        "jsCode": "const a = $input.first().json;\nreturn [{ json: { ok: true, approved: 0, skipped_not_eligible: a.skipped_not_eligible, note: 'Ningun prospecto elegible (debe ser hot, crm_candidate y status=new).' } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Approve Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Approval": {
+      "main": [
+        [
+          {
+            "node": "Mark Ready To Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Ready To Contact": {
+      "main": [
+        [
+          {
+            "node": "Build Approved List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Approved List": {
+      "main": [
+        [
+          {
+            "node": "Any Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Approved?": {
+      "main": [
+        [
+          {
+            "node": "Run 04 CRM Sync",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Response (none eligible)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run 04 CRM Sync": {
+      "main": [
+        [
+          {
+            "node": "Split Per Account",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Per Account": {
+      "main": [
+        [
+          {
+            "node": "Run 05 Outreach Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run 05 Outreach Draft": {
+      "main": [
+        [
+          {
+            "node": "Fetch Prospect Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Prospect Status": {
+      "main": [
+        [
+          {
+            "node": "Fetch Draft Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Draft Status": {
+      "main": [
+        [
+          {
+            "node": "Response (approved)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

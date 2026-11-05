@@ -1,0 +1,15 @@
+[
+  {
+    "created_at": "2026-10-20T01:36:09.829031Z",
+    "display_name": "Sonilo Music",
+    "id": "7c1f8394-b98b-4db6-a98e-390f9bfda7a1",
+    "job_type": "sonilo_music",
+    "min_result_url": null,
+    "params": {
+      "duration": 8,
+      "prompt": "Light lo-fi tech beat for a short social media story: relaxed soft drums, mellow electric piano, warm bassline, clean modern groove, upbeat but unobtrusive, no vocals, instrumental"
+    },
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3EbqVNfY8krnXzjJxDYBMWhIUwo/hf_20261020_013609_7c1f8394-b98b-4db6-a98e-390f9bfda7a1.m4a",
+    "status": "completed"
+  }
+]

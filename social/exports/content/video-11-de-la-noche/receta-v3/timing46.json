@@ -1,0 +1,52 @@
+{
+ "hookTitle": 0.5,
+ "hookNotif": 2.15,
+ "hookText": 3,
+ "hookAhora": 4.45,
+ "splitStart": 5.4,
+ "splitEnd": 6.1,
+ "land": 6.25,
+ "rings": [
+  6.8,
+  8.4,
+  10,
+  11.6
+ ],
+ "ringDur": 1,
+ "cust": 6.3,
+ "typingA": 8.1,
+ "agent": 8.5,
+ "sheet": 8.9,
+ "tap1": 11.05,
+ "step2": 11.3,
+ "tap2": 11.55,
+ "step3": 11.8,
+ "tap3": 12.05,
+ "done": 12.5,
+ "capT": [
+  6.9,
+  8.9,
+  10.6
+ ],
+ "spin0": 13.1,
+ "spin1": 14.3,
+ "morning": 13.5,
+ "sunUp": 13.8,
+ "pan0": 13.4,
+ "pan1": 15,
+ "clockSwap": 14.1,
+ "note": 15,
+ "cards": [
+  16.2,
+  16.5,
+  16.8
+ ],
+ "win": 17.3,
+ "wipe": 18.2,
+ "hub0": 18.6,
+ "hubSpeed": 1.5,
+ "tag2": 22.9,
+ "cursorIn": 23.7,
+ "click": 24.7,
+ "end": 26
+}

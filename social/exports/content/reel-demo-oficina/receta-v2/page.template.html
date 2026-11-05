@@ -1,0 +1,96 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><style>
+@font-face{font-family:"DM Sans";src:url("__FONT__") format("woff2");font-weight:100 1000}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:1080px;height:1920px;overflow:hidden;background:transparent}
+body{font-family:"DM Sans",sans-serif;-webkit-font-smoothing:antialiased;color:#041228}
+.abs{position:absolute}
+.lightbg{position:absolute;inset:0;background:radial-gradient(62% 36% at 50% 46%,rgba(15,92,237,.17),rgba(15,92,237,0) 72%),linear-gradient(180deg,#f2f6ff,#e6eefc)}
+.gridbg{position:absolute;inset:0;background-image:linear-gradient(rgba(15,92,237,.12) 2px,transparent 2px),linear-gradient(90deg,rgba(15,92,237,.12) 2px,transparent 2px),linear-gradient(rgba(15,92,237,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(15,92,237,.055) 1px,transparent 1px);background-size:120px 120px,120px 120px,40px 40px,40px 40px}
+#intro{position:absolute;inset:0;overflow:hidden}
+#introGrid{position:absolute;inset:0;opacity:.55}
+#iT{position:absolute;left:90px;top:730px;width:900px;font-weight:700;font-size:140px;line-height:1.04;letter-spacing:-.04em;color:#041228}
+#iT em{font-style:normal;color:#0f5ced}
+#iL{position:absolute;left:96px;top:1062px;height:8px;width:0;background:#0f5ced;border-radius:4px}
+#edge{position:absolute;left:0;width:1080px;height:6px;background:#0f5ced;opacity:0}
+#scrim{display:none;position:absolute;left:0;top:1180px;width:1080px;height:740px;background:linear-gradient(rgba(4,18,40,0),rgba(4,18,40,.42) 55%,rgba(4,18,40,.5))}
+#sub{position:absolute;left:90px;top:1340px;width:900px;text-align:center;font-weight:700;font-size:70px;line-height:1.1;letter-spacing:-.025em;color:#fff;text-shadow:0 3px 18px rgba(4,18,40,.55);opacity:0}
+#sub .w{display:inline-block;margin:0 .13em}
+#sub .e{color:#5b92ff}
+#cta{position:absolute;left:0;width:1080px;top:1328px;text-align:center;font-weight:800;font-size:88px;line-height:1;letter-spacing:-.02em;color:#fff;text-shadow:0 4px 22px rgba(4,18,40,.55);opacity:0}
+#ctaL{position:absolute;left:160px;top:1436px;width:0;height:8px;background:#0f5ced;border-radius:4px}
+#big{position:absolute;left:0;top:1436px;width:1080px;height:8px;background:#0f5ced;opacity:0}
+#out{position:absolute;inset:0;opacity:0}
+#outGrid{position:absolute;inset:0;opacity:0}
+#logo{opacity:0}
+#slogan{opacity:0;position:absolute;left:0;width:1080px;top:850px;text-align:center;font:500 100px 'DM Sans';letter-spacing:-.03em;color:#16233f}
+#slogan span{position:relative;font-weight:700;color:#0f5ced}
+#slogan i{position:absolute;left:2%;bottom:-4px;height:7px;width:0;background:#0f5ced;border-radius:4px}
+#url{opacity:0;position:absolute;left:0;width:1080px;top:1030px;text-align:center;font:600 40px 'DM Sans';letter-spacing:.22em;color:#0f5ced}
+</style></head><body>
+<div id="scrim"></div>
+<div id="sub"></div>
+<div id="cta">AGENDA UNA DEMO</div><div id="ctaL"></div>
+<div id="out"><div class="lightbg"></div><div id="outGrid" class="gridbg"></div>
+ <img id="logo" src="__LOGO__" class="abs" style="left:150px;top:660px;width:780px">
+ <div id="slogan">Agentes que <span>trabajan.<i id="ul"></i></span></div>
+ <div id="url">ATACAMALABS.CL</div>
+</div>
+<div id="big"></div>
+<div id="intro"><div class="lightbg"></div><div id="introGrid" class="gridbg"></div>
+ <div id="iT">Cuando todo<br>se <em>acumula…</em></div><div id="iL"></div></div>
+<div id="edge"></div>
+<script>
+const TM = __TM__;
+const SUBS = __SUBS__;
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const seg = (T, a, b) => clamp((T - a) / (b - a));
+const eio = (t) => (t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const eout = (t) => 1 - Math.pow(1 - t, 3);
+const ease = (t) => 1 - Math.pow(1 - t, 2.4);
+let lastSub = -2;
+function draw(T) {
+  // ---- microentrada ----
+  const wp = eio(seg(T, TM.wipe0, TM.wipe1)); // 0 -> 1
+  const intro = $('intro');
+  intro.style.display = T >= TM.wipe1 ? 'none' : 'block';
+  intro.style.clipPath = 'inset(0 0 ' + (wp * 100) + '% 0)';
+  const ti = ease(seg(T, 0.0, 0.22));
+  $('iT').style.opacity = ti; $('iT').style.transform = 'translateY(' + ((1 - ti) * 18) + 'px)';
+  $('iL').style.width = (660 * eout(seg(T, 0.1, 0.34))) + 'px';
+  const edge = $('edge'); edge.style.opacity = (T >= TM.wipe0 && T < TM.wipe1 + 0.02) ? 1 : 0; edge.style.top = (1920 * (1 - wp) - 3) + 'px';
+  // ---- subtítulos ----
+  let idx = -1; for (let i = 0; i < SUBS.length; i++) if (T >= SUBS[i].t0 - 0.02 && T < SUBS[i].t1) idx = i;
+  const sub = $('sub');
+  if (idx !== lastSub) {
+    lastSub = idx;
+    sub.innerHTML = idx < 0 ? '' : SUBS[idx].words.map((w) => '<span class="w' + (w[1] ? ' e' : '') + '" data-t="' + (w[2] || 0) + '">' + w[0] + '</span>').join('');
+  }
+  if (idx >= 0) {
+    const s = SUBS[idx]; const a = ease(seg(T, s.t0, s.t0 + 0.2)) * (1 - seg(T, s.t1 - 0.12, s.t1));
+    sub.style.opacity = a; sub.style.transform = 'translateY(' + ((1 - ease(seg(T, s.t0, s.t0 + 0.2))) * 10) + 'px)';
+    sub.querySelectorAll('.e').forEach((el) => { const te = parseFloat(el.dataset.t) || s.t0; const k = seg(T, te, te + 0.18); el.style.color = k >= 1 ? '#5b92ff' : 'rgb(' + Math.round(255 + (91 - 255) * k) + ',' + Math.round(255 + (146 - 255) * k) + ',255)'; el.style.fontWeight = 700 + Math.round(100 * k); });
+  } else sub.style.opacity = 0;
+  const scr = $('scrim'); scr.style.opacity = seg(T, TM.wipe0, TM.wipe1) * (1 - seg(T, TM.trans0 + 0.05, TM.trans0 + 0.35));
+  // ---- CTA ----
+  const cu = ease(seg(T, TM.cta, TM.cta + 0.28)); const cta = $('cta');
+  cta.style.opacity = cu * (1 - seg(T, TM.trans0 + 0.02, TM.trans0 + 0.16)); cta.style.transform = 'scale(' + (0.97 + 0.03 * cu) + ')';
+  const cl = $('ctaL'); const lw = 540 * eout(seg(T, TM.cta + 0.1, TM.cta + 0.6)); cl.style.width = lw + 'px'; cl.style.left = (540 - lw / 2) + 'px';
+  cl.style.opacity = T < TM.trans0 ? 1 : 0;
+  // ---- transición: la línea del CTA se extiende y se vuelve línea de la grilla ----
+  const ex = eio(seg(T, TM.trans0, TM.trans0 + 0.2)); const big = $('big');
+  const bw = lw + (1080 - lw) * ex; big.style.width = bw + 'px'; big.style.left = (540 - bw / 2) + 'px';
+  const toGrid = seg(T, TM.trans0 + 0.32, TM.e0 + 0.15);
+  big.style.height = (8 - 6 * toGrid) + 'px'; big.style.top = (1440 - (8 - 6 * toGrid) / 2) + 'px';
+  big.style.opacity = T >= TM.trans0 ? (1 - toGrid) : 0;
+  // ---- cierre oficial ----
+  const out = $('out'); const ob = ease(seg(T, TM.trans0 + 0.08, TM.e0)); out.style.opacity = ob;
+  $('outGrid').style.opacity = 1;
+  const e0 = TM.e0;
+  const lu = eout(seg(T, e0 + 0.1, e0 + 0.65)); $('logo').style.opacity = lu; $('logo').style.transform = 'translateY(' + ((1 - lu) * 26) + 'px)';
+  const cu2 = eout(seg(T, e0 + 0.4, e0 + 0.95)); $('slogan').style.opacity = cu2; $('slogan').style.transform = 'translateY(' + ((1 - cu2) * 26) + 'px)';
+  $('ul').style.width = (96 * eout(seg(T, e0 + 1.0, e0 + 1.5))) + '%';
+  $('url').style.opacity = eout(seg(T, e0 + 1.2, e0 + 1.7));
+}
+window.draw = draw;
+</script></body></html>

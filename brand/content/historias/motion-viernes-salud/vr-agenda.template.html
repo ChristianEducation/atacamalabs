@@ -1,0 +1,91 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><style>
+@font-face{font-family:"DM Sans";src:url("__FONT__") format("woff2");font-weight:100 1000}
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--blue:#0f5ced;--ink:#0b1e3f;--coral:#ff7a59;--green:#1e9d57}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#f3f6fd}
+body{font-family:"DM Sans",sans-serif;-webkit-font-smoothing:antialiased;color:var(--ink)}
+#st{position:absolute;inset:0;overflow:hidden;background:#f3f6fd}
+.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(15,92,237,.10) 2px,transparent 2px),linear-gradient(90deg,rgba(15,92,237,.10) 2px,transparent 2px);background-size:120px 120px}
+#glow{position:absolute;left:100px;top:700px;width:900px;height:900px;border-radius:50%;background:radial-gradient(circle,rgba(88,166,255,.30),rgba(88,166,255,0) 66%)}
+.ttl{position:absolute;left:90px;width:900px;font-weight:700;letter-spacing:-.04em;line-height:1.04;opacity:0}
+.ttl em{font-style:normal;color:var(--blue)}
+#t1{top:250px;font-size:150px}
+#t2{top:205px;font-size:80px}
+#card{position:absolute;left:90px;top:600px;width:900px;background:#fff;border:3px solid #d5e0f6;border-radius:44px;box-shadow:0 26px 60px rgba(26,60,142,.16);opacity:0;overflow:hidden}
+#hd{display:flex;align-items:center;justify-content:space-between;padding:26px 36px 18px}
+#hd .a{font-size:26px;font-weight:700;letter-spacing:.12em;color:var(--blue)}
+#hd .b{font-size:32px;font-weight:700;padding:8px 22px;border-radius:40px;background:rgba(255,122,89,.14);color:var(--coral);white-space:nowrap}
+.row{position:relative;display:flex;align-items:center;gap:22px;height:132px;padding:0 36px;border-top:2px solid #e6edfa;overflow:hidden;opacity:0}
+.row .bg{position:absolute;inset:0;opacity:0}
+.row .t{position:relative;font-size:34px;font-weight:700;color:#7a8aa8;width:104px;flex:none}
+.row .who{position:relative;flex:1;min-width:0}
+.row .n{font-size:42px;font-weight:700;letter-spacing:-.02em;white-space:nowrap}
+.row .s{font-size:28px;color:#6b7c9c;margin-top:2px;white-space:nowrap}
+.row .chip{position:relative;font-size:28px;font-weight:700;padding:10px 22px;border-radius:40px;white-space:nowrap}
+.gap .n{color:#9aa8c3;font-weight:600}
+#end{position:absolute;left:0;top:0;width:1080px;height:1920px;background:#fff;transform:translateY(1920px);box-shadow:0 -30px 80px rgba(15,40,100,.18)}
+#end .grid2{position:absolute;inset:0;background-image:linear-gradient(rgba(15,92,237,.07) 2px,transparent 2px),linear-gradient(90deg,rgba(15,92,237,.07) 2px,transparent 2px);background-size:120px 120px}
+#elogo{position:absolute;left:50%;top:560px;width:760px;transform:translateX(-50%);opacity:0}
+#e1{position:absolute;left:90px;top:760px;width:900px;text-align:center;font-size:70px;font-weight:700;letter-spacing:-.035em;line-height:1.08;opacity:0}
+#e1 em{font-style:normal;color:var(--blue)}
+#ecta{position:absolute;left:150px;top:1120px;width:780px;background:var(--blue);color:#fff;border-radius:60px;text-align:center;font-size:62px;font-weight:700;letter-spacing:-.02em;padding:44px 0;box-shadow:0 30px 70px rgba(15,92,237,.42);opacity:0}
+#eurl{position:absolute;left:0;width:100%;top:1320px;text-align:center;font-size:48px;font-weight:700;color:var(--blue);opacity:0}
+</style></head><body><div id="st"><div class="grid" id="g"></div><div id="glow"></div>
+<div class="ttl" id="t1">¿Te <em>suena?</em></div>
+<div class="ttl" id="t2">Con <em>Atacama Labs</em>, tu agenda se confirma y los huecos se llenan.</div>
+<div id="card"><div id="hd"><span class="a">AGENDA DE MAÑANA</span><span class="b" id="cnt">6 en riesgo</span></div><div id="rows"></div></div>
+<div id="end"><div class="grid2"></div><img id="elogo" src="__LOGO__"><div id="e1">Agentes de IA que <em>confirman, recuerdan y reprograman</em> tus horas por WhatsApp.</div><div id="ecta">Agenda una demo</div><div id="eurl">atacamalabs.cl</div></div>
+</div><script>
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const seg = (T, a, b) => clamp((T - a) / (b - a));
+const eout = (t) => 1 - Math.pow(1 - t, 3);
+const back = (t, s = 1.7) => { t = clamp(t); const c3 = s + 1; return 1 + c3 * Math.pow(t - 1, 3) + s * Math.pow(t - 1, 2); };
+// tiempos de problema (rojo) y de solución (verde) por fila
+const ROWS = [
+  { t: '09:00', n: 'Camila Rojas', s: 'Limpieza', bad: 'Sin confirmar', badAt: 0.9, fixAt: 3.4, fix: 'Confirmada' },
+  { t: '10:00', n: 'Hueco libre', s: 'Sin paciente', gap: true, badAt: 1.1, fixAt: 4.0, n2: 'Paula Herrera', s2: 'Control', fix: 'Reagendada' },
+  { t: '11:00', n: 'Valentina Díaz', s: 'Ortodoncia', bad: 'Canceló', badAt: 1.4, fixAt: 4.6, n2: 'Tomás Lira', s2: 'Control', fix: 'Reagendada' },
+  { t: '12:00', n: 'Matías Vera', s: 'Control', bad: 'Sin confirmar', badAt: 1.7, fixAt: 5.2, fix: 'Confirmada' },
+  { t: '13:00', n: 'Hueco libre', s: 'Sin paciente', gap: true, badAt: 1.9, fixAt: 5.8, n2: 'Josefa Soto', s2: 'Implante', fix: 'Reagendada' },
+  { t: '14:00', n: 'Andrés Muñoz', s: 'Limpieza', bad: 'Sin confirmar', badAt: 2.1, fixAt: 6.4, fix: 'Confirmada' },
+  { t: '15:00', n: 'Sofía Núñez', s: 'Blanqueamiento', badAt: 99, fixAt: 7.0, fix: 'Confirmada' },
+];
+ROWS.forEach((r, i) => { const d = document.createElement('div'); d.className = 'row' + (r.gap ? ' gap' : ''); d.innerHTML = '<div class="bg"></div><div class="t">' + r.t + '</div><div class="who"><div class="n"></div><div class="s"></div></div><div class="chip"></div>'; $('rows').append(d); r.el = d; });
+function bg(T) { $('g').style.backgroundPosition = (T * 10) + 'px ' + (-T * 8) + 'px'; $('glow').style.transform = 'translate(' + (Math.sin(T * 0.8) * 30) + 'px,' + (Math.cos(T * 0.8) * 24) + 'px)'; }
+function draw(T) {
+  bg(T);
+  const c = back(seg(T, 0.1, 0.7), 1.4); $('card').style.opacity = clamp(c * 3); $('card').style.transform = 'translateY(' + ((1 - c) * 120) + 'px)';
+  // título 1 «¿Te suena?»
+  const a1 = back(seg(T, 0.2, 0.7), 1.6), o1 = 1 - seg(T, 2.0, 2.5);
+  $('t1').style.opacity = clamp(a1 * 3) * o1; $('t1').style.transform = 'translateY(' + ((1 - a1) * 50 - seg(T, 2.0, 2.5) * 40) + 'px)';
+  // título 2
+  const a2 = back(seg(T, 2.6, 3.2), 1.5), o2 = 1 - seg(T, 7.0, 7.5);
+  $('t2').style.opacity = clamp(a2 * 3) * o2; $('t2').style.transform = 'translateY(' + ((1 - a2) * 50 - seg(T, 7.0, 7.5) * 30) + 'px)';
+  let risk = 0, ok = 0;
+  ROWS.forEach((r, i) => {
+    const el = r.el, u = back(seg(T, 0.45 + i * 0.1, 0.9 + i * 0.1), 1.4);
+    el.style.opacity = clamp(u * 3); el.style.transform = 'translateX(' + ((1 - u) * 70) + 'px)';
+    const bad = T >= r.badAt && T < r.fixAt, fixed = T >= r.fixAt;
+    if (bad) risk++; if (r.badAt > 90 && !fixed) { /* neutra */ } if (fixed) ok++;
+    const nEl = el.querySelector('.n'), sEl = el.querySelector('.s'), chip = el.querySelector('.chip'), bgEl = el.querySelector('.bg');
+    const swapped = fixed && r.n2;
+    nEl.textContent = swapped ? r.n2 : r.n; sEl.textContent = swapped ? r.s2 : r.s;
+    nEl.style.color = (r.gap && !fixed) ? '#9aa8c3' : '#0b1e3f';
+    const popBad = back(seg(T, r.badAt, r.badAt + 0.35), 2.4), popFix = back(seg(T, r.fixAt, r.fixAt + 0.4), 2.4);
+    if (fixed) { chip.textContent = '✓ ' + r.fix; chip.style.background = '#1e9d57'; chip.style.color = '#fff'; chip.style.opacity = 1; chip.style.transform = 'scale(' + (0.7 + 0.3 * popFix) + ')'; bgEl.style.background = 'rgba(30,157,87,.10)'; bgEl.style.opacity = clamp(popFix * 2); }
+    else if (T >= r.badAt) { chip.textContent = r.bad || 'Hueco libre'; if (r.gap) chip.textContent = 'Hueco libre'; chip.style.background = '#ff7a59'; chip.style.color = '#fff'; chip.style.opacity = 1; chip.style.transform = 'scale(' + (0.7 + 0.3 * popBad) + ')'; bgEl.style.background = 'rgba(255,122,89,.10)'; bgEl.style.opacity = clamp(popBad * 2); if (r.gap) { bgEl.style.background = 'repeating-linear-gradient(135deg,rgba(255,122,89,.10) 0 14px,rgba(255,122,89,.02) 14px 28px)'; } }
+    else { chip.textContent = 'Agendada'; chip.style.background = '#eef2fb'; chip.style.color = '#6b7c9c'; chip.style.opacity = u; chip.style.transform = 'none'; bgEl.style.opacity = 0; }
+  });
+  const cnt = $('cnt');
+  if (ok === ROWS.length) { cnt.textContent = '7 confirmadas'; cnt.style.background = 'rgba(30,157,87,.14)'; cnt.style.color = '#1e9d57'; cnt.style.transform = 'scale(' + (1 + 0.12 * Math.sin(seg(T, 7.4, 7.9) * Math.PI)) + ')'; }
+  else if (T < 0.9) { cnt.textContent = '7 agendadas'; cnt.style.background = '#eef2fb'; cnt.style.color = '#6b7c9c'; } else { cnt.textContent = (T < 2.2 ? ROWS.filter((r) => T >= r.badAt && r.badAt < 90).length : risk) + ' en riesgo'; cnt.style.background = 'rgba(255,122,89,.14)'; cnt.style.color = '#ff7a59'; }
+  // final de marca
+  const e = eout(seg(T, 10.2, 11.0)); $('end').style.transform = 'translateY(' + ((1 - e) * 1920) + 'px)';
+  const l = back(seg(T, 11.1, 11.7), 1.5); $('elogo').style.opacity = clamp(l * 3); $('elogo').style.transform = 'translateX(-50%) translateY(' + ((1 - l) * 50) + 'px)';
+  const t = back(seg(T, 11.6, 12.2), 1.4); $('e1').style.opacity = clamp(t * 3); $('e1').style.transform = 'translateY(' + ((1 - t) * 40) + 'px)';
+  const b = back(seg(T, 12.4, 13.0), 1.8); $('ecta').style.opacity = clamp(b * 3); $('ecta').style.transform = 'scale(' + ((0.8 + 0.2 * b) * (T > 13.2 ? 1 + 0.025 * Math.sin((T - 13.2) * 6) : 1)) + ')';
+  $('eurl').style.opacity = eout(seg(T, 13.0, 13.5));
+}
+window.draw = draw;
+</script></body></html>

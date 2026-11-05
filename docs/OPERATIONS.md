@@ -1,0 +1,226 @@
+# Atacama OS — Operación diaria (Bloque 2)
+
+Cómo Atacama OS se supervisa solo y le habla a Christian por Telegram sin que tenga que abrir el computador. Todo lo de abajo es **de solo lectura sobre GHL/Gmail/n8n**; lo único que escribe son dos tablas de bitácora en Supabase (`ops_alerts`, `ops_runs`). **Nada envía correos, publica, aprueba ni mueve prospectos a Contactado.** `outreach_config.mode` sigue en `off`.
+
+## 1. Arquitectura (una responsabilidad por pieza)
+
+| Pieza | Responsabilidad | Costo IA |
+|---|---|---|
+| **n8n `25 Atacama Ops`** (`OxLcj12RP0qLVLVc`, webhook `POST /webhook/atacama-ops`, header `X-Atacama-Key`) | **Calcula**: lee GHL (oportunidades, tareas), Supabase (mensajes, candidatos, piezas, métricas, señales, alertas, corridas), n8n (workflows y ejecuciones) y arma Daily, urgentes, health, alertas y compuertas | 0 |
+| **Hermes cron `atacama-daily`** (`99484078e80e`) | **Entrega** el Daily por Telegram a las 08:30 Chile | 0 (`--no-agent`) |
+| **Hermes cron `atacama-alerts`** (`f21880a598b8`) | Cada 15 min pregunta a n8n si hay algo que interrumpa; si no, **silencio** | 0 (`--no-agent`) |
+| **Hermes MCP `atacama-os`** (35 herramientas) | Responde preguntas de Christian leyendo la fuente real (`get_daily`, `get_today`, `get_urgent`, `get_health`, `get_stale_opportunities`, `get_radar_new`, `get_content_status`, `get_content_performance`, + las 27 de Bloque M/1) | solo cuando Christian pregunta |
+| **Hermes cron Prospect Radar** (`8421589d0902`) | Investiga prospectos (agente), con **compuerta previa** (`radar_gate.sh`) | ≈ US$0,20 por corrida |
+| **Hermes cron Content Radar** (`a46bd3138a0b`) | Busca señales de contenido (agente), con **compuerta previa** (`content_gate.sh`) | ≈ US$0,15–0,25 por corrida |
+| **GHL / Supabase** | Fuentes de verdad (CRM / datos) | — |
+
+Flujo: `cron Hermes → script bash → atacama_ops_cli.py → POST atacama-ops (n8n) → texto → stdout → Telegram`. Un job `--no-agent` entrega su stdout tal cual; **stdout vacío = no se manda nada**.
+
+## 2. Atacama Daily
+
+- **Hora:** 08:30 Chile (lun–dom). La VPS corre en UTC y Chile cambia de horario, así que el cron dispara a las 11:30/11:45/12:30/12:45 UTC y el script decide con la hora real de Chile (ventana 08:20–09:15) y con un archivo de estado (`/opt/data/state/atacama-daily.last`): **se manda una sola vez por día**; la segunda entrada solo reintenta si la primera falló.
+- **Formato:** `NECESITA TU ACCIÓN` / `PARA REVISAR` / `TODO BIEN`, solo con secciones que tienen contenido; sin novedades → un mensaje corto de 3 líneas. Largo típico < 2.600 caracteres.
+- **Comercial:** respuestas nuevas y por atender, oportunidades estancadas o sin próximo paso, seguimientos vencidos/de hoy (con o sin borrador), tareas vencidas (agrupadas por tipo), prospectos nuevos y Investigado sin decisión.
+- **Contenido:** pendientes de aprobación, programadas, publicadas recientes, snapshots de métricas disponibles (24h/72h/7d), publicaciones con problema, señales candidatas sin pieza.
+- **Sistema:** workflows con falla, ejecuciones fallidas de 24 h, jobs de Hermes, Gmail, disco, modo de envío.
+- **Si n8n no responde:** un mensaje corto avisando que no pudo consultar (y reintenta a los 15 min dentro de la ventana).
+- **Umbrales de «estancada»** (días desde el último cambio de etapa): Nuevo 1 · Respondió 3 · Contactado 9 · Diagnóstico 5 · Propuesta 7 · Seguimiento 7. Investigado no cuenta como estancada (se mide aparte como «sin decisión»). Se ignoran las oportunidades de prueba `Sushi 72` y `Prueba Atacama` (configurable en `OPS_CFG.ignore_opps` del workflow 25).
+
+## 3. Alertas (solo lo que merece interrumpir)
+
+El job corre cada 15 min y **normalmente no dice nada**. Avisa por Telegram únicamente por:
+
+| Alerta | Severidad | Regla |
+|---|---|---|
+| Workflow crítico caído | crítica | inactivo, ≥ 3 errores seguidos o programado sin correr (Gateway, Operator, Outreach, Gmail Sender/Sync, Followup Planner, Lead/Booking Sync, Content Sync) |
+| Gmail sin acceso | crítica | chequeo profundo (≈ 1 vez por hora) falla en credencial de envío o de lectura |
+| Prospect Gateway bloqueado | crítica | ≥ 2 errores en las últimas 3 ejecuciones dentro de 2 h |
+| Respuesta humana o rechazo de un prospecto/cliente | alta (evento) | mensaje inbound clasificado `reply`/`decline`; las autorrespuestas y bajas **no** alertan |
+| Publicación aprobada/programada que no salió | alta | > 60 min sin publicarse o `failed` |
+| Job de Hermes con fallas seguidas | alta | racha ≥ 2 (los pausados no cuentan) |
+| Hermes/Telegram caído, disco ≥ 90 % | alta | estado leído por el script |
+| n8n no responde | única | 3 consultas seguidas (≈ 45 min) sin respuesta |
+
+**Dedupe** (tabla `ops_alerts`, clave única por condición): un evento (respuesta) se avisa **una vez**; una condición crítica se repite a las 12 h hasta 3 veces; una condición que se limpia se resuelve en silencio y, si vuelve, reabre; una alerta guardada pero no confirmada (Telegram falló) se reintenta. Nunca se alerta por una ejecución aislada.
+
+## 4. Salud («¿Está todo funcionando?»)
+
+`get_health` (o el bloque «Sistema» del Daily) revisa **Prospect Gateway, Hermes Operator, Outreach Engine, Gmail Sender, Gmail Sync, Followup Planner, Prospect Radar, Content Radar, Content Engine, Métricas de contenido, Captura de leads y reservas, servidor Hermes** y devuelve `OK / ATENCIÓN / FALLO` con el motivo. Reglas: programado atrasado > 3× su cadencia + 5 min = atención, > 6× + 10 min = fallo; ≥ 3 errores seguidos = fallo; workflow crítico inactivo = fallo; jobs pausados = «pausado (esperado)». `deep=true` además prueba la conexión real a Gmail (solo lectura). **No hay panel web nuevo.**
+
+## 5. Radares (modo seguro)
+
+### Prospect Radar v2
+- **Cadencia:** martes y jueves 13:30 UTC (10:30 Chile). Máximo 2 corridas/semana.
+- **Compuerta (`radar_gate`)**: se salta si hubo una corrida OK en las últimas 20 h, ya hubo 3 esta semana, o hay ≥ 25 prospectos en Investigado sin decisión. Si corre, `max_imports = min(5, 25 − backlog)`. Lo omitido queda registrado y **no cuesta IA** (el agente responde `[SILENT]`).
+- **Entrada única:** Prospect Gateway (analiza → importa solo `create_in_ghl` con regla de señal verdadera: 2 hechos con cita literal + un proceso observable + contacto público; hecho / inferencia / hipótesis separados; dedupe contra Supabase y GHL).
+- **Modo seguro:** solo deja prospectos en GHL **Investigado** con nota y borradores para revisión. No envía, no aprueba, no mueve a Contactado.
+- **Costo:** ≈ US$0,19–0,20 por corrida (Gemini 3.7 Flash), 4–5 min → **≈ US$0,4/semana máx.**; antes del v2 eran ≈ US$0,75 por corrida.
+- Hermes es **una** fuente: cualquier otra IA, archivo o lista entra por la misma puerta (`analyze_prospects` / `import_prospects`).
+
+### Content Radar
+- **Cadencia:** lunes 12:00 UTC (09:00 Chile), una vez por semana.
+- **Compuerta (`content_gate`)**: se salta si corrió hace < 5 días, hay ≥ 3 piezas esperando tu revisión, o ya hay ≥ 5 señales candidatas sin convertir en pieza.
+- Lee primero los aprendizajes del Content Engine (`atacama-content-learnings`), máximo 5 señales verificables (URL abierta + cita literal + fecha), sin noticias genéricas de IA, y las entrega a n8n `13`. **Nada se publica solo**: señal → pieza → `in_review` en GHL Social Planner → **Christian aprueba con Approve** → publica GHL. Roles por canal: Instagram Atacama (visual/producto), LinkedIn Atacama Labs (corporativo/casos), LinkedIn Christian (aprendizajes de fundador); no se duplica texto entre cuentas.
+- **Costo:** la corrida de validación (7-oct) informó US$ 0,03; se presupuesta ≈ US$ 0,15–0,25 por corrida → **≈ US$1/mes** como techo.
+- **Primera corrida real (7-oct):** 8 búsquedas, 10 páginas, 5 señales enviadas; quedan 7 señales candidatas sin pieza (por eso la compuerta del lunes saltará hasta que se conviertan en piezas o se descarten). Nada se creó ni se publicó.
+
+## 6. Métricas y aprendizaje
+
+- Pipeline existente (sin cambios): `14 Content Sync` (cada 30 min, estado de publicación desde GHL), `15 Content Metrics` (cada 3 h, snapshots 24h/72h/7d de me gusta, comentarios y compartidos que GHL entrega), `16 Content Learnings` (`GET /webhook/atacama-content-learnings`).
+- **GHL no entrega impresiones ni alcance por publicación**: el sistema no los inventa. Con pocas piezas (n < 5) todo es tentativo y no se compara Instagram con LinkedIn.
+- Preguntas que Hermes responde con `get_content_performance`: «¿Cómo rindieron las últimas publicaciones?», «¿Qué contenido funcionó mejor?», «¿Qué aprendimos esta semana?», «¿Qué tipo de publicación repetirías?». Los aprendizajes alimentan las sugerencias del Content Radar (ganchos a no repetir, formatos), **nunca publican**. Los primeros aprendizajes llegan 7 días después de publicar (la primera publicación fue el 7-oct).
+
+## 7. Qué corre dónde (inventario de cadencias — sin duplicados)
+
+| Dónde | Qué | Cadencia |
+|---|---|---|
+| **n8n** | 22 Gmail Sender · 23 Gmail Sync | cada 10 min |
+| n8n | 24 Followup Planner | cada 30 min |
+| n8n | Lead Sync · Booking Sync (web) | cada 2 min |
+| n8n | 14 Content Sync / 15 Content Metrics | 30 min / 3 h |
+| n8n | 19 Gateway, 20 Operator, 21 Outreach, 12/13/16 Content, 17 Search, **25 Ops** | por webhook (a pedido) |
+| **Hermes cron** | `atacama-daily` | 1×/día 08:30 Chile |
+| Hermes cron | `atacama-alerts` | cada 15 min (silencioso) |
+| Hermes cron | Prospect Radar | mar y jue 10:30 Chile (con compuerta) |
+| Hermes cron | Content Radar | lunes 09:00 Chile (con compuerta) |
+| Hermes cron | `hermes-health-watch` | **pausado**: su chequeo quedó dentro del Daily/alertas |
+| **GHL** | automatizaciones nativas: tarea al investigar/responder, seguimiento de propuesta, oportunidad ganada | por evento |
+| **Supabase** | `ops_alerts`, `ops_runs` (bitácora de alertas y corridas) | escritura por n8n 25 |
+| ~~n8n `10 Atacama Daily (PREVIEW)`~~ | reemplazado por el 25 | **desactivado** (no borrado) |
+
+Regla: no se agrega un cron nuevo si la tarea ya la hace uno de la tabla; el mismo trabajo no vive a la vez en Hermes y en n8n (n8n calcula, Hermes programa y entrega).
+
+## 8. Costos estimados
+
+| Concepto | Por día | Por semana |
+|---|---|---|
+| Daily + alertas + health + consultas del MCP | US$0 (sin IA; HTTP a n8n/GHL/Supabase) | US$0 |
+| Prospect Radar (≤ 2 corridas con compuerta) | — | ≤ US$0,40 |
+| Content Radar (1 corrida con compuerta) | — | ≤ US$0,25 |
+| Preguntas de Christian a Hermes | centavos por conversación | — |
+| **Total IA operación diaria** | **≈ US$0,1** | **≈ US$0,7** |
+
+Carga extra en n8n: ~96 consultas/día de alertas (cada una lee unas 10 tablas/endpoints, sin escribir salvo cambios de estado) y ~1 chequeo Gmail por hora.
+
+## 9. Operar y revisar
+
+- Probar el Daily sin Telegram: `ssh … 'atacama_ops_cli.py daily --force'` imprime en consola (no entrega). Desde el repo: `node n8n/build/ops.test.mjs` (38) y `node scripts/ops/ops-core.test.mjs` (25) corren offline.
+- Actualizar el workflow: `node n8n/build/ops.mjs` regenera `n8n/atacama-labs-25-atacama-ops.json`, que se despliega por la API de n8n (mismo patrón que los demás).
+- Pausar todo: `hermes cron pause atacama-daily|atacama-alerts|8421589d0902|a46bd3138a0b`.
+- Si se pierde el Daily: revisar `hermes cron runs <id>` y `docs/HERMES-OPERATOR.md`.
+
+## 10. Panel `/ops` y mensajes de Telegram simplificados (7-oct-2026)
+
+**Una sola vista viva, privada y de solo lectura** dentro del Next.js existente: `/ops` (no es una fuente de verdad nueva; solo dibuja lo que calcula n8n `25 Atacama Ops`).
+
+- **Flujo de datos:** `GHL / Supabase / n8n / Hermes → n8n 25 (acción panel) → servidor Next.js → /ops`. El navegador nunca habla con GHL, n8n ni Supabase; el servidor de Next.js guarda una caché de 25 s y, si n8n no responde, muestra lo último con aviso «Sin conexión con n8n».
+- **Secciones:** NECESITA TU ATENCIÓN (respuestas, seguimientos/tareas vencidas, oportunidades sin próximo paso o estancadas, contenido por aprobar, fallas) · PROSPECCIÓN (en Investigado, nuevos de la última corrida, prioridad alta, contactados, últimos prospectos con score y detalle desplegable: ángulo, hecho observado, estado) · CONTENIDO (señales nuevas, por aprobar, programadas, publicadas con métricas de GHL; cada pieza ya es desplegable y quedó el espacio para preview de copy, carruseles y assets) · SISTEMA (OK / atención / fallo por componente, modo de envío, ejecuciones fallidas de 24 h).
+- **Refresco:** al cargar, al volver a la pestaña y cada 45 s mientras está visible. Mobile-first, tokens del sitio, sin JavaScript pesado (`<details>` nativo).
+- **Protección (actualizado):** **PIN de 6 dígitos** (`OPS_PANEL_PASSWORD` debe tener exactamente 6 dígitos; si no, el acceso queda cerrado con el aviso «El acceso aún no está configurado») + cookie firmada de 14 días (httpOnly, `secure` en producción, SameSite=Lax, ruta `/ops`; firmada con un secreto de servidor, no con el PIN, así que cambiar el PIN cierra las sesiones). Login pensado para móvil: logo + seis casillas, teclado numérico, dígitos ocultos, intento automático al completar, error discreto. **Bloqueo por intentos** (guardado en Supabase, `ops_alerts` claves `_lock:*`): 5 fallos en 15 min bloquean ese visitante 5 min, 10 fallos 30 min; 30 fallos en 1 h entre todos bloquean 15 min. Ni el PIN ni la IP en claro se guardan. Sin contraseña configurada el panel queda **cerrado**. Sin sesión no se envía ningún dato. Además: `noindex` (metadata + `X-Robots-Tag`), `Cache-Control: private, no-store`, `Referrer-Policy: no-referrer`, `Disallow: /ops` en robots.txt, sin Google Tag Manager ni banner de cookies en esa ruta.
+- **Variables de entorno (Vercel, solo servidor):** `OPS_PANEL_PASSWORD` (la elige Christian), `N8N_BASE_URL`, `ATACAMA_INGEST_KEY`; opcional `OPS_PANEL_SECRET` para firmar la cookie. Hoy solo existen en `.env.local` (desarrollo): **hay que agregarlas en Vercel y desplegar la rama para que `/ops` exista en producción.**
+- **Código:** `src/app/ops/` (página, login, vista, CSS), `src/lib/ops/` (auth, datos, tipos). Cálculo: `composePanel` en `scripts/ops/ops-core.mjs`.
+
+### Telegram = resumen + enlace
+- **Daily** (08:30): 5–8 líneas — Necesita tu acción / Prospección / Contenido / Sistema — más «Ver Atacama OS → enlace». El detalle largo sigue disponible preguntándole a Hermes (`get_daily`).
+- **Radares:** el agente termina con `[SILENT]` y n8n arma el aviso corto (una sola vez por corrida, vía el job de alertas): `PROSPECT RADAR · N nuevos · N prioridad alta · Top: … · Todos en Investigado. 0 contactados.` / `CONTENT RADAR · N señales nuevas · M candidatas sin pieza · 2 títulos · Nada publicado ni aprobado.`
+- **Alertas:** solo lo que requiere acción, sin IDs ni rutas.
+- **No se envía** (salvo error que requiera acción): IDs de GHL, rutas del servidor, archivos de telemetría, IDs de jobs ni detalles técnicos. El aviso del *file-mutation verifier* quedó apagado en Hermes (`display.file_mutation_verifier: false` en `/opt/data/config.yaml`, respaldo `config.yaml.bak-bloque2-ui`).
+- **El enlace** lo agrega el script de Hermes solo si `ATACAMA_PANEL_URL` está definido en `/opt/data/.env` (por ejemplo `https://atacamalabs.cl/ops`), para no mandar un enlace muerto antes de desplegar el panel.
+- El estado de Hermes que el panel necesita (jobs, disco, gateway) lo guarda el job de alertas cada 15 min en `ops_alerts` (fila `_state:hermes`, nunca se notifica).
+
+## 11. Content Radar → pieza (7-oct-2026) — flujo probado de punta a punta
+
+`señal (content_sources, candidate) → Hermes selecciona y redacta → pieza canónica → validador (engine-core) → renderer + biblioteca de medios de GHL → n8n 12 Content Intake → content_pieces + GHL Social Planner «In Review» → visible en /ops`. No hay sistema paralelo: es el Content Engine existente (Bloques H–J).
+
+- **Prompt de Hermes:** `ops/hermes/content-piece.prompt.txt`. Entradas en la VPS (`/opt/data/content/`): señales candidatas, la guía oficial (`brand/content/ATACAMA-LABS-GUIA-PUBLICACIONES.md`), piezas de ejemplo con el esquema exacto y la lista de temas ya publicados. Hermes decide **qué señales sirven** (máx. 3, con motivo de cada descarte), **cuenta, formato, ángulo, copy y slides**. No usa el canal «LinkedIn Christian» salvo que exista trabajo propio verificable (nunca inventa experiencias del fundador).
+- **Reglas que se aplican solas:** cita literal verificada, claims externos con fuente, ninguna cifra sin respaldo, la llamita solo en portada/cierre, una idea por slide, score ≥ 70. La pieza lleva la `key` de la señal para que n8n la enlace a la fuente verificada.
+- **Revisión humana editorial:** antes de enviarla se contrasta con la fuente; en esta primera corrida se detectó que la fuente decía «en beta» y el texto no, se lo devolvimos a Hermes y lo corrigió él.
+- **Envío:** `node scripts/content/submit.mjs scripts/content/generated/<pieza>.piece.json` (renderiza con Playwright 1080×1350, sube las slides a GHL y llama a n8n 12). Estado final siempre `in_review`; nunca programa ni publica.
+- **En `/ops` (Contenido → Por aprobar):** texto completo del post, slides del carrusel (miniaturas deslizables, tocar para ampliar), por qué se eligió, fuentes, fecha propuesta y enlace a Social Planner. **Aprobar o rechazar se hace en GHL** (`In Review → Approve`); `/ops` es de solo lectura.
+- **Piezas de la prueba:** `scripts/content/generated/2026-10-07-*` (selección de Hermes, carrusel de Instagram sobre compactación de conversaciones —score 79— y texto de LinkedIn Atacama Labs sobre la Account Usage API de Resend —score 80—).
+- **Aprendizaje:** el radar ya lee `atacama-content-learnings` (métricas 24 h/72 h/7 d); no se construyó un subsistema nuevo.
+
+## 12. LinkedIn y protecciones del Bloque 3
+
+- **LinkedIn**: ver [`ATACAMA-OS-ARQUITECTURA-FINAL.md`](ATACAMA-OS-ARQUITECTURA-FINAL.md) §5. En `/ops` aparece como sección propia; el Daily pide acción si hay altas por confirmar o errores de Waalaxy.
+- **Desplegar a la VPS**: siempre con `ops/hermes/deploy-to-vps.sh <archivo> <ruta en /opt/data> ["prueba posterior"]` (valida antes de reemplazar y revierte solo si la prueba falla). Evita comillas simples dentro de la prueba.
+- **Antes de llevar algo a `main`**: `node scripts/run-all-tests.mjs` + `npx tsc --noEmit` + `npx eslint src` + `npx next build`.
+- **Vigilancia**: alerta por correo colgado en «enviando» > 15 min; el panel marca «Hermes · reporte de alertas» si Hermes no reporta en 35/90 min; los workflows 25 y 26 reintentan las escrituras y delatan los fallos de red.
+- **Aviso de operación**: reiniciar el agente (`sudo hermes-restart agent`) corta las corridas en curso; al desplegar una regla de avisos nueva pueden llegar mensajes de Telegram inesperados la primera vez (sembrar `ops_alerts` o anunciarlo antes).
+- **Fechas del Content Engine**: la fecha de cada pieza es una propuesta del sistema (Noticia ≤ 24 h, normal ≤ 48 h, Evergreen ≤ 72 h, hora de Chile, una publicación por cuenta y día; nunca +7 días). Si una pieza llega con fecha lejana, es porque Hermes mandó `schedule_justification`; revisar el aviso `schedule_warnings` en la respuesta del intake.
+
+## 13. Ola A — operación diaria del contenido
+
+- **Cola de revisión:** el tope vive en `content_config.max_pending_in_review` (6). Para cambiarlo: `update content_config set max_pending_in_review = N where id = 1`. Con la cola llena el sistema NO propone piezas por su cuenta; aprobar o rechazar en GHL la libera.
+- **Fuentes RSS:** tabla `content_feeds` (slug, url, topic, priority, enabled). Agregar/quitar sin tocar workflows. La salud (último chequeo, error, racha de fallos) se ve en `/ops` → Contenido → «Entradas y recursos»; 3 fallos seguidos generan alerta.
+- **Competidores:** tabla `content_competitors` (urls públicas). Solo fuentes públicas; nunca copiar. Un competidor sin dominio confirmado no se escanea.
+- **Founder Interview:** decirle a Hermes «entrevístame». Responde por texto o audio; las preguntas salen de `founder_questions` (hechos reales; Hermes puede proponer nuevas con contexto).
+- **Recursos:** páginas en `src/content/marketing/resources.ts` (slug = `content_resources.slug`). Un recurso nuevo nace en borrador y pasa a `active` cuando su URL responde 200.
+- **Carruseles retenidos:** `node scripts/content/render-pending.mjs` (lista) y `--run` (renderiza, sube a GHL y reenvía a revisión).
+- **Pausar Ola A:** `hermes cron pause 3423e7821026 f667ec9b786c a88a78d263f9` (RSS, piezas, competencia); el workflow 28 se desactiva en n8n; `content_config.rss_enabled=false` lo deja inerte sin tocar n8n.
+- **Pruebas:** `node scripts/run-all-tests.mjs` (28 suites). Datos TEST: `is_test=true`, se borran por ID exacto.
+
+## 14. /ops V2 — aprobar desde el celular (8-oct-2026)
+- Entrar a `/ops` (PIN) → menú → **Aprobaciones**. Correos: abrir, editar asunto/cuerpo si hace falta, «Guardar cambios» (no envía) y «Aprobar envío». El envío real sigue las reglas de Gmail (5/día, lun–vie 09:00–17:30 Chile). LinkedIn: aprobar/rechazar altas (tope 10/día). Contenido: aprobar/rechazar; los carruseles se aprueban en GHL.
+- Variable nueva: `OPS_APPROVAL_KEY` (Vercel) = credencial n8n `k1OjUzoBnFXBsffh`. Rotarla: cambiar ambas y redeployar. Sin ella, `/ops` sigue funcionando en solo lectura y avisa que las aprobaciones no están configuradas.
+- Ritmo editorial en `content_config` (objetivo 5/semana, mín. 4, máx. normal 6). Para pausar generación extra basta con llegar a 5.
+- Pruebas: `node scripts/run-all-tests.mjs` (incluye workflow 29) y `node scripts/ops/ui-tests.mjs` (UI con n8n simulado; no toca producción).
+
+## 15. Ola B — operación diaria (8-oct-2026)
+- **Correos en frío:** en `/ops` cada borrador muestra «Calidad del correo» (score, avisos, evidencia, ángulo) y «Versión anterior». Hermes puede preguntar «¿por qué este correo tiene score bajo?» (`lint_draft`) o regenerar con `save_draft(auto=true, evidence=…)`; el guardado manual nunca se bloquea por estilo. Rollback de un correo: «Editar» y pegar la versión anterior.
+- **Contenido:** Hermes llama `editorial_plan` antes de redactar (¿vale la pena? ¿en qué cuenta, formato, visual y CTA?). Recursos: `content_resources(action="opportunity" | "backlog")`; los 5 recursos pendientes de la backlog están en borrador hasta que exista su página.
+- **Visuales:** `request_visual` → `visual_status`; para producir carruseles/slides: `node scripts/media/media-gateway.mjs run` (equipo de Christian). Lo generativo (Higgsfield) está APAGADO.
+- **Recargar Hermes tras desplegar el MCP:** `s6-svc -t /run/service/gateway-default` (y `dashboard`); verificar con `hermes mcp test atacama-os` (54 herramientas). Los prompts de los jobs de cron se guardan EN LÍNEA: tras cambiar un `.prompt.txt` hay que re-aplicarlo con `hermes cron edit <id> --prompt "$(cat archivo)"` ejecutado como el usuario hermes (`bash -c "…\$(cat …)"`), si no el prompt queda vacío.
+- **Pruebas:** `node scripts/run-all-tests.mjs` (35 suites) y `node scripts/ops/ui-tests.mjs`.
+
+
+## 16. Contacto preparado (9-oct-2026)
+Ver [`CONTACTO-PREPARADO.md`](CONTACTO-PREPARADO.md): salidas de cada Investigado, job «Contact Prep», radar a 3 corridas L–V, Control Center en `/ops`, interruptor de envío automático (OFF) y cómo confirmar envíos de LinkedIn.
+
+## 16. Atacama OS v3 · Fase 1 (14-oct-2026): «Hoy», navegación nueva y pausa general
+- **/ops tiene 5 secciones:** Hoy · Redes · Prospección y correo · Resultados · Sistema. Las URLs viejas (`?view=aprobaciones`, `?view=outreach&tab=linkedin`…) siguen funcionando: abren dentro de su sección. Para volver al menú anterior: `content_config.ops_nav_v2 = false`.
+- **Hoy** = bandeja única de decisiones en orden de prioridad (correos → ideas → piezas → respuestas → contactos → alertas → LinkedIn → publicaciones en revisión de GHL), con antigüedad en color. Se calcula en n8n 25 (`panel.v3.inbox`).
+- **Pausa general** (Sistema → Controles, o en Hoy): un toque con confirmación. Escribe `system_state.global_pause`; un disparador de base pone `outreach_config.paused = true` (el Sender y los Followups ya lo respetan) y al reanudar restaura el valor previo. Las 8 compuertas de Hermes devuelven `skip` y el Media Worker no toma trabajos. **No retiene lo ya programado en GHL** (la pantalla lo lista con enlace al Planner). Cada cambio queda en `operator_audit_log` (`ops_pause_set`, nivel 3).
+
+## 17. Atacama OS v3 · Fase 4 (14-oct-2026): Ideas de la semana
+- **Qué hace:** cada lunes 07:30 Chile (10:30 UTC) Hermes propone las ideas de la SEMANA SIGUIENTE para Instagram, LinkedIn página y LinkedIn personal, cada una con su **ficha de 12 campos** y evidencia verificada. Christian decide en **/ops → Redes → Ideas**: Aprobar · Cambiar (Hermes la reescribe) · Descartar (razón → aprendizaje) · Mover de semana · «Mi idea» (nace aprobada; Hermes completa la ficha). Aprobar NO produce ni publica nada: la idea queda guardada hasta que exista el Taller (Fase 2).
+- **Filtros del servidor (n8n 25 `ideas_propose`):** ficha completa, ≥ 1 evidencia verificada (fuente `verified=true`, informe de competencia, recurso activo o pieza propia con métricas), puntaje ≥ 70, sin parecido con las últimas 4 semanas, topes Instagram 7 · LinkedIn página 4 · LinkedIn personal 3 (máx. 12). Lo que no pasa suma a «descartadas por débiles» (visible en /ops).
+- **Piezas:** `scripts/content/ideas-core.mjs` (núcleo), n8n 25 `ideas_list | ideas_gate | ideas_propose | ideas_revise`, n8n 29 `idea_decide | idea_mine`, MCP `ideas_context | propose_ideas | revise_idea`, compuerta `ideas_gate.sh`, prompt `ops/hermes/ideas-week.prompt.txt`, job Hermes **`436164ef07f4` (PAUSADO)**.
+- **Está APAGADO por dos llaves** (las dos son de Christian): `content_config.ideas_enabled = false` y el job pausado. Para la primera corrida supervisada: `update content_config set ideas_enabled = true where id = 1;` y en la VPS `hermes cron resume 436164ef07f4` (o «run» para correrlo una vez en el momento).
+- **Jobs viejos retirados (pausados, no borrados):** «Instagram Semanal» `38f0f3d1d99e` e «Historias del día» `fedb73e89062`. Respaldo: `/opt/data/backups/jobs.json.pre-ideas-v3.20261014`.
+- **Aviso por Telegram:** «IDEAS DE LA SEMANA · N ideas listas para decidir» (una vez por corrida real con ideas, vía `atacama-alerts`).
+
+## 18. Atacama OS v3 · Fase 2 (14-oct-2026): Taller y «Programar»
+- **/ops → Redes → Taller.** Al aprobar una idea nace su pieza: carril **VPS** (en cola → la producción la hace, Fase 3) o **PC con Claude** (video/motion). Cada versión queda en el bucket privado `taller` (`<pieza>/v<n>/<archivo>`) y se ve con URLs firmadas de 1 h. Christian revisa, pide cambios (global o por lámina), aprueba y **programa**.
+- **Programar** = su aprobación (clic con PIN, auditado nivel 3): sube la versión a la biblioteca de GHL (n8n 30 `storage_upload`) y crea el post con la fecha elegida (propuesta: primer hueco libre; feed IG 15:00 sin dos el mismo día; historias 10/14/18; LinkedIn 10:00, uno por cuenta). **Carruseles: quedan EN REVISIÓN** → abrir GHL y dar el último clic (el Taller muestra «falta tu último clic» hasta que el sync lo vea aprobado). Imagen, reel e historia quedan aprobados. Si Christian confirma que el post TEST del 5-dic muestra todas las láminas: `update content_config set taller_carousel_direct_schedule = true where id = 1;` (y verificar el primero con él).
+- **Retirar** = rechazo reversible en GHL (no hay borrado por API). El sync (14) ahora reconoce el post «hijo» que GHL crea al publicar.
+- **Subir una versión desde el PC** (carril pc): subir archivos al bucket `taller` y llamar a n8n 29 `taller_add_version` (lo hace el script de la Fase 5).
+
+## 19. Atacama OS v3 · Fase 3 (14-oct-2026): producción automática en la VPS
+- **Qué hace:** el job «Taller producción» (`4088328668ec`, mar–vie 10:00 y 14:00 Chile, **PAUSADO**) toma una pieza del carril VPS (en cola o con cambios pedidos), escribe su especificación y llama al productor (`/opt/data/scripts/taller_produce.sh`): arte → recorte → composición → control de calidad (texto exacto con la visión de Hermes, 4:5, logo, cuadrícula) → crítica visual → v(n+1) «para revisar» en el Taller. Lámina de prueba primero; topes 3 intentos/lámina, 30 créditos/pieza, 200/semana → «necesita ayuda» + alerta.
+- **Llaves (todas de Christian):** `update content_config set taller_production_enabled = true where id = 1;` + `hermes cron resume 4088328668ec`. Con eso produce con el **generador simulado** (imágenes existentes, 0 créditos). Para arte nuevo con Higgsfield hace falta además autorizarlo explícitamente (`TALLER_HIGGS=1` en `taller_produce.sh`) — hoy BLOQUEADO.
+- **Receta:** `/opt/data/atacama-media/brand/content/recetas/carrusel-ilustrado/RECETA.md` (repo: `brand/content/recetas/`).
+
+## 20. Atacama OS v3 · Fase 6 (14-oct-2026): Prospección y correo
+- **Dónde:** /ops → Prospección y correo: Hoy · Borradores · Cola · Enviados y respuestas · Seguimientos · Embudo · Radar · Falta contacto · Salud · LinkedIn.
+- **Cambiar tope/ventana/seguimientos:** «Hoy → Controles» (confirmación + historial). Nada se envía desde /ops: el motor sale en su ventana con su tope.
+- **«Pega tu versión»:** en cada borrador. Marca «editado por Christian» → lo automático (Contact Prep) no lo reemplaza por 72 h.
+- **Pares de aprendizaje (S6):** `outreach_messages.learning_pair = true` (12). Un trigger impide borrarlos.
+- **Revertir:** workflows con los respaldos de `backups/2026-10-14/n8n/` (comando impreso al desplegar).
+
+## 21. Atacama OS v3 · Fase 7 (15-oct-2026): Sistema
+- `/ops?view=historial|alertas|costos|biblioteca`; «Mi semana» en Hoy. Lecturas en 25: `history_list`, `week_status`. Escritura en 29: `week_ritual_set` (auditada).
+- Saldo Higgsfield: `/opt/data/scripts/higgs.sh status --json` → cache `/opt/data/state/higgs-status.json` (1 h), leído por `hermes_state()`.
+- Alertas informativas = solo panel (`meta.panel_only`); críticas/importantes = Telegram.
+- Biblioteca: si cambian `brand/` o recetas, correr `node scripts/ops/build-library-index.mjs` (las pruebas fallan con `--check` si quedó desactualizado).
+
+## 22. Atacama OS v3 · Fase 8 (15-oct-2026): Resultados y aprendizaje
+- `/ops?view=resultados|aprendizaje|iteraciones`. Lecturas 25: `results_view`, `learning_context`; escritura 25 (Hermes): `learning_propose` (solo con `learning_enabled=true` o `test=true`). Escrituras 29: `piece_contact`, `learning_decide`.
+- Encender el aprendizaje (solo Christian): `update content_config set learning_enabled = true where id = 1;` + `hermes cron resume 93c607085f8b`. Apagar: al revés.
+- Muestra mínima: `content_config.learning_min_sample` (30).
+
+## 23. Atacama OS v3 · Fase 5 (15-oct-2026): Motion v2 en el PC
+- Cola: `/taller-pendientes` o `node scripts/taller/taller-pendientes.mjs`.
+- Exportar: `node scripts/motion/multiformat.mjs <composicion.html> --out <dir>` (contrato `?format=` + `atacamaSeek(t)`).
+- Calidad: `node scripts/motion/quality-gate.mjs prepare <video> --twin <render2>` → mirar imágenes → `grade <dir> --scores notas.json`.
+- Subir: `node scripts/taller/taller-add-version.mjs --piece <id> --file <video> --qa <qa.json> --caption "…"` (≤ 10 MB por archivo).

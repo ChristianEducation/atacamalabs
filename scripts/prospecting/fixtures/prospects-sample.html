@@ -1,0 +1,59 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Fixture sintético — fichas de prospectos (datos ficticios)</title></head><body><main><div class="prospects">
+<!-- Formato A: «Prospección actual» (señal / oferta / buyer / una acción) -->
+<article class="prospect" data-source="Prospección actual" data-name="hotel ejemplo sur"><div class="source">Prospección actual</div><div class="num">001</div><h2>Hotel Ejemplo Sur</h2><div class="body"><span class="tag">1 · Hotel boutique</span><h2>Hotel Ejemplo Sur</h2><p><b>Puerto Varas</b> · <a href="https://hotelejemplosur.invalid/">hotelejemplosur.invalid</a> · <a href="mailto:reservas@hotelejemplosur.invalid">reservas@hotelejemplosur.invalid</a> [1]</p><h3>Señal / problema</h3><p>Hotel boutique con canal propio y correo visible. Inferencia: consultas repetitivas de fechas y políticas; hipótesis: seguimiento manual fuera de horario.</p><h3>Oferta / piloto</h3><p>Agente de reservas: FAQ + captura de fechas/habitación + derivación. Piloto 24–72h sin disponibilidad en tiempo real.</p><h3>Buyer / precio</h3><p>Dueño o gerente de reservas (por validar). Esencial: $297.000 implementación + $149.000/mes.[11]</p><div class="next"><b>Una acción:</b> enviar email a reservas@hotelejemplosur.invalid y pedir al responsable de reservas.</div></div></article>
+<article class="prospect" data-source="Prospección actual" data-name="posada sin contacto"><div class="source">Prospección actual</div><div class="num">002</div><h2>Posada Sin Contacto</h2><div class="body"><span class="tag">2 · Hotel</span><h2>Posada Sin Contacto</h2><p><b>Pucón</b> · <a href="https://posadasincontacto.invalid/">posadasincontacto.invalid</a> [2]</p><h3>Señal / problema</h3><p>Sitio con reservas y restaurante. Inferencia: solicitudes por varios canales; hipótesis: derivación manual.</p><h3>Oferta / piloto</h3><p>Agente multicanal de reservas y eventos que entrega un brief al equipo.</p><h3>Buyer / precio</h3><p>Gerente de operaciones. Operación: $497.000 implementación + $279.000/mes.[11]</p><div class="next"><b>Una acción:</b> llamar a reservas y pedir el contacto del responsable.</div></div></article>
+<!-- Formato B: «Misión 2 — cerrables» (secciones con <b> y evidencia) -->
+<article class="prospect" data-source="Misión 2 — cerrables" data-name="clinica dental ejemplo"><div class="source">Misión 2 — cerrables</div><div class="num">011</div><h2>Clínica Dental Ejemplo</h2><div class="body"><header><div><span class="num">#1</span><h3>Clínica Dental Ejemplo</h3><p class="meta">Providencia, Santiago · Clínica odontológica y ortodoncia · <a href="https://clinicadentalejemplo.invalid/" rel="noreferrer" target="_blank">sitio</a></p></div><b class="score">19/21</b></header><div class="grid"><section><b>Proceso visible</b><p>El paciente elige servicio y sucursal, deja sus datos y agenda una hora.</p></section><section><b>Dolor</b><p>Hecho: el sitio ofrece varias especialidades, dos sucursales y formularios para agendar con botón de WhatsApp. Hipótesis comercial: recepción repite preguntas sobre tratamiento, sucursal y horarios antes de convertir la consulta en hora.</p></section><section><b>Evidencia</b><ul><li>https://clinicadentalejemplo.invalid/ — sitio oficial; declara servicios de ortodoncia, dos sucursales y «Agendar hora».</li><li>https://clinicadentalejemplo.invalid/contacto — publica contacto@clinicadentalejemplo.invalid y botón WhatsApp.</li></ul></section><section><b>Buyer / contacto</b><p>Directora o encargada de admisión (buyer exacto NO VERIFICADO)</p><p>WhatsApp: +56 9 5555 0101<br/>Tel: +56 2 2555 0102<br/>Email: Asunto: Una idea para Clínica Dental Ejemplo
+
+Hola, ¿cómo estás?
+
+Vi que Clínica Dental Ejemplo atiende varias especialidades y recibe solicitudes para agendar por web y WhatsApp. Se podría probar un agente que identifique tratamiento y sucursal y entregue cada consulta lista para agenda.
+
+¿Te muestro la idea en 15 minutos?
+
+Christian</p></section><section><b>Agente propuesto</b><p>Agente de recepción dental no clínica: identifica tratamiento y sucursal, responde información administrativa y entrega enlace o derivación.</p></section><section><b>Piloto 24–72h</b><p>WhatsApp/formulario con FAQ de 3 tratamientos, captura de datos y derivación por email.</p></section></div></div></article>
+<!-- Formato C: «Antofagasta — Google Maps» (meta + details + .msg) -->
+<article class="prospect" data-source="Antofagasta — Google Maps" data-name="centro medico ejemplo norte"><div class="source">Antofagasta — Google Maps</div><div class="num">041</div><h2>Centro Médico Ejemplo Norte</h2><div class="body">
+<div class="card-head"><span class="rank">#9</span><h3>Centro Médico Ejemplo Norte</h3></div>
+<div class="meta">
+<div><b>Puntaje:</b> 18/24   <b>Rating:</b> n/d   <b>Reseñas:</b> n/d</div>
+<div><b>Sector:</b> Centro / Calle Ficticia</div>
+<div><b>Dirección:</b> Calle Ficticia 1201, Antofagasta   <b>Zona:</b> Centro</div>
+<div><b>Categoría:</b> Centro médico / clínica</div>
+<div><b>Tel:</b> +56 55 255 0199   <b>WhatsApp:</b> —   <b>Web:</b> <a href="https://centromedicoejemplonorte.invalid/" target="_blank">https://centromedicoejemplonorte.invalid/</a></div>
+</div>
+<details><summary>Problema, agente y financiero</summary>
+<p><b>Hecho:</b> Nominatim/OSM registra el centro médico con dirección Calle Ficticia 1201, teléfono y sitio web oficial.</p>
+<p><b>Hipótesis:</b> La administración coordina volumen de horas y cobranza de prestaciones; el agendamiento es un proceso repetitivo plausible.</p>
+<p><b>Agente:</b> Agente administrativo: recibe solicitud de hora → identifica especialidad → responde disponibilidad aprobada → deriva a agenda.</p>
+</details>
+<details><summary>Contacto y mensaje</summary>
+<p><b>Decisor:</b> Administración / dirección médica (no identificado públicamente)</p>
+<p><b>Cómo contactar:</b> Teléfono de la ficha; validar canal de reservas antes del contacto</p>
+<div class="msg"><b>WhatsApp:</b><br/>Hola, soy Christian de Atacama Labs. Vi Centro Médico Ejemplo Norte en Google Maps. Se puede probar un agente que ordene solicitudes de hora antes de recepción.</div>
+</details>
+</div></article>
+<article class="prospect" data-source="Antofagasta — Google Maps" data-name="veterinaria fantasma"><div class="source">Antofagasta — Google Maps</div><div class="num">042</div><h2>Veterinaria Fantasma</h2><div class="body">
+<div class="card-head"><h3>Veterinaria Fantasma</h3></div>
+<div class="meta">
+<div><b>Puntaje:</b> 14/24   <b>Rating:</b> n/d   <b>Reseñas:</b> n/d</div>
+<div><b>Sector:</b> Norte / Pedro Aguirre Cerda</div>
+<div><b>Categoría:</b> Clínica veterinaria</div>
+<div><b>Tel:</b> —   <b>WhatsApp:</b> —   <b>Web:</b> <a href="—" target="_blank">—</a></div>
+</div>
+<details><summary>Problema, agente y financiero</summary>
+<p><b>Hecho:</b> Google Maps tiene una ficha de búsqueda nominal para Veterinaria Fantasma en Antofagasta; dirección y reseñas no quedaron capturadas.</p>
+<p><b>Hipótesis:</b> La recepción gestiona preguntas repetitivas de horas y vacunas; validar.</p>
+</details>
+</div></article>
+<!-- Formato D: «Misión 1 — 50 prospectos» (grid de secciones h3) -->
+<article class="prospect" data-source="Misión 1 — 50 prospectos" data-name="inmobiliaria ejemplo"><div class="source">Misión 1 — 50 prospectos</div><div class="num">091</div><h2>Inmobiliaria Ejemplo</h2><div class="body">
+<div class="card-head"><div><span class="num">#1</span><h2>Inmobiliaria Ejemplo</h2></div><span class="score">15/18</span></div>
+<div class="meta"><b>Vertical/nicho Lety:</b> inmobiliaria residencial; nicho Lety: captación y visitas.<br/><b>Ciudad / web / contacto:</b> Santiago, con proyectos en varias comunas · https://www.inmobiliariaejemplo.invalid · contacto +56 2 2555 0103</div><div class="grid"><section><h3>Proceso</h3><p>El visitante debe elegir proyecto, filtrar unidades y avanzar a cotización o agenda de visita.</p></section><section><h3>Problema / oportunidad</h3><p>Hecho: el sitio expone proyectos, filtros y formularios de cotización. HIPÓTESIS: el equipo comercial recibe consultas repetidas sobre precio y disponibilidad.</p></section>
+<section><h3>Agente profesional</h3><p>Recibe consulta por web/WhatsApp, identifica proyecto y presupuesto, y agenda la visita.</p></section></div><div class="buyer"><b>Buyer probable / actor afectado:</b> Gerente comercial o jefe de salas de venta (inferencia).</div><div class="angle"><b>Ángulo / mensaje:</b> “Un agente que califique consultas y agende visitas sin saturar a ventas.”</div>
+</div></article>
+<article class="prospect" data-source="Misión 1 — 50 prospectos" data-name="retail gigante"><div class="source">Misión 1 — 50 prospectos</div><div class="num">092</div><h2>Retail Gigante</h2><div class="body">
+<div class="card-head"><div><span class="num">#2</span><h2>Retail Gigante</h2></div><span class="score">12/18</span></div>
+<div class="meta"><b>Vertical/nicho Lety:</b> e-commerce / retail.<br/><b>Ciudad / web / contacto:</b> Operación nacional · https://www.retailgigante.invalid · catálogo y ayuda al comprador.</div><span class="flag">enterprise/secondary</span><div class="grid"><section><h3>Proceso</h3><p>Navegación de catálogo, cuenta y pedidos.</p></section><section><h3>Problema / oportunidad</h3><p>Hecho: el sitio expone catálogo amplio. HIPÓTESIS: atención recibe consultas sobre disponibilidad y despacho.</p></section></div><div class="buyer"><b>Buyer probable / actor afectado:</b> Gerencia de experiencia cliente (inferencia).</div>
+</div></article>
+</div></main></body></html>

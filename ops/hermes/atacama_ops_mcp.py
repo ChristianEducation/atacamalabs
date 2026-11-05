@@ -1,0 +1,836 @@
+#!/usr/bin/env python3
+"""Atacama OS · herramientas de Hermes (servidor MCP por stdio).
+
+Hermes opera Atacama OS SOLO a través de esto. Cada herramienta hace un POST al workflow n8n «20 Hermes Operator», que:
+  - aplica la política de permisos (nivel 1 directo · nivel 2 orden explícita · nivel 3 confirmación y hoy NO ejecuta),
+  - llama al Prospect Gateway (workflow 19) o lee GHL de forma acotada,
+  - deja auditoría («Christian vía Hermes», herramienta, entidad, resultado, request_id).
+Hermes NO tiene el token de GHL. Aquí solo existe la clave de ingesta de n8n (ATACAMA_INGEST_KEY en /opt/data/.env), que nunca se imprime.
+Esta versión NO envía mensajes: send_email / send_whatsapp / publish_content / delete_record devuelven la solicitud de confirmación.
+"""
+import json
+import os
+import re
+import urllib.error
+import urllib.parse
+import urllib.request
+import uuid
+
+try:  # mcp >= 2.0
+    from mcp.server.mcpserver import MCPServer as _Server
+except ImportError:  # mcp 1.x
+    from mcp.server.fastmcp import FastMCP as _Server
+
+ENV_PATH = os.environ.get("ATACAMA_OPS_ENV", "/opt/data/.env")
+ALLOWED_DIRS = ("/opt/data/", "/tmp/")
+MAX_FILE_BYTES = 1_500_000
+
+mcp = _Server("atacama-os")
+_ISSUED = set()
+
+
+def _env():
+    vals = {}
+    try:
+        with open(ENV_PATH, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                vals[k.strip()] = v.strip().strip('"').strip("'")
+    except OSError:
+        pass
+    for k in ("ATACAMA_INGEST_KEY", "ATACAMA_INGEST_URL", "ATACAMA_OPERATOR_URL"):
+        if os.environ.get(k):
+            vals[k] = os.environ[k]
+    return vals
+
+
+def _operator_url(e):
+    if e.get("ATACAMA_OPERATOR_URL"):
+        return e["ATACAMA_OPERATOR_URL"]
+    p = urllib.parse.urlparse(e.get("ATACAMA_INGEST_URL", ""))
+    if not p.scheme or not p.netloc:
+        return ""
+    return f"{p.scheme}://{p.netloc}/webhook/atacama-hermes-operator"
+
+
+def _call(tool, params, order_text="", confirmation_code="", request_id=""):
+    e = _env()
+    url, key = _operator_url(e), e.get("ATACAMA_INGEST_KEY", "")
+    if not url or not key:
+        return json.dumps({"ok": False, "error": "config", "message": "Falta ATACAMA_INGEST_URL / ATACAMA_INGEST_KEY en el entorno de Hermes."}, ensure_ascii=False)
+    # Solo se acepta un request_id que este servidor emitió (reintento de la MISMA acción tras un error); cualquier otro valor inventado por el modelo se ignora.
+    rid = request_id.strip() if request_id.strip() in _ISSUED else "hm-" + uuid.uuid4().hex[:18]
+    _ISSUED.add(rid)
+    if len(_ISSUED) > 500:
+        _ISSUED.clear()
+        _ISSUED.add(rid)
+    body = {"tool": tool, "request_id": rid, "params": {k: v for k, v in params.items() if v not in (None, "", [], {})}}
+    if order_text:
+        body["order_text"] = order_text
+    if confirmation_code:
+        body["confirmation_code"] = confirmation_code
+    req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), method="POST",
+                                 headers={"Content-Type": "application/json", "X-Atacama-Key": key, "User-Agent": "hermes-atacama-ops/1.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=170) as r:
+            raw = r.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as ex:
+        return json.dumps({"ok": False, "error": f"http_{ex.code}", "message": "Atacama OS rechazó la solicitud (HTTP %d)." % ex.code, "request_id": rid}, ensure_ascii=False)
+    except Exception as ex:  # red caída, timeout…
+        return json.dumps({"ok": False, "error": "red", "message": "No pude contactar a Atacama OS: %s" % type(ex).__name__, "request_id": rid}, ensure_ascii=False)
+    try:
+        resp = json.loads(raw)
+    except ValueError:
+        return json.dumps({"ok": False, "error": "respuesta_invalida", "message": raw[:300], "request_id": rid}, ensure_ascii=False)
+    return json.dumps(resp, ensure_ascii=False)
+
+
+def _read_file(path):
+    """Lee un archivo SOLO dentro de /opt/data o /tmp (≤1,5 MB). Devuelve (contenido, tipo) o lanza ValueError."""
+    real = os.path.realpath(path)
+    if not any(real.startswith(d) for d in ALLOWED_DIRS):
+        raise ValueError("Solo puedo leer archivos dentro de /opt/data o /tmp.")
+    if not os.path.isfile(real):
+        raise ValueError("No existe el archivo: %s" % path)
+    if os.path.getsize(real) > MAX_FILE_BYTES:
+        raise ValueError("El archivo supera 1,5 MB: divídelo.")
+    with open(real, "r", encoding="utf-8", errors="replace") as f:
+        content = f.read()
+    ext = real.rsplit(".", 1)[-1].lower() if "." in real else ""
+    return content, {"html": "html", "htm": "html", "csv": "csv", "json": "json", "md": "text", "txt": "text"}.get(ext, "")
+
+
+def _input_params(file_path, text, urls, source_name):
+    p = {"source_name": source_name}
+    if file_path:
+        try:
+            p["file_content"], p["file_type"] = _read_file(file_path)
+        except ValueError as ex:
+            return None, json.dumps({"ok": False, "error": "archivo", "message": str(ex)}, ensure_ascii=False)
+        if not p.get("source_name"):
+            p["source_name"] = os.path.basename(file_path)
+    if text:
+        p["text"] = text
+    if urls:
+        p["urls"] = urls
+    return p, None
+
+
+@mcp.tool()
+def analyze_prospects(file_path: str = "", text: str = "", urls: list[str] = [], source_name: str = "", request_id: str = "") -> str:
+    """Analiza prospectos (SOLO LECTURA: no escribe nada en GHL ni Supabase) desde un archivo HTML/CSV/JSON/texto (file_path dentro de /opt/data o /tmp), texto pegado o URLs. Deja un análisis NUMERADO que luego se puede importar ('mete las buenas', 'mete la 27')."""
+    p, err = _input_params(file_path, text, urls, source_name)
+    return err or _call("analyze_prospects", p, request_id=request_id)
+
+
+@mcp.tool()
+def import_prospects(from_analysis: str = "", numbers: list[int] = [], select: str = "", file_path: str = "", text: str = "", urls: list[str] = [], source_name: str = "", request_id: str = "") -> str:
+    """Mete prospectos a Atacama OS (Supabase + GHL etapa Investigado) pasando por el Prospect Gateway: solo entran los que cumplen el criterio (score ≥60 con canal, señal e hipótesis, sin duplicado). Usa from_analysis='last' para importar del último análisis (select='eligible' = las buenas, 'all' = todas, o numbers=[3,5]); o pasa file_path/text/urls para importar directo. Máximo 25 por llamada. NO envía mensajes."""
+    if from_analysis or numbers or select:
+        p = {"from_analysis": from_analysis or "last", "numbers": numbers, "select": select, "source_name": source_name}
+    else:
+        p, err = _input_params(file_path, text, urls, source_name)
+        if err:
+            return err
+    return _call("import_prospects", p, request_id=request_id)
+
+
+@mcp.tool()
+def get_analysis(request_id: str = "") -> str:
+    """Muestra el último análisis numerado (empresa, score, banda, decisión)."""
+    return _call("get_analysis", {}, request_id=request_id)
+
+
+@mcp.tool()
+def get_prospect(target: str, request_id: str = "") -> str:
+    """Ficha de un prospecto. target = número del último análisis ('27'), nombre, dominio o correo."""
+    return _call("get_prospect", {"target": target}, request_id=request_id)
+
+
+@mcp.tool()
+def list_prospects(status: str = "", band: str = "", min_score: int = 0, source: str = "", limit: int = 20, request_id: str = "") -> str:
+    """Lista prospectos guardados (status: accepted|in_ghl|contacted|archived|discarded; band: alta|valida|pendiente|archivo)."""
+    return _call("list_prospects", {"status": status, "band": band, "min_score": min_score or None, "source": source, "limit": limit}, request_id=request_id)
+
+
+@mcp.tool()
+def list_pending_prospects(scope: str = "ghl", limit: int = 25, request_id: str = "") -> str:
+    """Prospectos pendientes de contactar: scope='ghl' (en Investigado), 'supabase' (aceptados aún sin GHL) o 'both'."""
+    return _call("list_pending_prospects", {"scope": scope, "limit": limit}, request_id=request_id)
+
+
+@mcp.tool()
+def prepare_outreach(target: str, request_id: str = "") -> str:
+    """Prepara borradores de email y WhatsApp para un prospecto (NO los envía). target = número, nombre, dominio o correo."""
+    return _call("prepare_outreach", {"target": target}, request_id=request_id)
+
+
+@mcp.tool()
+def log_manual_contact(target: str, channel: str, note: str = "", outcome: str = "", follow_up_days: int = 0, request_id: str = "") -> str:
+    """Registra un contacto que Christian hizo FUERA de Atacama OS (channel: Instagram | WhatsApp | teléfono | email | otro). Mueve la oportunidad a Contactado y deja nota (+ tarea de seguimiento). Atacama OS no envía nada."""
+    return _call("log_manual_contact", {"target": target, "channel": channel, "note": note, "outcome": outcome, "follow_up_days": follow_up_days or None}, request_id=request_id)
+
+
+@mcp.tool()
+def add_note(target: str, note: str, request_id: str = "") -> str:
+    """Agrega una nota al contacto del prospecto en GHL."""
+    return _call("add_note", {"target": target, "note": note}, request_id=request_id)
+
+
+@mcp.tool()
+def move_opportunity(target: str, stage: str, note: str = "", request_id: str = "") -> str:
+    """Mueve la oportunidad a otra etapa: Nuevo, Investigado, Contactado, Respondió, Diagnóstico, Propuesta o Seguimiento. Solo con orden explícita de Christian."""
+    return _call("move_opportunity", {"target": target, "stage": stage, "note": note}, request_id=request_id)
+
+
+@mcp.tool()
+def create_followup(target: str, due_date: str = "", days: int = 0, title: str = "", note: str = "", request_id: str = "") -> str:
+    """Crea una tarea de seguimiento. due_date en formato AAAA-MM-DD (calcula la fecha real, p.ej. 'el viernes') o days = días hábiles desde hoy."""
+    return _call("create_followup", {"target": target, "due_at": due_date, "days": days or None, "title": title, "note": note}, request_id=request_id)
+
+
+@mcp.tool()
+def get_open_opportunities(stage: str = "", limit: int = 30, request_id: str = "") -> str:
+    """Oportunidades abiertas en GHL, opcionalmente de una etapa (p.ej. 'Investigado')."""
+    return _call("get_open_opportunities", {"stage": stage, "limit": limit}, request_id=request_id)
+
+
+@mcp.tool()
+def get_tasks(limit: int = 30, request_id: str = "") -> str:
+    """Tareas pendientes en GHL."""
+    return _call("get_tasks", {"limit": limit}, request_id=request_id)
+
+
+@mcp.tool()
+def force_import_prospect(target: str, reason: str, christian_order: str, request_id: str = "") -> str:
+    """NIVEL 2 — FORCE_IMPORT: mete un prospecto a GHL aunque su score sea bajo. SOLO si Christian lo ordenó explícitamente en este mensaje (p.ej. 'mete la empresa 27 aunque tenga score bajo'). christian_order = sus palabras EXACTAS; reason = motivo (queda registrado). Nunca inventes la orden."""
+    return _call("force_import_prospect", {"target": target, "reason": reason}, order_text=christian_order, request_id=request_id)
+
+
+@mcp.tool()
+def discard_prospect(target: str, reason: str, christian_order: str, request_id: str = "") -> str:
+    """NIVEL 2 — Descarta un prospecto. SOLO con orden explícita de Christian (christian_order = sus palabras exactas); reason = motivo."""
+    return _call("discard_prospect", {"target": target, "reason": reason}, order_text=christian_order, request_id=request_id)
+
+
+@mcp.tool()
+def save_draft(target: str, subject: str = "", body: str = "", to_email: str = "", kind: str = "initial", override_to: bool = False, auto: bool = False, evidence: list[str] = [], insight: str = "", friction: str = "", angle: str = "", cta_reason: str = "", reason: str = "", request_id: str = "") -> str:
+    """Crea o edita el borrador de CORREO de un prospecto GUARDADO en Atacama OS (NO lo envía). kind: initial | followup_1 | followup_2 | reply (reply requiere body). Editar un correo ya aprobado anula la aprobación. El destinatario debe ser un correo publicado por la empresa.
+    PLAYBOOK DE CORREOS OUTBOUND v1.0 (aprobado por Christian el 13-oct-2026; léelo completo en /opt/data/content/playbook-correos.md antes de redactar un primer correo): la investigación es INVISIBLE (personaliza el problema, no la evidencia de que investigaste); saludo «Estimado/Estimada <nombre>,» solo con nombre confiable, si no «Estimado equipo de <empresa>,» (nunca «Hola»); 70–120 palabras, UN solo problema, asunto de 3–7 palabras que parezca un correo real (ej. «solicitudes de arriendo antes de cotizar», NO «Una idea para X»); redacción variada, no plantilla (evita «Vi que…», «Revisando su sitio…», «Imagino que…» como fórmula); Atacama aparece como agentes que TRABAJAN dentro del proceso, no chatbots; cierre = pregunta conversacional de baja presión sobre ese proceso u otro que les quite tiempo; PROHIBIDO ofrecer demo, ejemplo, prueba, video, propuesta, auditoría o reunión («¿te mando un ejemplo?», «¿agendamos 15 minutos?»); sin cifras ni resultados que no puedas respaldar. Los seguimientos deben AGREGAR algo (dato, versión más simple, pregunta distinta), nunca «solo retomo».
+    Si el borrador lo generas TÚ de forma automática (radar, lote), pasa auto=true y evidence (1–3 hechos verificados del prospecto, uno por elemento) más insight/friction/angle/cta_reason (una línea cada uno): el sistema lo evalúa y NO lo guarda si incumple el playbook (saludo distinto de «Estimado…» u oferta de demo/ejemplo/reunión → invalid_draft) o si el score (0–100, contra los demás borradores) queda bajo 70; te devuelve los motivos: reescríbelo y vuelve a llamar. Si Christian te pidió el texto explícitamente, no uses auto. reason = por qué se reescribe (queda en el historial de versiones del mismo borrador)."""
+    return _call("save_draft", {"target": target, "subject": subject, "body": body, "to_email": to_email, "kind": kind, "override_to": override_to or None, "auto": auto or None, "evidence": evidence or None, "insight": insight or None, "friction": friction or None, "angle": angle or None, "cta_reason": cta_reason or None, "reason": reason or None}, request_id=request_id)
+
+
+@mcp.tool()
+def lint_draft(target: str, kind: str = "initial", subject: str = "", body: str = "", request_id: str = "") -> str:
+    """Explica el score de calidad (0–100) de un correo en frío de un prospecto: avisos con su peso, premios, parecido con otros borradores y enviados, estructura y tipo de CTA. Sin subject/body evalúa el borrador guardado; con ellos evalúa un texto propuesto SIN guardarlo. Solo lectura. Úsalo para «muéstrame por qué este correo tiene score bajo» o para revisar un texto antes de guardarlo."""
+    return _call("lint_draft", {"target": target, "kind": kind, "subject": subject or None, "body": body or None}, request_id=request_id)
+
+
+@mcp.tool()
+def get_draft(target: str, request_id: str = "") -> str:
+    """Correos pendientes (borrador/aprobado), historial y respuestas de un prospecto, con el cuerpo completo de lo pendiente."""
+    return _call("get_draft", {"target": target}, request_id=request_id)
+
+
+@mcp.tool()
+def approve_outreach(target: str, kind: str = "", confirmation_code: str = "", christian_order: str = "", request_id: str = "") -> str:
+    """NIVEL 3 — Aprueba el ENVÍO de un borrador. PASO 1: llama sin código → devuelve el correo EXACTO (destinatario, asunto, cuerpo) y un confirmation_code: muéstraselo a Christian completo y espera su confirmación. PASO 2 (solo si Christian confirma en su mensaje): vuelve a llamar con confirmation_code y christian_order = sus palabras exactas. Queda aprobado y el sistema lo envía solo en la próxima ventana (lun-vie 09:00-17:30) si el envío está activado; tú NUNCA envías. Si editas el correo después, hay que repetir los dos pasos."""
+    return _call("approve_outreach", {"target": target, "kind": kind}, order_text=christian_order, confirmation_code=confirmation_code, request_id=request_id)
+
+
+@mcp.tool()
+def cancel_outreach(target: str, kind: str = "", request_id: str = "") -> str:
+    """Cancela un correo pendiente (borrador o aprobado) antes de que salga."""
+    return _call("cancel_outreach", {"target": target, "kind": kind}, request_id=request_id)
+
+
+@mcp.tool()
+def get_followups(filter: str = "due", request_id: str = "") -> str:
+    """Seguimiento comercial de los prospectos con primer correo enviado: fechas del +3 y +7 días hábiles, estado (active / done / stopped:motivo), si respondió y el estado de cada borrador de seguimiento. filter=due (por defecto) muestra solo lo que tiene algo pendiente; filter=all muestra todos. Los seguimientos nunca se envían solos: son borradores que Christian aprueba con approve_outreach(kind=followup_1|followup_2)."""
+    return _call("get_followups", {"filter": filter}, request_id=request_id)
+
+
+@mcp.tool()
+def list_outreach(filter: str = "", limit: int = 20, request_id: str = "") -> str:
+    """Lista correos de salida. filter: drafts | approved | sent | failed (vacío = todos)."""
+    return _call("list_outreach", {"filter": filter, "limit": limit}, request_id=request_id)
+
+
+@mcp.tool()
+def get_replies(target: str = "", limit: int = 10, request_id: str = "") -> str:
+    """Respuestas recibidas por correo (todas, o de un prospecto) con clasificación: reply | decline | unsubscribe | bounce | auto_reply, y el texto. Resúmelas para Christian y, si corresponde, propón una respuesta con save_draft(kind='reply'); nunca respondas sin su aprobación."""
+    return _call("get_replies", {"target": target, "limit": limit}, request_id=request_id)
+
+
+@mcp.tool()
+def do_not_contact(target: str, reason: str, christian_order: str, request_id: str = "") -> str:
+    """NIVEL 2 — NO CONTACTAR: descarta al prospecto, suprime todos sus correos y cancela lo pendiente. SOLO con orden explícita de Christian (christian_order = sus palabras exactas); reason = motivo."""
+    return _call("do_not_contact", {"target": target, "reason": reason}, order_text=christian_order, request_id=request_id)
+
+
+def _ops(action, deep=False, params=None):
+    """Consulta de SOLO LECTURA al workflow 25 Atacama Ops (GHL + Supabase + n8n + Hermes). No escribe ni envía nada."""
+    try:
+        from atacama_common import hermes_state, post_ops
+        body = {"action": action, "hermes": hermes_state()}
+        if deep:
+            body["deep"] = True
+        if params:
+            body["params"] = params
+        r = post_ops(body, timeout=120)
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "red", "message": "No pude consultar Atacama OS: %s" % type(ex).__name__}, ensure_ascii=False)
+    keep = {k: r.get(k) for k in ("ok", "text", "overall", "count", "missing", "action_count", "review_count", "components", "errors24h", "mode", "reason", "publish", "urgency", "window_hours", "signal_type", "proposals", "notes", "week", "signal") if k in r}
+    return json.dumps(keep, ensure_ascii=False)
+
+
+@mcp.tool()
+def get_daily(deep: bool = False) -> str:
+    """El resumen diario completo de Atacama OS (el mismo que llega a las 08:30): NECESITA TU ACCIÓN / PARA REVISAR / TODO BIEN, con comercial, prospección, contenido y sistema, leído de GHL, Supabase y n8n. Resume lo importante; no inventes nada que no esté en `text`."""
+    return _ops("daily", deep)
+
+
+@mcp.tool()
+def get_today() -> str:
+    """«¿Qué tengo que hacer hoy?»: lo urgente + tareas que vencen hoy + seguimientos y publicaciones de hoy."""
+    return _ops("today")
+
+
+@mcp.tool()
+def get_urgent() -> str:
+    """«Dame solo lo urgente»: únicamente lo que necesita acción de Christian ahora (o dice que no hay nada)."""
+    return _ops("urgent")
+
+
+@mcp.tool()
+def get_health(deep: bool = False) -> str:
+    """«¿Está todo funcionando?»: OK / ATENCIÓN / FALLO por componente (Gateway, Hermes Operator, Outreach, Gmail Sender/Sync, Followup Planner, Prospect Radar, Content Radar, Content Engine, métricas, jobs) con el motivo, y las ejecuciones fallidas de 24 h. deep=true además prueba la conexión real a Gmail (solo lectura). También sirve para «¿falló algo hoy?»."""
+    return _ops("health", deep)
+
+
+@mcp.tool()
+def get_stale_opportunities() -> str:
+    """«¿Qué oportunidades llevan demasiado tiempo quietas?»: oportunidades por encima del umbral de su etapa y las que no tienen próximo paso (sin tarea abierta)."""
+    return _ops("stale")
+
+
+@mcp.tool()
+def get_radar_new() -> str:
+    """«¿Qué prospectos nuevos encontró el radar?»: candidatos del Prospect Radar de los últimos 7 días con score y banda, y datos de su última corrida."""
+    return _ops("radar_new")
+
+
+@mcp.tool()
+def get_content_status() -> str:
+    """«¿Qué publicaciones tengo pendientes?»: piezas pendientes de aprobación, programadas, publicadas (72 h), con problemas y señales candidatas sin pieza. Nunca publica ni aprueba."""
+    return _ops("content_status")
+
+
+@mcp.tool()
+def editorial_plan(topic: str, summary: str = "", kind: str = "", urgent: bool = False, explicit: bool = False, personal: bool = False, type_hint: str = "") -> str:
+    """EDITORIAL DECISION (Ola B): ANTES de escribir una pieza, pregunta si vale la pena publicar esta señal/idea y cómo. Solo lectura: no crea, no publica, no contacta. Devuelve publish (sí/no con la razón: semana cubierta, cola llena, tema ya cubierto), el estado real de la semana y, por cuenta, una propuesta DISTINTA: LinkedIn Christian (founder/constructor: primera persona, experiencia real, casi siempre sin imagen y sin CTA), LinkedIn Atacama Labs (autoridad: educativo/framework/comparación, visual si ayuda) e Instagram Atacama Labs (carrusel: entender primero, copy ≤ 600 caracteres). Cada propuesta trae tipo editorial, tono, formato, largo, visual (con su por qué; puede ser none), recurso existente a reutilizar y CTA. Una misma señal NO se copia entre cuentas.
+    kind: news | rss | founder | work | customer | market | competitor | resource | demo | integration | process | opinion | case | evergreen. urgent=true solo para una señal excepcional (el ritmo se respeta igual hasta el máximo normal). explicit=true cuando Christian lo pidió expresamente (pasa por encima del ritmo con advertencia). personal=true si nace de la experiencia de Christian. Luego redacta con la plantilla de /opt/data/content/examples (campos editorial_type y visual.need obligatorios de declarar) y envía con submit_content_piece."""
+    p = {"signal": {"topic": topic, "summary": summary, "kind": kind, "urgent": urgent or None, "personal": personal or None, "type_hint": type_hint}, "explicit": explicit or None}
+    return _ops("editorial_plan", params={k: v for k, v in p.items() if v not in (None, "", [], {})})
+
+
+@mcp.tool()
+def save_story_proposal(proposal_json: str) -> str:
+    """HISTORIAS DEL DÍA (reglas de historias v1.1 de Christian, /opt/data/content/reglas-historias.md): guarda la propuesta del día ANTES de terminar el job.
+    proposal_json = {"date":"AAAA-MM-DD","topic":"...","feed_context":"...","recent_context":"...","decision":"por qué 0, 1, 2 o 3 historias (obligatorio)",
+    "stories":[{"kind":"REPOST_FEED|SUPPORT_STORY|ORIGINAL_STORY","objective":"...","copy":"...","visual":"...","cta":"...","hour":"HH:MM","why":"...","manual_note":"(opcional) sticker a poner a mano en Instagram","piece_id":"(si se envió como pieza)"}]}.
+    REPOST_FEED NO se programa: queda como NOTA para Christian («Repostear …»). Los stickers (encuesta, pregunta, enlace) tampoco: van en manual_note. Una propuesta con 0 historias (NO_STORY) es válida. Solo guarda: no publica ni programa nada.
+    Devuelve el texto corto de la propuesta (úsalo como respuesta final para Christian)."""
+    try:
+        proposal = json.loads(proposal_json)
+    except Exception:
+        return json.dumps({"ok": False, "error": "json_invalido", "message": "proposal_json no es un JSON válido."}, ensure_ascii=False)
+    try:
+        from atacama_common import post_ops
+        r = post_ops({"action": "story_proposal_save", "params": {"proposal": proposal}}, timeout=90)
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "red", "message": "No pude guardar la propuesta: %s" % type(ex).__name__}, ensure_ascii=False)
+    return json.dumps({k: r.get(k) for k in ("ok", "text", "saved", "story_count", "manual_notes", "error", "errors") if k in r}, ensure_ascii=False)
+
+
+@mcp.tool()
+def get_content_performance() -> str:
+    """«¿Cómo rindieron las últimas publicaciones? / ¿qué funcionó mejor? / ¿qué aprendimos?»: ranking por interacciones reales (me gusta + comentarios + compartidos que entrega GHL; NO hay impresiones por publicación) y aprendizajes del Content Engine; con n pequeño es tentativo y no se compara Instagram con LinkedIn."""
+    return _ops("content_performance")
+
+
+@mcp.tool()
+def send_email(target: str, subject: str = "", body: str = "", confirmation_code: str = "", request_id: str = "") -> str:
+    """Envío directo: DESHABILITADO siempre. Para enviar un correo usa save_draft y luego approve_outreach (confirmación de Christian con código); el sistema lo envía en la ventana permitida. No simules ni intentes otra vía."""
+    return _call("send_email", {"target": target, "subject": subject, "body": body}, confirmation_code=confirmation_code, request_id=request_id)
+
+
+@mcp.tool()
+def send_whatsapp(target: str, text: str = "", confirmation_code: str = "", request_id: str = "") -> str:
+    """NIVEL 3 — Enviar WhatsApp. Deshabilitado: devuelve confirmation_required / not_enabled."""
+    return _call("send_whatsapp", {"target": target, "text": text}, confirmation_code=confirmation_code, request_id=request_id)
+
+
+@mcp.tool()
+def publish_content(piece: str, confirmation_code: str = "", request_id: str = "") -> str:
+    """NIVEL 3 — Publicar contenido. Deshabilitado desde Hermes: devuelve confirmation_required / not_enabled (las publicaciones se aprueban en GHL)."""
+    return _call("publish_content", {"piece": piece}, confirmation_code=confirmation_code, request_id=request_id)
+
+
+@mcp.tool()
+def delete_record(what: str, confirmation_code: str = "", request_id: str = "") -> str:
+    """NIVEL 3 — Eliminar registros. Deshabilitado: devuelve confirmation_required / not_enabled."""
+    return _call("delete_record", {"what": what}, confirmation_code=confirmation_code, request_id=request_id)
+
+
+# ---------------------------------------------------------------- LinkedIn (Waalaxy como ejecutor) · Bloque 3
+def _li(body):
+    """Llama al workflow n8n 26 «LinkedIn Engine». Waalaxy solo recibe altas aprobadas; Atacama OS NO puede saber por API si una invitación se envió, se aceptó o hubo respuesta."""
+    try:
+        from atacama_common import post_linkedin
+        r = post_linkedin(body, timeout=100)
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "red", "message": "No pude consultar el canal LinkedIn de Atacama OS: %s" % type(ex).__name__}, ensure_ascii=False)
+    keep = {k: r.get(k) for k in ("ok", "status", "text", "message", "error", "company", "state", "state_label", "recommendation", "summary", "confirmation_code", "expires_at", "ready_for_linkedin", "email_ready", "needs_research", "in_linkedin", "counts", "mode", "config", "lists", "campaigns", "import_code", "campaign_code", "stop_followups", "next_action", "reply", "person", "role", "url", "options", "persist_error", "ghl_error") if k in r}
+    return json.dumps(keep, ensure_ascii=False)
+
+
+@mcp.tool()
+def linkedin_ready() -> str:
+    """«¿Quién está listo para LinkedIn?» / «¿a quién recomiendas contactar y por qué canal?»: separa los prospectos de Investigado en LinkedIn (persona con nombre, cargo y perfil verificable), correo e «investigar más» (con lo que falta), y lista los que ya están en LinkedIn. Solo lectura."""
+    return _li({"action": "list"})
+
+
+@mcp.tool()
+def linkedin_status(target: str) -> str:
+    """Estado de un prospecto en LinkedIn (persona, cargo, perfil, estado, próxima acción, respuesta) y el canal que se recomienda hoy. target = nombre, dominio, id o URL de LinkedIn. Solo lectura."""
+    return _li({"action": "status", "target": target})
+
+
+@mcp.tool()
+def recommend_channel(target: str) -> str:
+    """Calcula y guarda la recomendación de canal (email | linkedin | ninguno/investigar más) con el motivo y lo que falta. No contacta a nadie."""
+    return _li({"action": "recommend", "target": target})
+
+
+@mcp.tool()
+def approve_linkedin(target: str, confirmation_code: str = "", christian_order: str = "") -> str:
+    """NIVEL 3 — Aprueba el ALTA de un prospecto en Waalaxy (lista y, solo en modo live con campaña, la secuencia de LinkedIn). PASO 1: llama sin código → devuelve el alta EXACTA (persona, cargo, perfil, lista, campaña y si habría contacto) y un confirmation_code: muéstraselo completo a Christian y espera su confirmación. PASO 2: SOLO si Christian confirma en su mensaje, vuelve a llamar con confirmation_code y christian_order = sus palabras exactas. Nunca inventes la orden ni reutilices un código viejo. Si el modo de LinkedIn está apagado dilo: no se inserta nada. No se contacta por LinkedIn a quien ya tiene un correo aprobado/enviado."""
+    return _li({"action": "approve", "target": target, "confirmation_code": confirmation_code, "order_text": christian_order, "by": "Christian vía Hermes"})
+
+
+@mcp.tool()
+def log_linkedin_event(target: str, event: str, note: str = "") -> str:
+    """Registra lo que Christian VE en Waalaxy/LinkedIn (la API de Waalaxy no avisa): event = conexion_aceptada | mensaje_enviado | followup_enviado | respondio | rechazo | detener | nota. «respondio» exige note con lo que dijo la persona: mueve la oportunidad a Respondió y detiene los seguimientos. No envía nada."""
+    return _li({"action": "event", "target": target, "event": event, "note": note})
+
+
+@mcp.tool()
+def linkedin_config() -> str:
+    """Modo del canal LinkedIn (off | test | live), lista/campaña configuradas y tope diario. Solo lectura; cambiar el modo es decisión de Christian y no se hace desde Hermes."""
+    return _li({"action": "config"})
+
+
+@mcp.tool()
+def waalaxy_lists() -> str:
+    """Listas y campañas (pausadas o en curso) que existen hoy en Waalaxy, para elegir destino. Solo lectura."""
+    return _li({"action": "lists"})
+
+# ---------------------------------------------------------------- Ola A · Content: Founder Interview · RSS · Recursos · Inteligencia orgánica · cola
+# Todo entra por los workflows 27 «Content Growth» y 12 «Content Intake» de n8n: nada se publica, nada se contacta y toda pieza termina «en revisión» en GHL.
+def _grow(body, timeout=90):
+    try:
+        from atacama_common import post_webhook
+        r = post_webhook("atacama-content-growth", body, timeout=timeout, ua="hermes-atacama-content/1.0")
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "red", "message": "No pude consultar Atacama OS (content-growth): %s" % type(ex).__name__}, ensure_ascii=False)
+    return json.dumps(r, ensure_ascii=False)[:24000]
+
+
+def _media(body, timeout=60):
+    try:
+        from atacama_common import post_webhook
+        r = post_webhook("atacama-media-gateway", body, timeout=timeout, ua="hermes-atacama-media/1.0")
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "red", "message": "No pude consultar el Media Gateway: %s" % type(ex).__name__}, ensure_ascii=False)
+    return json.dumps(r, ensure_ascii=False)[:12000]
+
+
+def _json_arg(text, path, label):
+    """Acepta el JSON como texto o como archivo dentro de /opt/data o /tmp. Devuelve (objeto, error_json)."""
+    try:
+        if path:
+            raw, _ = _read_file(path)
+        else:
+            raw = text
+        if not raw or not str(raw).strip():
+            return None, json.dumps({"ok": False, "error": "falta_" + label, "message": "Envía %s como JSON (texto) o como ruta a un archivo .json en /opt/data." % label}, ensure_ascii=False)
+        return json.loads(raw), None
+    except ValueError as ex:
+        return None, json.dumps({"ok": False, "error": "json_invalido", "message": "No pude leer %s: %s" % (label, str(ex)[:160])}, ensure_ascii=False)
+
+
+@mcp.tool()
+def content_queue() -> str:
+    """Estado de la cola de contenido: cuántas piezas esperan la revisión de Christian (de un tope de 6), si el sistema puede proponer piezas por su cuenta, señales candidatas, artículos RSS nuevos, entrevistas abiertas y carruseles esperando render. Solo lectura. Si la cola está llena, NO crees piezas de forma autónoma (el servidor igual las bloquea); una orden explícita de Christian sí puede saltarse el límite."""
+    return _grow({"action": "queue_status"})
+
+
+@mcp.tool()
+def founder_interview(action: str, interview_id: str = "", answer: str = "", source: str = "text", question: str = "", context: str = "", topic: str = "", test: bool = False) -> str:
+    """Founder Interview (contenido con la experiencia REAL de Christian). action = start | answer | cancel | status | add_question.
+    start → elige una pregunta basada en un hecho real y abre la entrevista (devuelve question + context + interview_id): muéstrasela a Christian tal cual, con el contexto breve.
+    answer → guarda la respuesta TEXTUAL de Christian (interview_id opcional: usa la última abierta). source = text | audio (si vino de un audio transcrito). Exige sustancia (≥ 120 caracteres): si es corta, pide más detalle; NUNCA completes tú lo que falta.
+    cancel → cancela la entrevista abierta. status → últimas entrevistas. add_question → propone una pregunta nueva (question + context con el hecho real que la motiva; nada genérico).
+    Después de answer: estructura 1–3 piezas (LinkedIn de Christian en primera persona, adaptación distinta para LinkedIn Atacama Labs, Instagram solo si aporta) y envíalas con submit_content_piece(origin="founder_interview", interview_id=...). Cada fuente real_work debe llevar evidence con citas LITERALES de la respuesta."""
+    body = {"action": {"start": "founder_start", "answer": "founder_answer", "cancel": "founder_cancel", "status": "founder_status", "add_question": "founder_add_question"}.get(action, "")}
+    if not body["action"]:
+        return json.dumps({"ok": False, "error": "action_invalida", "message": "action = start | answer | cancel | status | add_question"}, ensure_ascii=False)
+    for k, v in (("interview_id", interview_id), ("answer", answer), ("source", source), ("question", question), ("context", context), ("topic", topic)):
+        if v:
+            body[k] = v
+    if test:
+        body["test"] = True  # SOLO pruebas técnicas: la entrevista queda marcada is_test y no consume preguntas reales
+    return _grow(body)
+
+
+@mcp.tool()
+def submit_content_piece(piece_path: str = "", piece_json: str = "", origin: str = "autonomous", interview_id: str = "", test: bool = False) -> str:
+    """Envía UNA pieza de contenido al Content Intake (workflow 12): se valida, se puntúa y, si pasa (score ≥ 70), queda en GHL Social Planner como IN_REVIEW con una fecha PROPUESTA (noticia ≤ 24 h, normal ≤ 48 h, evergreen ≤ 72 h, hora de Chile; nunca +7 días). NADA se publica ni se programa: Christian aprueba en GHL.
+    La pieza va como JSON (piece_json) o como ruta a un archivo .json en /opt/data (piece_path) con el esquema de /opt/data/content/examples. origin: 'autonomous' (cron/radar; se BLOQUEA si el MISMO carril ya está lleno de piezas en revisión — LinkedIn 6, feed de Instagram 10, historias de Instagram 28 —; los carriles no se cuentan entre sí: no se guarda nada), 'explicit' (Christian lo pidió; pasa con advertencia) o 'founder_interview' (exige interview_id; las citas de las fuentes real_work deben aparecer literales en la respuesta de Christian).
+    EDITORIAL BRAIN (Ola B): declara en la pieza editorial_type (founder | educational | opinion | case | build_in_public | framework | comparison | news_explainer | resource | demo | process | integration | market_signal | customer_problem) y visual {need, rationale, composition}: need = none | editorial_image | conceptual_image | diagram | process_flow | architecture | comparison | before_after | framework | checklist | chart | annotated_screenshot | carousel | resource_visual | typographic | short_video. Cada cuenta tiene su voz: LinkedIn Christian (linkedin_profile) = primera persona, experiencia real, casi siempre sin imagen ni CTA; LinkedIn Atacama Labs (linkedin_page) = autoridad de empresa; Instagram = carrusel, caption ≤ 600 caracteres, siempre con visual. Consulta editorial_plan ANTES de redactar. visual.need=none exige format texto; marca: nada de robots, neón, cyber, circuitos ni glow.
+    Campos opcionales de la pieza: resource_id (uuid de un recurso ACTIVO), cta_mode (none | resource_link | dm | diagnostic), cta_copy; en cta.text puedes usar {{resource_url}} (se reemplaza por la URL con atribución). Devuelve action = in_review | held | rejected (con errors) | blocked.
+    INSTAGRAM (motor semanal): format puede ser carrusel | imagen | reel | historia. Historia = story {template: dolor|pregunta|chat|embudo|recurso|dato, kicker, title, body, pill, chat[], stages[], keyword, figure}; sin texto de publicación (Instagram rechaza historias con caption). Reel = motion_brief {language, phrases, duration_s, audio_prompt}. Una pieza visual enviada SIN media queda «held / falta_render_o_medio» y el sistema pide SU visual solo (media_request en la respuesta); no hace falta request_visual salvo para el video de un reel (provider=studio)."""
+    piece, err = _json_arg(piece_json, piece_path, "la pieza")
+    if err:
+        return err
+    if origin not in ("autonomous", "explicit", "founder_interview"):
+        return json.dumps({"ok": False, "error": "origin_invalido", "message": "origin = autonomous | explicit | founder_interview"}, ensure_ascii=False)
+    body = {"piece": piece, "origin": origin}
+    if interview_id:
+        body["interview_id"] = interview_id
+    if test:
+        body["test"] = True
+    try:
+        from atacama_common import post_webhook
+        r = post_webhook("atacama-content-intake", body, timeout=150, ua="hermes-atacama-content/1.0")
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "red", "message": "No pude enviar la pieza al Content Intake: %s" % type(ex).__name__}, ensure_ascii=False)
+    return json.dumps(r, ensure_ascii=False)[:8000]
+
+
+@mcp.tool()
+def request_visual(need: str, brief: str, piece_id: str = "", composition: str = "", operation: str = "", reference_url: str = "", source_asset_id: str = "", test: bool = False, provider: str = "") -> str:
+    """MEDIA GATEWAY (Ola B): pide el visual de una pieza DESPUÉS de decidir que lo necesita (editorial_plan / visual.need; none es una respuesta válida: no pidas nada). need = editorial_image | conceptual_image | diagram | process_flow | architecture | comparison | before_after | framework | checklist | chart | annotated_screenshot | carousel | resource_visual | typographic | short_video. brief = qué debe comunicar el visual (15–600 caracteres; la marca se valida: nada de robots, hologramas, neón, cyber, circuitos, glow ni estética de prompt de IA; no es un hero de la web; varía la composición con composition).
+    El gateway enruta SOLO a lo que existe: carrusel, slide tipográfica, comparación, antes/después, checklist, framework y flujo van al RENDERER (texto exacto, marca oficial, sin costo; requiere que la pieza ya tenga slides y lo produce solo el worker de la VPS cada ~5 min); capturas, fotos, diagramas, arquitectura, gráficos y video son asset MANUAL de Christian (operation="register"); las imágenes/video GENERATIVOS (Higgsfield) están APAGADOS y sin verificar: devuelven unavailable con el motivo y alternativas, no generan ni cobran nada. NO declares como hecho un visual que quedó en cola o unavailable: dile a Christian el estado real. La misma solicitud no crea dos assets (idempotente) y un render idéntico se reutiliza. Nada se publica ni se aprueba desde aquí: la pieza sigue su camino por submit_content_piece → in_review.
+    REEL / MOTION (taller de la VPS): provider="studio", need="short_video", composition=<nombre del proyecto en /opt/data/motion-studio/projects> y piece_id de la pieza reel ya enviada (queda drafted esperando su video). El video debe existir ya renderizado con /opt/data/scripts/motion_render.sh (proyectos/<composition>/renders/<composition>-normalizado.mp4, ≤ 10 MB); el worker lo sube y reenvía la pieza a revisión. Carruseles, imágenes e HISTORIAS NO necesitan esta herramienta: el Intake pide su visual solo cuando la pieza trae slides/story."""
+    body = {"action": "request", "need": need, "brief": brief}
+    for k, v in (("piece_id", piece_id), ("composition", composition), ("operation", operation), ("reference_url", reference_url), ("source_asset_id", source_asset_id)):
+        if v:
+            body[k] = v
+    if provider:
+        body["provider"] = provider
+    if test:
+        body["test"] = True
+    return _media(body)
+
+
+@mcp.tool()
+def visual_status(asset_id: str = "", piece_id: str = "") -> str:
+    """Estado de un visual pedido al Media Gateway (por asset_id) o de todos los de una pieza (piece_id): queued | ready | failed | unavailable | cancelled, el proveedor, las URLs si está listo y el ERROR visible si falló. Solo lectura. Si está ready y la pieza estaba esperando su medio, Christian (o el worker local) la reenvía a revisión; tú no la publicas."""
+    if asset_id:
+        return _media({"action": "status", "id": asset_id})
+    if piece_id:
+        return _media({"action": "status", "piece_id": piece_id})
+    return json.dumps({"ok": False, "error": "falta_id", "message": "Indica asset_id o piece_id."}, ensure_ascii=False)
+
+
+@mcp.tool()
+def content_resources(action: str, query: str = "", resource_json: str = "", slug: str = "", topic: str = "", summary: str = "", editorial_type: str = "", channel: str = "", allow_keyword: bool = False) -> str:
+    """Biblioteca de recursos reutilizables (checklists, guías, plantillas en atacamalabs.cl/recursos/...). action = list | register | retire | opportunity | backlog.
+    AUTHORITY RESOURCE FACTORY (Ola B): opportunity (topic, summary, editorial_type, channel) → ¿esta pieza debe usar un recurso? Devuelve reuse (hay uno activo: úsalo, no crees otro), backlog (ya está en borrador, falta su página), propose (la backlog tiene un candidato que encaja) o none (publica sin recurso: opinión, reflexión, noticia o tema sin recurso que aporte), más el CTA recomendado (sin CTA | resource_link | dm | diagnostic; «comenta PALABRA» solo con recurso de valor real y entrega MANUAL). backlog → candidatos de recursos con su estado. Un recurso nuevo exige metadata.format (mapa_de_procesos | checklist_interactivo | mini_diagnostico | calculadora | comparador | framework | canvas | plantilla | arquitectura_visual | guia_corta | caso_desmontado | mini_auditoria | demo | recurso_interactivo | herramienta_web) y metadata.differentiator (qué lo hace distinto y útil); NO PDF/ebook/«guía gratis» genéricos ni recursos creados solo para tener un CTA.
+    list (query opcional) → ANTES de crear un recurso nuevo revisa si ya existe uno que resuelva el mismo problema y reutilízalo (resource_id en la pieza). register → resource_json con slug, name, type (guia|checklist|plantilla|diagnostico|prompt|documento|comparativa|caso|herramienta|pagina), topic, audience, problem (qué resuelve, ≥ 20 caracteres), cta_mode (resource_link | dm | diagnostic), cta_copy, url (https://atacamalabs.cl/recursos/<slug>), status (draft | active; active exige que la página responda 200). Un recurso nuevo queda en borrador hasta que exista su página: NO inventes recursos para tener un CTA. retire → slug."""
+    if action == "list":
+        return _grow({"action": "resources_list", **({"query": query} if query else {})})
+    if action == "retire":
+        return _grow({"action": "resource_retire", "slug": slug})
+    if action == "opportunity":
+        return _grow({"action": "resource_opportunity", "topic": topic, "summary": summary, "editorial_type": editorial_type, "channel": channel, "allow_keyword": allow_keyword or None})
+    if action == "backlog":
+        return _grow({"action": "resource_backlog"})
+    if action == "register":
+        res, err = _json_arg(resource_json, "", "el recurso")
+        if err:
+            return err
+        return _grow({"action": "resource_register", "resource": res, "slug": res.get("slug", "")})
+    return json.dumps({"ok": False, "error": "action_invalida", "message": "action = list | register | retire | opportunity | backlog"}, ensure_ascii=False)
+
+
+@mcp.tool()
+def rss_items(action: str, limit: int = 12, item_ids: list[str] = [], status: str = "", note: str = "", signal_source_id: str = "") -> str:
+    """Artículos de los feeds RSS/Atom configurados (ingeridos por n8n cada hora, deduplicados). action = pending | mark | status.
+    pending → los más relevantes sin revisar (título, URL, resumen, fuente, fecha, relevancia) + si la cola permite crear piezas. mark → marca como signal (abriste una señal) o ignored (no sirve) para que no vuelvan; item_ids = ids de pending. status → salud de cada feed.
+    Un artículo solo vale como señal si lo abres, copias una CITA literal de la página y la envías con content_signals(submit)."""
+    if action == "pending":
+        return _grow({"action": "rss_pending", "limit": limit})
+    if action == "mark":
+        return _grow({"action": "rss_mark", "item_ids": item_ids, "status": status, "note": note, **({"signal_source_id": signal_source_id} if signal_source_id else {})})
+    if action == "status":
+        return _grow({"action": "rss_status"})
+    return json.dumps({"ok": False, "error": "action_invalida", "message": "action = pending | mark | status"}, ensure_ascii=False)
+
+
+@mcp.tool()
+def competitor_intel(action: str, report_path: str = "", report_json: str = "", signals_submitted: int = 0) -> str:
+    """Inteligencia ORGÁNICA de competencia (fuentes públicas; NO es Ads Radar; nunca copiar). action = list | latest | save.
+    list → competidores/referentes configurados (urls públicas) y el último reporte. latest → el último reporte (huecos, temas saturados, ángulos propios). save → guarda el reporte de esta corrida (report_json o report_path) con: run_id único, competitors[{slug, pages_read[urls que SÍ abriste], recent_topics, formats, hooks, offers, resources, repeated_messages}], saturated_topics, gaps, own_angles[{angle, why, channel_suggestion}]. Exige páginas leídas de cada competidor y al menos un hueco o ángulo propio con su porqué."""
+    if action == "list":
+        return _grow({"action": "competitors_list"})
+    if action == "latest":
+        return _grow({"action": "intel_latest"})
+    if action == "save":
+        rep, err = _json_arg(report_json, report_path, "el reporte")
+        if err:
+            return err
+        return _grow({"action": "competitor_report", "report": rep, "signals_submitted": signals_submitted})
+    return json.dumps({"ok": False, "error": "action_invalida", "message": "action = list | latest | save"}, ensure_ascii=False)
+
+
+@mcp.tool()
+def content_signals(action: str, signals_path: str = "", signals_json: str = "") -> str:
+    """Señales de contenido. action = candidates | submit | learnings.
+    candidates → señales candidatas YA verificadas (título, URL, resumen, cita literal, ángulo, canal sugerido), lo que ya está cubierto (no repetir) y si la cola permite piezas. submit → envía señales nuevas al gate (workflow 13: abre la URL y comprueba que la cita exista); signals_json/signals_path = {"icp_pack_id":"0ba54785-bff0-4a2d-a397-64e697d34e38","batch_id":"...","signals":[...]} con el mismo formato del Content Radar. learnings → ganchos a no repetir y aprendizajes por canal."""
+    if action == "candidates":
+        return _grow({"action": "signals_candidates"})
+    if action == "submit":
+        sig, err = _json_arg(signals_json, signals_path, "las señales")
+        if err:
+            return err
+        try:
+            from atacama_common import post_webhook
+            r = post_webhook("atacama-content-signals", sig, timeout=170, ua="hermes-atacama-content/1.0")
+        except Exception as ex:
+            return json.dumps({"ok": False, "error": "red", "message": "No pude enviar las señales: %s" % type(ex).__name__}, ensure_ascii=False)
+        return json.dumps(r, ensure_ascii=False)[:12000]
+    if action == "learnings":
+        try:
+            from atacama_common import get_webhook
+            return json.dumps(get_webhook("atacama-content-learnings", ua="hermes-atacama-content/1.0"), ensure_ascii=False)[:12000]
+        except Exception as ex:
+            return json.dumps({"ok": False, "error": "red", "message": "No pude leer los aprendizajes: %s" % type(ex).__name__}, ensure_ascii=False)
+    return json.dumps({"ok": False, "error": "action_invalida", "message": "action = candidates | submit | learnings"}, ensure_ascii=False)
+
+
+@mcp.tool()
+def report_content_job(kind: str, status: str = "ok", mode: str = "run", reason: str = "", minutes: int = 0, items_reviewed: int = 0, signals: int = 0, created: int = 0, blocked: int = 0, held: int = 0, competitors: int = 0, searches: int = 0, pages_opened: int = 0, est_cost_usd: float = 0.0) -> str:
+    """Registra la corrida de un job de contenido (para /ops y los avisos). kind = content_rss | competitor_intel | content_pieces. Hazlo SIEMPRE al terminar (también si no hubo nada) con cifras reales; si fallaste, status='error' y reason corto. Solo registra: no avisa por sí mismo."""
+    try:
+        from atacama_common import post_ops
+        r = post_ops({"action": "job_report", "report": {"kind": kind, "status": status, "mode": mode, "reason": reason[:300], "minutes": minutes, "items_reviewed": items_reviewed, "signals": signals, "created": created, "blocked": blocked, "held": held, "competitors": competitors, "searches": searches, "pages_opened": pages_opened, "est_cost_usd": est_cost_usd}}, timeout=60)
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "red", "message": "No pude registrar la corrida: %s" % type(ex).__name__}, ensure_ascii=False)
+    return json.dumps({k: r.get(k) for k in ("ok", "text", "recorded", "error")}, ensure_ascii=False)
+
+
+
+# ---------------------------------------------------------------- Contacto preparado (9-oct): ningún Investigado válido se queda sin próxima acción
+# Todo entra por el workflow 26 (motor de canales). Estas herramientas NO envían nada, NO aprueban correos y NO encienden el envío automático
+# (ese interruptor es solo de Christian, desde /ops). Aprobar y enviar sigue siendo: /ops → Aprobaciones.
+def _prep(body, timeout=100):
+    try:
+        from atacama_common import post_linkedin
+        r = post_linkedin(body, timeout=timeout)
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "red", "message": "No pude consultar la preparación de contactos de Atacama OS: %s" % type(ex).__name__}, ensure_ascii=False)
+    keep = {k: r.get(k) for k in ("ok", "status", "text", "message", "error", "company", "count", "shown", "by_route", "items", "sent", "edits", "profile", "guidance", "counts", "valid_unactioned",
+                                  "investigated", "sent_today", "replies_7d", "autosend", "li_status", "follow_up_at", "ghl_stage", "channel", "persist_error", "ghl_error", "warning", "options") if k in r}
+    if "lists" in r and isinstance(r.get("lists"), dict):
+        keep["lists"] = {k: [{"company": x.get("company"), "reason": x.get("reason"), "score": x.get("score")} for x in v[:8]] for k, v in r["lists"].items()}
+    return json.dumps(keep, ensure_ascii=False)
+
+
+@mcp.tool()
+def prep_queue(limit: int = 10) -> str:
+    """Cola de trabajo del job contact-prep: los Investigados VÁLIDOS que no tienen próxima acción, con lo ya investigado (hechos, hipótesis, solución, contacto) y la RUTA decidida por Atacama OS (email | linkedin | find_contact). No vuelvas a investigar el negocio: redacta con esa evidencia. Solo lectura."""
+    return _prep({"action": "prep_queue", "limit": max(1, min(int(limit), 30))})
+
+
+@mcp.tool()
+def style_samples(n: int = 8) -> str:
+    """LÉELO ANTES de redactar cada correo o mensaje: correos enviados recientes, ediciones de Christian (versión original vs final, con frases quitadas y agregadas) y un perfil de estilo (largo medio, cierres, frases que suele eliminar). Aprende estilo (largo, tono, apertura, cierre, cuánto se explica Atacama); NUNCA copies hechos de otra empresa. Solo lectura."""
+    return _prep({"action": "style_samples", "n": max(1, min(int(n), 20))})
+
+
+@mcp.tool()
+def prep_summary() -> str:
+    """Resumen de las colas: correos listos, LinkedIn por enviar, buscar contacto, en espera y la métrica crítica INVESTIGADOS VÁLIDOS SIN ACCIÓN (objetivo 0), más enviados de hoy y respuestas. Solo lectura."""
+    return _prep({"action": "prep_summary", "limit": 8})
+
+
+@mcp.tool()
+def set_prep_state(target: str, state: str, reason: str = "", draft_subject: str = "", draft_body: str = "") -> str:
+    """Deja una salida explícita para un Investigado: state = find_contact (sin correo ni LinkedIn: deja REDACTADO el mensaje en draft_subject/draft_body para que Christian solo pegue el contacto) | hold (EN ESPERA) | no_contact (NO CONTACTAR) | clear (libera). hold/no_contact exigen una razón COMERCIAL explícita en reason (p. ej. identidad del decisor sin cerrar, competidor directo, empresa corporativa sin patrocinador); NO basta con que falte el correo (eso es find_contact). No contacta a nadie."""
+    body = {"action": "prep_set", "target": target, "state": state, "reason": reason}
+    if draft_body:
+        body["draft"] = {"subject": draft_subject, "body": draft_body}
+    return _prep(body)
+
+
+@mcp.tool()
+def save_linkedin_prep(target: str, invitation: str, message: str, profile_url: str = "") -> str:
+    """Deja LISTO para envío MANUAL por LinkedIn: invitation (≤300 caracteres, 2 frases, personalizada) y message (2–4 frases, para después de conectar), más el enlace del perfil. Queda en la cola «LinkedIn por enviar» de /ops. NO se usa Waalaxy y NO se envía nada. Un solo canal por prospecto: si ya hay correo aprobado o enviado, lo rechaza."""
+    return _prep({"action": "li_save", "target": target, "invitation": invitation, "message": message, "profile_url": profile_url})
+
+
+@mcp.tool()
+def log_linkedin_manual(target: str, kind: str, text: str = "") -> str:
+    """Cuando Christian te CONFIRMA que envió algo a mano por LinkedIn, regístralo en el acto (Supabase + GHL): kind = invitation | connected | message | reply | closed; text = el mensaje que realmente envió (o lo que respondió la persona; obligatorio en reply). Pasa a Contactado, deja nota con fecha/canal/mensaje y un seguimiento a +3 días hábiles."""
+    return _prep({"action": "li_sent", "target": target, "kind": kind, "text": text})
+
+
+@mcp.tool()
+def save_contact(target: str, email: str = "", linkedin: str = "", source_url: str = "") -> str:
+    """Guarda un contacto PÚBLICO y PROFESIONAL que encontraste para un prospecto sin correo ni LinkedIn (correo publicado por la propia empresa en su sitio, o perfil personal de LinkedIn enlazado por ella). Indica source_url (la página exacta). Nunca adivines correos ni uses datos personales. Con eso el prospecto sale de «buscar contacto» y se prepara en la siguiente corrida."""
+    return _prep({"action": "prep_contact", "target": target, "email": email, "linkedin": linkedin, "reason": source_url})
+
+# ---------------------------------------------------------------- Ideas de la semana (Atacama OS v3 · Fase 4)
+@mcp.tool()
+def ideas_context() -> str:
+    """IDEAS DE LA SEMANA — contexto para proponer (solo lectura): semana a proponer, topes por red (Instagram 7 · LinkedIn página 4 · LinkedIn personal 3; máx. 12),
+    puntaje mínimo, títulos recientes que NO se repiten (4 semanas), fuentes VERIFICADAS (content_sources) con su id, recursos activos, ángulos/huecos de la competencia,
+    pedidos de «Cambiar» de Christian y «Mi idea» sin ficha. mode=skip si la pausa general está activa o el job está apagado: entonces NO propongas nada."""
+    try:
+        from atacama_common import post_ops
+        r = post_ops({"action": "ideas_gate"}, timeout=90)
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "red", "message": "No pude consultar Atacama OS: %s" % type(ex).__name__}, ensure_ascii=False)
+    return json.dumps({k: r.get(k) for k in ("ok", "mode", "reason", "week_start", "caps", "max_total", "min_score", "already", "recent", "changes", "mine", "sources", "resources", "intel", "rules", "results") if k in r}, ensure_ascii=False)
+
+
+@mcp.tool()
+def propose_ideas(proposal_json: str = "", proposal_path: str = "", test: bool = False) -> str:
+    """IDEAS DE LA SEMANA — guarda la propuesta (NO aprueba, NO produce, NO publica). proposal = {"week_start":"AAAA-MM-DD (lunes)","notes":"...","ideas":[{
+    "channel":"instagram|linkedin_page|linkedin_profile","format":"texto|imagen|carrusel|demo|reel|historia","title":"...","hook":"gancho que detiene el scroll",
+    "objective":"alcance|autoridad|conversaciones|leads|recurso|servicio|educar","audience_insight":"para quién y qué problema reconocible","core_message":"una frase",
+    "structure":["escena/lámina 1","..."],"cta":"(si corresponde)","production":{"tools":["..."],"how":"cómo se produce","material":"..."},"resource_id":"(si corresponde)","keyword":"(si lleva recurso)",
+    "effort":"bajo|medio|alto","cost_note":"créditos/edición si hay","risks":"qué puede salir mal","primary_metric":"reach|watch_time|saves|profile_visits|intent_comments|dms|leads",
+    "why":"por qué ahora (respaldo)","competitor_ref":"(patrón que se aprovecha, sin copiar)","evidence":[{"type":"source|intel|resource|metric","id":"...","note":"...","url":"..."}],
+    "score_breakdown":{"evidence":0-30,"relevance":0-25,"differentiation":0-20,"freshness":0-15,"feasibility":0-10}}]}.
+    El servidor descarta por su cuenta las ideas sin ficha completa, sin fuente verificada, con puntaje < 70 o parecidas a las de las últimas 4 semanas, y aplica los topes.
+    test=true guarda como prueba (is_test). Devuelve cuántas quedaron y por qué se descartaron las demás."""
+    proposal, err = _json_arg(proposal_json, proposal_path, "proposal")
+    if err:
+        return err
+    try:
+        from atacama_common import post_ops
+        r = post_ops({"action": "ideas_propose", "params": {"proposal": proposal, "test": bool(test)}}, timeout=120)
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "red", "message": "No pude guardar la propuesta: %s" % type(ex).__name__}, ensure_ascii=False)
+    return json.dumps({k: r.get(k) for k in ("ok", "text", "week_start", "proposed", "discarded_weak", "by_channel", "weak", "error") if k in r}, ensure_ascii=False)
+
+
+@mcp.tool()
+def revise_idea(idea_id: str, idea_json: str = "", idea_path: str = "", test: bool = False) -> str:
+    """IDEAS DE LA SEMANA — reescribe UNA idea: (a) cuando Christian pidió «Cambiar» (status changed): aplica SOLO lo pedido y vuelve a «por decidir»;
+    (b) completa la ficha de «Mi idea» de Christian (sigue aprobada). idea_json = mismos campos que en propose_ideas (ficha completa de 12 campos).
+    No aprueba ni publica nada."""
+    idea, err = _json_arg(idea_json, idea_path, "idea")
+    if err:
+        return err
+    try:
+        from atacama_common import post_ops
+        r = post_ops({"action": "ideas_revise", "params": {"idea_id": idea_id, "idea": idea, "test": bool(test)}}, timeout=90)
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "red", "message": "No pude guardar la idea: %s" % type(ex).__name__}, ensure_ascii=False)
+    return json.dumps({k: r.get(k) for k in ("ok", "text", "status", "error") if k in r}, ensure_ascii=False)
+
+
+# ---------------------------------------------------------------- Aprendizaje semanal (Atacama OS v3 · Fase 8): solo PROPONE, nunca aplica
+@mcp.tool()
+def learning_context(test: bool = False) -> str:
+    """APRENDIZAJE — patrones detectados en las correcciones de Christian (ediciones de correo, ideas descartadas, cambios pedidos a piezas,
+    piezas programadas sin cambios), cada uno con su muestra (n), ejemplos (event_id) y si alcanza la muestra mínima (~30).
+    mode=skip si el job está apagado o hay pausa general: entonces responde [SILENT]. Solo lectura."""
+    try:
+        from atacama_common import post_ops
+        r = post_ops({"action": "learning_context", "params": {"test": bool(test)}}, timeout=90)
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "red", "message": "No pude consultar Atacama OS: %s" % type(ex).__name__}, ensure_ascii=False)
+    return json.dumps({k: r.get(k) for k in ("ok", "mode", "reason", "min_sample", "total_events", "by_type", "patterns", "open_patterns", "rules", "error") if k in r}, ensure_ascii=False)
+
+
+@mcp.tool()
+def propose_learning(proposals_json: str = "", proposals_path: str = "", test: bool = False) -> str:
+    """APRENDIZAJE — guarda propuestas para que Christian las apruebe o rechace en /ops → Resultados → Aprendizaje. NUNCA aplica nada.
+    proposals = [{"pattern_id": "playbook:acorta", "proposal": "qué cambiar y por qué (30–1500 caracteres)",
+    "citations": [{"event_id": "...", "note": "qué muestra ese ejemplo"}, ... ≥ 3 del mismo patrón]}] (máx. 8).
+    El servidor descarta las de patrones con muestra insuficiente, sin ≥ 3 citas o ya abiertas. test=true guarda como prueba (is_test)."""
+    proposals, err = _json_arg(proposals_json, proposals_path, "proposals")
+    if err:
+        return err
+    try:
+        from atacama_common import post_ops
+        r = post_ops({"action": "learning_propose", "params": {"proposals": proposals, "test": bool(test)}}, timeout=90)
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "red", "message": "No pude guardar las propuestas: %s" % type(ex).__name__}, ensure_ascii=False)
+    return json.dumps({k: r.get(k) for k in ("ok", "text", "proposed", "discarded", "error") if k in r}, ensure_ascii=False)
+
+
+# ---------------------------------------------------------------- Taller · producción en la VPS (Atacama OS v3 · Fase 3)
+@mcp.tool()
+def taller_next(test: bool = False, piece_id: str = "") -> str:
+    """TALLER — toma la siguiente pieza del carril VPS (en cola o con cambios pedidos) y devuelve su brief: la pieza, su IDEA con la ficha,
+    el feedback abierto de Christian (lo que hay que cambiar), la última versión y los topes. Si la producción está apagada o en pausa, no toma nada.
+    Después escribe la especificación (receta: /opt/data/atacama-media/brand/content/recetas/carrusel-ilustrado/RECETA.md) y llama a taller_produce.
+    No programa ni publica nada."""
+    body = {"action": "taller_claim", "test": bool(test)}
+    if piece_id:
+        body["piece_id"] = piece_id
+    return _media(body, timeout=90)
+
+
+@mcp.tool()
+def taller_produce(piece_id: str, spec_json: str = "", spec_path: str = "", generator: str = "sim", test: bool = False) -> str:
+    """TALLER — produce UNA versión de la pieza: genera el arte (generator="sim" usa imágenes que ya existen, sin costo; "higgs" está BLOQUEADO
+    salvo autorización de Christian), recorta el fondo, compone las láminas, revisa el texto exacto con visión y la crítica visual, y la sube al
+    Taller «para revisar». Lámina de prueba primero; topes 3 intentos/lámina, 30 créditos/pieza, 200/semana: si se agotan, la pieza queda
+    «necesita ayuda». spec = {"caption": "...", "slides": [{"layout": "portada|arte_texto|pasos|texto|cierre", "title": "...", "emph": "...",
+    "pill": "...", "body": "...", "steps": [...], "art": {"scene": "en inglés, fondo liso", "texts": [...], "cutout": true}}]}.
+    Devuelve una línea JSON con el resultado. No programa ni publica nada."""
+    spec, err = _json_arg(spec_json, spec_path, "spec")
+    if err:
+        return err
+    if not re.match(r"^[0-9a-f-]{36}$", piece_id or ""):
+        return json.dumps({"ok": False, "error": "piece_id_invalido", "message": "piece_id debe ser el uuid de la pieza."}, ensure_ascii=False)
+    if generator not in ("sim", "higgs"):
+        return json.dumps({"ok": False, "error": "generador_invalido", "message": "generator: sim | higgs"}, ensure_ascii=False)
+    import subprocess
+    os.makedirs("/opt/data/state/taller", exist_ok=True)
+    path = "/opt/data/state/taller/spec-%s.json" % piece_id
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(spec, fh, ensure_ascii=False)
+    args = ["/opt/data/scripts/taller_produce.sh", "--spec", path, "--piece", piece_id, "--generator", generator]
+    if test:
+        args.append("--test")
+    try:
+        r = subprocess.run(args, capture_output=True, text=True, timeout=1600)
+    except Exception as ex:
+        return json.dumps({"ok": False, "error": "no_corrio", "message": "El productor no terminó: %s" % type(ex).__name__}, ensure_ascii=False)
+    lines = [l for l in (r.stdout or "").splitlines() if l.strip().startswith("{")]
+    return lines[-1] if lines else json.dumps({"ok": False, "error": "sin_salida", "message": (r.stderr or "")[-300:]}, ensure_ascii=False)
+
+
+@mcp.tool()
+def taller_help(piece_id: str, reason: str, test: bool = False) -> str:
+    """TALLER — detiene una pieza en «necesita ayuda» con el motivo (por ejemplo, no logras una especificación que pase el control de calidad).
+    No se gasta más; Christian decide en el Taller."""
+    return _media({"action": "taller_help", "piece_id": piece_id, "reason": reason, "test": bool(test)}, timeout=60)
+
+
+if __name__ == "__main__":
+    mcp.run()
+

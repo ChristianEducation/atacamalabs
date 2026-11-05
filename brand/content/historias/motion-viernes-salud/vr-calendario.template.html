@@ -1,0 +1,114 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><style>
+@font-face{font-family:"DM Sans";src:url("__FONT__") format("woff2");font-weight:100 1000}
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--blue:#0f5ced;--ink:#0b1e3f;--coral:#ff7a59;--green:#1e9d57}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#f3f6fd}
+body{font-family:"DM Sans",sans-serif;-webkit-font-smoothing:antialiased;color:var(--ink)}
+#st{position:absolute;inset:0;overflow:hidden;background:#f3f6fd}
+.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(15,92,237,.10) 2px,transparent 2px),linear-gradient(90deg,rgba(15,92,237,.10) 2px,transparent 2px);background-size:120px 120px}
+#glow{position:absolute;left:100px;top:700px;width:900px;height:900px;border-radius:50%;background:radial-gradient(circle,rgba(88,166,255,.30),rgba(88,166,255,0) 66%)}
+.ttl{position:absolute;left:60px;width:960px;font-weight:700;letter-spacing:-.04em;line-height:1.04;opacity:0}
+.ttl em{font-style:normal;color:var(--blue)}
+#t1{top:200px;font-size:150px}
+#t2{top:170px;font-size:80px}
+/* calendario */
+#cal{position:absolute;left:40px;top:520px;width:1000px;background:#fff;border:3px solid #d5e0f6;border-radius:40px;box-shadow:0 26px 60px rgba(26,60,142,.16);opacity:0;overflow:hidden}
+#bar{display:flex;align-items:center;justify-content:space-between;padding:22px 30px;border-bottom:2px solid #e6edfa}
+#bar .l{display:flex;align-items:center;gap:16px}
+#bar .ic{width:44px;height:44px;border-radius:12px;background:var(--blue);display:flex;align-items:center;justify-content:center}
+#bar .ic svg{width:26px;height:26px}
+#bar .m{font-size:34px;font-weight:700;letter-spacing:-.02em}
+#bar .m small{display:block;font-size:22px;font-weight:600;color:#6b7c9c;letter-spacing:0;margin-top:1px}
+#cnt{font-size:30px;font-weight:700;padding:9px 22px;border-radius:40px;white-space:nowrap}
+#days{display:flex;padding-left:76px;border-bottom:2px solid #e6edfa}
+#days div{width:184px;text-align:center;padding:14px 0 12px;font-size:22px;font-weight:700;color:#6b7c9c;letter-spacing:.08em}
+#days div b{display:block;font-size:40px;color:var(--ink);letter-spacing:-.02em;margin-top:2px}
+#body{position:relative}
+.hl{position:absolute;left:0;right:0;border-top:2px solid #eef2fb}
+.hl span{position:absolute;left:0;width:68px;text-align:right;font-size:21px;font-weight:600;color:#8c9ab5;top:-14px;background:#fff;padding-right:6px}
+.vl{position:absolute;top:0;bottom:0;width:2px;background:#eef2fb}
+.ev{position:absolute;border-radius:14px;padding:8px 10px;overflow:hidden;opacity:0;border-left:7px solid var(--blue);background:#e6eefe}
+.ev .n{font-size:30px;font-weight:700;letter-spacing:-.02em;white-space:nowrap;line-height:1.1}
+.ev .s{font-size:22px;color:#4d6088;white-space:nowrap;margin-top:1px}
+.ev .c{position:absolute;left:10px;bottom:8px;font-size:21px;font-weight:700;white-space:nowrap}
+#end{position:absolute;left:0;top:0;width:1080px;height:1920px;background:#fff;transform:translateY(1920px);box-shadow:0 -30px 80px rgba(15,40,100,.18)}
+#end .grid2{position:absolute;inset:0;background-image:linear-gradient(rgba(15,92,237,.07) 2px,transparent 2px),linear-gradient(90deg,rgba(15,92,237,.07) 2px,transparent 2px);background-size:120px 120px}
+#elogo{position:absolute;left:50%;top:560px;width:760px;transform:translateX(-50%);opacity:0}
+#e1{position:absolute;left:90px;top:760px;width:900px;text-align:center;font-size:70px;font-weight:700;letter-spacing:-.035em;line-height:1.08;opacity:0}
+#e1 em{font-style:normal;color:var(--blue)}
+#ecta{position:absolute;left:150px;top:1120px;width:780px;background:var(--blue);color:#fff;border-radius:60px;text-align:center;font-size:62px;font-weight:700;letter-spacing:-.02em;padding:44px 0;box-shadow:0 30px 70px rgba(15,92,237,.42);opacity:0}
+#eurl{position:absolute;left:0;width:100%;top:1320px;text-align:center;font-size:48px;font-weight:700;color:var(--blue);opacity:0}
+</style></head><body><div id="st"><div class="grid" id="g"></div><div id="glow"></div>
+<div class="ttl" id="t1">¿Te <em>suena?</em></div>
+<div class="ttl" id="t2">Con <em>Atacama Labs</em>, tu agenda se confirma y los huecos se llenan.</div>
+<div id="cal"><div id="bar"><div class="l"><div class="ic"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="3" fill="none" stroke="#fff" stroke-width="2"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div><div class="m">Octubre 2026<small>Clínica dental · semana</small></div></div><div id="cnt">15 agendadas</div></div>
+<div id="days"></div><div id="body"></div></div>
+<div id="end"><div class="grid2"></div><img id="elogo" src="__LOGO__"><div id="e1">Agentes de IA que <em>confirman, recuerdan y reprograman</em> tus horas por WhatsApp.</div><div id="ecta">Agenda una demo</div><div id="eurl">atacamalabs.cl</div></div>
+</div><script>
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const seg = (T, a, b) => clamp((T - a) / (b - a));
+const eout = (t) => 1 - Math.pow(1 - t, 3);
+const back = (t, s = 1.7) => { t = clamp(t); const c3 = s + 1; return 1 + c3 * Math.pow(t - 1, 3) + s * Math.pow(t - 1, 2); };
+const H0 = 9, HOURS = 8, HH = 118, X0 = 76, CW = 184;
+['LUN|26', 'MAR|27', 'MIÉ|28', 'JUE|29', 'VIE|30'].forEach((d) => { const [a, b] = d.split('|'); const e = document.createElement('div'); e.innerHTML = a + '<b>' + b + '</b>'; $('days').append(e); });
+$('body').style.height = (HOURS * HH) + 'px';
+for (let h = 0; h <= HOURS; h++) { const l = document.createElement('div'); l.className = 'hl'; l.style.top = (h * HH) + 'px'; l.innerHTML = h < HOURS ? '<span>' + String(H0 + h).padStart(2, '0') + ':00</span>' : ''; $('body').append(l); }
+for (let d = 0; d <= 5; d++) { const v = document.createElement('div'); v.className = 'vl'; v.style.left = (X0 + d * CW - 1) + 'px'; $('body').append(v); }
+// [día, hora de inicio, nombre, tratamiento, problema(null|'nc'|'ca'|'gap'), momento del problema, momento de la solución, nombre nuevo, trat. nuevo, texto verde]
+const EV = [
+  [0, 9, 'Camila', 'Limpieza', null, 0, 3.4],
+  [0, 11, 'Valentina', 'Ortodoncia', 'ca', 1.05, 3.7, 'Tomás', 'Control', 'Reagendada'],
+  [0, 14, 'Libre', '', 'gap', 1.35, 4.0, 'Paula', 'Control', 'Reagendada'],
+  [1, 9.5, 'Ignacio', 'Endodoncia', 'nc', 1.65, 4.3],
+  [1, 12, 'Matías', 'Control', null, 0, 4.6],
+  [1, 15, 'Sofía', 'Blanqueo', null, 0, 4.9],
+  [2, 10, 'Libre', '', 'gap', 1.95, 5.2, 'Josefa', 'Implante', 'Reagendada'],
+  [2, 11.5, 'Andrés', 'Limpieza', 'nc', 2.25, 5.5],
+  [2, 14, 'Daniela', 'Control', null, 0, 5.8],
+  [3, 9, 'Felipe', 'Control', null, 0, 6.1],
+  [3, 10.5, 'Lucía', 'Ortodoncia', 'ca', 2.55, 6.4, 'Bruno', 'Control', 'Reagendada'],
+  [3, 13, 'Rodrigo', 'Control', null, 0, 6.7],
+  [4, 9.5, 'Carla', 'Implante', 'nc', 2.8, 7.0],
+  [4, 12, 'Libre', '', 'gap', 3.05, 7.3, 'Marco', 'Limpieza', 'Reagendada'],
+  [4, 14, 'Pedro', 'Control', null, 0, 7.6],
+];
+const evEls = EV.map((e, i) => { const d = document.createElement('div'); d.className = 'ev'; d.style.left = (X0 + e[0] * CW + 6) + 'px'; d.style.width = (CW - 12) + 'px'; d.style.top = ((e[1] - H0) * HH + 4) + 'px'; d.style.height = (HH - 8) + 'px'; d.innerHTML = '<div class="n"></div><div class="s"></div><div class="c"></div>'; $('body').append(d); return d; });
+function bg(T) { $('g').style.backgroundPosition = (T * 10) + 'px ' + (-T * 8) + 'px'; $('glow').style.transform = 'translate(' + (Math.sin(T * 0.8) * 30) + 'px,' + (Math.cos(T * 0.8) * 24) + 'px)'; }
+function draw(T) {
+  bg(T);
+  const c = back(seg(T, 0.1, 0.7), 1.4); $('cal').style.opacity = clamp(c * 3); $('cal').style.transform = 'translateY(' + ((1 - c) * 120) + 'px)';
+  const a1 = back(seg(T, 0.2, 0.7), 1.6), o1 = 1 - seg(T, 2.0, 2.5);
+  $('t1').style.opacity = clamp(a1 * 3) * o1; $('t1').style.transform = 'translateY(' + ((1 - a1) * 50 - seg(T, 2.0, 2.5) * 40) + 'px)';
+  const a2 = back(seg(T, 2.6, 3.2), 1.5), o2 = 1 - seg(T, 7.9, 8.4);
+  $('t2').style.opacity = clamp(a2 * 3) * o2; $('t2').style.transform = 'translateY(' + ((1 - a2) * 50 - seg(T, 7.9, 8.4) * 30) + 'px)';
+  let risk = 0, ok = 0;
+  EV.forEach((e, i) => {
+    const [d, h, n, s, bad, badAt, fixAt, n2, s2, ctext] = e; const el = evEls[i];
+    const u = back(seg(T, 0.45 + (i % 5) * 0.08 + Math.floor(i / 5) * 0.06, 0.95 + (i % 5) * 0.08 + Math.floor(i / 5) * 0.06), 1.4);
+    const fixed = T >= fixAt, isBad = bad && T >= badAt && !fixed;
+    if (isBad) risk++; if (fixed) ok++;
+    const gapNow = bad === 'gap' && !fixed;
+    const showEv = !(bad === 'gap' && T < badAt);
+    const popBad = back(seg(T, badAt, badAt + 0.35), 2.4), popFix = back(seg(T, fixAt, fixAt + 0.4), 2.2);
+    el.style.opacity = bad === 'gap' && T < badAt ? 0 : clamp(u * 3);
+    el.style.transform = 'scale(' + (fixed ? 0.94 + 0.06 * popFix : isBad ? 0.94 + 0.06 * popBad : 0.9 + 0.1 * u) + ')';
+    const N = el.querySelector('.n'), S = el.querySelector('.s'), C = el.querySelector('.c');
+    N.textContent = fixed && n2 ? n2 : n; S.textContent = fixed && s2 ? s2 : s;
+    if (fixed) { el.style.background = '#dff4e8'; el.style.borderLeft = '7px solid #1e9d57'; el.style.border = ''; el.style.borderLeftColor = '#1e9d57'; C.textContent = '✓ ' + (ctext || 'Confirmada'); C.style.color = '#1e9d57'; N.style.color = '#0b1e3f'; }
+    else if (isBad && bad === 'gap') { el.style.background = 'repeating-linear-gradient(135deg,rgba(255,122,89,.16) 0 12px,rgba(255,122,89,.04) 12px 24px)'; el.style.borderLeft = '7px dashed #ff7a59'; C.textContent = ''; N.style.color = '#d9573a'; S.textContent = 'Sin paciente'; }
+    else if (isBad) { el.style.background = '#ffe6df'; el.style.borderLeft = '7px solid #ff7a59'; C.textContent = bad === 'nc' ? 'Sin confirmar' : 'Canceló'; C.style.color = '#d9573a'; N.style.color = '#0b1e3f'; }
+    else { el.style.background = '#e6eefe'; el.style.borderLeft = '7px solid #0f5ced'; C.textContent = ''; N.style.color = '#0b1e3f'; }
+  });
+  const cnt = $('cnt');
+  if (ok === EV.length) { cnt.textContent = '15 confirmadas'; cnt.style.background = 'rgba(30,157,87,.14)'; cnt.style.color = '#1e9d57'; cnt.style.transform = 'scale(' + (1 + 0.12 * Math.sin(seg(T, 8.0, 8.5) * Math.PI)) + ')'; }
+  else if (risk === 0 && T < 1.05) { cnt.textContent = '15 agendadas'; cnt.style.background = '#eef2fb'; cnt.style.color = '#6b7c9c'; }
+  else { const n = EV.filter((e) => e[4] && T >= e[5] && T < e[6]).length; cnt.textContent = n + ' en riesgo'; cnt.style.background = 'rgba(255,122,89,.14)'; cnt.style.color = '#ff7a59'; }
+  const e = eout(seg(T, 10.6, 11.4)); $('end').style.transform = 'translateY(' + ((1 - e) * 1920) + 'px)';
+  const l = back(seg(T, 11.5, 12.1), 1.5); $('elogo').style.opacity = clamp(l * 3); $('elogo').style.transform = 'translateX(-50%) translateY(' + ((1 - l) * 50) + 'px)';
+  const t = back(seg(T, 12.0, 12.6), 1.4); $('e1').style.opacity = clamp(t * 3); $('e1').style.transform = 'translateY(' + ((1 - t) * 40) + 'px)';
+  const b = back(seg(T, 12.8, 13.4), 1.8); $('ecta').style.opacity = clamp(b * 3); $('ecta').style.transform = 'scale(' + ((0.8 + 0.2 * b) * (T > 13.6 ? 1 + 0.025 * Math.sin((T - 13.6) * 6) : 1)) + ')';
+  $('eurl').style.opacity = eout(seg(T, 13.4, 13.9));
+}
+window.draw = draw;
+</script></body></html>

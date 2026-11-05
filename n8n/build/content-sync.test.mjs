@@ -1,0 +1,71 @@
+// node n8n/build/content-sync.test.mjs
+import { mapGhlToPiece, buildContentSync } from './content-sync.mjs';
+import { summaryHash } from '../../scripts/content/metrics-core.mjs';
+let pass = 0, fail = 0;
+const t = (n, c, x = '') => { c ? pass++ : fail++; console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : x); };
+const now = Date.parse('2026-10-14T00:00:00Z');
+const m = (st, extra = {}) => mapGhlToPiece({ status: st, ...extra }, now);
+t('draft → drafted', m('draft').status === 'drafted');
+t('in_review pendiente → in_review', m('in_review', { postApprovalDetails: { approvalStatus: 'pending' } }).status === 'in_review');
+t('in_review con aprobación → approved', m('in_review', { postApprovalDetails: { approvalStatus: 'approved' } }).status === 'approved');
+t('in_review rechazado → discarded', m('in_review', { postApprovalDetails: { approvalStatus: 'rejected' } }).status === 'discarded');
+t('scheduled → scheduled con fecha', (() => { const r = m('scheduled', { scheduleDate: '2026-10-13T13:00:00.000Z' }); return r.status === 'scheduled' && r.scheduled_at === '2026-10-13T13:00:00.000Z'; })());
+t('published → published con published_at', (() => { const r = m('published', { publishedAt: '2026-10-13T13:02:00.000Z' }); return r.status === 'published' && r.published_at === '2026-10-13T13:02:00.000Z'; })());
+t('failed → failed', m('failed').status === 'failed');
+t('failed con aprobación rechazada (rechazo desde /ops o GHL) → discarded, no una falla de publicación', m('failed', { postApprovalDetails: { approvalStatus: 'rejected' } }).status === 'discarded' && m('draft', { postApprovalDetails: { approvalStatus: 'rejected' } }).status === 'discarded');
+t('post inexistente → discarded/deleted', (() => { const r = mapGhlToPiece(null, now); return r.status === 'discarded' && r.ghl_status === 'deleted'; })());
+t('estado desconocido no toca la pieza', m('algo_nuevo').status === null);
+
+const wf = buildContentSync();
+const compute = wf.nodes.find((n) => n.name === 'Compute').parameters.jsCode;
+const run = (pending, res) => { const $ = (n) => ({ first: () => ({ json: { 'Fetch Pending': { body: pending } }[n] }) }); return new Function('$', '$json', compute)($, res); };
+const ok = (posts) => ({ statusCode: 201, body: { results: { posts } } });
+t('Compute: sin pendientes no hace nada', run([], ok([])).length === 0);
+const pend = [{ id: 'a', ghl_post_id: 'p1', status: 'in_review', ghl_status: 'in_review', ghl_approval_status: 'pending' }, { id: 'b', ghl_post_id: 'p2', status: 'in_review', ghl_status: 'in_review', ghl_approval_status: 'pending' }, { id: 'c', ghl_post_id: 'p3', status: 'scheduled', ghl_status: 'scheduled', ghl_approval_status: 'approved' }];
+let out = run(pend, ok([{ _id: 'p1', status: 'in_review', postApprovalDetails: { approvalStatus: 'pending' } }, { _id: 'p3', status: 'published', publishedAt: '2026-10-13T13:02:00Z', postApprovalDetails: { approvalStatus: 'approved' } }]));
+t('Compute: solo emite lo que cambió (sin cambios p1; p2 borrado → discarded; p3 → published)', out.length === 2 && out.find((x) => x.json.id === 'b').json.to === 'discarded' && out.find((x) => x.json.id === 'c').json.to === 'published', JSON.stringify(out.map((x) => x.json)));
+t('Compute: el parche lleva synced_at', out[0].json.patch.synced_at === new Date(out[0].json.patch.synced_at).toISOString());
+t('Compute: si GHL falla NO descarta nada (lanza error)', (() => { try { run(pend, { statusCode: 500, body: { message: 'x' } }); return false; } catch { return true; } })());
+t('el workflow no escribe en GHL (solo POST de lectura posts/list)', wf.nodes.filter((n) => /leadconnectorhq/.test(JSON.stringify(n.parameters))).every((n) => /posts\/list$/.test(n.parameters.url)));
+t('frecuencia moderada (30 min)', wf.nodes[0].parameters.rule.interval[0].minutesInterval === 30);
+
+// --- ciclo de aprobación, edición y programación (7-oct)
+const inRev = { status: 'in_review', ghl_summary_hash: summaryHash('Texto original'), ghl_edited: false, approved_seen_at: null, approved_at: null };
+let r2 = mapGhlToPiece({ status: 'scheduled', scheduleDate: '2026-10-13T13:00:00.000Z', summary: 'Texto original', postApprovalDetails: { approvalStatus: 'approved' } }, now, inRev);
+t('aprobado y programado: status scheduled + approved_seen_at', r2.status === 'scheduled' && r2.approved_seen_at === new Date(now).toISOString() && !r2.ghl_edited && !r2.approved_at, JSON.stringify(r2));
+r2 = mapGhlToPiece({ status: 'scheduled', scheduleDate: '2026-10-07T19:00:00.000Z', summary: 'Texto original', approvalActionAt: '2026-10-06T18:51:08.149Z', postApprovalDetails: { approvalStatus: 'approved' } }, now, inRev);
+t('forma real de GHL: approvalActionAt => approved_at exacto + scheduled', r2.approved_at === '2026-10-06T18:51:08.149Z' && r2.status === 'scheduled' && r2.scheduled_at === '2026-10-07T19:00:00.000Z', JSON.stringify(r2));
+r2 = mapGhlToPiece({ status: 'in_review', summary: 'Texto original', approvalActionAt: '2026-10-06T18:51:08.149Z', postApprovalDetails: { approvalStatus: 'rejected' } }, now, inRev);
+t('rechazo: approvalActionAt NO se toma como aprobación', r2.approved_at === undefined && r2.status === 'discarded');
+r2 = mapGhlToPiece({ status: 'scheduled', summary: 'Texto original', postApprovalDetails: { approvalStatus: 'approved', approvedAt: '2026-10-12T20:00:00.000Z' } }, now, inRev);
+t('si GHL expone la fecha de aprobación se guarda exacta', r2.approved_at === '2026-10-12T20:00:00.000Z');
+r2 = mapGhlToPiece({ status: 'scheduled', summary: 'Texto original', postApprovalDetails: { approvalStatus: 'approved' } }, now, { ...inRev, approved_seen_at: '2026-10-12T00:00:00.000Z' });
+t('approved_seen_at ya conocido no se pisa', r2.approved_seen_at === undefined);
+r2 = mapGhlToPiece({ status: 'in_review', summary: 'Texto original \n', postApprovalDetails: { approvalStatus: 'pending' } }, now, inRev);
+t('texto igual (aunque cambien saltos de línea) => no editado', r2.ghl_edited === undefined && r2.status === 'in_review');
+r2 = mapGhlToPiece({ status: 'in_review', summary: 'Texto original corregido por Christian', postApprovalDetails: { approvalStatus: 'pending' } }, now, inRev);
+t('texto distinto => editado en GHL (sigue in_review)', r2.ghl_edited === true && r2.ghl_edited_seen_at && r2.status === 'in_review');
+r2 = mapGhlToPiece({ status: 'in_review', summary: 'otro', postApprovalDetails: { approvalStatus: 'pending' } }, now, { ...inRev, ghl_summary_hash: null });
+t('sin hash guardado no se afirma edición', r2.ghl_edited === undefined);
+r2 = mapGhlToPiece({ status: 'published', publishedAt: '2026-10-13T13:01:00.000Z', summary: 'Texto original', postApprovalDetails: { approvalStatus: 'approved' } }, now, { ...inRev, status: 'scheduled', approved_seen_at: '2026-10-12T00:00:00Z' });
+t('publicado: published_at desde GHL', r2.status === 'published' && r2.published_at === '2026-10-13T13:01:00.000Z');
+const pend2 = [{ id: 'a', ghl_post_id: 'p1', status: 'in_review', ghl_status: 'in_review', ghl_approval_status: 'pending', scheduled_at: '2026-10-13T13:00:00.000Z', ghl_summary_hash: summaryHash('Original'), ghl_edited: false }];
+t('Compute: reprogramar la fecha en GHL se detecta', run(pend2, ok([{ _id: 'p1', status: 'in_review', summary: 'Original', scheduleDate: '2026-10-14T15:00:00.000Z', postApprovalDetails: { approvalStatus: 'pending' } }])).length === 1);
+t('Compute: sin cambios no emite nada (no escribe de más)', run(pend2, ok([{ _id: 'p1', status: 'in_review', summary: 'Original', scheduleDate: '2026-10-13T13:00:00.000Z', postApprovalDetails: { approvalStatus: 'pending' } }])).length === 0);
+out = run(pend2, ok([{ _id: 'p1', status: 'in_review', summary: 'Original editado', scheduleDate: '2026-10-13T13:00:00.000Z', postApprovalDetails: { approvalStatus: 'pending' } }]));
+t('Compute: edición humana emite parche con ghl_edited', out.length === 1 && out[0].json.patch.ghl_edited === true);
+let trunc = null;
+try { run(pend2, ok(Array.from({ length: 100 }, (_, i) => ({ _id: 'x' + i, status: 'scheduled', summary: 's', scheduleDate: '2026-10-13T13:00:00.000Z', postApprovalDetails: { approvalStatus: 'approved' } })))); } catch (e) { trunc = e; }
+t('Compute: lista de 100 posts (truncada) NO marca nada como borrado: falla con aviso', trunc && /truncada/.test(trunc.message));
+// v3 · Taller: post «hijo» al publicar y estado del Taller
+{
+  const pend = [{ id: 'pz', ghl_post_id: 'PARENT1', status: 'in_review', ghl_status: 'in_review', ghl_approval_status: 'pending', taller_status: 'programada_pendiente_de_clic' }];
+  const out = run(pend, { statusCode: 200, body: { results: { posts: [{ _id: 'CHILD1', parentPostId: 'PARENT1', status: 'published', publishedAt: '2026-10-28T18:01:00Z', scheduleDate: '2026-10-28T18:00:00Z', postApprovalDetails: { approvalStatus: 'approved' } }] } } });
+  t('v3 · sync: el post publicado «hijo» (parentPostId) se reconoce: la pieza queda publicada, NO borrada', out.length === 1 && out[0].json.patch.status === 'published' && out[0].json.patch.taller_status === 'publicada', JSON.stringify(out));
+  const out2 = run(pend, { statusCode: 200, body: { results: { posts: [{ _id: 'PARENT1', status: 'scheduled', scheduleDate: '2026-10-28T18:00:00Z', postApprovalDetails: { approvalStatus: 'approved' } }] } } });
+  t('v3 · sync: Christian dio el último clic en GHL → la pieza pasa a «programada»', out2.length === 1 && out2[0].json.patch.taller_status === 'programada');
+}
+
+console.log(`
+${pass} ok ${fail} fallos`);
+process.exit(fail ? 1 : 0);

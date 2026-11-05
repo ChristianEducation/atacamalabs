@@ -1,11 +1,10 @@
 import site from "@/lib/content";
 
 /**
- * Origen canónico. content/site.json.publicSettings.canonicalOrigin es null
- * hasta que el dominio esté bajo control verificado (I04/I01) — mientras
- * tanto se usa NEXT_PUBLIC_SITE_URL (build/deploy) o localhost en dev.
- * No inventar que atacamalabs.cl ya está publicando: esto solo ancla URLs
- * relativas (OG, sitemap); confirmar contra el dominio real antes de 4.2.
+ * Origen canónico: `content/site.json.publicSettings.canonicalOrigin` (dominio
+ * publicado, https://atacamalabs.cl). NEXT_PUBLIC_SITE_URL o localhost solo
+ * como respaldo si esa clave se vacía (p. ej. un entorno de pruebas).
+ * Ancla las URLs absolutas: sitemap, robots, canonical y Open Graph.
  */
 export const SITE_URL =
   site.publicSettings.canonicalOrigin ??

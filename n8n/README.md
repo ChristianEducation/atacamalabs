@@ -2,6 +2,47 @@
 
 Workflows propios de Atacama Labs en la instancia n8n compartida (`n8n.srv1650725.hstgr.cloud`). **No se tocó ningún workflow ni pipeline de EnBandeja** — todo lo de acá es nuevo, con nombre/credenciales propios.
 
+## Estado REAL de la instancia (verificado el 2026-10-05)
+
+> Esta sección manda sobre el resto del archivo cuando haya diferencias; el resto es historia técnica de cómo se construyó cada pieza. Detalle de la limpieza en `docs/ATACAMA-OS-IMPLEMENTATION.md`.
+
+Los workflows se agrupan con **etiquetas** de n8n (la API pública no ofrece carpetas):
+
+| Etiqueta | Workflows | Estado |
+|---|---|---|
+| `ATACAMA — PRODUCCIÓN` | **01 Lead Sync v2.2** (`idniXY0Du2qet57O`), **07 Booking Sync** (`sw0xbhB91s5mhHCh`) | Activos, cada 2 min, sin errores |
+| `ATACAMA — EN DESARROLLO` | 00 Orchestrator (`ubXANtYTd5y9wdbP`, inactivo) y las copias PROD de 01 Discovery (`AnjrmngEzXWiXIVT`), 02 Research (`cw3oTblethuiTtEm`), 02b Signals (`liNLmszWOlEz9kVv`), 03 Qualification (`LzkojauO5ypKNALc`) | "Activos" solo para ser invocados por el orquestador; **el pipeline de prospección está detenido** (Discovery bloqueado por el scraper compartido; 0 prospectos reales de Atacama) |
+| `ATACAMA — ARCHIVO` | Lead Sync v1 (`oKQujZqHy09dMJao`), v2 (`COWM3i2F4VZq7Dau`), v2.1 (`dlB8WgFwQZjtDJz1`) | Archivados (no borrados) |
+| `LEGACY — ENBANDEJA` | 8 workflows del motor original + 3 benchmarks | Inactivos; no tocar, no borrar sin autorización |
+
+**Diferencias con lo escrito más abajo**
+- `04 CRM Sync`, `05 Outreach Draft` y `06 Gmail Sync` **existen solo como JSON en este directorio**: se probaron como copias desechables y se borraron. **No están desplegados en la instancia.**
+- Se dejó de cumplir "no se dejó ningún workflow activo permanentemente": 01 Lead Sync v2.2 y 07 Booking Sync están activos de forma permanente.
+- `06 Gmail Sync` sigue bloqueado: no existe ninguna credencial de Gmail en la instancia.
+- Dependencias compartidas con EnBandeja que **siguen en uso** y se migrarán después: servicio `enbandeja-gmaps:8080` (01 Discovery), credenciales `Header Auth account` / `Header Auth account 2` (OpenClaw y Crawl4AI en 02/02b), y el propio contenedor/ruta `enbandeja-n8n`.
+- Todo workflow nuevo debe llamarse **Atacama Labs — …** (o nombre genérico) y no puede introducir dependencias `enbandeja-*`.
+
+## Atacama OS · prospección y resumen diario (workflows 08, 09 y 10)
+
+Generados por scripts versionados en [`build/`](build/) (los JSON de esta carpeta quedan en modo `test` con marcadores de ids; la versión `real` se genera con las constantes del pack `atacama-labs` y se despliega con el protocolo de copias). Detalle completo y evidencia en `docs/ATACAMA-OS-IMPLEMENTATION.md`.
+
+| Workflow | Disparador | Qué hace |
+|---|---|---|
+| **08 Prospect Ingest** (`YCl1Xns0XLX4W6M6`) | `POST /webhook/atacama-prospects-ingest` con cabecera `X-Atacama-Key` | Recibe el JSON de Hermes, aplica el gate (empresa y dominio propios; evidencia citada con URL del dolor y del encaje; contacto público con su fuente; razón específica), llama a la RPC `ingest_prospect` (transaccional, deduplica por dominio, registra en `prospect_inbox`) y ejecuta 03 Qualification sobre las cuentas nuevas |
+| **09 Prospect Approve** (`jznwD7AwEI0h9pEv`) | `POST /webhook/atacama-prospects-approve` con la misma cabecera | Marca como `ready_to_contact` solo prospectos `hot` + `crm_candidate` + `new`; ejecuta 04 CRM Sync una vez (entrada en la etapa *Investigado*) y 05 Outreach Draft una vez por cuenta. **No envía nada** |
+| **10 Atacama Daily** (JSON con marcadores; **sin desplegar**) | Cron `30 8 * * *` (America/Santiago) | Resumen operativo por Telegram. Falta la credencial del bot |
+
+Credenciales propias creadas: `Atacama Labs - Ingest Key` (cabecera de 08/09 y de Hermes) y `Atacama Labs - n8n API (lectura)` (solo para contar ejecuciones fallidas en el Daily). Ambas webhooks rechazan sin clave (403) y con un `icp_pack_id` que no sea el del workflow (error, sin escribir).
+
+Cómo se usa (aprobación manual, hoy por API):
+
+```bash
+# ver lo que espera aprobación (en Supabase): prospects con classification='hot', crm_candidate=true, status='new'
+curl -X POST "$N8N_BASE_URL/webhook/atacama-prospects-approve" \
+  -H "X-Atacama-Key: $ATACAMA_INGEST_KEY" -H "Content-Type: application/json" \
+  -d '{"icp_pack_id":"0ba54785-bff0-4a2d-a397-64e697d34e38","prospect_ids":["<uuid>"],"approved_by":"christian"}'
+```
+
 ## Protocolo de pruebas seguras (vigente desde 2026-09-15, tras el incidente de 02 Research)
 
 Tras el incidente de abajo, Christian decidió: entorno de prueba aislado dentro del mismo motor, no probar más contra `atacama-labs` directamente. Reglas vigentes para **todo** workflow nuevo de 003+:
@@ -28,6 +69,24 @@ Durante esta ronda se encontraron y corrigieron 3 bugs reales más (ninguno de a
 
 Los JSON versionados en este directorio quedan en modo `test` (el seguro por defecto para seguir iterando/probando). La promoción a `real` es un proceso repetible y ya probado (mismo script, `MODE=real`) — no se dejó ningún workflow activo permanentemente en n8n; todo se ejecuta vía copias desechables bajo demanda hasta que exista un orquestador (`00`) que decida cuándo correr cada uno en producción.
 
+## Atacama Labs - 11 Won to Client (6-oct-2026 · **importado en n8n, INACTIVO**: id `jB62BWlu1Eg6BEuD`)
+
+- Archivo: [`atacama-labs-11-won-to-client.json`](atacama-labs-11-won-to-client.json) (generado por [`build/won-to-client.mjs`](build/won-to-client.mjs)). Webhook `POST /webhook/atacama-won-to-client` con cabecera `X-Atacama-Key`, cuerpo `{"opportunity_id":"…","dry_run":false}` **o** el Webhook estándar de GHL con *Custom Data* (`opportunity_id`, `dry_run`), que llega en `body.customData`. `dry_run` acepta booleano o texto `"true"`/`"false"`; ausente, inválido, ambiguo o contradictorio (raíz y `customData` no coinciden) ⇒ **siempre `dry_run=true`**. Pruebas: `node n8n/build/won-to-client.test.mjs` (45 casos).
+- Qué hace cuando GHL avisa de una oportunidad ganada: relee la oportunidad en GHL (solo actúa si `status=won` en `Atacama Labs — Ventas`), localiza o crea la **Business**, crea el **Servicio contratado** (estado Onboarding) y, si corresponde, un **Proyecto** inicial (Planificado), y deja las relaciones (servicio↔oportunidad, business↔servicio, business↔oportunidad, business↔contacto, business↔proyecto, proyecto↔servicio). No crea tareas (eso lo hace el Workflow nativo de GHL) ni inventa montos o fechas.
+- Seguridad: **`dry_run` es verdadero por defecto**; sin nombre de empresa confiable se detiene (`needs_human`); idempotente (si la oportunidad ya tiene Servicio no repite).
+- Pruebas hechas: 17 pruebas unitarias de la lógica de los nodos (guardas, plan, idempotencia, relaciones) y verificación por API de cada operación con registros TEST ya borrados. El flujo completo **no se ejecutó** (ninguna oportunidad está ganada y no se dispara de forma artificial).
+- Estado: importado el 6-oct con la credencial `GHL — Atacama OS` (`4Vc6nfxyKjZ14Bep`, creada a mano por Christian) en los 8 nodos que llaman a GHL y la credencial `Atacama Labs - Ingest Key` en el webhook. **Inactivo**, sin schedule, 0 ejecuciones. Para activarlo: crear antes el Workflow de GHL descrito en `docs/ATACAMA-OS-IMPLEMENTATION.md` (E5) y activar 11 solo cuando se quiera recibir avisos.
+
+## Atacama Labs - 07 Booking Sync (2026-09-25; ACTIVO desde el 5-oct-2026 como copia `VsLCMZ6MeDsNvGzI`, el original `sw0xbhB91s5mhHCh` quedó archivado)
+
+> **Actualización 6-oct-2026 (Bloque E):** el pipeline ahora tiene 7 etapas (Nuevo → Investigado → Contactado → Respondió → Diagnóstico → Propuesta → Seguimiento). Una reserva lleva a **Diagnóstico** desde Nuevo, Investigado, Contactado o Respondió (la lista "etapa temprana" tiene esas 4). Reverificado de punta a punta el 6-oct (oportunidad TEST en Investigado → reserva TEST → pasó a Diagnóstico en ~2 min; todo borrado después).
+
+- Archivo: [`atacama-labs-07-booking-sync.json`](atacama-labs-07-booking-sync.json). Cada 2 min lista las reservas del calendario GHL **«Reunión de activación»** (id `D3CUkoKxRyze3Kpt8sa9`, 30 min, Google Calendar de atacamalabs.cl) de los últimos 3 días y los próximos 120. GHL no ofrece webhooks para Private Integrations, por eso es *polling* por API.
+- Flujo: `List Booked Events` → `Split Events` (descarta canceladas/no-show) → `Find Lead` (por `ghl_contact_id` en Supabase) → `Decide` (solo si el lead ya tiene oportunidad y esa reserva no está registrada; si el lead aún no sincroniza, reintenta en la siguiente corrida) → `Get Opportunity` → si sigue en Nuevo/Contactado, `Move To Diagnostico` (etapa `fec1e794-…`; nunca retrocede una oportunidad que ya está en Propuesta/Seguimiento/Cerrado) → `Update Lead Meeting` (PATCH `meeting_scheduled`, `meeting_start`, `calendar_event_id`, `calendar_provider='ghl'`). Idempotente por `calendar_event_id`.
+- Credencial propia `Atacama Labs - GHL Calendars Auth` (`MIOyxnOFWOwL1Rvt`, httpHeaderAuth con el token de la Private Integration «Atacama Labs — Web», scopes de calendars/contacts/opportunities/customFields). El token vive solo en n8n y en `.env.local` (`GHL_ATACAMA_TOKEN`); no en el repo.
+- Probado end-to-end: lead de prueba → sync (Lead Sync v2) → reserva de prueba por API → en ≤2 min `meeting_scheduled=true`, `meeting_start` correcto y la oportunidad pasó a «Diagnóstico». Datos de prueba (reserva, oportunidad, contacto, lead, job) borrados.
+- Limitaciones: la reserva debe hacerse con el mismo email/teléfono del lead (el formulario de `/diagnostico` los pasa por URL a la agenda); las horas del calendario están en UTC en la API (la ubicación GHL está en UTC), por eso `openHours` se guardó como 13:00–21:00 UTC = 10:00–18:00 Chile en horario de verano (UTC-3); con el cambio de hora de abril de 2027 se corre 1 h: ajustar en GHL → Calendar → Availability.
+
 ## Atacama Labs - 01 Lead Sync
 
 - id n8n: `oKQujZqHy09dMJao` (activo).
@@ -46,6 +105,23 @@ Los JSON versionados en este directorio quedan en modo `test` (el seguro por def
 1. **Camino feliz**: lead de prueba real → `claim_sync_jobs` lo reclamó → contacto y oportunidad creados en GHL (pipeline/etapa/custom fields correctos, verificado con `GET /opportunities/{id}`) → `lead_submissions.status='synced'` con los IDs de GHL guardados → contacto/oportunidad de prueba eliminados de GHL, fila de prueba eliminada de Supabase.
 2. **Camino de reintento** (ya tiene IDs de GHL de un intento previo): el workflow detectó los IDs ya guardados y fue directo a `complete_sync_job` **sin llamar a GHL** — verificado que los IDs no cambiaron.
 3. **Camino de fallo/backoff**: probado directo en SQL sobre `complete_sync_job` (no disparado por un error real de GHL en esta sesión) — `retry_wait`, `attempts=1`, `next_at` futuro, error sin PII. El workflow usa la misma función, así que hereda ese comportamiento; no se forzó un fallo real de la API de GHL para no arriesgar nada en producción sin necesidad.
+
+### 01 Lead Sync v2 — contexto del diagnóstico (2026-09-25; v2.2 ACTIVO en n8n: id `idniXY0Du2qet57O`; v2.1 `dlB8WgFwQZjtDJz1`, v2 `COWM3i2F4VZq7Dau` y v1 `oKQujZqHy09dMJao` quedaron desactivados como rollback)
+
+> v2.2 = v2.1 + el rubro (`diagnostic_data.industry`, línea «Rubro» en la nota). v2.1 = v2 + la casilla opcional «¿Algo más que quieras contarnos?» (`extra_note`) en la nota de GHL. El JSON versionado de este directorio refleja el estado actual: v2.2 + atribución (ver abajo).
+
+- Archivo: [`atacama-labs-01-lead-sync-v2.json`](atacama-labs-01-lead-sync-v2.json) (13 nodos). **Está activo y reemplaza al v1 (`oKQujZqHy09dMJao`), que quedó DESACTIVADO (no borrado) como respaldo de rollback.** Verificado 2026-09-25 con 2 leads de prueba reales por `/api/leads` de producción (agentes/plan operación y web/plan ecommerce): ambos `synced`, oportunidad en pipeline/etapa correctos, Solución de interés = `Agentes` / `Ecommerce`, nota completa en el contacto; datos de prueba borrados en GHL y Supabase (queda solo el lead previo de Nayra).
+- Cambios sobre v1: tras `Already Has GHL IDs?` (rama "no") se agregan `Get Lead Context` (GET a `lead_submissions` por `lead_id`: service, plan, interest, source_*, campaign, diagnostic_data; **no se toca `claim_sync_jobs`**, que comparte cola con el pipeline de prospección) y `Build GHL Payload` (Code: arma "Solución de interés" y el texto de la nota). `Create GHL Opportunity` usa `ghl_solution` en vez de `solution`. Nuevo `Add GHL Note` (POST `/contacts/{id}/notes`, `continueOnFail`) cuelga de `Opportunity OK?` en paralelo a `Complete Success`: si la nota falla no falla el job.
+
+### Atribución en la nota de GHL (2026-09-29, editado directo sobre `idniXY0Du2qet57O` vía API — PRODUCTION_READINESS_SPEC_V1 §22.6)
+
+El frontend ya guardaba `utm_source`/`utm_medium`/`utm_campaign`/`utm_content`/`utm_term`/`landing_path`/`referrer_host` dentro de `diagnostic_data` (atribución de primera sesión, capturada en `sessionStorage`), pero la nota de GHL no los mostraba — solo quedaban en Supabase. Se agregaron esas 7 claves al mapa `DATA` de `Build GHL Payload` (mismo mecanismo genérico que ya usaban `industry`/`extra_note`, sin tocar la estructura del nodo), con etiquetas: Canal de origen, Medio, Campaña, Contenido, Término, Landing, Sitio de referencia. Probado con un lead real vía `/api/leads` (`utm_source=instagram`, `utm_campaign=lanzamiento-septiembre`, `landing_path=/agentes`): la nota en GHL mostró las 4 líneas correctamente; contacto/oportunidad/lead de prueba eliminados después. El JSON de este directorio ya refleja este cambio.
+- Mapeo de "Solución de interés" (dropdown de la Opportunity, id `yY5sqFov8GeXcx5G9vuy`): `agentes`→**Agentes**, `a-medida`→**A Medida**, `web`→**Página Web**, `web`+plan `ecommerce`→**Ecommerce**, `general`→**No definido**. Sin contexto (Nayra, leads antiguos, error de la consulta) se conserva el comportamiento anterior (`solution` del job: `unsure`, `atencion-y-seguimiento`…).
+- **Hecho 2026-09-25 (vía API):** se agregaron al dropdown las 5 opciones (las antiguas se conservaron; respaldo del campo en el scratchpad de la sesión). Requisito que existía: el dropdown hoy solo tiene los slugs antiguos; hay que agregar las opciones `Agentes`, `A Medida`, `Página Web`, `Ecommerce`, `No definido` (exactamente esos textos) **antes** de activar v2, o la creación de la oportunidad falla y el job entra en reintentos.
+- Despliegue seguro (protocolo de arriba), ya ejecutado: importado como workflow nuevo, credenciales verificadas, v1 desactivado, v2 activado, probado con leads rotulados y borrados. Nunca editar in-place un workflow activo.
+- Observación (preexistente, no urgente): el campo `Fuente` recibe `web` (el `source` del API) y no `web_contact`; GHL lo acepta. Si se quiere normalizar, mapear `web`→`web_contact` en `Create GHL Opportunity`.
+- Rollback: desactivar v2 y reactivar v1 (`POST /workflows/{id}/deactivate|activate`).
+- Lógica del Code node probada offline con casos: agentes, ecommerce, web, general, sin contexto, error de consulta, respuesta vacía.
 
 ## Atacama Labs — 01 Discovery
 
@@ -147,3 +223,50 @@ El ritmo real observado en 02b Signals (llamadas OpenClaw reales contra contenid
 
 - No hay alerta ni notificación cuando un job llega a `failed` tras 4 intentos — hoy solo queda visible consultando `sync_jobs`/`lead_submissions` directamente. Agregar si Christian lo pide (p.ej. un nodo que notifique cuando `attempts>=4`).
 - Búsqueda de duplicados en GHL por "Lead ID" antes de crear: la API de búsqueda de GHL (`/opportunities/search?q=`) no filtra por valor de custom field (probado, devuelve 0 resultados aunque exista) — la idempotencia real depende de: (a) el `claim` atómico (un job se procesa una sola vez), y (b) los IDs de GHL persistidos en `lead_submissions` para reintentos. Documentado como limitación conocida, no un bug.
+
+## Prospección real (Bloque K, 6-oct-2026)
+- **17 Prospect Search** (`n8n/atacama-labs-17-prospect-search.json`): buscador autenticado para Hermes (Exa vía la credencial de n8n; tope de 80 búsquedas por día).
+- **18 Prospect Admit** (`n8n/atacama-labs-18-prospect-admit.json`): admisión a GHL (contacto + oportunidad en *Investigado* + nota de revisión) y borrador en Supabase; solo score ≥ 80 con todos los gates. No envía nada. Lo llama 08 después de 03; también puede invocarse por webhook (`/webhook/atacama-prospect-admit`, `X-Atacama-Key`, `{ "account_ids": [...] }`) para reintentar.
+- Ambos se generan con `node n8n/build/prospect-flow.mjs` (JSON de producción, con ids reales). 08 se genera con `n8n/build/atacama-os-workflows.mjs` (JSON versionado en modo test con marcadores; ahora encadena 18). 09 queda desactivado (aprobaba antes de CRM); 04/05 antiguos sin uso.
+- Pruebas: `node scripts/prospecting/admit-core.test.mjs` y `node n8n/build/prospect-flow.test.mjs`.
+
+## Prospect Gateway (Bloque L, 7-oct-2026)
+- **19 Prospect Gateway** (`n8n/atacama-labs-19-prospect-gateway.json`, id `ZlYTYp9AVdCYPdwS`): puerta universal de prospectos (`POST /webhook/atacama-prospect-gateway`, `X-Atacama-Key`; acciones `analyze | import | prepare | act`; `request_id` idempotente). Generador: `node n8n/build/prospect-gateway.mjs` (el JSON versionado es el de producción; `MODE=test` genera la copia de pruebas con otro pack y ruta). Guía y contrato: `docs/PROSPECT-GATEWAY.md`.
+- Tests: `node scripts/prospecting/gateway-core.test.mjs` · `node scripts/prospecting/gateway-flow.test.mjs` · `GATEWAY_REAL_HTML=<ruta> node n8n/build/prospect-gateway.test.mjs`.
+
+## Hermes Operator (Bloque M, 7-oct-2026)
+- **20 Hermes Operator** (`n8n/atacama-labs-20-hermes-operator.json`, id `Pm5XfYBocmWR3YgY`): única puerta por la que Hermes opera Atacama OS (`POST /webhook/atacama-hermes-operator`, `X-Atacama-Key`; `{ tool, request_id, params, order_text?, confirmation_code? }`). Aplica niveles de permiso 1/2/3, idempotencia y auditoría (`operator_audit_log`), y delega en el Prospect Gateway (19) o lee GHL de forma acotada. Generador: `node n8n/build/hermes-operator.mjs`; prueba nodo a nodo: `node n8n/build/hermes-operator.test.mjs`. Guía: `docs/HERMES-OPERATOR.md`.
+
+## Motor de correo (Bloque 1, 8-oct-2026)
+- **21 Outreach Engine** (`7yRgPPDkiVyjmb3t`, webhook `atacama-outreach-engine`), **22 Outreach Sender** (`aRvzG87Qg4uqI5bD`, cada 10 min + webhook `atacama-outreach-send-due`), **23 Gmail Sync** (`Bx4tC1Qn5H6097BL`, cada 10 min + webhook `atacama-gmail-sync`). Generador: `node n8n/build/outreach.mjs` (con `GMAIL_CRED_ID`/`GMAIL_CRED_NAME` conecta la credencial de Gmail). Prueba: `node n8n/build/outreach.test.mjs`. Modo en `outreach_config.mode`; guía: `docs/OUTREACH.md`.
+- **24 Followup Planner** (`rWulaiKeio0CsXrs`, cada 30 min + webhook `atacama-followup-planner`): tareas +3/+7 días hábiles en GHL, borradores de seguimiento, cancelación automática y limpieza de tareas duplicadas. Generador: `node n8n/build/outreach.mjs`. Ver `docs/OUTREACH.md` §7.
+
+## 25 Atacama Ops (Bloque 2, 7-oct-2026) — Daily, alertas, health y compuertas
+- Workflow `Atacama Labs - 25 Atacama Ops` (`OxLcj12RP0qLVLVc`, activo, etiqueta «ATACAMA — PRODUCCIÓN»). Webhook `POST /webhook/atacama-ops`, header `X-Atacama-Key` (credencial Ingest Key). Archivo: [`atacama-labs-25-atacama-ops.json`](atacama-labs-25-atacama-ops.json), generado por `node n8n/build/ops.mjs` (pruebas: `node n8n/build/ops.test.mjs`, 38; núcleo `node scripts/ops/ops-core.test.mjs`, 25).
+- **Solo lectura** sobre GHL (oportunidades, búsqueda de tareas), Gmail (`gmail_check` de 22/23 solo si `deep`), n8n (workflows y ejecuciones) y Supabase (mensajes, candidatos, piezas, métricas, señales). **Escribe únicamente** `ops_alerts` y `ops_runs`. No tiene nodos de envío.
+- Acciones: `daily`, `today`, `urgent`, `health`, `stale`, `followups`, `replies`, `radar_new`, `content_status`, `content_performance`, `radar_gate`, `content_gate`, `radar_report`, `content_radar_report`, `alerts_poll`, `alerts_ack`. `dry_run:true` y `now_ms` permiten simular sin escribir.
+- Lo agenda Hermes (cron `atacama-daily` / `atacama-alerts`), no n8n: n8n calcula, Hermes programa y entrega. Detalle en [`../docs/OPERATIONS.md`](../docs/OPERATIONS.md).
+- El preview anterior `10 Atacama Daily (PREVIEW)` (`LzZCCKXLMctkJRUo`) quedó **desactivado** (no borrado) por este reemplazo.
+- Migración: [`../supabase/migrations/20261009_ops_daily.sql`](../supabase/migrations/20261009_ops_daily.sql) (`ops_alerts`, `ops_runs`; RLS activa, sin acceso para anon/authenticated).
+
+## 26 LinkedIn Engine (Bloque 3, 7-oct-2026)
+- `Atacama Labs - 26 LinkedIn Engine` (`ve4uKTMQkGWzzmBV`, activo, etiqueta PRODUCCIÓN), webhook `POST /webhook/atacama-linkedin` (`X-Atacama-Key`). Generado por `node n8n/build/linkedin.mjs`; pruebas `node n8n/build/linkedin.test.mjs` (36).
+- Acciones: `list | status | recommend | approve | event | config | set_config | lists | test`. Waalaxy vía la credencial `Waalaxy — Atacama OS` (`S6oCbITh4Z93ZRjx`); el único POST a Waalaxy es el alta (`/prospects/addProspectFromIntegration`). Escribe `prospect_candidates.channel_state`, `outreach_config.linkedin_*` y `operator_audit_log`; GHL siempre por el Prospect Gateway (`act`).
+- Reconstruir los workflows de correo exige `GMAIL_CRED_ID=rA6hBRbpf0nbDWmh node n8n/build/outreach.mjs` (sin la variable se generan sin la credencial de Gmail).
+
+## 12 Content Intake — fechas (7-oct-2026)
+- El nodo `Evaluate` propone la fecha con `scripts/content/schedule-core.mjs` (incrustado) leyendo antes `Fetch Scheduled` (Supabase) y `List GHL Posts` (GHL, incluye posts manuales). Sin fallback a +7 días; ver `docs/ATACAMA-OS-IMPLEMENTATION.md` «Corrección de fechas».
+
+## 27 Content Growth y 28 Content RSS (Ola A, 8-oct-2026)
+- `Atacama Labs - 27 Content Growth` (`M4LyGH4UxE5sYIh5`): webhook `POST /webhook/atacama-content-growth` (`X-Atacama-Key`) con 16 acciones (cola, Founder Interview, recursos, RSS, competencia, señales candidatas). Generado por `node n8n/build/content-growth.mjs`; pruebas `node n8n/build/content-growth.test.mjs` (51).
+- `Atacama Labs - 28 Content RSS` (`6wnrHglfnt6l9va0`): cada hora + webhook `atacama-content-rss`. Feeds en `content_feeds`. `node n8n/build/content-rss.mjs` · pruebas 27.
+- Datos iniciales idempotentes: `node scripts/content/seed-ola-a.mjs`.
+
+## 29 Ops Actions (/ops V2, 8-oct-2026)
+- Workflow `Atacama Labs - 29 Ops Actions` (`ruk7KnHLppPSI8wK`), webhook `POST /webhook/atacama-ops-actions`, header `X-Ops-Approval` (credencial `k1OjUzoBnFXBsffh`, clave exclusiva de `/ops`; la clave de Hermes/ingesta no entra). Archivo [`atacama-labs-29-ops-actions.json`](atacama-labs-29-ops-actions.json), generado por `node n8n/build/ops-actions.mjs` (prueba `node n8n/build/ops-actions.test.mjs`, 61; núcleo `scripts/ops/ops-actions-core.mjs`).
+- Compuerta de aprobaciones: reutiliza las rutas reales de 21 (Outreach Engine), 26 (LinkedIn) y GHL Social Planner; idempotente por `request_id` y auditada en `operator_audit_log`. Lista cerrada de acciones; sin ejecutor genérico.
+- Cambiados en V2: `25 Atacama Ops` (ritmo semanal, aprobaciones en el panel), `14 Content Sync` (rechazado en GHL → `discarded`).
+
+## Ola B (8-oct-2026)
+- **30 Media Gateway** (`3o3xAfWvkDcGjtJd`, `POST /webhook/atacama-media-gateway`, `X-Atacama-Key`): `request | status | list | complete | cancel` sobre la tabla `media_assets`. Generador: `node n8n/build/media-gateway.mjs`; prueba: `node n8n/build/media-gateway.test.mjs` (27). No publica, no programa, no llama a proveedores generativos.
+- Cambiados en Ola B: **21 Outreach Engine** (Load Peers, acción `lint`, metadata.cold + historial), **24 Followup Planner** (plantillas de seguimiento que aportan algo nuevo), **20 Hermes Operator** (`lint_draft`), **12 Content Intake** (editorial, recursos, drafted para piezas esperando render), **25 Atacama Ops** (`editorial_plan`, atención vs autoridad), **27 Content Growth** (`resource_opportunity`, `resource_backlog`, estándar de recursos), **29 Ops Actions** (calidad del correo y versión anterior en las tarjetas). Los JSON de 22/23 se regeneran con el generador pero NO se despliegan desde aquí (sus credenciales de Gmail viven en n8n).

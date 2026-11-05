@@ -1,0 +1,55 @@
+name: production-readiness
+
+# PRODUCTION_READINESS_SPEC_V1 §27 — CI mínimo: lint, build y un smoke QA
+# (rutas, responsive, redirects, accesibilidad) contra un build local. No
+# corre E2E real contra Supabase/GHL (eso queda en Fase 4, controlado) ni
+# Lighthouse completo (manual antes de release, §27 — evita bloquear cada
+# commit por variaciones mínimas del puntaje).
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  build-and-qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+        env:
+          # Sin secretos reales en CI: /api/leads responde 503 (server_not_configured)
+          # de forma segura (§36) en vez de fallar el build.
+          NEXT_PUBLIC_GTM_ID: ""
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Start production server
+        run: |
+          npx next start -p 3000 &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3000/ > /dev/null && exit 0
+            sleep 1
+          done
+          echo "Server did not become ready in time" >&2
+          exit 1
+
+      - name: Smoke QA (rutas, responsive, redirects, accesibilidad)
+        run: npm run qa
+        env:
+          BASE_URL: http://localhost:3000

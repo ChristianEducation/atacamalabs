@@ -1,0 +1,42 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><style>
+@font-face{font-family:"DM Sans";src:url("__FONT__") format("woff2");font-weight:100 1000}
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--blue:#0f5ced;--ink:#0b1e3f}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#f3f6fd}
+body{font-family:"DM Sans",sans-serif;-webkit-font-smoothing:antialiased;color:var(--ink)}
+#st{position:absolute;inset:0;overflow:hidden;background:#f3f6fd}
+.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(15,92,237,.10) 2px,transparent 2px),linear-gradient(90deg,rgba(15,92,237,.10) 2px,transparent 2px);background-size:120px 120px}
+#glow{position:absolute;left:100px;top:700px;width:900px;height:900px;border-radius:50%;background:radial-gradient(circle,rgba(88,166,255,.30),rgba(88,166,255,0) 66%)}
+.h{position:absolute;left:90px;top:290px;width:900px;font-size:90px;font-weight:700;letter-spacing:-.035em;line-height:1.03}
+.h .w{display:inline-block;opacity:0;white-space:pre}.h em{font-style:normal;color:var(--blue)}
+.msg{position:absolute;left:90px;width:900px;background:#fff;border:3px solid #d5e0f6;border-radius:40px;padding:26px 34px;box-shadow:0 22px 50px rgba(26,60,142,.12);opacity:0}
+.msg .tag{display:inline-flex;align-items:center;gap:14px;color:#fff;font-weight:700;font-size:32px;padding:8px 26px 8px 10px;border-radius:40px}
+.msg .tag svg{width:50px;height:50px;background:#fff;border-radius:50%;padding:5px}
+.msg .tx{font-size:46px;font-weight:600;margin-top:14px;line-height:1.2;letter-spacing:-.01em}
+#arrow{position:absolute;left:0;width:100%;top:1275px;text-align:center;font-size:84px;font-weight:700;color:var(--blue);line-height:1;opacity:0}
+#res{position:absolute;left:90px;top:1395px;width:900px;background:var(--blue);color:#fff;border-radius:44px;padding:40px 50px;font-size:66px;font-weight:700;letter-spacing:-.025em;line-height:1.1;box-shadow:0 26px 60px rgba(15,92,237,.4);opacity:0}
+#logo{position:absolute;left:50%;top:1700px;width:400px;transform:translateX(-50%);opacity:0}
+</style></head><body><div id="st"><div class="grid" id="g"></div><div id="glow"></div>
+<div class="h" id="h"><span class="w">La </span><span class="w">misma </span><span class="w">pregunta,</span><br><span class="w"><em>tres canales.</em></span></div>
+<div class="msg" id="m1" style="top:620px"><div class="tag" style="background:#25d366"><svg viewBox="0 0 48 48"><rect width="48" height="48" rx="12" fill="#25d366"/><circle cx="24" cy="23" r="12" fill="none" stroke="#fff" stroke-width="3"/><path d="M13 37l3-7 5 4z" fill="#fff"/><path d="M19.5 18.5c0 5 4.5 9.5 9.5 9.5l1.8-2.3-3.2-1.6-1.4 1.2c-1.6-.7-3.3-2.4-4-4l1.2-1.4-1.6-3.2z" fill="#fff"/></svg>WhatsApp</div><div class="tx">Hola, ¿tienen hora mañana?</div></div>
+<div class="msg" id="m2" style="top:840px"><div class="tag" style="background:#e1306c"><svg viewBox="0 0 48 48"><defs><linearGradient id="ig" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#feda75"/><stop offset=".4" stop-color="#d62976"/><stop offset="1" stop-color="#4f5bd5"/></linearGradient></defs><rect width="48" height="48" rx="12" fill="url(#ig)"/><rect x="11" y="11" width="26" height="26" rx="8" fill="none" stroke="#fff" stroke-width="3"/><circle cx="24" cy="24" r="6" fill="none" stroke="#fff" stroke-width="3"/><circle cx="32" cy="16" r="2" fill="#fff"/></svg>Instagram</div><div class="tx">Hola, ¿tienen hora mañana?</div></div>
+<div class="msg" id="m3" style="top:1060px"><div class="tag" style="background:#f5a524"><svg viewBox="0 0 48 48"><rect width="48" height="48" rx="12" fill="#fff" stroke="#dfe5ee" stroke-width="2"/><rect x="10" y="14" width="28" height="20" rx="3" fill="none" stroke="#ea4335" stroke-width="3"/><path d="M11 16l13 11 13-11" fill="none" stroke="#ea4335" stroke-width="3" stroke-linejoin="round"/></svg>Correo</div><div class="tx">Asunto: Consulta de horas · ¿Tienen hora mañana?</div></div>
+<div id="arrow">↓</div><div id="res">Los atiende el mismo agente.</div>
+<img id="logo" src="__LOGO__">
+</div><script>
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const seg = (T, a, b) => clamp((T - a) / (b - a));
+const eout = (t) => 1 - Math.pow(1 - t, 3);
+const back = (t, s = 1.7) => { t = clamp(t); const c3 = s + 1; return 1 + c3 * Math.pow(t - 1, 3) + s * Math.pow(t - 1, 2); };
+function draw(T) {
+  $('g').style.backgroundPosition = (T * 10) + 'px ' + (-T * 8) + 'px';
+  $('glow').style.transform = 'translate(' + (Math.sin(T * 0.8) * 30) + 'px,' + (Math.cos(T * 0.8) * 24) + 'px)';
+  Array.from($('h').querySelectorAll('.w')).forEach((w, i) => { const u = seg(T, 0.15 + i * 0.14, 0.15 + i * 0.14 + 0.45), s = back(u, 1.6); w.style.opacity = clamp(u * 2.5); w.style.transform = 'translateY(' + ((1 - s) * 44) + 'px)'; w.style.filter = u < 1 ? 'blur(' + ((1 - u) * 8) + 'px)' : 'none'; });
+  [['m1', 1.0], ['m2', 1.5], ['m3', 2.0]].forEach(([id, t0], i) => { const u = back(seg(T, t0, t0 + 0.55), 1.6); $(id).style.opacity = clamp(u * 3); $(id).style.transform = 'translateX(' + ((1 - u) * (i % 2 ? -160 : 160)) + 'px)'; });
+  const a = back(seg(T, 3.0, 3.5), 2.0); $('arrow').style.opacity = clamp(a * 3); $('arrow').style.transform = 'translateY(' + ((1 - a) * -30 + (T > 3.5 ? Math.sin((T - 3.5) * 7) * 6 : 0)) + 'px)';
+  const r = back(seg(T, 3.4, 4.1), 1.7); $('res').style.opacity = clamp(r * 3); $('res').style.transform = 'translateY(' + ((1 - r) * 60) + 'px) scale(' + (0.92 + 0.08 * r) + ')';
+  const lg = back(seg(T, 5.0, 5.7), 1.5); $('logo').style.opacity = clamp(lg * 3); $('logo').style.transform = 'translateX(-50%) translateY(' + ((1 - lg) * 40) + 'px) scale(' + (0.9 + 0.1 * lg) + ')';
+}
+window.draw = draw;
+</script></body></html>

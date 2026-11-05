@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>Atacama Labs — Un agente, muchos puestos</title>
+    <script src="assets/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "DM Sans"; src: url("assets/fonts/DMSans-latin-wght.woff2") format("woff2"); font-weight: 100 1000; font-style: normal; }
+      :root { --blue: #0f5ced; --blue-on-dark: #2e74f5; --deep: #041228; --mist: #f3f6fd; --white: #ffffff; --line: rgba(15, 92, 237, 0.14); }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #f3f6fd; }
+      #main { position: relative; width: 100%; height: 100%; overflow: hidden; background: var(--mist); font-family: "DM Sans", sans-serif; -webkit-font-smoothing: antialiased; }
+      .layer { position: absolute; inset: 0; }
+      #cardWrap { position: absolute; left: 96px; top: 640px; width: 888px; height: 860px; filter: drop-shadow(0 26px 34px rgba(4, 18, 40, 0.08)); opacity: 0; }
+      #cardBase { position: absolute; inset: 0; background: #ffffff; border-radius: 48px; clip-path: inset(720px 0px 0px 0px round 48px); }
+      #cardDot { position: absolute; left: 64px; top: 754px; width: 44px; height: 44px; border-radius: 22px; background: var(--blue); }
+      #grid { background-image: linear-gradient(var(--line) 2px, transparent 2px), linear-gradient(90deg, var(--line) 2px, transparent 2px); background-size: 120px 120px; opacity: 0.55; }
+      #glow { background: radial-gradient(ellipse 70% 38% at 50% 48%, rgba(15, 92, 237, 0.16), rgba(15, 92, 237, 0) 70%); }
+      #curtain { background: var(--deep); clip-path: circle(0% at 50% 56%); }
+      #gridDark { background-image: linear-gradient(rgba(255,255,255,0.1) 2px, transparent 2px), linear-gradient(90deg, rgba(255,255,255,0.1) 2px, transparent 2px); background-size: 120px 120px; opacity: 0; }
+      #glowDark { background: radial-gradient(ellipse 70% 40% at 30% 40%, rgba(46, 116, 245, 0.28), rgba(46, 116, 245, 0) 70%); opacity: 0; }
+      [data-composition-src] { position: absolute; inset: 0; }
+    </style>
+  </head>
+  <body>
+    <div id="main" data-composition-id="main" data-start="0" data-duration="22" data-width="1080" data-height="1920" data-fps="30">
+      <div id="grid" class="layer"></div>
+      <div id="glow" class="layer"></div>
+      <div id="cardWrap"><div id="cardBase"></div><div id="cardDot"></div></div>
+      <div id="curtain" class="layer"></div>
+      <div id="gridDark" class="layer"></div>
+      <div id="glowDark" class="layer"></div>
+      <div id="s1-host" data-composition-id="s1" data-composition-src="compositions/s1.html" data-start="0" data-duration="5.1" data-track-index="1" data-width="1080" data-height="1920"></div>
+      <div id="s2-host" data-composition-id="s2" data-composition-src="compositions/s2.html" data-start="4.7" data-duration="7.9" data-track-index="2" data-width="1080" data-height="1920"></div>
+      <div id="s3-host" data-composition-id="s3" data-composition-src="compositions/s3.html" data-start="12.3" data-duration="5.3" data-track-index="3" data-width="1080" data-height="1920"></div>
+      <div id="s4-host" data-composition-id="s4" data-composition-src="compositions/s4.html" data-start="17.2" data-duration="2.8" data-track-index="4" data-width="1080" data-height="1920"></div>
+      <div id="s5-host" data-composition-id="s5" data-composition-src="compositions/s5.html" data-start="19.5" data-duration="2.5" data-track-index="5" data-width="1080" data-height="1920"></div>
+      <audio id="sfx" src="assets/audio.wav" data-start="0" data-duration="22" data-track-index="9"></audio>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo("#grid", { y: 0 }, { y: 120, duration: 22, ease: "none" }, 0);
+      tl.fromTo("#glow", { opacity: 0.55 }, { opacity: 1, duration: 4.8, ease: "sine.inOut", yoyo: true, repeat: 1 }, 0);
+      // la cortina oscura nace del centro de la tarjeta y toma el fondo; al final se cierra y vuelve la luz
+      // tarjeta compartida: aparece como una barra bajo «trabajo.», se expande en el tramo de puestos y se funde bajo la cortina
+      tl.fromTo("#cardWrap", { opacity: 0, y: 90 }, { opacity: 1, y: 0, duration: 0.6, ease: "expo.out" }, 3.55);
+      tl.fromTo("#cardDot", { scale: 1 }, { scale: 1.35, duration: 0.3, ease: "sine.inOut", yoyo: true, repeat: 3 }, 3.95);
+      tl.fromTo("#cardBase", { clipPath: "inset(720px 0px 0px 0px round 48px)" }, { clipPath: "inset(0px 0px 0px 0px round 48px)", duration: 0.75, ease: "expo.inOut" }, 4.55);
+      tl.to("#cardDot", { opacity: 0, duration: 0.2 }, 4.62);
+      tl.to("#cardWrap", { opacity: 0, duration: 0.2 }, 12.45);
+      tl.fromTo("#curtain", { clipPath: "circle(0% at 50% 56%)" }, { clipPath: "circle(150% at 50% 56%)", duration: 0.75, ease: "expo.inOut" }, 11.9);
+      tl.fromTo("#gridDark", { opacity: 0 }, { opacity: 0.6, duration: 0.5 }, 12.3);
+      tl.fromTo("#glowDark", { opacity: 0 }, { opacity: 1, duration: 0.8 }, 12.3);
+      tl.fromTo("#curtain", { clipPath: "circle(150% at 50% 52%)" }, { clipPath: "circle(0% at 50% 52%)", duration: 0.7, ease: "expo.inOut", immediateRender: false }, 19.35);
+      tl.to(["#gridDark", "#glowDark"], { opacity: 0, duration: 0.5 }, 19.45);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

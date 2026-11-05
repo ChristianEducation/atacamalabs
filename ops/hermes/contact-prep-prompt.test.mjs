@@ -1,0 +1,23 @@
+// node ops/hermes/contact-prep-prompt.test.mjs — guardas del prompt del job «contact-prep» (Hermes): compuerta, herramientas reales, límites de seguridad
+import fs from 'node:fs';
+let pass = 0, fail = 0;
+const t = (n, c, x = '') => { c ? pass++ : fail++; console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : x); };
+const p = fs.readFileSync(new URL('./contact-prep.prompt.txt', import.meta.url), 'utf8');
+const mcp = fs.readFileSync(new URL('./atacama_ops_mcp.py', import.meta.url), 'utf8');
+const tools = new Set([...mcp.matchAll(/@mcp\.tool\(\)\s*\ndef (\w+)\(/g)].map((m) => m[1]));
+t('obedece la compuerta: skip → [SILENT] sin llamar a nada', /mode=skip/.test(p) && /NO llames a ninguna herramienta/.test(p) && /\[SILENT\]/.test(p));
+t('usa solo herramientas que existen en el MCP', ['style_samples', 'prep_queue', 'save_draft', 'save_linkedin_prep', 'set_prep_state', 'save_contact', 'report_content_job'].every((n) => p.includes(n) && tools.has(n)), [...tools].join(','));
+t('lee el estilo de Christian ANTES de redactar y no copia hechos entre empresas', p.indexOf('style_samples') < p.indexOf('prep_queue') && /NUNCA copies hechos de otra empresa/.test(p));
+t('los correos genéricos NO bloquean la prospección', /genéricos NO bloquean/.test(p));
+t('un borrador NUNCA se aprueba ni se envía; el autoenvío es solo de Christian', /NUNCA lo apruebes ni lo envíes/.test(p) && /no enciendas ni apagues el envío automático/i.test(p));
+t('EN ESPERA / NO CONTACTAR exigen una razón explícita y NO basta con que falte el correo ni con ser B o C', /RAZÓN explícita/.test(p) && /NO basta con que sea B o C, ni con que falte el correo/.test(p));
+t('la prioridad A/B/C solo ordena y gradúa la automatización: ya no manda a B/C a espera', /solo define el ORDEN/.test(p) && /NUNCA impide que exista el borrador/.test(p) && !/study_priority B o C → hold/.test(p));
+t('sin correo ni LinkedIn: una búsqueda pública acotada y, si no, BUSCAR CONTACTO con el mensaje redactado', /find_contact/.test(p) && /máximo 2 páginas/.test(p) && /Nunca adivines correos/.test(p));
+t('LinkedIn: manual, sin Waalaxy, y «Leads Pro» solo si la fuente lo dice', /MANUAL/.test(p) && /no se usa Waalaxy/.test(p) && /Solo menciona «Leads Pro» si el campo source/.test(p));
+t('reporta la corrida y termina con [SILENT]', /report_content_job\(kind="contact_prep"/.test(p) && /EXACTAMENTE «\[SILENT\]»/.test(p));
+t('sin secretos', !/(pit-[0-9a-f]{8}|eyJ[A-Za-z0-9_-]{20}|sk-[A-Za-z0-9]{20}|Bearer [A-Za-z0-9]{20})/.test(p));
+t('Playbook de correos outbound v1.0: lo lee completo, manda sobre style_samples y las estructuras viejas', /PLAYBOOK DE CORREOS OUTBOUND v1\.0/.test(p) && /\/opt\/data\/content\/playbook-correos\.md/.test(p) && /manda sobre cualquier otra instrucción de estilo/.test(p) && /style_samples/.test(p) && /SOLO para la voz/.test(p));
+t('Playbook: investigación invisible, «Estimado/Estimada» o «Estimado equipo de», 70–120 palabras, un solo problema, cierre conversacional, asunto de 3–7 palabras', /INVISIBLE/.test(p) && /«Estimado\/Estimada <primer nombre>,»/.test(p) && /«Estimado equipo de <empresa>,»/.test(p) && /70–120 palabras/.test(p) && /UNA fricción concreta/.test(p) && /pregunta fácil de responder/.test(p) && /3–7 palabras/.test(p));
+t('Playbook: PROHIBIDO ofrecer demo/ejemplo/reunión y ya no ordena la estructura vieja («Ahí suele aparecer…», «te mando un ejemplo», «imagino que…» como fórmula)', /PROHIBIDO ofrecer demo, ejemplo, prueba, video, propuesta, cotización, auditoría o reunión/.test(p) && !/Estructura aprobada por Christian/.test(p) && !/¿Les sirve que les mande un ejemplo aplicado/.test(p) && /invalid_draft/.test(p));
+console.log(`\n${pass} ok ${fail} fallos`);
+process.exit(fail ? 1 : 0);

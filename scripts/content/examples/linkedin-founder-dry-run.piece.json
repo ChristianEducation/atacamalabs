@@ -1,0 +1,107 @@
+{
+  "version": 1,
+  "channel": "linkedin_profile",
+  "format": "texto",
+  "category": "Founder",
+  "topic": "Por qué el alta automática de clientes arranca en modo ensayo",
+  "angle": "Automatizar no es quitar el freno, es decidir dónde va el freno",
+  "editorial_type": "founder",
+  "visual": {
+    "need": "none",
+    "rationale": "Reflexión personal en primera persona, sin imagen",
+    "composition": "solo-texto"
+  },
+  "audience": "Dueños y gerentes de pymes que evalúan automatizar procesos comerciales",
+  "sources": [
+    {
+      "kind": "real_work",
+      "title": "Atacama OS: flujo «oportunidad ganada → cliente» probado en modo ensayo (workflow n8n 11 + GHL)",
+      "url": "https://github.com/ChristianEducation/atacamalabs/commit/23c2936",
+      "verified": true,
+      "evidence": [
+        {
+          "url": "https://github.com/ChristianEducation/atacamalabs/commit/23c2936",
+          "quote": "feat: complete Atacama OS won-to-client flow — dry_run por defecto, 45 pruebas, prueba de punta a punta con datos de prueba y cero escrituras."
+        }
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "text": "El flujo crea empresa, servicio contratado y proyecto y deja relaciones entre ellos",
+      "external": false
+    },
+    {
+      "text": "Las primeras pruebas desde GHL llegaron con el ID de la oportunidad vacío y el flujo las rechazó",
+      "external": false
+    },
+    {
+      "text": "En la prueba con una oportunidad de prueba ganada en GHL el plan salió completo con seis relaciones previstas y no se escribió ningún registro",
+      "external": false
+    },
+    {
+      "text": "Si la señal que activa la escritura falta o es ambigua, el flujo asume ensayo",
+      "external": false
+    },
+    {
+      "text": "Todavía no hay un cliente real que haya pasado por el flujo",
+      "external": false
+    }
+  ],
+  "factors": {
+    "relevance": {
+      "value": 9,
+      "note": "Es el trabajo real de Atacama: automatizar procesos comerciales con control."
+    },
+    "audience_fit": {
+      "value": 8,
+      "note": "Un dueño de pyme entiende el miedo a automatizar sin poder revisar."
+    },
+    "novelty": {
+      "value": 6,
+      "note": "Poco común mostrar el freno como decisión de diseño."
+    },
+    "evidence": {
+      "value": 8,
+      "note": "Cada afirmación está respaldada por el commit y el registro de pruebas del proyecto."
+    },
+    "utility": {
+      "value": 7,
+      "note": "Deja una regla aplicable: ensayo primero, escritura después."
+    },
+    "clarity": {
+      "value": 8,
+      "note": "Una sola idea, sin jerga."
+    },
+    "conversation": {
+      "value": 8,
+      "note": "Cierra con una pregunta concreta."
+    },
+    "differentiation": {
+      "value": 8,
+      "note": "Incluye un detalle real (las pruebas con ID vacío) en vez de una moraleja genérica."
+    },
+    "non_repetition": {
+      "value": 10,
+      "note": "Primera pieza sobre este ángulo."
+    }
+  },
+  "rationale": "Cuenta una decisión de producto real y verificable (ensayo por defecto) con un detalle vivido: las dos primeras pruebas llegaron vacías y el flujo las rechazó. Sin frases de founder genéricas; cierra con una pregunta concreta. Voz en primera persona: Christian debe confirmar que refleja su criterio antes de aprobar.",
+  "hook": "Automatizamos el alta de clientes y lo primero que hicimos fue impedir que escribiera algo.",
+  "body": "Cuando una oportunidad pasa a «Ganada» en Atacama Labs, un flujo debe crear la empresa, el servicio contratado y el proyecto, y dejarlos relacionados.\n\nLo armamos al revés de lo habitual: primero devuelve el plan de lo que haría, y no escribe nada hasta que se le diga de forma explícita. Si esa señal falta o llega ambigua, asume ensayo.\n\nLas primeras pruebas desde GHL llegaron con el ID de la oportunidad vacío. El flujo las rechazó en vez de adivinar. Cuando probamos con una oportunidad de prueba ganada de verdad en GHL, salió completa: empresa, servicio, proyecto y seis relaciones previstas, y cero registros escritos.\n\nTodavía no hay un cliente real pasando por ahí, y el ensayo no se apaga hasta que lo haya.\n\nSi hoy automatizaras un proceso de tu empresa, ¿cómo revisarías lo que hace antes de dejarlo solo?",
+  "slides": [],
+  "cta": {
+    "type": "none",
+    "text": ""
+  },
+  "hashtags": [
+    "#automatización",
+    "#agentesdeIA"
+  ],
+  "evidence_urls": [
+    "https://github.com/ChristianEducation/atacamalabs/commit/23c2936"
+  ],
+  "visual_direction": "Solo texto. Sin imagen: la idea se sostiene sola.",
+  "schedule_suggestion": null,
+  "media": []
+}

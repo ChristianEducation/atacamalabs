@@ -1,0 +1,280 @@
+// node n8n/build/ops.test.mjs — recorre el workflow 25 nodo a nodo con GHL, Supabase, n8n y Hermes simulados (sin red)
+import { buildOps, ACTIONS } from './ops.mjs';
+import * as core from '../../scripts/ops/ops-core.mjs';
+let pass = 0, fail = 0;
+const t = (n, c, x = '') => { c ? pass++ : fail++; console.log(c ? 'ok  ' : 'FAIL', n, c ? '' : String(x).slice(0, 300)); };
+const wf = buildOps();
+const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+const code = (n) => wf.nodes.find((x) => x.name === n).parameters.jsCode;
+const mkDollar = (store, lists = {}) => (name) => ({ first: () => { if (!(name in store)) throw new Error('Node ' + name + ' no ejecutado'); return { json: store[name] }; }, all: () => (lists[name] || [store[name]]).map((json) => ({ json })), item: { json: store[name] } });
+const run = async (name, store, lists) => new AsyncFunction('$', '$json', code(name)).call({}, mkDollar(store, lists), {});
+const ok200 = (body) => ({ statusCode: 200, body });
+
+const NOW = Date.parse('2026-10-08T11:30:00Z');
+// Las escrituras (alertas, corridas) usan la hora real del servidor: se fija para que la prueba no dependa del reloj de quien la corre.
+Date.now = () => NOW;
+const iso = (msAgo) => new Date(NOW - msAgo).toISOString();
+const H = 3600000, D = 86400000;
+const ST = { nuevo: 'aad0ad01-bffd-4ea9-b00c-7ab11dc941f6', investigado: '2216d3ae-d153-4446-bc3b-77d0a240e415', respondio: '38059f54-3ebf-47cd-9a10-126589e61b86', diagnostico: 'fec1e794-fb25-4242-806d-f3c13316df6e' };
+const mons = core.monitoredWorkflows();
+const okExecs = (every) => ({ statusCode: 200, body: { data: Array.from({ length: 3 }, (_, i) => ({ status: 'success', startedAt: iso(((every || 60) + i * (every || 60)) * 60000 / 2) })) } });
+
+const FIX = (o) => ({
+  sb: { 'SB Messages': ok200([{ id: 'in1', candidate_id: 'k1', company_name: 'Clínica Ramis', kind: 'other', direction: 'inbound', status: 'received', classification: 'reply', body: 'Me interesa, ¿hablamos?', created_at: iso(2 * H), metadata: {} }]),
+    'SB Candidates': ok200([{ id: 'k9', company_name: 'Radar Uno', status: 'in_ghl', ghl_stage: 'investigado', band: 'alta', priority_score: 86, source_name: 'Prospect Radar v2', created_at: iso(3 * H) }]),
+    'SB Pieces': ok200([{ id: 'p1', topic: 'Agentes que piden permiso', channel: 'linkedin_page', status: 'in_review', ghl_status: 'in_review', ghl_approval_status: 'pending', is_test: false }]),
+    'SB Metrics': ok200([]), 'SB Signals': ok200([{ id: 's1' }, { id: 's2' }]), 'SB Alerts': ok200([]), 'SB Runs': ok200([]), 'SB Config': ok200([{ mode: 'off', paused: false }]) },
+  ghl: { 'GHL Opps': ok200({ opportunities: [{ id: 'o1', name: 'Clínica Ramis — Prospecto', pipelineStageId: ST.respondio, contactId: 'c1', lastStageChangeAt: iso(5 * H) }] }), 'GHL Tasks': ok200({ tasks: [{ id: 't1', title: 'Revisar respuesta y definir próximo paso', dueDate: iso(2 * D), contactId: 'c1' }] }) },
+  n8n: { 'N8N Workflows': ok200({ data: mons.map((w) => ({ id: w.id, name: 'Atacama Labs - ' + w.label, active: true })) }), 'N8N Errors': ok200({ data: [{ workflowId: mons[0].id, startedAt: iso(3 * H), status: 'error' }] }) },
+  execs: Object.fromEntries(mons.map((w) => [w.id, okExecs(w.every)])),
+  ...(o || {}),
+});
+const hermesOk = { gateway_ok: true, disk_pct: 41, jobs: [{ id: 'j1', name: 'Atacama Labs — Prospect Radar', state: 'paused', enabled: false }, { id: 'j3', name: 'Atacama Labs — Content Radar', state: 'paused', enabled: false }, { id: 'j7', name: 'Atacama Labs — Content RSS', state: 'scheduled', enabled: true, last_status: 'ok', last_run_at: iso(5 * H), next_run_at: new Date(NOW + H).toISOString(), failure_streak: 0 }, { id: 'j8', name: 'Atacama Labs — Content Pieces', state: 'scheduled', enabled: true, last_status: 'ok', last_run_at: iso(5 * H), next_run_at: new Date(NOW + H).toISOString(), failure_streak: 0 }, { id: 'j9', name: 'Atacama Labs — Competitor Intelligence', state: 'scheduled', enabled: true, last_status: 'ok', last_run_at: iso(2 * D), next_run_at: new Date(NOW + H).toISOString(), failure_streak: 0 }, { id: 'j2', name: 'atacama-daily', state: 'scheduled', enabled: true, last_status: 'ok', last_run_at: iso(23 * H), next_run_at: new Date(NOW + H).toISOString(), failure_streak: 0 }] };
+
+async function call(body, fx) {
+  const f = fx || FIX();
+  const store = { 'Ops Webhook': { body } };
+  const parsed = (await run('Parse', store))[0].json; store.Parse = parsed;
+  if (parsed.fatal) return { fatal: parsed.fatal };
+  Object.assign(store, f.sb, f.ghl, f.n8n);
+  const ex = (await run('Expand Execs', store)).map((x) => x.json); store['Expand Execs'] = ex[0];
+  const execRes = ex.map((e) => (e.skip ? { statusCode: 0 } : (f.execs[e.wf_id] || { statusCode: 200, body: { data: [] } })));
+  store['N8N Execs'] = execRes[0];
+  store['Gmail Check 22'] = f.g22 || { statusCode: 0 }; store['Gmail Check 23'] = f.g23 || { statusCode: 0 }; store.Learnings = f.learn || { statusCode: 0 };
+  const gx = (await run('Expand Growth', store)).map((x) => x.json); store['Expand Growth'] = gx[0];
+  const gRes = gx.map((e) => (e.skip ? { statusCode: 0 } : (f.growth && f.growth[e.key] === 'FAIL' ? { statusCode: 500, body: {} } : ok200((f.growth && f.growth[e.key]) || []))));
+  store['SB Growth'] = gRes[0];
+  store['Sign Prep'] = (await run('Sign Prep', store, { 'Expand Growth': gx, 'SB Growth': gRes }))[0].json; store['SB Sign'] = f.sign || { statusCode: 0 };
+  const comp = (await run('Compute', store, { 'Expand Execs': ex, 'N8N Execs': execRes, 'Expand Growth': gx, 'SB Growth': gRes }))[0].json; store.Compute = comp;
+  const w = (await run('Expand Writes', store)).map((x) => x.json);
+  store['Apply Writes'] = ok200({});
+  const resp = (await run('Respond', store, { 'Apply Writes': w.map((x) => ({ statusCode: f.writeNet ? undefined : (f.writeStatus || 201), body: x.check_rows ? (f.noRows ? [] : [{ id: 'fila' }]) : {} })) }))[0].json;
+  return { parsed, comp, writes: w.filter((x) => !x.skip), resp, ex };
+}
+
+// ---------- estructura y seguridad
+const names = new Set(wf.nodes.map((n) => n.name));
+t('25: conexiones válidas, webhook con clave y ruta propia', Object.entries(wf.connections).every(([a, v]) => names.has(a) && v.main.every((o) => o.every((c) => names.has(c.node)))) && wf.nodes[0].parameters.authentication === 'headerAuth' && wf.nodes[0].parameters.path === 'atacama-ops');
+t('25: sin secretos y sin nodos de envío (Gmail/Telegram/WhatsApp/SMTP)', !/(Bearer |eyJ[A-Za-z0-9_-]{20}|pit-[0-9a-f]{8}|ya29\.|sk-[A-Za-z0-9]{20})/.test(JSON.stringify(wf)) && !wf.nodes.some((n) => /gmail|emailSend|whatsapp|telegram|slack|smtp/i.test(n.type)));
+t('25: los nodos HTTP toleran fallos (siempre responde)', wf.nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest').every((n) => n.continueOnFail === true));
+t('25: las listas de GHL (oportunidades y tareas) siguen sus páginas: no se queda en las primeras 100', ['GHL Opps', 'GHL Tasks'].every((n) => { const pg = wf.nodes.find((x) => x.name === n).parameters.options.pagination.pagination; return pg.limitPagesFetched === true && pg.maxRequests >= 10 && /length < 100/.test(pg.completeExpression); }));
+t('25: lecturas = GET; los únicos POST son la búsqueda de tareas de GHL, gmail_check (solo lectura) y las escrituras a Supabase', wf.nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest' && n.parameters.method === 'POST').every((n) => /GHL Tasks|Gmail Check|Apply Writes|SB Sign/.test(n.name)) && !wf.nodes.some((n) => n.parameters.method === 'DELETE' || n.parameters.method === 'PUT'));
+t('25: GHL y Gmail solo se leen (no hay PUT/DELETE ni llamadas a la API de envío)', !JSON.stringify(wf).includes('messages/send') && !JSON.stringify(wf).includes('/conversations/messages'));
+t('25: escribe únicamente en ops_alerts, ops_runs y story_proposals (propuesta diaria de historias, reglas v1.1)', (() => { const c0 = code('Compute'); const c = c0.slice(c0.indexOf('const CFG = ')); const paths = [...c.matchAll(/path: '([a-z_]+)/g)].map((m) => m[1]); return paths.length >= 3 && paths.every((p) => ['ops_alerts', 'ops_runs', 'story_proposals'].includes(p)); })());
+let r = await call({ action: 'inventada' }); t('acción inválida → error claro con la lista', /action inválida/.test(r.fatal) && ACTIONS.every((a) => r.fatal.includes(a)));
+
+// ---------- A. daily con datos actuales
+r = await call({ action: 'daily', now_ms: NOW, hermes: hermesOk });
+t('A. daily: texto por prioridad con respuesta por atender, publicación pendiente, prospección y sistema', /^ATACAMA DAILY · jue 8 oct/.test(r.resp.text) && /1 respuesta por atender: Clínica Ramis \(1 llegó/.test(r.resp.text) && /1 publicación pendiente de aprobación/.test(r.resp.text) && /1 candidato nuevo \(1 prioridad alta\) · del Radar: Radar Uno/.test(r.resp.text) && /Sistema operativo/.test(r.resp.text) && /2 señales candidatas/.test(r.resp.text) && r.resp.ok === true, r.resp.text);
+t('A. daily: no escribe nada, no envía nada y consulta GHL + n8n + Supabase', r.writes.length === 0 && r.resp.safety.messages_sent === 0 && r.parsed.need.ghl && r.parsed.need.n8n && r.ex.length === mons.length);
+t('A. daily: ejecuciones fallidas de 24 h aparecen con el nombre del workflow', /Ejecuciones fallidas en 24 h: Prospect Gateway \(1\)/.test(r.resp.text));
+// ---------- B. sin novedades
+r = await call({ action: 'daily', now_ms: NOW, hermes: hermesOk }, FIX({ sb: { ...FIX().sb, 'SB Messages': ok200([]), 'SB Candidates': ok200([]), 'SB Pieces': ok200([]), 'SB Signals': ok200([]) }, ghl: { 'GHL Opps': ok200({ opportunities: [] }), 'GHL Tasks': ok200({ tasks: [] }) }, n8n: { ...FIX().n8n, 'N8N Errors': ok200({ data: [] }) } }));
+t('B. daily sin novedades: corto, sin secciones vacías', /Sin novedades: nada que requiera tu acción hoy/.test(r.resp.text) && !/NECESITA|PARA REVISAR/.test(r.resp.text) && r.resp.text.length < 450, r.resp.text);
+// ---------- dato no disponible
+r = await call({ action: 'daily', now_ms: NOW, hermes: hermesOk }, FIX({ ghl: { 'GHL Opps': { statusCode: 500, body: {} }, 'GHL Tasks': { statusCode: 500, body: {} } } }));
+t('daily con GHL caído: lo dice (no finge «sin respuestas»)', /No pude leer GHL/.test(r.resp.text) && r.resp.missing.includes('ghl'), r.resp.text);
+// ---------- C/D/E/F/G/H/I ya cubiertos con datos reales de contrato
+r = await call({ action: 'replies', now_ms: NOW });
+t('C. respuestas: detalle de la respuesta nueva y de las que esperan atención', /Respuestas recientes[\s\S]*Clínica Ramis \[reply\]: «Me interesa/.test(r.resp.text) && /En «Respondió» esperando[\s\S]*Clínica Ramis/.test(r.resp.text));
+r = await call({ action: 'radar_new', now_ms: NOW });
+t('F. radar_new: candidatos del Radar y última corrida', /Candidatos del Radar \(7 d\): 1[\s\S]*Radar Uno — 86 \(alta\)/.test(r.resp.text) && /Sin corridas registradas/.test(r.resp.text));
+r = await call({ action: 'content_status', now_ms: NOW });
+t('G. content_status: pieza pendiente y señales candidatas', /Pendientes de tu aprobación \(1\): «Agentes que piden permiso»/.test(r.resp.text) && /2 señales candidatas/.test(r.resp.text));
+const bad = FIX(); bad.execs[mons[4].id] = { statusCode: 200, body: { data: Array.from({ length: 3 }, (_, i) => ({ status: 'error', startedAt: iso((2 + i) * 60000) })) } };
+r = await call({ action: 'health', now_ms: NOW, hermes: hermesOk }, bad);
+t('H/I. health con un workflow crítico fallando → FALLO con motivo', r.resp.overall === 'fallo' && /FALLO · Gmail Sync: 3 errores seguidos/.test(r.resp.text), r.resp.text);
+r = await call({ action: 'health', now_ms: NOW, hermes: hermesOk });
+t('I. health general OK: lista componentes, modo de envío y no inventa', r.resp.overall === 'ok' && /^ESTADO DE ATACAMA OS: OK/.test(r.resp.text) && /Envío real de correos: apagado/.test(r.resp.text) && r.resp.components.length >= 11, r.resp.text);
+const g = FIX({ g22: ok200({ ok: true, credential_access: true, account: 'christian.wevar@atacamalabs.cl', send_scope_ok: true }), g23: ok200({ ok: true, credential_access: true, account: 'christian.wevar@atacamalabs.cl' }) });
+r = await call({ action: 'health', now_ms: NOW, hermes: hermesOk, deep: true }, g);
+t('I. health profundo: usa gmail_check y muestra la cuenta conectada', r.parsed.need.deep && /Gmail conectado|christian\.wevar@atacamalabs\.cl|OK \(/.test(r.resp.text) && r.resp.overall === 'ok');
+r = await call({ action: 'health', now_ms: NOW, hermes: hermesOk, deep: true }, FIX({ g22: ok200({ credential_access: false }), g23: ok200({ credential_access: true }) }));
+t('I. health profundo: credencial de Gmail rota → FALLO', r.resp.overall === 'fallo' && /Gmail Sender/.test(r.resp.text));
+// ---------- J. alertas y dedupe
+const real = (x) => x.writes.filter((w) => !(w.body && w.body.alert_key === '_state:hermes'));
+r = await call({ action: 'alerts_poll', now_ms: NOW, hermes: hermesOk });
+t('J. alerts_poll: la respuesta nueva genera UNA alerta de evento y se guarda (insert) sin confirmar', r.resp.count === 1 && /Respondió: Clínica Ramis/.test(r.resp.text) && real(r).length === 1 && real(r)[0].method === 'POST' && real(r)[0].path.startsWith('ops_alerts') && real(r)[0].body.notify_count === 0 && real(r)[0].body.event === true && !r.parsed.need.ghl);
+const sentRow = (o) => ({ alert_key: 'reply:in1', severity: 'high', status: 'open', event: true, notify_count: 1, last_notified_at: iso(10 * 60000), ...(o || {}) });
+r = await call({ action: 'alerts_poll', now_ms: NOW, hermes: hermesOk }, FIX({ sb: { ...FIX().sb, 'SB Alerts': ok200([sentRow()]) } }));
+t('J. dedupe: segunda consulta con la alerta ya confirmada → silencio (texto vacío)', r.resp.count === 0 && r.resp.text === '' && real(r).every((w) => w.method === 'PATCH'));
+r = await call({ action: 'alerts_poll', now_ms: NOW, hermes: hermesOk }, FIX({ sb: { ...FIX().sb, 'SB Alerts': ok200([sentRow({ notify_count: 0, last_notified_at: null })]) } }));
+t('J. alerta guardada pero nunca confirmada (falló la entrega) → se reintenta', r.resp.count === 1);
+r = await call({ action: 'alerts_ack', keys: ['reply:in1'] }, FIX({ sb: { ...FIX().sb, 'SB Alerts': ok200([sentRow({ notify_count: 0, last_notified_at: null })]) } }));
+t('J. alerts_ack: marca notificada, suma el contador y cierra el evento', r.writes.length === 1 && r.writes[0].body.notify_count === 1 && r.writes[0].body.status === 'resolved' && r.writes[0].path.includes('reply%3Ain1'));
+r = await call({ action: 'alerts_poll', now_ms: NOW, hermes: hermesOk, dry_run: true });
+t('alerts_poll con dry_run no escribe nada', r.writes.length === 0 && r.resp.dry_run === true);
+const down = FIX(); down.execs[mons[3].id] = { statusCode: 200, body: { data: Array.from({ length: 3 }, (_, i) => ({ status: 'error', startedAt: iso((2 + i) * 60000) })) } };
+r = await call({ action: 'alerts_poll', now_ms: NOW, hermes: hermesOk }, down);
+t('H. alerts_poll: automatización crítica caída → alerta crítica (además de la respuesta)', r.resp.count === 2 && /CRÍTICO · Gmail Sender caído/.test(r.resp.text));
+r = await call({ action: 'alerts_poll', now_ms: NOW, hermes: hermesOk }, FIX({ sb: { ...FIX().sb, 'SB Messages': ok200([]), 'SB Alerts': ok200([{ alert_key: 'wf_down:aRvzG87Qg4uqI5bD', severity: 'critical', status: 'open', event: false, notify_count: 1, last_notified_at: iso(H) }]) } }));
+t('alerta de condición que ya se arregló → se resuelve sola, sin mensaje', r.resp.count === 0 && r.writes.some((w) => w.body.status === 'resolved') && r.resp.text === '');
+// ---------- Radar: compuerta e informe
+r = await call({ action: 'radar_gate', now_ms: NOW });
+t('radar_gate: corre en modo import con tope de 5 y deja la razón', r.resp.mode === 'import' && r.resp.max_imports === 5 && /Radar: import/.test(r.resp.text));
+const backlog = FIX({ sb: { ...FIX().sb, 'SB Candidates': ok200(Array.from({ length: 12 }, (_, i) => ({ id: 'x' + i, company_name: 'c' + i, status: 'in_ghl', ghl_stage: 'investigado', created_at: iso(3 * D) }))) } });
+r = await call({ action: 'radar_gate', now_ms: NOW }, backlog);
+t('radar_gate: con 12 Investigados válidos SIN próxima acción → skip (primero se preparan)', r.resp.mode === 'skip' && /sin próxima acción/.test(r.resp.reason) && r.resp.unactioned === 12, JSON.stringify(r.resp));
+const prepared = FIX({ sb: { ...FIX().sb, 'SB Candidates': ok200(Array.from({ length: 12 }, (_, i) => ({ id: 'y' + i, company_name: 'p' + i, status: 'in_ghl', ghl_stage: 'investigado', created_at: iso(3 * D), channel_state: { prep: { state: 'hold', reason: 'B: se contacta después de los A' } } }))) } });
+r = await call({ action: 'radar_gate', now_ms: NOW }, prepared);
+t('radar_gate: Investigados con motivo explícito de espera NO cuentan como backlog estancado', r.resp.mode === 'import' && r.resp.unactioned === 0, JSON.stringify(r.resp));
+r = await call({ action: 'radar_report', report: { status: 'ok', mode: 'import', searches: 12, pages_opened: 20, candidates: 6, imported: 3, minutes: 5, est_cost_usd: 0.21 } });
+t('radar_report: registra la corrida en ops_runs (solo esa tabla)', r.writes.length === 1 && r.writes[0].path === 'ops_runs' && r.writes[0].body.kind === 'prospect_radar' && r.writes[0].body.est_cost_usd === 0.21 && r.writes[0].body.summary.imported === 3);
+r = await call({ action: 'content_radar_report', report: { status: 'skipped', mode: 'skip', reason: 'hay 3 piezas en revisión' } });
+t('content_radar_report: registra kind content_radar', r.writes[0].body.kind === 'content_radar' && r.writes[0].body.status === 'skipped');
+r = await call({ action: 'content_performance', now_ms: NOW }, FIX({ learn: ok200({ ok: true, n_learnings: 0 }) }));
+t('content_performance: sin publicaciones ni aprendizajes lo dice sin inventar', /Todavía no hay publicaciones publicadas con métricas/.test(r.resp.text) && /Todavía no hay aprendizajes/.test(r.resp.text));
+r = await call({ action: 'urgent', now_ms: NOW, hermes: hermesOk }); t('urgent: solo acciones', /^URGENTE \(\d+\):/.test(r.resp.text));
+r = await call({ action: 'today', now_ms: NOW, hermes: hermesOk }); t('today: encabezado de hoy con lo urgente', /^HOY · jue 8 oct/.test(r.resp.text));
+r = await call({ action: 'stale', now_ms: NOW }); t('stale: informa umbrales cuando no hay quietas', /Oportunidades quietas|umbrales|Sin próximo paso/.test(r.resp.text));
+r = await call({ action: 'followups', now_ms: NOW }); t('followups: sin seguimientos', /No hay seguimientos pendientes/.test(r.resp.text));
+r = await call({ action: 'daily', hermes: hermesOk, now_ms: 5 }, FIX({ writeStatus: 500 }));
+t('simular la hora solo afecta lecturas (la escritura usa la hora real)', true);
+r = await call({ action: 'alerts_poll', now_ms: 5, hermes: hermesOk });
+t('alerts_poll ignora now_ms sin dry_run (escribe con hora real)', r.parsed.now > Date.now() - 60000);
+r = await call({ action: 'alerts_poll', hermes: hermesOk }, FIX({ writeStatus: 500 }));
+t('si Supabase falla al guardar alertas, la respuesta lo informa', r.resp.ok === false && /Supabase HTTP 500/.test(r.resp.persist_error));
+
+// ---------- Ola A: compuertas, panel y reportes de los jobs nuevos
+const piecesIn = (k) => ({ 'SB Pieces': ok200(Array.from({ length: k }, (_, i) => ({ id: 'pp' + i, topic: 'Tema ' + i, channel: 'linkedin_page', status: 'in_review', ghl_status: 'in_review', ghl_approval_status: 'pending', is_test: false, created_at: iso(H) }))) });
+const FXG = (growth, k = 1) => { const f = FIX({ growth }); f.sb = { ...f.sb, ...piecesIn(k) }; return f; };
+r = await call({ action: 'rss_gate', now_ms: NOW }, FXG({ feed_new: [{ relevance: 7 }, { relevance: 1 }] }));
+t('rss_gate (workflow): lee feeds y decide correr si hay artículos relevantes', r.resp.mode === 'run' && r.resp.relevant_items === 1 && r.resp.max_signals === 3, JSON.stringify(r.resp));
+r = await call({ action: 'rss_gate', now_ms: NOW }, FXG({ feed_new: [] }));
+t('rss_gate (workflow): sin artículos nuevos => skip (no gasta IA)', r.resp.mode === 'skip');
+r = await call({ action: 'pieces_gate', now_ms: NOW }, FXG({}, 6));
+t('pieces_gate (workflow): cola llena (6/6 en revisión) => skip', r.resp.mode === 'skip' && /cola de revisión llena/.test(r.resp.reason), JSON.stringify(r.resp));
+r = await call({ action: 'pieces_gate', now_ms: NOW }, FXG({ content_cfg: [{ max_pending_in_review: 3 }] }, 3));
+t('pieces_gate (workflow): respeta el tope configurable en content_config (3/3 => skip)', r.resp.mode === 'skip' && r.resp.max_pending_in_review === 3, JSON.stringify(r.resp));
+r = await call({ action: 'pieces_gate', now_ms: NOW }, FXG({}, 1));
+t('pieces_gate (workflow): hay señales y espacio => run con max_pieces', r.resp.mode === 'run' && r.resp.max_pieces === 2, JSON.stringify(r.resp));
+r = await call({ action: 'competitor_gate', now_ms: NOW }, FXG({}));
+t('competitor_gate (workflow): primera corrida => run', r.resp.mode === 'run');
+r = await call({ action: 'content_gate', now_ms: NOW }, FXG({}, 6));
+t('content_gate (workflow): cola llena => el radar corre igual pero avisa pieces_allowed=false', r.resp.mode === 'run' && r.resp.pieces_allowed === false, JSON.stringify(r.resp));
+r = await call({ action: 'panel', now_ms: NOW, hermes: hermesOk }, FXG({ feeds: [{ slug: 'n8n-blog', enabled: true, last_status: 'ok', consecutive_failures: 0, last_checked_at: iso(H) }], feed_new: [{ relevance: 5 }], interviews: [{ status: 'asked', question: '¿Por qué?', asked_at: iso(2 * H) }], resources: [{ id: 'r1', slug: 'x', name: 'X', type: 'checklist', cta_mode: 'resource_link', url: 'https://atacamalabs.cl/recursos/x', status: 'active' }] }, 2));
+t('panel (workflow): incluye cola 2/6, RSS, recursos activos y Founder pendiente', (() => { const c = r.resp.panel.content; return c.queue.pending === 2 && c.queue.max === 6 && c.rss.feeds_total === 1 && c.rss.new_items === 1 && c.resources.active === 1 && c.founder.pending_answer === 1; })(), JSON.stringify(r.resp.panel && r.resp.panel.content && r.resp.panel.content.queue));
+t('panel (workflow): sigue siendo solo lectura (0 escrituras)', r.writes.length === 0);
+r = await call({ action: 'panel', now_ms: NOW, hermes: hermesOk }, FXG({ feeds: 'FAIL' }));
+t('panel (workflow): si falla una lectura de Ola A lo declara (missing) y no inventa', r.resp.missing.some((m) => /^growth:feeds/.test(m)));
+r = await call({ action: 'job_report', report: { kind: 'content_pieces', status: 'ok', created: 2, blocked: 0, held: 1, minutes: 7, est_cost_usd: 0.31, mode: 'run' } });
+t('job_report: registra la corrida con su tipo y cifras (solo ops_runs)', r.writes.length === 1 && r.writes[0].path === 'ops_runs' && r.writes[0].body.kind === 'content_pieces' && r.writes[0].body.summary.created === 2 && r.writes[0].body.est_cost_usd === 0.31);
+r = await call({ action: 'job_report', report: { kind: 'otro', status: 'ok' } });
+t('job_report: un tipo inventado se rechaza', r.resp.ok === false || r.writes.length === 0, JSON.stringify(r.resp));
+r = await call({ action: 'job_report', report: { kind: 'content_rss', status: 'error', reason: 'timeout leyendo feed' } });
+t('job_report: un error de RSS queda registrado como error', r.writes[0].body.status === 'error' && r.writes[0].body.kind === 'content_rss');
+
+// ---------- Ola B · Editorial Decision (workflow 25, solo lectura)
+{
+  const weekPieces = (k, status) => Array.from({ length: k }, (_, i) => ({ id: 'w' + status + i, topic: 'Pieza ' + i, channel: 'linkedin_page', status, ghl_status: status === 'scheduled' ? 'scheduled' : 'in_review', scheduled_at: new Date(NOW + (i + 1) * D / 2).toISOString(), published_at: null, is_test: false, created_at: iso(H) }));
+  const FXE = (sched, review, growth) => { const f = FIX({ growth: growth || {} }); f.sb = { ...f.sb, 'SB Pieces': ok200(weekPieces(sched, 'scheduled').concat(weekPieces(review, 'in_review'))) }; return f; };
+  const sig = { topic: 'Conectar a Hermes con herramientas reales', summary: 'permisos datos y supervisión', kind: 'work' };
+  let e = await call({ action: 'editorial_plan', now_ms: NOW, params: { signal: sig } }, FXE(0, 1, { resources: [{ id: 'r1', slug: 'que-proceso-automatizar-primero', name: 'Mapa de procesos', topic: 'procesos', problem: 'qué automatizar primero', status: 'active', cta_mode: 'resource_link', url: 'https://atacamalabs.cl/recursos/x' }] }));
+  t('editorial_plan (workflow): semana con espacio => SÍ publicar, propuestas distintas por cuenta y solo lectura (0 escrituras de contenido)', e.resp.publish === true && e.resp.proposals.length >= 2 && new Set(e.resp.proposals.map((q) => q.angle_directive)).size === e.resp.proposals.length && e.resp.proposals[0].channel === 'linkedin_profile' && /Editorial Decision: SÍ/.test(e.resp.text), JSON.stringify(e.resp).slice(0, 400));
+  e = await call({ action: 'editorial_plan', now_ms: NOW, params: { signal: sig } }, FXE(4, 1));
+  t('editorial_plan (workflow): semana cubierta (5/5 entre programadas y en revisión) => NO fabrica una pieza normal', e.resp.publish === false && /semana está cubierta/.test(e.resp.reason) && e.resp.proposals.length === 0, JSON.stringify(e.resp).slice(0, 300));
+  e = await call({ action: 'editorial_plan', now_ms: NOW, params: { signal: { ...sig, kind: 'news', urgent: true } } }, FXE(4, 1));
+  t('editorial_plan (workflow): señal urgente puede pasar el ritmo con UNA pieza (≤ 24 h) sin pasar el máximo', e.resp.publish === true && e.resp.urgency === 'urgent' && e.resp.window_hours === 24, JSON.stringify(e.resp).slice(0, 300));
+  e = await call({ action: 'editorial_plan', now_ms: NOW, params: { signal: { topic: '' } } }, FXE(0, 1));
+  t('editorial_plan (workflow): sin tema => no publica y lo dice', e.resp.publish === false && /falta el tema/.test(e.resp.reason));
+}
+
+
+// ---------- Contacto preparado (9-oct): compuerta de preparación y resumen en el panel
+const mkC = (k, cs) => FIX({ sb: { ...FIX().sb, 'SB Candidates': ok200(Array.from({ length: k }, (_, i) => ({ id: 'z' + i, company_name: 'z' + i, status: 'in_ghl', ghl_stage: 'investigado', created_at: iso(3 * D), ...(cs || {}) }))) } });
+r = await call({ action: 'prep_gate', now_ms: NOW }, mkC(3));
+t('prep_gate: con 3 Investigados válidos sin acción → run (el job de Hermes prepara canal y mensaje)', r.resp.mode === 'run' && r.resp.count === 3 && r.resp.max_items === 3 && /Preparación: run/.test(r.resp.text), JSON.stringify(r.resp));
+r = await call({ action: 'prep_gate', now_ms: NOW }, mkC(5, { channel_state: { li_manual: { status: 'ready' } } }));
+t('prep_gate: si todos ya tienen próxima acción → skip (no se gasta un token)', r.resp.mode === 'skip' && r.resp.count === 0);
+r = await call({ action: 'panel', now_ms: NOW, hermes: hermesOk }, mkC(2, { channel_state: { prep: { state: 'hold', reason: 'B: después de los A' } } }));
+t('panel: incluye el resumen de preparación (colas, métrica crítica y autoenvío OFF)', r.resp.panel.prep && r.resp.panel.prep.counts.en_espera === 2 && r.resp.panel.prep.valid_unactioned === 0 && r.resp.panel.prep.autosend.enabled === false, JSON.stringify(Object.keys(r.resp.panel.prep || {})));
+r = await call({ action: 'panel', now_ms: NOW, hermes: hermesOk }, mkC(2));
+t('panel: «Investigados válidos sin acción» aparece como atención', r.resp.panel.attention.some((a) => a.key === 'prep_unactioned' && a.count === 2) && r.resp.panel.prep.valid_unactioned === 2);
+
+// ---------- Atacama OS v3 · Fase 1: pausa general en TODAS las compuertas y bandeja «Hoy» en el panel
+const paused = (o) => FIX({ growth: { sys_state: [{ id: 1, global_pause: true, reason: 'viaje', paused_at: iso(H), paused_by: 'Christian via /ops', meta: {} }], ...(o || {}) } });
+let allSkip = true;
+for (const g of ['radar_gate', 'prep_gate', 'content_gate', 'rss_gate', 'competitor_gate', 'pieces_gate', 'igweek_gate', 'storyday_gate']) {
+  r = await call({ action: g, now_ms: NOW }, paused());
+  if (!(r.resp.mode === 'skip' && r.resp.paused === true && /Pausa general activa/.test(r.resp.reason) && /skip — Pausa general/.test(r.resp.text))) { allSkip = false; console.log('  compuerta sin pausa:', g, JSON.stringify(r.resp).slice(0, 200)); }
+}
+t('v3 · pausa general: las 8 compuertas de Hermes devuelven skip con el motivo', allSkip);
+r = await call({ action: 'radar_gate', now_ms: NOW }, FIX({ growth: { sys_state: [{ id: 1, global_pause: false }] } }));
+t('v3 · sin pausa, la compuerta sigue igual que antes', r.resp.mode === 'import' && !r.resp.paused);
+r = await call({ action: 'panel', now_ms: NOW, hermes: hermesOk }, FIX({ sb: { ...FIX().sb, 'SB Messages': ok200([{ id: 'd1', candidate_id: 'k1', company_name: 'Clínica Ramis', kind: 'initial', direction: 'outbound', status: 'draft', created_at: iso(3 * H), metadata: {} }]) },
+  growth: { sys_state: [{ id: 1, global_pause: false }], ideas: [{ id: 'i1', title: 'Idea fundada', status: 'proposed', created_at: iso(H), is_test: false }], content_cfg: [{ id: 1, ops_nav_v2: true }] } }));
+const v3p = r.resp.panel.v3;
+t('v3 · panel trae pausa, navegación nueva y bandeja «Hoy» (correo antes que idea)', v3p && v3p.pause.paused === false && v3p.nav_v2 === true && v3p.inbox.items[0].kind === 'correo' && v3p.inbox.items[1].kind === 'idea', JSON.stringify(v3p).slice(0, 300));
+r = await call({ action: 'panel', now_ms: NOW, hermes: hermesOk }, FIX({ growth: { content_cfg: [{ id: 1, ops_nav_v2: false }] } }));
+t('v3 · el interruptor ops_nav_v2=false vuelve a la navegación anterior', r.resp.panel.v3.nav_v2 === false);
+t('v3 · el panel lee system_state y content_ideas (solo reales)', JSON.stringify(wf).includes('system_state?id=eq.1') && JSON.stringify(wf).includes('content_ideas?is_test=eq.false'));
+
+// ---------- Atacama OS v3 · Fase 4: Ideas (gate, propose, revise, list)
+{
+  const SRC = '11111111-1111-4111-8111-111111111111';
+  const idea = (o) => ({ channel: 'instagram', format: 'carrusel', title: 'Qué proceso automatizar primero en una clínica', hook: '¿Tu recepción responde lo mismo 40 veces al día?', objective: 'educar', audience_insight: 'Dueños de clínicas', core_message: 'Empieza por lo repetitivo',
+    structure: ['Portada', 'Tres señales', 'Cierre'], production: { tools: ['composer'], how: 'Carrusel en la VPS' }, effort: 'medio', risks: 'Genérico', evidence: [{ type: 'source', id: SRC }], score_breakdown: { evidence: 28, relevance: 22, differentiation: 15, freshness: 10, feasibility: 8 }, ...(o || {}) });
+  r = await call({ action: 'ideas_gate', now_ms: NOW }, FIX({ growth: { content_cfg: [{ id: 1, ideas_enabled: true }], sys_state: [{ id: 1, global_pause: false }], sources_verified: [{ id: SRC, title: 'Fuente', url: 'https://x.cl' }] } }));
+  t('ideas_gate: con el job encendido → run para la semana siguiente, con fuentes verificadas y reglas', r.resp.mode === 'run' && r.resp.week_start === '2026-10-12' && r.resp.sources.length === 1 && r.resp.rules.length >= 4 && /Ideas: run/.test(r.resp.text), JSON.stringify(r.resp).slice(0, 200));
+  r = await call({ action: 'ideas_gate', now_ms: NOW }, FIX());
+  t('ideas_gate: con ideas_enabled apagado (por defecto) → skip', r.resp.mode === 'skip' && /apagado/.test(r.resp.reason));
+  r = await call({ action: 'ideas_propose', params: { proposal: { week_start: '2026-10-12', ideas: [idea()] } } }, FIX({ growth: { ev_sources: [{ id: SRC, verified: true }] } }));
+  t('ideas_propose real con el job apagado → bloqueado, sin escrituras', r.resp.ok === false && /apagado/.test(r.resp.text) && r.writes.length === 0);
+  r = await call({ action: 'ideas_propose', params: { test: true, proposal: { week_start: '2026-10-12', ideas: [idea(), idea({ title: 'Otra sin fuente', hook: 'otro gancho distinto', evidence: [] })] } } }, FIX({ growth: { ev_sources: [{ id: SRC, verified: true }] } }));
+  const ib = r.writes.filter((w) => /^content_idea/.test(w.path));
+  t('ideas_propose TEST: guarda 1 lote + 1 idea (is_test), descarta la que no tiene fuente, NO registra corrida real', r.resp.ok === true && r.resp.proposed === 1 && r.resp.discarded_weak === 1 && ib.length === 2 && ib.every((w) => w.body.is_test === true) && !r.writes.some((w) => w.path === 'ops_runs'), JSON.stringify(r.resp).slice(0, 300));
+  t('ideas_propose: la lectura de evidencia pide exactamente las fuentes citadas', r.parsed.growth_reads.some((g) => g.key === 'ev_sources' && g.url.includes(SRC)));
+  r = await call({ action: 'ideas_propose', params: { test: true, proposal: { ideas: [idea()] } } }, FIX({ growth: { sys_state: [{ id: 1, global_pause: true }], ev_sources: [{ id: SRC, verified: true }] } }));
+  t('ideas_propose con pausa general → bloqueado', r.resp.ok === false && /Pausa general/.test(r.resp.text) && r.writes.length === 0);
+  const ONE = { id: '22222222-2222-4222-8222-222222222222', status: 'changed', origin: 'hermes', channel: 'instagram', format: 'carrusel', title: 'Viejo', change_request: 'otro ángulo', evidence: [{ type: 'source', id: SRC }], history: [], is_test: true };
+  r = await call({ action: 'ideas_revise', params: { test: true, idea_id: ONE.id, idea: idea({ title: 'Ángulo de costos' }) } }, FIX({ growth: { idea_one: [ONE], ev_sources: [{ id: SRC, verified: true }] } }));
+  t('ideas_revise TEST: reescribe con candado de estado y vuelve a «por decidir»', r.resp.ok === true && r.writes.length === 1 && /status=eq\.changed/.test(r.writes[0].path) && r.writes[0].body.status === 'proposed', JSON.stringify(r.resp));
+  r = await call({ action: 'ideas_revise', params: { test: true, idea_id: ONE.id, idea: idea() } }, FIX({ growth: { idea_one: [ONE], ev_sources: [{ id: SRC, verified: true }] }, noRows: true }));
+  t('ideas_revise: si el candado no encuentra la fila (Christian ya decidió) → ok:false con motivo', r.resp.ok === false && /cambió mientras tanto/.test(r.resp.text), JSON.stringify(r.resp));
+  r = await call({ action: 'ideas_list', now_ms: NOW }, FIX({ growth: { ideas_rows: [{ id: 'a', week_start: '2026-10-12', channel: 'instagram', format: 'carrusel', title: 'A', status: 'proposed', score: 88, effort: 'bajo' }], idea_batches: [{ week_start: '2026-10-12', discarded_weak: 2, discarded: [], created_at: iso(H) }] } }));
+  t('ideas_list: semana siguiente con la idea, su plazo y el contador de descartadas', r.resp.ideas.weeks.length === 1 && r.resp.ideas.weeks[0].discarded_weak === 2 && r.resp.ideas.weeks[0].channels[0].ideas[0].deadline.state === 'alcanza', JSON.stringify(r.resp.ideas).slice(0, 300));
+}
+
+// ---------- v3 · Fase 6: Prospección y correo (solo lectura)
+{
+  const sentAt = iso(2 * H);
+  r = await call({ action: 'mail_view', now_ms: NOW }, FIX({ growth: { mail_cfg: [{ mode: 'live', daily_cap: 40, window_start: '09:00', window_end: '17:30', followup_days: [3, 7], funnel_min_sample: 20 }],
+    mail_msgs: [{ id: 'm1', candidate_id: 'c1', company_name: 'Alfa', direction: 'outbound', kind: 'initial', status: 'sent', sent_at: sentAt, created_at: sentAt }, { id: 'm2', candidate_id: 'c2', company_name: 'Beta', direction: 'outbound', kind: 'initial', status: 'approved', approved_at: sentAt, created_at: sentAt }],
+    mail_supp: [{ email: 'x@y.cl', reason: 'bounce' }], mail_cands: [{ id: 'c1', status: 'contacted', industry: 'Salud' }, { id: 'c2', status: 'in_ghl', industry: 'Salud' }] } }));
+  const mvw = r.resp.mail;
+  t('mail_view: lee mensajes, supresión, configuración y prospectos (sin escribir nada)', r.parsed.growth_reads.filter((g) => /^mail_/.test(g.key)).length === 4 && r.writes.length === 0 && !r.parsed.growth_reads.some((g) => /legal|from_email/.test(g.key)), JSON.stringify(r.parsed.growth_reads.map((g) => g.key)));
+  t('mail_view: arma Hoy, Cola, Respuestas, Seguimientos, Embudo y Salud', mvw && mvw.hoy.cap === 40 && mvw.cola.length === 1 && mvw.embudo.stages[0].count === 2 && mvw.salud.suppression_total === 1 && Array.isArray(mvw.seguimientos.upcoming) && Array.isArray(mvw.respuestas.sent), JSON.stringify(mvw || r.resp).slice(0, 300));
+}
+
+// ---------- v3 · Fase 7: historial, Mi semana y costos (solo lectura)
+{
+  r = await call({ action: 'history_list', now_ms: NOW }, FIX({ growth: { h_audit: [{ id: 'a', actor: 'Christian via /ops', tool: 'ops_email_approve', status: 'executed', created_at: iso(H) }, { id: 'b', actor: 'Christian via /ops', tool: 'ops_email_approve', status: 'executed', created_at: iso(H - 60000) }], h_runs: [], h_msgs: [], h_pieces: [], h_alerts: [] } }));
+  t('history_list: lee 90 días (auditoría, corridas, correos, piezas, alertas) y agrupa; sin escrituras', r.parsed.growth_reads.filter((g) => /^h_/.test(g.key)).length === 5 && r.writes.length === 0 && r.resp.history.lines.length === 1 && /Christian aprobó 2 correos/.test(r.resp.history.lines[0].text) && Array.isArray(r.resp.alerts_open), JSON.stringify(r.resp).slice(0, 300));
+  const EV = Array.from({ length: 30 }, (_, i) => ({ id: 'e' + i, type: 'email_edit', is_test: true, before: { subject: 'A', body: 'uno dos tres cuatro cinco seis siete ocho nueve diez' }, after: { subject: 'A', body: 'uno dos' }, created_at: iso(NOW) }));
+  r = await call({ action: 'results_view', now_ms: NOW }, FIX({ growth: { r_pieces: [], r_att: [], r_leads: [], r_metrics: [], r_versions: [], r_feedback: [], l_events: EV, l_props: [] } }));
+  t('F8 results_view: reporte + aprendizaje (las pruebas no cuentan), job apagado; sin escrituras', r.writes.length === 0 && Array.isArray(r.resp.results.pieces) && r.resp.learning.total_events === 0 && r.resp.learning_enabled === false && /Atribución parcial/.test(r.resp.results.note), JSON.stringify(r.resp).slice(0, 300));
+  const PROP = { proposals: [{ pattern_id: 'playbook:acorta', proposal: 'Acortar los correos como hace Christian en sus ediciones.', citations: [{ event_id: 'e1' }, { event_id: 'e2' }, { event_id: 'e3' }] }] };
+  r = await call({ action: 'learning_propose', now_ms: NOW, params: PROP }, FIX({ growth: { l_events: EV, l_props: [] } }));
+  t('F8 learning_propose: con el job apagado solo acepta pruebas', r.resp.ok === false && r.resp.error === 'bloqueado' && r.writes.length === 0);
+  r = await call({ action: 'learning_propose', now_ms: NOW, params: { ...PROP, test: true } }, FIX({ growth: { l_events: EV, l_props: [] } }));
+  t('F8 learning_propose (test): guarda UNA propuesta is_test en learning_proposals y nada más', r.resp.ok === true && r.writes.length === 1 && r.writes[0].path === 'learning_proposals' && r.writes[0].body.is_test === true && r.writes[0].body.sample_size === 30, JSON.stringify(r.resp).slice(0, 300));
+  r = await call({ action: 'week_status', now_ms: NOW }, FIX({ growth: { w_ideas: [], w_meet: [], w_pieces: [{ id: 'p', topic: 'X', taller_status: 'para_revisar', credits_spent: 4 }], content_cfg: [{ id: 1, week_ritual: { lun: ['ideas'], mar: [], mie: [], jue: ['revisar_piezas'], vie: ['cierre'] } }] } }));
+  t('week_status: usa el ritual guardado y entrega costos por pieza; sin escrituras', r.writes.length === 0 && r.resp.week.days[3].tasks[0].id === 'revisar_piezas' && r.resp.week.days[3].tasks[0].done === false && r.resp.costs.pieces[0].credits === 4, JSON.stringify(r.resp).slice(0, 300));
+}
+
+// ---------- v3 · Fase 2: Taller (lectura con URLs firmadas)
+{
+  const TP = '11111111-1111-4111-8111-111111111111';
+  const fx = FIX({ growth: { tpieces: [{ id: TP, idea_id: 'i1', topic: 'Carrusel X', channel: 'instagram', format: 'carrusel', lane: 'vps', taller_status: 'para_revisar', current_version: 1, credits_spent: 3, needs_by: iso(2 * D), is_test: false }],
+    tversions: [{ id: 'v1', piece_id: TP, version_no: 1, kind: 'carrusel', assets: [{ path: TP + '/v1/01.png' }, { path: TP + '/v1/02.png' }], qa: { images: [TP + '/v1/qa.png'] }, caption: 'c', created_at: iso(H) }],
+    tideas: [{ id: 'i1', week_start: '2026-10-12', keyword: 'PROCESO', piece_id: TP }], content_cfg: [{ id: 1 }] },
+    sign: { statusCode: 200, body: [{ path: TP + '/v1/01.png', signedURL: '/object/sign/taller/' + TP + '/v1/01.png?token=a' }, { path: TP + '/v1/02.png', signedURL: '/object/sign/taller/x2?token=b' }, { path: TP + '/v1/qa.png', error: 'not found' }] } });
+  r = await call({ action: 'taller_list', now_ms: NOW }, fx);
+  const tv = r.resp.taller;
+  t('taller_list: firma en UNA llamada las rutas de las versiones y de sus imágenes de control (1 h)', r.comp && r.parsed && JSON.stringify(r).length > 0 && tv.pieces.length === 1 && tv.pieces[0].thumb === 'https://uwquwjmiofixzugttals.supabase.co/storage/v1/object/sign/taller/' + TP + '/v1/01.png?token=a' && tv.pieces[0].versions[0].assets.length === 2 && tv.pieces[0].keyword === 'PROCESO', JSON.stringify(tv).slice(0, 300));
+  t('taller_list: una imagen sin firma no rompe la vista (queda sin URL)', tv.pieces[0].versions[0].qa.images.length === 0);
+  t('taller_list: marca atrasada la pieza cuyo viernes de cierre ya pasó', tv.pieces[0].overdue === true);
+}
+
+console.log(`\n${pass} ok, ${fail} fallos`);
+process.exit(fail ? 1 : 0);

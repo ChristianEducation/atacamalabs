@@ -1,32 +1,45 @@
 import type { MetadataRoute } from "next";
-import site from "@/lib/content";
 import { SITE_URL } from "@/lib/site-url";
+import { INDUSTRY_SLUGS } from "@/content/marketing/industries";
+import { AGENT_ROLES } from "@/content/marketing/agents";
+import { WHATSAPP_CHANNEL } from "@/content/marketing/agent-channels";
 
 /**
- * Solo rutas públicas con página implementada. content/site.json.routes
- * declara /privacidad como alcance V1, pero esa página no existe todavía
- * (dato pendiente de Christian, WEB-CONTENT.md) — no se lista hasta que
- * exista, para no publicar una URL que 404ea.
+ * Rutas públicas indexables — PRODUCTION_READINESS_SPEC_V1 §9.1. `/diagnostico`
+ * es una pantalla de conversión (noindex,follow — ver su page.tsx) y queda
+ * fuera del sitemap (GAP SEO-06); conserva sus links internos normales.
  */
-const IMPLEMENTED_KINDS = new Set([
-  "home",
-  "agents",
-  "solutions-index",
-  "solution",
-  "cases-index",
-  "case",
-  "process",
-  "pricing",
-  "about",
-  "contact",
-  "booking",
-]);
+const STATIC_ROUTES = [
+  "/",
+  "/agentes",
+  "/plataforma",
+  "/a-medida",
+  "/paginas-web",
+  "/precios",
+  "/rubros",
+  "/conocenos",
+  "/privacidad",
+  "/terminos",
+] as const;
+
+/**
+ * Rutas hijas de Rubros y Agentes (SEO_GROWTH_SPEC_V1 §22): se arman desde las
+ * mismas fuentes únicas que ya usan sus hubs y `generateStaticParams`, no se
+ * listan a mano. Las comparativas/recursos de las Fases B/C quedan fuera
+ * hasta que existan y estén listas para indexarse (§20).
+ */
+const INDUSTRY_ROUTES = INDUSTRY_SLUGS.map((slug) => `/rubros/${slug}`);
+const AGENT_ROUTES = [...AGENT_ROLES.map((role) => `/agentes/${role.id}`), `/agentes/${WHATSAPP_CHANNEL.slug}`];
+
+/**
+ * Sin `lastModified` (GAP SEO-05): Google exige que represente una
+ * modificación real, y hoy no tenemos fechas de contenido verificables por
+ * ruta. Sin `priority`/`changefreq` (§9.3): Google no les da valor.
+ */
+// Los recursos (/recursos/[slug]) NO van en el sitemap: son «solo con la URL» (decisión de Christian, 13-oct-2026).
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  return site.routes
-    .filter((route) => IMPLEMENTED_KINDS.has(route.kind))
-    .map((route) => ({
-      url: `${SITE_URL}${route.path}`,
-      lastModified: new Date(),
-    }));
+  return [...STATIC_ROUTES, ...INDUSTRY_ROUTES, ...AGENT_ROUTES].map((path) => ({
+    url: `${SITE_URL}${path === "/" ? "" : path}`,
+  }));
 }

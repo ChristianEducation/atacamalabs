@@ -1,0 +1,119 @@
+// node scripts/content/engine-core.test.mjs
+import fs from 'node:fs';
+import { evaluatePiece } from './engine-core.mjs';
+
+const base = JSON.parse(fs.readFileSync(new URL('./examples/linkedin-founder-dry-run.piece.json', import.meta.url), 'utf8'));
+const clone = (o) => JSON.parse(JSON.stringify(o));
+let pass = 0, fail = 0;
+const t = (name, cond, extra = '') => { cond ? pass++ : fail++; console.log(cond ? 'ok  ' : 'FAIL', name, cond ? '' : extra); };
+
+// 1. La pieza real de ejemplo pasa el gate
+const ok = evaluatePiece(base, { existingIdeaKeys: [] });
+t('pieza real: sin errores', ok.ok, JSON.stringify(ok.errors));
+t('pieza real: candidata con score >= 70', ok.decision === 'candidate' && ok.score >= 70, String(ok.score));
+t('pieza real: texto final incluye gancho y hashtags', ok.post_text.startsWith(base.hook) && ok.post_text.includes('#automatización'));
+t('idea_key estable', evaluatePiece(base, {}).idea_key === ok.idea_key);
+
+// 2. No repetición
+t('idea repetida se rechaza', (() => { const r = evaluatePiece(base, { existingIdeaKeys: [ok.idea_key] }); return r.decision === 'rejected' && r.errors.includes('idea_repetida'); })());
+
+// 3. Fuente y claims
+const ext = clone(base); ext.claims.push({ text: 'Meta anunció un cambio de política', external: true });
+t('claim externo sin fuente => rechazo', evaluatePiece(ext).errors.some((e) => e.startsWith('claim_externo_sin_fuente')));
+const ext2 = clone(base); ext2.claims.push({ text: 'Un estudio dice X', external: true, source_url: 'https://example.com/estudio' });
+t('claim externo con URL no verificada => rechazo', evaluatePiece(ext2).errors.some((e) => e.startsWith('claim_externo_fuente_no_verificada')));
+const ext3 = clone(base); ext3.sources.push({ kind: 'hermes_research', title: 'Estudio', url: 'https://example.com/estudio', verified: true, evidence: [] });
+ext3.claims.push({ text: 'Un estudio dice X', external: true, source_url: 'https://example.com/estudio' });
+t('claim externo con fuente verificada => OK', evaluatePiece(ext3).ok);
+const noSrc = clone(base); noSrc.sources = [];
+t('sin fuentes => rechazo', evaluatePiece(noSrc).errors.includes('sin_fuentes'));
+const unver = clone(base); unver.sources[0].verified = false;
+const unverR = evaluatePiece(unver);
+t('fuente no verificada tope en evidencia (<=2)', unverR.breakdown.evidence <= 2);
+const fig = clone(base); fig.body += '\n\nEsto ahorra un 40% del tiempo.';
+t('cifra/porcentaje sin respaldo => rechazo', evaluatePiece(fig).errors.some((e) => e.startsWith('cifra_sin_respaldo')));
+const fig2 = clone(fig); fig2.claims.push({ text: 'Ahorro de un 40% del tiempo medido en el piloto', external: false });
+t('cifra con claim respaldado => OK', evaluatePiece(fig2).ok);
+const news = clone(base); news.category = 'Noticia';
+t('Noticia sin claim externo => rechazo', evaluatePiece(news).errors.includes('noticia_sin_claim_externo'));
+
+// 4. Calidad y relleno
+const filler = clone(base); filler.body += '\n\nEn el mundo actual la transformación digital es una revolución disruptiva.';
+const fr = evaluatePiece(filler);
+t('frases de relleno penalizan', fr.penalties >= 9 && fr.lint_hits.length >= 3, JSON.stringify(fr.lint_hits));
+const cta = clone(base); cta.cta = { type: 'link', text: 'Agenda una llamada con nosotros.' };
+t('CTA genérico "agenda una llamada" penaliza', evaluatePiece(cta).lint_hits.includes('cta_generico_agenda_llamada'));
+const low = clone(base); Object.keys(low.factors).forEach((k) => { low.factors[k] = { value: 4, note: 'x' }; });
+const lr = evaluatePiece(low);
+t('score bajo no es candidato', lr.decision === 'below_threshold' && lr.score < 70, String(lr.score));
+const missing = clone(base); delete missing.factors.clarity;
+t('factor faltante => rechazo', evaluatePiece(missing).errors.includes('factor_faltante:clarity'));
+
+// 5. Canal / formato / slides
+const ig = clone(base); ig.channel = 'instagram'; ig.format = 'texto';
+t('Instagram sin medio => rechazo', evaluatePiece(ig).errors.includes('instagram_requiere_medio'));
+const car = clone(base); car.channel = 'instagram'; car.format = 'carrusel'; car.visual_direction = 'Fondo claro, una idea por slide'; car.visual = { need: 'carousel', rationale: 'Instagram es visual primero' };
+car.slides = [{ layout: 'cover', title: 'Antes de automatizar, decide dónde va el freno' }, { layout: 'content', title: 'El plan primero', body: 'El flujo devuelve qué haría antes de escribir.' }, { layout: 'cta', title: '¿Dónde pondrías el freno?' }];
+t('carrusel válido (3 slides)', evaluatePiece(car).ok, JSON.stringify(evaluatePiece(car).errors));
+const car2 = clone(car); car2.slides = car2.slides.slice(0, 2);
+t('carrusel con 2 slides => rechazo', evaluatePiece(car2).errors.includes('cantidad_de_slides_invalida'));
+const car3 = clone(car); car3.slides[1].title = 'x'.repeat(95);
+t('título de slide largo => rechazo', evaluatePiece(car3).errors.includes('slide_2_titulo_largo'));
+const car4 = clone(car); car4.slides[1].items = [1, 2, 3, 4, 5].map((n) => ({ title: 't' + n, text: 'x' }));
+t('más de 4 ideas en una slide => rechazo', evaluatePiece(car4).errors.includes('slide_2_muchas_ideas'));
+const kw = clone(base); kw.cta = { type: 'comment_keyword', text: 'Comenta MAPA', keyword: 'MAPA' };
+t('CTA con keyword exige recurso', evaluatePiece(kw).errors.includes('cta_keyword_requiere_keyword_y_recurso'));
+const kw2 = clone(base); kw2.cta = { type: 'comment_keyword', text: 'Comenta MAPA y te lo envío', keyword: 'MAPA', resource: 'mapa-de-procesos' };
+t('CTA con keyword y recurso => OK', evaluatePiece(kw2).ok);
+const lng = clone(base); lng.body = 'a'.repeat(3100);
+t('texto sobre el límite => rechazo', evaluatePiece(lng).errors.includes('texto_excede_limite_3000'));
+const hs = clone(base); hs.hashtags = ['#a', '#b', '#c', '#d', '#e', '#f'];
+t('más de 5 hashtags => rechazo', evaluatePiece(hs).errors.includes('demasiados_hashtags'));
+t('entrada basura no lanza excepción', (() => { try { return evaluatePiece(null).decision === 'rejected'; } catch { return false; } })());
+
+
+// 6. Reglas de la guía oficial: llamita, cifras, comparaciones, ataques
+const mk = () => { const c = clone(base); c.channel = 'instagram'; c.format = 'carrusel'; c.visual_direction = 'Fondo claro y aire'; c.visual = { need: 'carousel', rationale: 'Instagram es visual primero' };
+  c.slides = [{ layout: 'cover', title: 'Antes de automatizar, decide el freno', mascot: { sheet: 'poses', pose: 'pregunta' } }, { layout: 'content', title: 'El plan primero', body: 'Antes de escribir, el flujo muestra qué haría.' }, { layout: 'cta', title: '¿Dónde va tu freno?', mascot: { sheet: 'emociones', pose: 'alegria' } }]; return c; };
+t('llamita en portada y cierre => OK', evaluatePiece(mk()).ok, JSON.stringify(evaluatePiece(mk()).errors));
+const m1 = mk(); m1.slides[1].mascot = { sheet: 'poses', pose: 'neutral' };
+t('llamita en slide de contenido => rechazo', evaluatePiece(m1).errors.includes('slide_2_mascota_solo_en_portada_o_cierre'));
+const m2 = mk(); m2.slides[0].mascot = { sheet: 'poses', pose: 'inexistente' };
+t('pose inexistente => rechazo', evaluatePiece(m2).errors.includes('slide_1_mascota_invalida'));
+const m3 = mk(); m3.slides.push({ layout: 'cta', title: 'Otro cierre', mascot: { sheet: 'poses', pose: 'celebra' } });
+t('más de 2 llamitas => rechazo', evaluatePiece(m3).errors.includes('demasiada_mascota'));
+const cmp = mk(); cmp.slides[1] = { layout: 'content', title: 'Herramienta estándar o Atacama', compare: { left: { label: 'Si solo necesitas X', text: 'Una herramienta estándar puede ser suficiente.' }, right: { label: 'Si conectas sistemas', text: 'Ahí empieza Atacama.' } } };
+t('comparación lado a lado válida', evaluatePiece(cmp).ok, JSON.stringify(evaluatePiece(cmp).errors));
+const cmp2 = clone(cmp); cmp2.slides[1].compare.left.text = 'x'.repeat(120);
+t('comparación con texto largo => rechazo', evaluatePiece(cmp2).errors.includes('slide_2_comparacion_invalida'));
+const fg = mk(); fg.slides[1] = { layout: 'content', title: 'Lo que cambió', figure: { value: '$0,03', label: 'por mensaje de plantilla' } };
+t('cifra grande con $ sin claim => rechazo', evaluatePiece(fg).errors.some((e) => e.startsWith('cifra_sin_respaldo')));
+const fg2 = clone(fg); fg2.sources.push({ kind: 'hermes_research', title: 'Tarifas', url: 'https://example.com/tarifas', verified: true, evidence: [] }); fg2.claims.push({ text: 'La tarifa es $0,03 por mensaje de plantilla', external: true, source_url: 'https://example.com/tarifas' });
+t('cifra grande con claim externo verificado => OK', evaluatePiece(fg2).ok, JSON.stringify(evaluatePiece(fg2).errors));
+const mix = mk(); mix.slides[1].figure = { value: '3', label: 'pasos' }; mix.slides[1].items = [{ title: 'a', text: 'b' }];
+t('mezclar estructuras en una slide => rechazo', evaluatePiece(mix).errors.includes('slide_2_mezcla_de_estructuras'));
+const atk = clone(base); atk.body += '\n\nOtras herramientas no sirve y somos mejores.';
+t('atacar o prometer de más penaliza', evaluatePiece(atk).lint_hits.includes('ataque_o_promesa_exagerada'));
+
+// 5. Motor de Instagram (Frente C): historias y reels
+const hist = JSON.parse(fs.readFileSync(new URL('./examples/instagram-historia.piece.json', import.meta.url), 'utf8'));
+const reel = JSON.parse(fs.readFileSync(new URL('./examples/instagram-reel.piece.json', import.meta.url), 'utf8'));
+t('historia de ejemplo: candidata sin errores', evaluatePiece(hist).decision === 'candidate' && evaluatePiece(hist).ok, JSON.stringify(evaluatePiece(hist).errors));
+t('reel de ejemplo: candidato sin errores', evaluatePiece(reel).decision === 'candidate' && evaluatePiece(reel).ok, JSON.stringify(evaluatePiece(reel).errors));
+const hErr = (mut) => { const x = clone(hist); mut(x); return evaluatePiece(x).errors; };
+t('historia: solo Instagram', hErr((x) => { x.channel = 'linkedin_page'; }).includes('historia_solo_instagram'));
+t('historia: exige story y plantilla válida', hErr((x) => { delete x.story; }).includes('historia_requiere_story') && hErr((x) => { x.story.template = 'otra'; }).includes('story_template_invalida'));
+t('historia: título obligatorio y con largo según la plantilla (embudo ≤ 46, chat ≤ 60, dolor ≤ 72)', hErr((x) => { x.story.title = ''; }).includes('story_sin_titulo') && hErr((x) => { x.story.title = 'x'.repeat(61); }).includes('story_titulo_largo_para_chat_max_60') && hErr((x) => { x.story.template = 'embudo'; x.story.stages = ['a', 'b', 'c']; x.story.title = 'x'.repeat(47); }).includes('story_titulo_largo_para_embudo_max_46') && hErr((x) => { x.story.template = 'dolor'; x.story.title = 'x'.repeat(73); }).includes('story_titulo_largo_para_dolor_max_72'));
+t('historia «pregunta»: el título se parte con | en dos mitades cortas', hErr((x) => { x.story.template = 'pregunta'; x.story.title = '¿Quién contesta cuando tú no puedes?'; }).some((e) => e.startsWith('story_pregunta_parte_el_titulo')) && !hErr((x) => { x.story.template = 'pregunta'; x.story.title = '¿Quién contesta | cuando tú no puedes?'; }).some((e) => e.startsWith('story_pregunta')));
+t('historia: nada recortado con puntos suspensivos (pill, título, cuerpo, chat)', hErr((x) => { x.story.pill = 'Automatizar no significa quitar sup...'; }).includes('story_pill_termina_en_puntos_suspensivos_reescribelo_mas_corto') && hErr((x) => { x.story.body = 'Texto cortado…'; }).includes('story_body_termina_en_puntos_suspensivos_reescribelo_mas_corto') && hErr((x) => { x.story.chat[0].text = 'Hola, ¿me puedes...'; }).includes('story_chat_termina_en_puntos_suspensivos'));
+t('historia chat: 2 a 6 mensajes y cada uno con from/text', hErr((x) => { x.story.chat = [x.story.chat[0]]; }).includes('story_chat_2_a_6_mensajes') && hErr((x) => { x.story.chat[0].from = 'yo'; }).includes('story_chat_mensaje_invalido'));
+t('historia embudo/recurso/dato exigen sus campos', hErr((x) => { x.story.template = 'embudo'; }).includes('story_embudo_3_etapas_cortas') && hErr((x) => { x.story.template = 'recurso'; }).includes('story_recurso_requiere_palabra_clave') && hErr((x) => { x.story.template = 'dato'; }).includes('story_dato_requiere_cifra'));
+t('historia: visual debe ser typographic y no admite slides como contenido', hErr((x) => { x.visual.need = 'carousel'; }).some((e) => /historia_requiere_visual_typographic|visual_carousel_requiere_formato_carrusel/.test(e)));
+t('historia: una cifra en la historia necesita respaldo (claim)', hErr((x) => { x.story.body = 'Ahorra un 40% del tiempo.'; }).some((e) => e.startsWith('cifra_sin_respaldo')));
+const rErr = (mut) => { const x = clone(reel); mut(x); return evaluatePiece(x).errors; };
+t('reel: exige motion_brief con lenguaje, 1–6 frases cortas y 5–30 s', rErr((x) => { delete x.motion_brief; }).includes('reel_requiere_motion_brief') && rErr((x) => { x.motion_brief.language = 'caos'; }).includes('motion_language_invalido') && rErr((x) => { x.motion_brief.phrases = []; }).includes('motion_frases_1_a_6_cortas') && rErr((x) => { x.motion_brief.duration_s = 60; }).includes('motion_duracion_5_a_30_s'));
+t('reel: lenguaje «propuesta» es válido (queda para aprobación) y el visual debe ser short_video', rErr((x) => { x.motion_brief.language = 'propuesta'; }).length === 0 && rErr((x) => { x.visual.need = 'typographic'; }).length > 0);
+t('formatos viejos intactos: story/motion_brief en otros formatos solo advierten', evaluatePiece({ ...clone(base), story: { template: 'dolor', title: 'x' } }).warnings.includes('story_solo_aplica_a_historia'));
+
+console.log(pass, 'ok', fail, 'fallos');
+process.exit(fail ? 1 : 0);

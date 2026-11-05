@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "channel": "instagram",
+  "format": "reel",
+  "category": "Educativo",
+  "topic": "Reel: ¿Quién contesta cuando tú no puedes?",
+  "angle": "Provocación en paneles partidos: quién contesta y quién hace el seguimiento",
+  "editorial_type": "demo",
+  "visual": {
+    "need": "short_video",
+    "rationale": "Una provocación corta funciona mejor en movimiento",
+    "composition": "paneles-partidos"
+  },
+  "audience": "Dueños y gerentes de pymes que reciben consultas por WhatsApp e Instagram",
+  "sources": [
+    {
+      "kind": "evergreen",
+      "title": "Criterios de atención de Atacama Labs",
+      "url": "https://atacamalabs.cl",
+      "verified": true,
+      "evidence": []
+    }
+  ],
+  "claims": [],
+  "factors": {
+    "relevance": {
+      "value": 9,
+      "note": "Es el primer paso de cualquier proyecto de automatización de Atacama."
+    },
+    "audience_fit": {
+      "value": 8,
+      "note": "La duda típica de un dueño de pyme."
+    },
+    "novelty": {
+      "value": 5,
+      "note": "Tema recurrente; el valor está en la claridad."
+    },
+    "evidence": {
+      "value": 6,
+      "note": "Método propio, sin cifras externas."
+    },
+    "utility": {
+      "value": 8,
+      "note": "Tres preguntas aplicables hoy."
+    },
+    "clarity": {
+      "value": 9,
+      "note": "Una idea por slide."
+    },
+    "conversation": {
+      "value": 6,
+      "note": "Invita a mapear un proceso."
+    },
+    "differentiation": {
+      "value": 6,
+      "note": "Enfoca el freno antes del acelerador."
+    },
+    "non_repetition": {
+      "value": 10,
+      "note": "Primera pieza de este ángulo."
+    }
+  },
+  "rationale": "Historia de dolor reutilizable por rubro, sin cifras ni casos inventados.",
+  "hook": "¿Quién contesta cuando tú no puedes?",
+  "body": "Tres preguntas de dolor y el cierre: agentes que trabajan.",
+  "cta": {
+    "type": "dm",
+    "text": "Escríbenos si quieres ver cómo trabajaría un agente en tu empresa."
+  },
+  "hashtags": [
+    "#agentesdeia"
+  ],
+  "evidence_urls": [
+    "https://atacamalabs.cl"
+  ],
+  "visual_direction": "Paneles partidos azul profundo/azul de marca/niebla con cuadrícula de 120 px, transiciones intercaladas arriba/lado, cierre con logo y «Agentes que trabajan.»; sin mascota.",
+  "schedule_suggestion": null,
+  "media": [],
+  "motion_brief": {
+    "language": "paneles-partidos",
+    "phrases": [
+      "¿Quién contesta cuando tú no puedes?",
+      "¿Quién hace el seguimiento que siempre queda para mañana?",
+      "Tu tiempo vale más que eso."
+    ],
+    "duration_s": 8.3,
+    "palette": "real|brand|mist",
+    "audio_prompt": "Pulso grave de trailer, golpes secos en 1.7 s y 4.0 s, caída grave en 5.75 s, sin voces ni campanitas, 8.3 segundos, empieza en 0"
+  }
+}

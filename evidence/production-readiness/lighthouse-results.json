@@ -1,0 +1,293 @@
+{
+  "baseUrl": "http://localhost:3110",
+  "startedAt": "2026-09-28T13:34:47.792Z",
+  "routes": [
+    {
+      "route": "/",
+      "runs": [
+        {
+          "performance": 82,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcpMs": 4890.3318,
+          "clsScore": 0,
+          "inpMs": null
+        },
+        {
+          "performance": 82,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcpMs": 4817.253149999999,
+          "clsScore": 0,
+          "inpMs": null
+        },
+        {
+          "performance": 82,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcpMs": 4815.461700000002,
+          "clsScore": 0,
+          "inpMs": null
+        }
+      ],
+      "median": {
+        "performance": 82,
+        "accessibility": 100,
+        "bestPractices": 100,
+        "seo": 100,
+        "lcpMs": 4817,
+        "clsScore": 0
+      }
+    },
+    {
+      "route": "/agentes",
+      "runs": [
+        {
+          "performance": 80,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcpMs": 5312.024400000001,
+          "clsScore": 0,
+          "inpMs": null
+        },
+        {
+          "performance": 88,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcpMs": 3839.1491,
+          "clsScore": 0,
+          "inpMs": null
+        },
+        {
+          "performance": 88,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcpMs": 3845.3053750000004,
+          "clsScore": 0,
+          "inpMs": null
+        }
+      ],
+      "median": {
+        "performance": 88,
+        "accessibility": 100,
+        "bestPractices": 100,
+        "seo": 100,
+        "lcpMs": 3845,
+        "clsScore": 0
+      }
+    },
+    {
+      "route": "/plataforma",
+      "runs": [
+        {
+          "performance": 87,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcpMs": 3913.823849999999,
+          "clsScore": 0,
+          "inpMs": null
+        },
+        {
+          "performance": 87,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcpMs": 3913.142250000001,
+          "clsScore": 0,
+          "inpMs": null
+        },
+        {
+          "performance": 87,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcpMs": 3915.35955,
+          "clsScore": 0,
+          "inpMs": null
+        }
+      ],
+      "median": {
+        "performance": 87,
+        "accessibility": 100,
+        "bestPractices": 100,
+        "seo": 100,
+        "lcpMs": 3914,
+        "clsScore": 0
+      }
+    },
+    {
+      "route": "/precios",
+      "runs": [
+        {
+          "performance": 89,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcpMs": 3690.382125000001,
+          "clsScore": 0,
+          "inpMs": null
+        },
+        {
+          "performance": 89,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcpMs": 3614.447349999999,
+          "clsScore": 0,
+          "inpMs": null
+        },
+        {
+          "performance": 89,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcpMs": 3689.457525,
+          "clsScore": 0,
+          "inpMs": null
+        }
+      ],
+      "median": {
+        "performance": 89,
+        "accessibility": 100,
+        "bestPractices": 100,
+        "seo": 100,
+        "lcpMs": 3689,
+        "clsScore": 0
+      }
+    },
+    {
+      "route": "/rubros",
+      "runs": [
+        {
+          "performance": 91,
+          "accessibility": 97,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcpMs": 3465.9821999999995,
+          "clsScore": 0,
+          "inpMs": null
+        },
+        {
+          "performance": 91,
+          "accessibility": 97,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcpMs": 3468.8480999999992,
+          "clsScore": 0,
+          "inpMs": null
+        },
+        {
+          "performance": 91,
+          "accessibility": 97,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcpMs": 3466.1535,
+          "clsScore": 0,
+          "inpMs": null
+        }
+      ],
+      "median": {
+        "performance": 91,
+        "accessibility": 97,
+        "bestPractices": 100,
+        "seo": 100,
+        "lcpMs": 3466,
+        "clsScore": 0
+      }
+    },
+    {
+      "route": "/paginas-web",
+      "runs": [
+        {
+          "performance": 86,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcpMs": 4085.5293500000007,
+          "clsScore": 0,
+          "inpMs": null
+        },
+        {
+          "performance": 79,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcpMs": 5495.021225,
+          "clsScore": 0,
+          "inpMs": null
+        },
+        {
+          "performance": 87,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 100,
+          "lcpMs": 4005.1829750000006,
+          "clsScore": 0,
+          "inpMs": null
+        }
+      ],
+      "median": {
+        "performance": 86,
+        "accessibility": 100,
+        "bestPractices": 100,
+        "seo": 100,
+        "lcpMs": 4086,
+        "clsScore": 0
+      }
+    },
+    {
+      "route": "/diagnostico",
+      "runs": [
+        {
+          "performance": 92,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 69,
+          "lcpMs": 3389.59855,
+          "clsScore": 0,
+          "inpMs": null
+        },
+        {
+          "performance": 92,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 69,
+          "lcpMs": 3392.099075,
+          "clsScore": 0,
+          "inpMs": null
+        },
+        {
+          "performance": 92,
+          "accessibility": 100,
+          "bestPractices": 100,
+          "seo": 69,
+          "lcpMs": 3389.4003249999996,
+          "clsScore": 0,
+          "inpMs": null
+        }
+      ],
+      "median": {
+        "performance": 92,
+        "accessibility": 100,
+        "bestPractices": 100,
+        "seo": 69,
+        "lcpMs": 3390,
+        "clsScore": 0
+      }
+    }
+  ],
+  "finishedAt": "2026-09-28T13:38:17.934Z",
+  "targets": {
+    "performance": 90,
+    "accessibility": 95,
+    "bestPractices": 95,
+    "seo": 95
+  }
+}

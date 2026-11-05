@@ -1,19 +1,69 @@
 import type { Metadata } from "next";
-import "./globals.css";
+import type { ReactNode } from "react";
+import localFont from "next/font/local";
 import site from "@/lib/content";
 import { SITE_URL } from "@/lib/site-url";
+import { Analytics } from "@/components/marketing/analytics/Analytics";
+import "../styles/tokens.css";
+import "../styles/shell.css";
+import "../styles/ui.css";
+import "../styles/demos.css";
+import "../styles/pages.css";
+import "../styles/inner.css";
+import "../styles/lety.css";
+import "../styles/v3.css";
+import "../styles/section-themes.css";
+import "../styles/hero-shell.css";
+import "../styles/home.css";
+import "../styles/home-selector.css";
+import "../styles/home-value.css";
+import "../styles/web.css";
+import "../styles/custom.css";
+import "../styles/services-menu.css";
+import "../styles/agents.css";
+import "../styles/platform.css";
+import "../styles/precios.css";
+import "../styles/about.css";
+import "../styles/diagnostic.css";
+import "../styles/legal.css";
+import "../styles/rubros.css";
+import "../styles/analytics.css";
+import "../styles/landings.css";
 
-const title = "Atacama Labs — Agentes, sistemas y automatización para empresas";
+/**
+ * Fuentes autoalojadas (spec C2): Newsreader (títulos, 500 roman; cursiva 500
+ * solo en una palabra del hero) + DM Sans (UI y cuerpo). Variables oficiales
+ * WOFF2 subset latino (incluye español); licencias OFL junto a los archivos.
+ */
+const newsreader = localFont({
+  src: [
+    { path: "./fonts/Newsreader-latin-wght.woff2", style: "normal", weight: "200 800" },
+    { path: "./fonts/Newsreader-latin-wght-italic.woff2", style: "italic", weight: "200 800" },
+  ],
+  variable: "--font-newsreader",
+  display: "swap",
+  fallback: ["Georgia", "serif"],
+});
+
+const dmSans = localFont({
+  src: [{ path: "./fonts/DMSans-latin-wght.woff2", style: "normal", weight: "100 1000" }],
+  variable: "--font-dm-sans",
+  display: "swap",
+  fallback: ["system-ui", "sans-serif"],
+});
+
+const title = "Atacama Labs — Agentes que trabajan en tu empresa";
 const description =
-  "Atacama Labs: agentes, sistemas y automatización para empresas, desde Antofagasta.";
+  "Agentes que realmente trabajan en tu empresa: conversan, consultan información, actualizan sistemas y ejecutan procesos conectados a tus herramientas.";
 
 export const metadata: Metadata = {
+  // Preview/sin dominio canónico verificado: no indexar (spec N4).
   robots:
     !site.publicSettings.canonicalOrigin || process.env.VERCEL_ENV === "preview"
       ? { index: false, follow: false }
       : undefined,
   metadataBase: new URL(SITE_URL),
-  title,
+  title: { default: title, template: "%s" },
   description,
   openGraph: {
     type: "website",
@@ -21,70 +71,16 @@ export const metadata: Metadata = {
     siteName: site.brand.name,
     title,
     description,
+    images: [{ url: "/opengraph-image", width: 1200, height: 630 }],
   },
-  twitter: {
-    card: "summary_large_image",
-    title,
-    description,
-  },
+  twitter: { card: "summary_large_image", title, description, images: ["/opengraph-image"] },
 };
 
-/**
- * JSON-LD Organization — solo campos verificados hoy (nombre, descriptor,
- * origen y logo). sameAs/url/email quedan fuera mientras
- * publicSettings.* siga en null (I01/I04); no fabricar perfiles/URLs.
- */
-function organizationJsonLd() {
-  const sameAs = (
-    [
-      site.publicSettings.linkedinCompanyUrl,
-      site.publicSettings.instagramUrl,
-      site.publicSettings.githubUrl,
-    ] as (string | null)[]
-  ).filter((v): v is string => Boolean(v));
-
-  return {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: site.brand.name,
-    description: site.brand.descriptor,
-    ...(site.publicSettings.canonicalOrigin
-      ? { url: site.publicSettings.canonicalOrigin }
-      : {}),
-    logo: `${SITE_URL}/brand/logo-mark.svg`,
-    ...(site.publicSettings.contactEmail
-      ? { email: site.publicSettings.contactEmail }
-      : {}),
-    ...(sameAs.length > 0 ? { sameAs } : {}),
-  };
-}
-
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="es" className="h-full antialiased">
-      <head>
-        <link
-          rel="preload"
-          href="/fonts/newsreader.woff2"
-          as="font"
-          type="font/woff2"
-          crossOrigin="anonymous"
-        />
-        <link
-          rel="preload"
-          href="/fonts/inter.woff2"
-          as="font"
-          type="font/woff2"
-          crossOrigin="anonymous"
-        />
-      </head>
-      <body className="min-h-full flex flex-col">
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(organizationJsonLd()),
-          }}
-        />
+    <html lang="es-CL" className={`${newsreader.variable} ${dmSans.variable}`}>
+      <body>
+        <Analytics />
         {children}
       </body>
     </html>

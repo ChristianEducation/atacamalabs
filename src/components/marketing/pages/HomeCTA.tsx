@@ -1,0 +1,93 @@
+import type { ReactNode } from "react";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
+import type { AgentCtaContext } from "@/lib/marketing/agent-cta";
+import { diagnosticHref } from "@/lib/marketing/cta-context";
+import { ButtonLink } from "../ui/Button";
+import { AgentCtaLink } from "../shell/AgentCtaLink";
+import { Reveal } from "../motion/Reveal";
+
+interface CtaLink {
+  label: string;
+  href: string;
+  /** Si viene, el botón abre a Nayra con este contexto y `href` queda solo como respaldo. */
+  agent?: AgentCtaContext;
+}
+
+/**
+ * Cierre de página en el tono suave del selector (HOME_SPEC_V1 §8): sección
+ * amplia con aire, un CTA principal y, opcionalmente, un enlace secundario.
+ * No introduce una idea nueva ni repite media del hero.
+ */
+export function SoftCTA({
+  title,
+  body,
+  primary,
+  secondary,
+  titleId = "soft-cta-title",
+  wide,
+}: {
+  title: ReactNode;
+  body: string;
+  primary: CtaLink;
+  secondary?: CtaLink;
+  titleId?: string;
+  wide?: boolean;
+}) {
+  return (
+    <section className={cn("mk-home-cta mk-t-mist", wide && "mk-home-cta--wide")} aria-labelledby={titleId}>
+      <div className="mk-container">
+        <Reveal className="mk-home-cta__inner">
+          <h2 id={titleId} className="mk-home-cta__title">
+            {title}
+          </h2>
+          <p className="mk-home-cta__body">{body}</p>
+          <div className="mk-home-cta__actions">
+            {primary.agent ? (
+              <AgentCtaLink context={primary.agent} arrow>
+                {primary.label}
+              </AgentCtaLink>
+            ) : (
+              <ButtonLink href={primary.href} arrow>
+                {primary.label}
+              </ButtonLink>
+            )}
+            {secondary?.agent ? (
+              <AgentCtaLink context={secondary.agent} variant="link" className="mk-home-cta__link">
+                {secondary.label}
+              </AgentCtaLink>
+            ) : secondary ? (
+              <Link href={secondary.href} className="mk-home-cta__link">
+                {secondary.label}
+              </Link>
+            ) : null}
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+export function HomeCTA() {
+  return (
+    <SoftCTA
+      titleId="home-cta-title"
+      title="¿Qué le delegarías mañana?"
+      body="Cuéntanos qué proceso quieres mejorar. En el diagnóstico vemos cómo podría trabajarlo un agente de Atacama Labs."
+      primary={{
+        label: "Agenda un diagnóstico",
+        href: diagnosticHref({
+          source_page: "home",
+          source_section: "final-cta",
+          source_cta: "agendar-diagnostico",
+          service: "agentes",
+        }),
+      }}
+      secondary={{
+        label: "Prueba a Nayra",
+        href: "/diagnostico",
+        agent: { source_page: "home", source_section: "final-cta", source_cta: "prueba-a-nayra", service: "agentes" },
+      }}
+    />
+  );
+}

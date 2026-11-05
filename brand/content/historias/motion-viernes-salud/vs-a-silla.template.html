@@ -1,0 +1,53 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><style>
+@font-face{font-family:"DM Sans";src:url("__FONT__") format("woff2");font-weight:100 1000}
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--blue:#0f5ced;--ink:#0b1e3f;--coral:#ff7a59}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#f3f6fd}
+body{font-family:"DM Sans",sans-serif;-webkit-font-smoothing:antialiased;color:var(--ink)}
+#st{position:absolute;inset:0;overflow:hidden;background:#f3f6fd}
+.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(15,92,237,.10) 2px,transparent 2px),linear-gradient(90deg,rgba(15,92,237,.10) 2px,transparent 2px);background-size:120px 120px}
+#glow{position:absolute;left:100px;top:700px;width:900px;height:900px;border-radius:50%;background:radial-gradient(circle,rgba(88,166,255,.30),rgba(88,166,255,0) 66%)}
+.h{position:absolute;left:90px;top:250px;width:900px;font-size:118px;font-weight:700;letter-spacing:-.04em;line-height:1.02}
+.h .w{display:inline-block;opacity:0;white-space:pre}.h em{font-style:normal;color:var(--coral)}
+#card{position:absolute;left:90px;top:640px;width:900px;background:#fff;border:3px solid #d5e0f6;border-radius:48px;padding:22px 46px;box-shadow:0 26px 60px rgba(26,60,142,.16);opacity:0}
+.lab{font-size:28px;font-weight:700;letter-spacing:.14em;color:var(--blue);padding:16px 0 10px}
+.row{display:flex;align-items:center;gap:26px;font-size:46px;font-weight:600;letter-spacing:-.01em;padding:28px 0;border-top:2px solid #e6edfa;opacity:0}
+.row .t{font-size:40px;font-weight:700;color:#5f7094;width:140px;flex:none}
+.row .st{margin-left:auto;font-size:34px;font-weight:700;padding:8px 22px;border-radius:40px;background:#e8f7ee;color:#1e9d57;white-space:nowrap}
+.row.bad{background:rgba(255,122,89,.10);margin:0 -46px;padding-left:46px;padding-right:46px}
+.row.bad .st{background:var(--coral);color:#fff}
+#nadie{position:absolute;left:90px;top:1330px;width:900px;font-size:92px;font-weight:700;letter-spacing:-.04em;color:var(--coral);opacity:0}
+#q{position:absolute;left:90px;top:1470px;width:900px;font-size:54px;font-weight:600;line-height:1.2;color:var(--ink);opacity:0}
+#logo{position:absolute;left:50%;top:1700px;width:400px;transform:translateX(-50%);opacity:0}
+</style></head><body><div id="st"><div class="grid" id="g"></div><div id="glow"></div>
+<div class="h" id="h"><span class="w">Hora </span><span class="w">agendada.</span><br><span class="w"><em>Silla </em></span><span class="w"><em>vacía.</em></span></div>
+<div id="card"><div class="lab">AGENDA DE HOY</div>
+<div class="row"><span class="t">09:00</span>Control<span class="st">Llegó</span></div>
+<div class="row"><span class="t">10:00</span>Consulta<span class="st">Llegó</span></div>
+<div class="row bad" id="bad"><span class="t">11:00</span>Evaluación<span class="st">No llegó</span></div>
+<div class="row"><span class="t">12:00</span>Control<span class="st">Llegó</span></div></div>
+<div id="nadie">Y nadie avisó.</div>
+<div id="q">¿Cuántas horas pierdes al mes porque nadie las confirmó?</div>
+<img id="logo" src="__LOGO__">
+</div><script>
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const seg = (T, a, b) => clamp((T - a) / (b - a));
+const eout = (t) => 1 - Math.pow(1 - t, 3);
+const back = (t, s = 1.7) => { t = clamp(t); const c3 = s + 1; return 1 + c3 * Math.pow(t - 1, 3) + s * Math.pow(t - 1, 2); };
+function bg(T) { $('g').style.backgroundPosition = (T * 10) + 'px ' + (-T * 8) + 'px'; $('glow').style.transform = 'translate(' + (Math.sin(T * 0.8) * 30) + 'px,' + (Math.cos(T * 0.8) * 24) + 'px)'; }
+function words(T, step) { Array.from($('h').querySelectorAll('.w')).forEach((w, i) => { const u = seg(T, 0.15 + i * step, 0.15 + i * step + 0.45), s = back(u, 1.6); w.style.opacity = clamp(u * 2.5); w.style.transform = 'translateY(' + ((1 - s) * 44) + 'px)'; w.style.filter = u < 1 ? 'blur(' + ((1 - u) * 8) + 'px)' : 'none'; }); }
+function draw(T) {
+  bg(T); words(T, 0.14);
+  const c = back(seg(T, 1.0, 1.6), 1.5); $('card').style.opacity = clamp(c * 3); $('card').style.transform = 'translateY(' + ((1 - c) * 100) + 'px)';
+  Array.from(document.querySelectorAll('.row')).forEach((el, i) => {
+    const t0 = 1.6 + i * 0.5; const u = back(seg(T, t0, t0 + 0.4), 1.5); el.style.opacity = clamp(u * 3); el.style.transform = 'translateX(' + ((1 - u) * 60) + 'px)';
+  });
+  const shake = T > 3.1 && T < 3.9 ? Math.sin(T * 40) * 8 * (1 - seg(T, 3.1, 3.9)) : 0;
+  $('bad').style.transform = 'translateX(' + (shake + (1 - back(seg(T, 2.6, 3.0), 1.5)) * 60) + 'px)';
+  const n = back(seg(T, 3.9, 4.5), 1.7); $('nadie').style.opacity = clamp(n * 3); $('nadie').style.transform = 'translateY(' + ((1 - n) * 40) + 'px)';
+  const q = back(seg(T, 4.9, 5.5), 1.4); $('q').style.opacity = clamp(q * 3); $('q').style.transform = 'translateY(' + ((1 - q) * 40) + 'px)';
+  const lg = back(seg(T, 6.0, 6.6), 1.5); $('logo').style.opacity = clamp(lg * 3); $('logo').style.transform = 'translateX(-50%) translateY(' + ((1 - lg) * 40) + 'px)';
+}
+window.draw = draw;
+</script></body></html>

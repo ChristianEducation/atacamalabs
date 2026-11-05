@@ -1,0 +1,45 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><style>
+@font-face{font-family:"DM Sans";src:url("__FONT__") format("woff2");font-weight:100 1000}
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--blue:#0f5ced;--ink:#0b1e3f}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#f3f6fd}
+body{font-family:"DM Sans",sans-serif;-webkit-font-smoothing:antialiased;color:var(--ink)}
+#st{position:absolute;inset:0;overflow:hidden;background:#f3f6fd}
+.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(15,92,237,.10) 2px,transparent 2px),linear-gradient(90deg,rgba(15,92,237,.10) 2px,transparent 2px);background-size:120px 120px}
+#glow{position:absolute;left:100px;top:700px;width:900px;height:900px;border-radius:50%;background:radial-gradient(circle,rgba(88,166,255,.30),rgba(88,166,255,0) 66%)}
+.h{position:absolute;left:90px;top:250px;width:900px;font-size:100px;font-weight:700;letter-spacing:-.04em;line-height:1.03}
+.h .w{display:inline-block;opacity:0;white-space:pre}.h em{font-style:normal;color:var(--blue)}
+#sub{position:absolute;left:90px;top:760px;width:880px;font-size:46px;line-height:1.28;color:#3a4d73;opacity:0}
+.it{position:absolute;left:90px;display:flex;align-items:center;gap:28px;background:#fff;border:3px solid #d5e0f6;border-radius:40px;padding:26px 40px;font-size:46px;font-weight:600;letter-spacing:-.01em;box-shadow:0 16px 36px rgba(26,60,142,.12);opacity:0}
+.it i{width:60px;height:60px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;flex:none}
+.it i svg{width:34px;height:34px}
+#cta{position:absolute;left:90px;top:1400px;width:900px;background:var(--blue);color:#fff;border-radius:60px;text-align:center;font-size:62px;font-weight:700;letter-spacing:-.02em;padding:44px 0;box-shadow:0 30px 70px rgba(15,92,237,.42);opacity:0}
+#url{position:absolute;left:0;width:100%;top:1590px;text-align:center;font-size:44px;font-weight:700;color:var(--blue);opacity:0}
+#logo{position:absolute;left:50%;top:1690px;width:400px;transform:translateX(-50%);opacity:0}
+</style></head><body><div id="st"><div class="grid" id="g"></div><div id="glow"></div>
+<div class="h" id="h"><span class="w">Tu </span><span class="w">recepción </span><span class="w">no </span><br><span class="w">tiene </span><span class="w">que </span><span class="w"><em>perseguir </em></span><br><span class="w"><em>pacientes.</em></span></div>
+<div id="sub">Un agente confirma, recuerda y reprograma por WhatsApp. Tu equipo atiende a quien sí llega.</div>
+<div class="it" id="i1" style="top:960px"><i><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></i>Confirma la hora</div>
+<div class="it" id="i2" style="top:1085px"><i><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></i>Recuerda antes de la cita</div>
+<div class="it" id="i3" style="top:1210px;left:90px"><i><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></i>Reprograma si no puede ir</div>
+<div id="cta">Agenda una demo</div><div id="url">atacamalabs.cl</div>
+<img id="logo" src="__LOGO__">
+</div><script>
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const seg = (T, a, b) => clamp((T - a) / (b - a));
+const eout = (t) => 1 - Math.pow(1 - t, 3);
+const back = (t, s = 1.7) => { t = clamp(t); const c3 = s + 1; return 1 + c3 * Math.pow(t - 1, 3) + s * Math.pow(t - 1, 2); };
+function bg(T) { $('g').style.backgroundPosition = (T * 10) + 'px ' + (-T * 8) + 'px'; $('glow').style.transform = 'translate(' + (Math.sin(T * 0.8) * 30) + 'px,' + (Math.cos(T * 0.8) * 24) + 'px)'; }
+function words(T, step) { Array.from($('h').querySelectorAll('.w')).forEach((w, i) => { const u = seg(T, 0.15 + i * step, 0.15 + i * step + 0.45), s = back(u, 1.6); w.style.opacity = clamp(u * 2.5); w.style.transform = 'translateY(' + ((1 - s) * 44) + 'px)'; w.style.filter = u < 1 ? 'blur(' + ((1 - u) * 8) + 'px)' : 'none'; }); }
+function draw(T) {
+  bg(T); words(T, 0.11);
+  $('sub').style.opacity = eout(seg(T, 1.4, 1.9)); $('sub').style.transform = 'translateY(' + ((1 - eout(seg(T, 1.4, 1.9))) * 30) + 'px)';
+  [['i1', 2.3], ['i2', 2.8], ['i3', 3.3]].forEach(([id, t0], i) => { const u = back(seg(T, t0, t0 + 0.5), 1.6); const el = $(id); el.style.opacity = clamp(u * 3); el.style.transform = 'translateX(' + ((1 - u) * (i % 2 ? -160 : 160)) + 'px)'; });
+  const c = back(seg(T, 4.2, 4.8), 1.8); $('cta').style.opacity = clamp(c * 3); $('cta').style.transform = 'scale(' + (0.8 + 0.2 * c) + ')';
+  const pulse = T > 5.0 ? 1 + 0.025 * Math.sin((T - 5.0) * 6) : 1; $('cta').style.transform += ' scale(' + pulse + ')';
+  $('url').style.opacity = eout(seg(T, 4.9, 5.4));
+  const lg = back(seg(T, 5.5, 6.1), 1.5); $('logo').style.opacity = clamp(lg * 3); $('logo').style.transform = 'translateX(-50%) translateY(' + ((1 - lg) * 40) + 'px)';
+}
+window.draw = draw;
+</script></body></html>

@@ -1,931 +1,1004 @@
 {
- "name": "Atacama Labs — 05 Outreach Draft (TEST)",
- "nodes": [
-  {
-   "id": "efbd9874-b203-49d9-8796-27898bc76e53",
-   "name": "Manual Trigger",
-   "type": "n8n-nodes-base.manualTrigger",
-   "typeVersion": 1,
-   "position": [
-    -1180,
-    -60
-   ],
-   "parameters": {}
-  },
-  {
-   "id": "5a3f242a-d8ce-47fd-a924-93cd5a6306a8",
-   "name": "When Executed by Another Workflow",
-   "type": "n8n-nodes-base.executeWorkflowTrigger",
-   "typeVersion": 1.1,
-   "position": [
-    -1180,
-    140
-   ],
-   "parameters": {
-    "workflowInputs": {
-     "values": [
-      {
-       "name": "icp_pack_id",
-       "type": "string"
+  "name": "Atacama Labs — 05 Outreach Draft (TEST)",
+  "nodes": [
+    {
+      "id": "efbd9874-b203-49d9-8796-27898bc76e53",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1180,
+        -60
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "5a3f242a-d8ce-47fd-a924-93cd5a6306a8",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1180,
+        140
+      ],
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "icp_pack_id",
+              "type": "string"
+            },
+            {
+              "name": "icp_pack_slug",
+              "type": "string"
+            },
+            {
+              "name": "limit",
+              "type": "number"
+            },
+            {
+              "name": "account_ids",
+              "type": "array"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "3a9b707f-6b2d-4f83-b894-7418606185c8",
+      "name": "Init ICP Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -960,
+        -60
+      ],
+      "parameters": {
+        "jsCode": "const incoming = $input.first()?.json ?? {};\nconst icpPackId = incoming.icp_pack_id || null;\nconst icpPackSlug = incoming.icp_pack_slug || null;\nif (!icpPackId && !icpPackSlug) throw new Error('SEGURIDAD: icp_pack_id o icp_pack_slug es obligatorio (sin valor por defecto). Abortando.');\nconst filter = icpPackId ? `id=eq.${icpPackId}` : `slug=eq.${icpPackSlug}`;\nreturn [{json:{ account_ids: Array.isArray(incoming.account_ids) ? incoming.account_ids.map(String) : [], icp_pack_url: `https://uwquwjmiofixzugttals.supabase.co/rest/v1/icp_packs?${filter}&select=id,slug,status&limit=1` }}];"
+      }
+    },
+    {
+      "id": "dd422242-3381-4f68-9de9-cb78bda7fd92",
+      "name": "Fetch ICP Pack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -740,
+        -60
+      ],
+      "parameters": {
+        "url": "={{ $json.icp_pack_url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 15000
+        }
       },
-      {
-       "name": "icp_pack_slug",
-       "type": "string"
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      }
+    },
+    {
+      "id": "846ccf7d-1e9e-491a-8b52-1bb325d02a3d",
+      "name": "Parse ICP Pack",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -520,
+        -60
+      ],
+      "parameters": {
+        "jsCode": "const res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nconst row = Array.isArray(body) ? body[0] : body;\nif (status < 200 || status >= 300 || !row || !row.id) throw new Error(`ICP Pack no encontrado (HTTP ${status || 'unknown'}).`);\nif (row.status !== 'active') throw new Error(`ICP Pack '${row.slug}' esta en estado '${row.status}', no 'active'.`);\nreturn [{ json: { icp_pack_id: row.id, icp_pack_slug: row.slug } }];"
+      }
+    },
+    {
+      "id": "f45ecabc-1e3e-41ae-a441-2c8bc85b2863",
+      "name": "Assert Expected Pack",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -300,
+        -60
+      ],
+      "parameters": {
+        "jsCode": "const EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nconst EXPECTED_ICP_PACK_SLUG = 'atacama-labs-test';\nconst row = $json;\nif (row.icp_pack_id !== EXPECTED_ICP_PACK_ID || row.icp_pack_slug !== EXPECTED_ICP_PACK_SLUG) {\n  throw new Error(`SEGURIDAD: ICP pack resuelto (${row.icp_pack_slug} / ${row.icp_pack_id}) NO coincide con el esperado (${EXPECTED_ICP_PACK_SLUG} / ${EXPECTED_ICP_PACK_ID}). Abortando antes de leer o escribir nada.`);\n}\nreturn [{ json: { ...row, EXPECTED_ICP_PACK_ID } }];"
+      }
+    },
+    {
+      "id": "4d28f583-f189-402c-880b-be0e872fe1d2",
+      "name": "Fetch Draftable Prospects",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -80,
+        -60
+      ],
+      "parameters": {
+        "url": "={{ 'https://uwquwjmiofixzugttals.supabase.co/rest/v1/prospects?icp_pack_id=eq.' + 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46' + '&crm_candidate=eq.true&status=eq.ready_to_contact' + (($('Init ICP Config').first().json.account_ids || []).length ? '&account_id=in.(' + $('Init ICP Config').first().json.account_ids.join(',') + ')' : '') + '&select=id,icp_pack_id,account_id,primary_contact_id,commercial_angle,qualification_reason,metadata&limit=25' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 20000
+        }
       },
-      {
-       "name": "limit",
-       "type": "number"
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      }
+    },
+    {
+      "id": "2963a10d-49f4-4925-ae2b-621b8fbf5b43",
+      "name": "Build Prospect List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        140,
+        -60
+      ],
+      "parameters": {
+        "jsCode": "const res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nif (status < 200 || status >= 300) throw new Error(`Fetch draftable prospects failed: HTTP ${status || 'unknown'}`);\nconst rows = Array.isArray(body) ? body : [];\nif (!rows.length) return [{ json: { _no_work: true } }];\nreturn rows.map(r => ({ json: { ...r, _no_work: false } }));"
+      }
+    },
+    {
+      "id": "04cdaccb-a73a-4ac2-b5a4-b0500a635cc8",
+      "name": "No Work?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        360,
+        -60
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c240d717-af32-4a5e-8c64-d60c42b9bd77",
+              "leftValue": "={{ $json._no_work === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "5d6ff569-b9f5-46e4-a6bb-107f1b0f90f8",
+      "name": "No Work Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        140
+      ],
+      "parameters": {
+        "jsCode": "return [{json:{workflow:'Atacama Labs - 05 Outreach Draft (test)', status:'no_work', finished_at:new Date().toISOString()}}];"
+      }
+    },
+    {
+      "id": "e85354dc-33d4-4e9f-baa6-d879695f8284",
+      "name": "Assert Expected Pack (before fetch)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        580,
+        -60
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nconst item = $json;\nif (item.icp_pack_id !== EXPECTED_ICP_PACK_ID) throw new Error(`SEGURIDAD: prospect ${item.id} tiene icp_pack_id (${item.icp_pack_id}) distinto del esperado (${EXPECTED_ICP_PACK_ID}). Abortando.`);\nreturn { json: item };"
+      }
+    },
+    {
+      "id": "6e904fa1-daaf-40d9-ae41-ef68d79dc832",
+      "name": "Fetch Existing Drafts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        -60
+      ],
+      "parameters": {
+        "url": "={{ 'https://uwquwjmiofixzugttals.supabase.co/rest/v1/outreach?prospect_id=eq.' + $json.id + '&select=id,status&limit=5' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 15000
+        }
       },
-      {
-       "name": "account_ids",
-       "type": "array"
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
       }
-     ]
-    }
-   }
-  },
-  {
-   "id": "3a9b707f-6b2d-4f83-b894-7418606185c8",
-   "name": "Init ICP Config",
-   "type": "n8n-nodes-base.code",
-   "typeVersion": 2,
-   "position": [
-    -960,
-    -60
-   ],
-   "parameters": {
-    "jsCode": "const incoming = $input.first()?.json ?? {};\nconst icpPackId = incoming.icp_pack_id || null;\nconst icpPackSlug = incoming.icp_pack_slug || null;\nif (!icpPackId && !icpPackSlug) throw new Error('SEGURIDAD: icp_pack_id o icp_pack_slug es obligatorio (sin valor por defecto). Abortando.');\nconst filter = icpPackId ? `id=eq.${icpPackId}` : `slug=eq.${icpPackSlug}`;\nreturn [{json:{ icp_pack_url: `https://uwquwjmiofixzugttals.supabase.co/rest/v1/icp_packs?${filter}&select=id,slug,status&limit=1` }}];"
-   }
-  },
-  {
-   "id": "dd422242-3381-4f68-9de9-cb78bda7fd92",
-   "name": "Fetch ICP Pack",
-   "type": "n8n-nodes-base.httpRequest",
-   "typeVersion": 4.2,
-   "position": [
-    -740,
-    -60
-   ],
-   "parameters": {
-    "url": "={{ $json.icp_pack_url }}",
-    "authentication": "predefinedCredentialType",
-    "nodeCredentialType": "supabaseApi",
-    "options": {
-     "response": {
-      "response": {
-       "fullResponse": true,
-       "neverError": true,
-       "responseFormat": "json"
-      }
-     },
-     "timeout": 15000
-    }
-   },
-   "credentials": {
-    "supabaseApi": {
-     "id": "XOmXUuyLVSazDIh5",
-     "name": "Atacama Labs - Supabase"
-    }
-   }
-  },
-  {
-   "id": "846ccf7d-1e9e-491a-8b52-1bb325d02a3d",
-   "name": "Parse ICP Pack",
-   "type": "n8n-nodes-base.code",
-   "typeVersion": 2,
-   "position": [
-    -520,
-    -60
-   ],
-   "parameters": {
-    "jsCode": "const res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nconst row = Array.isArray(body) ? body[0] : body;\nif (status < 200 || status >= 300 || !row || !row.id) throw new Error(`ICP Pack no encontrado (HTTP ${status || 'unknown'}).`);\nif (row.status !== 'active') throw new Error(`ICP Pack '${row.slug}' esta en estado '${row.status}', no 'active'.`);\nreturn [{ json: { icp_pack_id: row.id, icp_pack_slug: row.slug } }];"
-   }
-  },
-  {
-   "id": "f45ecabc-1e3e-41ae-a441-2c8bc85b2863",
-   "name": "Assert Expected Pack",
-   "type": "n8n-nodes-base.code",
-   "typeVersion": 2,
-   "position": [
-    -300,
-    -60
-   ],
-   "parameters": {
-    "jsCode": "const EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nconst EXPECTED_ICP_PACK_SLUG = 'atacama-labs-test';\nconst row = $json;\nif (row.icp_pack_id !== EXPECTED_ICP_PACK_ID || row.icp_pack_slug !== EXPECTED_ICP_PACK_SLUG) {\n  throw new Error(`SEGURIDAD: ICP pack resuelto (${row.icp_pack_slug} / ${row.icp_pack_id}) NO coincide con el esperado (${EXPECTED_ICP_PACK_SLUG} / ${EXPECTED_ICP_PACK_ID}). Abortando antes de leer o escribir nada.`);\n}\nreturn [{ json: { ...row, EXPECTED_ICP_PACK_ID } }];"
-   }
-  },
-  {
-   "id": "4d28f583-f189-402c-880b-be0e872fe1d2",
-   "name": "Fetch Draftable Prospects",
-   "type": "n8n-nodes-base.httpRequest",
-   "typeVersion": 4.2,
-   "position": [
-    -80,
-    -60
-   ],
-   "parameters": {
-    "url": "={{ 'https://uwquwjmiofixzugttals.supabase.co/rest/v1/prospects?icp_pack_id=eq.' + 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46' + '&crm_candidate=eq.true&select=id,icp_pack_id,account_id,primary_contact_id,commercial_angle,qualification_reason,metadata&limit=25' }}",
-    "authentication": "predefinedCredentialType",
-    "nodeCredentialType": "supabaseApi",
-    "options": {
-     "response": {
-      "response": {
-       "fullResponse": true,
-       "neverError": true,
-       "responseFormat": "json"
-      }
-     },
-     "timeout": 20000
-    }
-   },
-   "credentials": {
-    "supabaseApi": {
-     "id": "XOmXUuyLVSazDIh5",
-     "name": "Atacama Labs - Supabase"
-    }
-   }
-  },
-  {
-   "id": "2963a10d-49f4-4925-ae2b-621b8fbf5b43",
-   "name": "Build Prospect List",
-   "type": "n8n-nodes-base.code",
-   "typeVersion": 2,
-   "position": [
-    140,
-    -60
-   ],
-   "parameters": {
-    "jsCode": "const res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nif (status < 200 || status >= 300) throw new Error(`Fetch draftable prospects failed: HTTP ${status || 'unknown'}`);\nconst rows = Array.isArray(body) ? body : [];\nif (!rows.length) return [{ json: { _no_work: true } }];\nreturn rows.map(r => ({ json: { ...r, _no_work: false } }));"
-   }
-  },
-  {
-   "id": "04cdaccb-a73a-4ac2-b5a4-b0500a635cc8",
-   "name": "No Work?",
-   "type": "n8n-nodes-base.if",
-   "typeVersion": 2,
-   "position": [
-    360,
-    -60
-   ],
-   "parameters": {
-    "conditions": {
-     "options": {
-      "caseSensitive": true,
-      "leftValue": "",
-      "typeValidation": "strict",
-      "version": 2
-     },
-     "conditions": [
-      {
-       "id": "c240d717-af32-4a5e-8c64-d60c42b9bd77",
-       "leftValue": "={{ $json._no_work === true }}",
-       "rightValue": "",
-       "operator": {
-        "type": "boolean",
-        "operation": "true",
-        "singleValue": true
-       }
-      }
-     ],
-     "combinator": "and"
     },
-    "options": {}
-   }
-  },
-  {
-   "id": "5d6ff569-b9f5-46e4-a6bb-107f1b0f90f8",
-   "name": "No Work Summary",
-   "type": "n8n-nodes-base.code",
-   "typeVersion": 2,
-   "position": [
-    360,
-    140
-   ],
-   "parameters": {
-    "jsCode": "return [{json:{workflow:'Atacama Labs - 05 Outreach Draft (test)', status:'no_work', finished_at:new Date().toISOString()}}];"
-   }
-  },
-  {
-   "id": "e85354dc-33d4-4e9f-baa6-d879695f8284",
-   "name": "Assert Expected Pack (before fetch)",
-   "type": "n8n-nodes-base.code",
-   "typeVersion": 2,
-   "position": [
-    580,
-    -60
-   ],
-   "parameters": {
-    "mode": "runOnceForEachItem",
-    "jsCode": "const EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nconst item = $json;\nif (item.icp_pack_id !== EXPECTED_ICP_PACK_ID) throw new Error(`SEGURIDAD: prospect ${item.id} tiene icp_pack_id (${item.icp_pack_id}) distinto del esperado (${EXPECTED_ICP_PACK_ID}). Abortando.`);\nreturn { json: item };"
-   }
-  },
-  {
-   "id": "6e904fa1-daaf-40d9-ae41-ef68d79dc832",
-   "name": "Fetch Existing Drafts",
-   "type": "n8n-nodes-base.httpRequest",
-   "typeVersion": 4.2,
-   "position": [
-    800,
-    -60
-   ],
-   "parameters": {
-    "url": "={{ 'https://uwquwjmiofixzugttals.supabase.co/rest/v1/outreach?prospect_id=eq.' + $json.id + '&select=id,status&limit=5' }}",
-    "authentication": "predefinedCredentialType",
-    "nodeCredentialType": "supabaseApi",
-    "options": {
-     "response": {
-      "response": {
-       "fullResponse": true,
-       "neverError": true,
-       "responseFormat": "json"
+    {
+      "id": "ecb14ce6-5dc4-41ba-b723-1a84d7fa9408",
+      "name": "Has Draft?",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1020,
+        -60
+      ],
+      "parameters": {
+        "jsCode": "const prospect = $('Assert Expected Pack (before fetch)').item.json;\nconst res = $json;\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nconst rows = status >= 200 && status < 300 && Array.isArray(body) ? body : [];\nconst hasActiveDraft = rows.some(r => ['draft', 'scheduled', 'sent', 'delivered', 'replied'].includes(r.status));\nreturn [{ json: { prospect, has_draft: hasActiveDraft } }];"
       }
-     },
-     "timeout": 15000
-    }
-   },
-   "credentials": {
-    "supabaseApi": {
-     "id": "XOmXUuyLVSazDIh5",
-     "name": "Atacama Labs - Supabase"
-    }
-   }
-  },
-  {
-   "id": "ecb14ce6-5dc4-41ba-b723-1a84d7fa9408",
-   "name": "Has Draft?",
-   "type": "n8n-nodes-base.code",
-   "typeVersion": 2,
-   "position": [
-    1020,
-    -60
-   ],
-   "parameters": {
-    "jsCode": "const prospect = $('Assert Expected Pack (before fetch)').item.json;\nconst res = $json;\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nconst rows = status >= 200 && status < 300 && Array.isArray(body) ? body : [];\nconst hasActiveDraft = rows.some(r => ['draft', 'scheduled', 'sent', 'delivered', 'replied'].includes(r.status));\nreturn [{ json: { prospect, has_draft: hasActiveDraft } }];"
-   }
-  },
-  {
-   "id": "a34e253b-c244-40b0-9ad1-e61abe600c4f",
-   "name": "Needs Draft?",
-   "type": "n8n-nodes-base.if",
-   "typeVersion": 2,
-   "position": [
-    1240,
-    -60
-   ],
-   "parameters": {
-    "conditions": {
-     "options": {
-      "caseSensitive": true,
-      "leftValue": "",
-      "typeValidation": "strict",
-      "version": 2
-     },
-     "conditions": [
-      {
-       "id": "0dc56926-885b-4111-8112-583ba81719d6",
-       "leftValue": "={{ $json.has_draft === false }}",
-       "rightValue": "",
-       "operator": {
-        "type": "boolean",
-        "operation": "true",
-        "singleValue": true
-       }
-      }
-     ],
-     "combinator": "and"
     },
-    "options": {}
-   }
-  },
-  {
-   "id": "f030ace4-af69-4aab-aebe-6f0f0eaa9b4d",
-   "name": "Fetch Account And Research",
-   "type": "n8n-nodes-base.httpRequest",
-   "typeVersion": 4.2,
-   "position": [
-    1460,
-    -180
-   ],
-   "parameters": {
-    "url": "={{ 'https://uwquwjmiofixzugttals.supabase.co/rest/v1/accounts?id=eq.' + $json.prospect.account_id + '&select=id,name,website,city,region' }}",
-    "authentication": "predefinedCredentialType",
-    "nodeCredentialType": "supabaseApi",
-    "options": {
-     "response": {
-      "response": {
-       "fullResponse": true,
-       "neverError": true,
-       "responseFormat": "json"
+    {
+      "id": "a34e253b-c244-40b0-9ad1-e61abe600c4f",
+      "name": "Needs Draft?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        -60
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0dc56926-885b-4111-8112-583ba81719d6",
+              "leftValue": "={{ $json.has_draft === false }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
       }
-     },
-     "timeout": 15000
-    }
-   },
-   "credentials": {
-    "supabaseApi": {
-     "id": "XOmXUuyLVSazDIh5",
-     "name": "Atacama Labs - Supabase"
-    }
-   }
-  },
-  {
-   "id": "ca989726-5bcd-40bc-af2d-e1cfd83b15fb",
-   "name": "Fetch Research For Draft",
-   "type": "n8n-nodes-base.httpRequest",
-   "typeVersion": 4.2,
-   "position": [
-    1460,
-    40
-   ],
-   "parameters": {
-    "url": "={{ 'https://uwquwjmiofixzugttals.supabase.co/rest/v1/research?account_id=eq.' + $('Needs Draft?').item.json.prospect.account_id + '&is_current=eq.true&select=research_type,finding,evidence_text,source_url&order=verified_at.desc&limit=10' }}",
-    "authentication": "predefinedCredentialType",
-    "nodeCredentialType": "supabaseApi",
-    "options": {
-     "response": {
-      "response": {
-       "fullResponse": true,
-       "neverError": true,
-       "responseFormat": "json"
-      }
-     },
-     "timeout": 15000
-    }
-   },
-   "credentials": {
-    "supabaseApi": {
-     "id": "XOmXUuyLVSazDIh5",
-     "name": "Atacama Labs - Supabase"
-    }
-   }
-  },
-  {
-   "id": "d2bd2290-8d39-4ea2-b6a8-2fba04e91ea6",
-   "name": "Build Draft Prompt",
-   "type": "n8n-nodes-base.code",
-   "typeVersion": 2,
-   "position": [
-    1680,
-    -60
-   ],
-   "parameters": {
-    "jsCode": "const prospect = $('Needs Draft?').item.json.prospect;\nconst accRes = $('Fetch Account And Research').item.json ?? {};\nconst account = (Array.isArray(accRes.body) ? accRes.body[0] : null) || {};\nconst resRes = $json ?? {};\nconst researchRows = Number(resRes.statusCode) >= 200 && Number(resRes.statusCode) < 300 && Array.isArray(resRes.body) ? resRes.body : [];\n\nif (!researchRows.length) {\n  return [{ json: { prospect, account, skip: true, skip_reason: 'Sin evidencia real en research -- no se genera draft sin evidencia (contracts/PROSPECTING.md: no inventar dolor).' } }];\n}\n\nconst evidenceList = researchRows.slice(0, 6).map((r, i) => `[${i + 1}] (${r.research_type}) ${r.finding} -- ${r.source_url}`).join('\\n');\n\nconst system = `Eres el redactor de borradores de Atacama Labs (test). SOLO puedes citar hechos presentes en la evidencia entregada. NUNCA inventes dolores, cifras o afirmaciones que no esten en la evidencia. Este es un BORRADOR -- nunca se envia automaticamente. Responde EXCLUSIVAMENTE en JSON: {\"subject\":\"...\",\"message\":\"...\",\"evidence_ids_used\":[1,2]} sin texto fuera del JSON.`;\nconst prompt = `Empresa: ${account.name || prospect.account_id}\nAngulo comercial detectado: ${prospect.commercial_angle || 'sin angulo especifico'}\n\nEVIDENCIA DISPONIBLE (cita al menos una, referenciando su numero):\n${evidenceList}\n\nEscribe un borrador de primer contacto breve (max 120 palabras), profesional, en español de Chile, mencionando explicitamente al menos una observación de la evidencia (no genérico). No prometas resultados. No inventes nada que no este en la evidencia.`;\n\nreturn [{ json: { prospect, account, skip: false, system_prompt: system, user_prompt: prompt, evidence_rows: researchRows } }];"
-   }
-  },
-  {
-   "id": "4fdc8599-90e7-4134-a951-8d70feab7376",
-   "name": "Has Evidence?",
-   "type": "n8n-nodes-base.if",
-   "typeVersion": 2,
-   "position": [
-    1900,
-    -60
-   ],
-   "parameters": {
-    "conditions": {
-     "options": {
-      "caseSensitive": true,
-      "leftValue": "",
-      "typeValidation": "strict",
-      "version": 2
-     },
-     "conditions": [
-      {
-       "id": "17bd891d-6543-4891-8fe9-dd370d227c5d",
-       "leftValue": "={{ $json.skip === true }}",
-       "rightValue": "",
-       "operator": {
-        "type": "boolean",
-        "operation": "true",
-        "singleValue": true
-       }
-      }
-     ],
-     "combinator": "and"
     },
-    "options": {}
-   }
-  },
-  {
-   "id": "34317914-f030-4c84-98a8-f6dad13cecf5",
-   "name": "Skipped (No Evidence)",
-   "type": "n8n-nodes-base.code",
-   "typeVersion": 2,
-   "position": [
-    1900,
-    140
-   ],
-   "parameters": {
-    "jsCode": "return [{ json: { iteration_result: { prospect_id: $json.prospect.id, status: 'skipped', reason: $json.skip_reason } } }];"
-   }
-  },
-  {
-   "id": "4f5d2848-93f1-4cfa-85a3-6c0620a3b80d",
-   "name": "Call OpenClaw Draft",
-   "type": "n8n-nodes-base.httpRequest",
-   "typeVersion": 4.2,
-   "position": [
-    2120,
-    -60
-   ],
-   "parameters": {
-    "method": "POST",
-    "url": "http://openclaw-gateway:18790/v1/chat/completions",
-    "authentication": "genericCredentialType",
-    "genericAuthType": "httpHeaderAuth",
-    "sendBody": true,
-    "specifyBody": "json",
-    "jsonBody": "={{ { model: 'openclaw/prospector', max_completion_tokens: 1200, messages: [ { role: 'system', content: $json.system_prompt }, { role: 'user', content: $json.user_prompt } ] } }}",
-    "options": {
-     "response": {
-      "response": {
-       "fullResponse": true,
-       "neverError": true,
-       "responseFormat": "json"
+    {
+      "id": "f030ace4-af69-4aab-aebe-6f0f0eaa9b4d",
+      "name": "Fetch Account And Research",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1460,
+        -180
+      ],
+      "parameters": {
+        "url": "={{ 'https://uwquwjmiofixzugttals.supabase.co/rest/v1/accounts?id=eq.' + $json.prospect.account_id + '&select=id,name,website,city,region,metadata' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
       }
-     },
-     "timeout": 300000
-    }
-   },
-   "credentials": {
-    "httpHeaderAuth": {
-     "id": "OcCmEtxlfOj1feFe",
-     "name": "Header Auth account"
-    }
-   }
-  },
-  {
-   "id": "f5127148-54c2-47f9-ab32-450095e2b2d8",
-   "name": "Parse Draft Result",
-   "type": "n8n-nodes-base.code",
-   "typeVersion": 2,
-   "position": [
-    2340,
-    -60
-   ],
-   "parameters": {
-    "jsCode": "const base = $('Build Draft Prompt').item.json;\nconst res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nconst errors = [];\nif (status < 200 || status >= 300) errors.push(`OpenClaw HTTP ${status || 'unknown'}`);\nlet content = body?.choices?.[0]?.message?.content;\nif (typeof content !== 'string') errors.push('OpenClaw response missing content');\nlet parsed = null;\nif (typeof content === 'string') {\n  let cleaned = content.trim().replace(/^```json\\s*/i, '').replace(/^```\\s*/, '').replace(/\\s*```$/, '').trim();\n  const first = cleaned.indexOf('{'), last = cleaned.lastIndexOf('}');\n  if (first >= 0 && last > first) cleaned = cleaned.slice(first, last + 1);\n  try { parsed = JSON.parse(cleaned); } catch (e) { errors.push(`Invalid JSON: ${e.message}`); }\n}\nif (!parsed || typeof parsed !== 'object') parsed = {};\nconst subject = typeof parsed.subject === 'string' ? parsed.subject.trim().slice(0, 200) : null;\nconst message = typeof parsed.message === 'string' ? parsed.message.trim().slice(0, 3000) : null;\nconst valid = Boolean(errors.length === 0 && subject && message);\nreturn [{ json: { ...base, valid, parse_errors: errors, subject, message } }];"
-   }
-  },
-  {
-   "id": "b5642887-9020-441b-9e02-dd692d9317c7",
-   "name": "Draft Valid?",
-   "type": "n8n-nodes-base.if",
-   "typeVersion": 2,
-   "position": [
-    2560,
-    -60
-   ],
-   "parameters": {
-    "conditions": {
-     "options": {
-      "caseSensitive": true,
-      "leftValue": "",
-      "typeValidation": "strict",
-      "version": 2
-     },
-     "conditions": [
-      {
-       "id": "d679513e-7549-48b5-b51f-2ae9639304e4",
-       "leftValue": "={{ $json.valid === true }}",
-       "rightValue": "",
-       "operator": {
-        "type": "boolean",
-        "operation": "true",
-        "singleValue": true
-       }
-      }
-     ],
-     "combinator": "and"
     },
-    "options": {}
-   }
-  },
-  {
-   "id": "7bb78757-358a-4fde-a2bd-9a3185883919",
-   "name": "Assert Expected Pack (before insert draft)",
-   "type": "n8n-nodes-base.code",
-   "typeVersion": 2,
-   "position": [
-    2780,
-    -60
-   ],
-   "parameters": {
-    "jsCode": "const EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nif ($json.prospect.icp_pack_id !== EXPECTED_ICP_PACK_ID) throw new Error(`SEGURIDAD: prospect ${$json.prospect.id} icp_pack_id (${$json.prospect.icp_pack_id}) distinto del esperado (${EXPECTED_ICP_PACK_ID}). Abortando antes de insertar draft.`);\nreturn $input.all();"
-   }
-  },
-  {
-   "id": "51777b2c-835e-4c86-a675-9e4ce317c7b3",
-   "name": "Insert Draft (never sent)",
-   "type": "n8n-nodes-base.httpRequest",
-   "typeVersion": 4.2,
-   "position": [
-    3000,
-    -60
-   ],
-   "parameters": {
-    "method": "POST",
-    "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/outreach",
-    "authentication": "predefinedCredentialType",
-    "nodeCredentialType": "supabaseApi",
-    "sendHeaders": true,
-    "headerParameters": {
-     "parameters": [
-      {
-       "name": "Prefer",
-       "value": "return=representation"
+    {
+      "id": "ca989726-5bcd-40bc-af2d-e1cfd83b15fb",
+      "name": "Fetch Research For Draft",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1460,
+        40
+      ],
+      "parameters": {
+        "url": "={{ 'https://uwquwjmiofixzugttals.supabase.co/rest/v1/research?account_id=eq.' + $('Needs Draft?').item.json.prospect.account_id + '&is_current=eq.true&select=research_type,finding,evidence_text,source_url&order=verified_at.desc&limit=10' }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
       }
-     ]
     },
-    "sendBody": true,
-    "specifyBody": "json",
-    "jsonBody": "={{ JSON.stringify({ prospect_id: $json.prospect.id, contact_id: $json.prospect.primary_contact_id || null, channel: 'email', direction: 'outbound', type: 'first_contact', subject: $json.subject, message: $json.message, status: 'draft', created_by: 'atacama-05-outreach-draft', metadata: { evidence_ids_used: [], generated_at: new Date().toISOString() } }) }}",
-    "options": {
-     "response": {
-      "response": {
-       "fullResponse": true,
-       "neverError": true,
-       "responseFormat": "json"
+    {
+      "id": "d2bd2290-8d39-4ea2-b6a8-2fba04e91ea6",
+      "name": "Build Draft Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        -60
+      ],
+      "parameters": {
+        "jsCode": "const prospect = $('Needs Draft?').item.json.prospect;\nconst accRes = $('Fetch Account And Research').item.json ?? {};\nconst account = (Array.isArray(accRes.body) ? accRes.body[0] : null) || {};\nconst resRes = $json ?? {};\nconst researchRows = Number(resRes.statusCode) >= 200 && Number(resRes.statusCode) < 300 && Array.isArray(resRes.body) ? resRes.body : [];\n\nif (!researchRows.length) {\n  return [{ json: { prospect, account, skip: true, skip_reason: 'Sin evidencia real en research -- no se genera draft sin evidencia (contracts/PROSPECTING.md: no inventar dolor).' } }];\n}\n\nconst evidenceList = researchRows.slice(0, 6).map((r, i) => `[${i + 1}] (${r.research_type}) ${r.finding} -- ${r.source_url}`).join('\\n');\n\nconst system = `Eres el redactor de borradores de Atacama Labs (test). SOLO puedes citar hechos presentes en la evidencia entregada. NUNCA inventes dolores, cifras o afirmaciones que no esten en la evidencia. Este es un BORRADOR -- nunca se envia automaticamente. Responde EXCLUSIVAMENTE en JSON: {\"subject\":\"...\",\"message\":\"...\",\"evidence_ids_used\":[1,2]} sin texto fuera del JSON.`;\nconst prompt = `Empresa: ${account.name || prospect.account_id}\nAngulo comercial detectado: ${prospect.commercial_angle || 'sin angulo especifico'}\n\nEVIDENCIA DISPONIBLE (cita al menos una, referenciando su numero):\n${evidenceList}\n\nEscribe un borrador de primer contacto breve (max 120 palabras), profesional, en español de Chile, mencionando explicitamente al menos una observación de la evidencia (no genérico). No prometas resultados. No inventes nada que no este en la evidencia.`;\n\nreturn [{ json: { prospect, account, skip: false, system_prompt: system, user_prompt: prompt, evidence_rows: researchRows } }];"
       }
-     },
-     "timeout": 20000
+    },
+    {
+      "id": "4fdc8599-90e7-4134-a951-8d70feab7376",
+      "name": "Has Evidence?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1900,
+        -60
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "17bd891d-6543-4891-8fe9-dd370d227c5d",
+              "leftValue": "={{ $json.skip === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "34317914-f030-4c84-98a8-f6dad13cecf5",
+      "name": "Skipped (No Evidence)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1900,
+        140
+      ],
+      "parameters": {
+        "jsCode": "return [{ json: { iteration_result: { prospect_id: $json.prospect.id, status: 'skipped', reason: $json.skip_reason } } }];"
+      }
+    },
+    {
+      "id": "4f5d2848-93f1-4cfa-85a3-6c0620a3b80d",
+      "name": "Call OpenClaw Draft",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2120,
+        -60
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://openclaw-gateway:18790/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: 'openclaw/prospector', max_completion_tokens: 1200, messages: [ { role: 'system', content: $json.system_prompt }, { role: 'user', content: $json.user_prompt } ] } }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 300000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "OcCmEtxlfOj1feFe",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "id": "f5127148-54c2-47f9-ab32-450095e2b2d8",
+      "name": "Parse Draft Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2340,
+        -60
+      ],
+      "parameters": {
+        "jsCode": "const base = $('Build Draft Prompt').item.json;\nconst res = $input.first().json ?? {};\nconst status = Number(res.statusCode ?? 0);\nconst body = res.body ?? res;\nconst errors = [];\nif (status < 200 || status >= 300) errors.push(`OpenClaw HTTP ${status || 'unknown'}`);\nlet content = body?.choices?.[0]?.message?.content;\nif (typeof content !== 'string') errors.push('OpenClaw response missing content');\nlet parsed = null;\nif (typeof content === 'string') {\n  let cleaned = content.trim().replace(/^```json\\s*/i, '').replace(/^```\\s*/, '').replace(/\\s*```$/, '').trim();\n  const first = cleaned.indexOf('{'), last = cleaned.lastIndexOf('}');\n  if (first >= 0 && last > first) cleaned = cleaned.slice(first, last + 1);\n  try { parsed = JSON.parse(cleaned); } catch (e) { errors.push(`Invalid JSON: ${e.message}`); }\n}\nif (!parsed || typeof parsed !== 'object') parsed = {};\nconst subject = typeof parsed.subject === 'string' ? parsed.subject.trim().slice(0, 200) : null;\nconst message = typeof parsed.message === 'string' ? parsed.message.trim().slice(0, 3000) : null;\nconst valid = Boolean(errors.length === 0 && subject && message);\nreturn [{ json: { ...base, valid, parse_errors: errors, subject, message } }];"
+      }
+    },
+    {
+      "id": "b5642887-9020-441b-9e02-dd692d9317c7",
+      "name": "Draft Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2560,
+        -60
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d679513e-7549-48b5-b51f-2ae9639304e4",
+              "leftValue": "={{ $json.valid === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "7bb78757-358a-4fde-a2bd-9a3185883919",
+      "name": "Assert Expected Pack (before insert draft)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2780,
+        -60
+      ],
+      "parameters": {
+        "jsCode": "const EXPECTED_ICP_PACK_ID = 'f412a742-7c7f-4cc0-9e2a-20c39d6fcd46';\nif ($json.prospect.icp_pack_id !== EXPECTED_ICP_PACK_ID) throw new Error(`SEGURIDAD: prospect ${$json.prospect.id} icp_pack_id (${$json.prospect.icp_pack_id}) distinto del esperado (${EXPECTED_ICP_PACK_ID}). Abortando antes de insertar draft.`);\nreturn $input.all();"
+      }
+    },
+    {
+      "id": "51777b2c-835e-4c86-a675-9e4ce317c7b3",
+      "name": "Insert Draft (never sent)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3000,
+        -60
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/outreach",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ prospect_id: $json.prospect.id, contact_id: $json.prospect.primary_contact_id || null, channel: 'email', direction: 'outbound', type: 'first_contact', subject: $json.subject, message: $json.message, status: 'draft', created_by: 'atacama-05-outreach-draft', metadata: { evidence_ids_used: [], generated_at: new Date().toISOString() } }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 20000
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      }
+    },
+    {
+      "id": "a0df6315-aa82-4c0f-bf3a-c8d6de0ed22e",
+      "name": "Build Iteration Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3220,
+        -60
+      ],
+      "parameters": {
+        "jsCode": "let s = $json;\nif (s.iteration_result) return [{ json: s }];\nconst res = s;\nconst status = Number(res.statusCode ?? 0);\nconst ok = status >= 200 && status < 300;\nreturn [{ json: { iteration_result: { prospect_id: $('Parse Draft Result').item.json.prospect.id, status: ok ? 'draft_created' : 'error', subject: $('Parse Draft Result').item.json.subject } } }];"
+      }
+    },
+    {
+      "id": "ebb998e3-9c72-48ff-bbae-06f7a85f1989",
+      "name": "Draft Invalid (skip)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3220,
+        260
+      ],
+      "parameters": {
+        "jsCode": "return [{ json: { iteration_result: { prospect_id: $json.prospect.id, status: 'invalid', reason: ($json.parse_errors||[]).join('; ') } } }];"
+      }
+    },
+    {
+      "id": "7127d014-6a93-4254-bb55-cd20e9585cec",
+      "name": "Skip (has draft)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3000,
+        260
+      ],
+      "parameters": {
+        "jsCode": "return [{ json: { iteration_result: { prospect_id: $json.prospect.id, status: 'skipped', reason: 'ya tiene un draft/envio previo' } } }];"
+      }
+    },
+    {
+      "id": "e4c14b92-7276-4222-a1bd-e8e84db4db41",
+      "name": "Run Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3440,
+        -60
+      ],
+      "parameters": {
+        "jsCode": "const items = $input.all().map(i => i.json.iteration_result).filter(Boolean);\nconst count = k => items.filter(x => x.status === k).length;\nreturn [{ json: { workflow: 'Atacama Labs - 05 Outreach Draft (test)', processed: items.length, drafts_created: count('draft_created'), skipped: count('skipped') + count('invalid'), results: items } }];"
+      }
+    },
+    {
+      "id": "d7526600-d458-4bfa-953a-67046159fb7a",
+      "name": "Use Hermes Draft?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -300,
+        620
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ ($json.account && $json.account.metadata && $json.account.metadata.hermes && String($json.account.metadata.hermes.draft || '').trim().length >= 40) ? \"yes\" : \"no\" }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "b69c1533-a053-41b6-8aa1-b84514b016e9",
+      "name": "Hermes Draft Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -60,
+        520
+      ],
+      "parameters": {
+        "jsCode": "const base = $input.first().json;\nconst h = base.account.metadata.hermes;\nconst subject = (h.draft_subject && String(h.draft_subject).trim().slice(0, 200)) || ('Consulta para ' + (base.account.name || 'su equipo'));\nconst message = String(h.draft).trim().slice(0, 3000);\nreturn [{ json: { ...base, valid: Boolean(subject && message), parse_errors: [], subject, message, draft_source: 'hermes' } }];"
+      }
     }
-   },
-   "credentials": {
-    "supabaseApi": {
-     "id": "XOmXUuyLVSazDIh5",
-     "name": "Atacama Labs - Supabase"
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Init ICP Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Init ICP Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Init ICP Config": {
+      "main": [
+        [
+          {
+            "node": "Fetch ICP Pack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch ICP Pack": {
+      "main": [
+        [
+          {
+            "node": "Parse ICP Pack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse ICP Pack": {
+      "main": [
+        [
+          {
+            "node": "Assert Expected Pack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assert Expected Pack": {
+      "main": [
+        [
+          {
+            "node": "Fetch Draftable Prospects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Draftable Prospects": {
+      "main": [
+        [
+          {
+            "node": "Build Prospect List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Prospect List": {
+      "main": [
+        [
+          {
+            "node": "No Work?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Work?": {
+      "main": [
+        [
+          {
+            "node": "No Work Summary",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Assert Expected Pack (before fetch)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assert Expected Pack (before fetch)": {
+      "main": [
+        [
+          {
+            "node": "Fetch Existing Drafts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Existing Drafts": {
+      "main": [
+        [
+          {
+            "node": "Has Draft?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Draft?": {
+      "main": [
+        [
+          {
+            "node": "Needs Draft?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Draft?": {
+      "main": [
+        [
+          {
+            "node": "Fetch Account And Research",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip (has draft)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Account And Research": {
+      "main": [
+        [
+          {
+            "node": "Fetch Research For Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Research For Draft": {
+      "main": [
+        [
+          {
+            "node": "Build Draft Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Draft Prompt": {
+      "main": [
+        [
+          {
+            "node": "Has Evidence?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Evidence?": {
+      "main": [
+        [
+          {
+            "node": "Skipped (No Evidence)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Use Hermes Draft?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call OpenClaw Draft": {
+      "main": [
+        [
+          {
+            "node": "Parse Draft Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Draft Result": {
+      "main": [
+        [
+          {
+            "node": "Draft Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft Valid?": {
+      "main": [
+        [
+          {
+            "node": "Assert Expected Pack (before insert draft)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Draft Invalid (skip)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assert Expected Pack (before insert draft)": {
+      "main": [
+        [
+          {
+            "node": "Insert Draft (never sent)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Draft (never sent)": {
+      "main": [
+        [
+          {
+            "node": "Build Iteration Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Iteration Result": {
+      "main": [
+        [
+          {
+            "node": "Run Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip (has draft)": {
+      "main": [
+        [
+          {
+            "node": "Run Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skipped (No Evidence)": {
+      "main": [
+        [
+          {
+            "node": "Run Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft Invalid (skip)": {
+      "main": [
+        [
+          {
+            "node": "Run Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Use Hermes Draft?": {
+      "main": [
+        [
+          {
+            "node": "Hermes Draft Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call OpenClaw Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hermes Draft Result": {
+      "main": [
+        [
+          {
+            "node": "Draft Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
-   }
   },
-  {
-   "id": "a0df6315-aa82-4c0f-bf3a-c8d6de0ed22e",
-   "name": "Build Iteration Result",
-   "type": "n8n-nodes-base.code",
-   "typeVersion": 2,
-   "position": [
-    3220,
-    -60
-   ],
-   "parameters": {
-    "jsCode": "let s = $json;\nif (s.iteration_result) return [{ json: s }];\nconst res = s;\nconst status = Number(res.statusCode ?? 0);\nconst ok = status >= 200 && status < 300;\nreturn [{ json: { iteration_result: { prospect_id: $('Parse Draft Result').item.json.prospect.id, status: ok ? 'draft_created' : 'error', subject: $('Parse Draft Result').item.json.subject } } }];"
-   }
-  },
-  {
-   "id": "ebb998e3-9c72-48ff-bbae-06f7a85f1989",
-   "name": "Draft Invalid (skip)",
-   "type": "n8n-nodes-base.code",
-   "typeVersion": 2,
-   "position": [
-    3220,
-    260
-   ],
-   "parameters": {
-    "jsCode": "return [{ json: { iteration_result: { prospect_id: $json.prospect.id, status: 'invalid', reason: ($json.parse_errors||[]).join('; ') } } }];"
-   }
-  },
-  {
-   "id": "7127d014-6a93-4254-bb55-cd20e9585cec",
-   "name": "Skip (has draft)",
-   "type": "n8n-nodes-base.code",
-   "typeVersion": 2,
-   "position": [
-    3000,
-    260
-   ],
-   "parameters": {
-    "jsCode": "return [{ json: { iteration_result: { prospect_id: $json.prospect.id, status: 'skipped', reason: 'ya tiene un draft/envio previo' } } }];"
-   }
-  },
-  {
-   "id": "e4c14b92-7276-4222-a1bd-e8e84db4db41",
-   "name": "Run Summary",
-   "type": "n8n-nodes-base.code",
-   "typeVersion": 2,
-   "position": [
-    3440,
-    -60
-   ],
-   "parameters": {
-    "jsCode": "const items = $input.all().map(i => i.json.iteration_result).filter(Boolean);\nconst count = k => items.filter(x => x.status === k).length;\nreturn [{ json: { workflow: 'Atacama Labs - 05 Outreach Draft (test)', processed: items.length, drafts_created: count('draft_created'), skipped: count('skipped') + count('invalid'), results: items } }];"
-   }
-  }
- ],
- "connections": {
-  "Manual Trigger": {
-   "main": [
-    [
-     {
-      "node": "Init ICP Config",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "When Executed by Another Workflow": {
-   "main": [
-    [
-     {
-      "node": "Init ICP Config",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Init ICP Config": {
-   "main": [
-    [
-     {
-      "node": "Fetch ICP Pack",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Fetch ICP Pack": {
-   "main": [
-    [
-     {
-      "node": "Parse ICP Pack",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Parse ICP Pack": {
-   "main": [
-    [
-     {
-      "node": "Assert Expected Pack",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Assert Expected Pack": {
-   "main": [
-    [
-     {
-      "node": "Fetch Draftable Prospects",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Fetch Draftable Prospects": {
-   "main": [
-    [
-     {
-      "node": "Build Prospect List",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Build Prospect List": {
-   "main": [
-    [
-     {
-      "node": "No Work?",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "No Work?": {
-   "main": [
-    [
-     {
-      "node": "No Work Summary",
-      "type": "main",
-      "index": 0
-     }
-    ],
-    [
-     {
-      "node": "Assert Expected Pack (before fetch)",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Assert Expected Pack (before fetch)": {
-   "main": [
-    [
-     {
-      "node": "Fetch Existing Drafts",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Fetch Existing Drafts": {
-   "main": [
-    [
-     {
-      "node": "Has Draft?",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Has Draft?": {
-   "main": [
-    [
-     {
-      "node": "Needs Draft?",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Needs Draft?": {
-   "main": [
-    [
-     {
-      "node": "Fetch Account And Research",
-      "type": "main",
-      "index": 0
-     }
-    ],
-    [
-     {
-      "node": "Skip (has draft)",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Fetch Account And Research": {
-   "main": [
-    [
-     {
-      "node": "Fetch Research For Draft",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Fetch Research For Draft": {
-   "main": [
-    [
-     {
-      "node": "Build Draft Prompt",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Build Draft Prompt": {
-   "main": [
-    [
-     {
-      "node": "Has Evidence?",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Has Evidence?": {
-   "main": [
-    [
-     {
-      "node": "Skipped (No Evidence)",
-      "type": "main",
-      "index": 0
-     }
-    ],
-    [
-     {
-      "node": "Call OpenClaw Draft",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Call OpenClaw Draft": {
-   "main": [
-    [
-     {
-      "node": "Parse Draft Result",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Parse Draft Result": {
-   "main": [
-    [
-     {
-      "node": "Draft Valid?",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Draft Valid?": {
-   "main": [
-    [
-     {
-      "node": "Assert Expected Pack (before insert draft)",
-      "type": "main",
-      "index": 0
-     }
-    ],
-    [
-     {
-      "node": "Draft Invalid (skip)",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Assert Expected Pack (before insert draft)": {
-   "main": [
-    [
-     {
-      "node": "Insert Draft (never sent)",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Insert Draft (never sent)": {
-   "main": [
-    [
-     {
-      "node": "Build Iteration Result",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Build Iteration Result": {
-   "main": [
-    [
-     {
-      "node": "Run Summary",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Skip (has draft)": {
-   "main": [
-    [
-     {
-      "node": "Run Summary",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Skipped (No Evidence)": {
-   "main": [
-    [
-     {
-      "node": "Run Summary",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  },
-  "Draft Invalid (skip)": {
-   "main": [
-    [
-     {
-      "node": "Run Summary",
-      "type": "main",
-      "index": 0
-     }
-    ]
-   ]
-  }
- },
- "settings": {}
+  "settings": {}
 }

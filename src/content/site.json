@@ -10,13 +10,13 @@
     "preferredHandle": "atacamalabs"
   },
   "publicSettings": {
-    "canonicalOrigin": null,
-    "contactEmail": null,
+    "canonicalOrigin": "https://atacamalabs.cl",
+    "contactEmail": "contacto@atacamalabs.cl",
     "whatsappE164": null,
-    "bookingUrl": null,
+    "bookingUrl": "https://api.leadconnectorhq.com/widget/booking/D3CUkoKxRyze3Kpt8sa9",
     "linkedinCompanyUrl": null,
     "linkedinFounderUrl": null,
-    "instagramUrl": null,
+    "instagramUrl": "https://www.instagram.com/atacama.labs/",
     "githubUrl": null,
     "privacyController": null,
     "verifiedAt": null
@@ -33,10 +33,6 @@
     {
       "label": "Soluciones",
       "href": "/soluciones"
-    },
-    {
-      "label": "Casos",
-      "href": "/casos"
     },
     {
       "label": "Nosotros",
@@ -441,13 +437,6 @@
       "href": "/como-trabajamos",
       "cta": "Ver cómo trabajamos",
       "motif": "automation"
-    },
-    {
-      "title": "Casos reales y soluciones construidas",
-      "summary": "Conoce procesos y soluciones que ya hemos implementado.",
-      "href": "/casos",
-      "cta": "Ver casos",
-      "motif": "cases"
     }
   ]
 }

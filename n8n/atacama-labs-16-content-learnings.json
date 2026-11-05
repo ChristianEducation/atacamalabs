@@ -1,0 +1,146 @@
+{
+  "name": "Atacama Labs - 16 Content Learnings",
+  "nodes": [
+    {
+      "id": "b7c7edc6-913d-47a0-be7b-953889a15b50",
+      "name": "Learnings Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "236dfe2b-d72c-43dc-ab5a-5968167feac0",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "lUGhlXVaQBEiEh5S",
+          "name": "Atacama Labs - Ingest Key"
+        }
+      },
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "atacama-content-learnings",
+        "authentication": "headerAuth",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "680ea61f-5665-4acc-a318-a427fe68f702",
+      "name": "Fetch Learned",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "parameters": {
+        "method": "GET",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/content_pieces?icp_pack_id=eq.0ba54785-bff0-4a2d-a397-64e697d34e38&learning=not.is.null&is_test=eq.false&order=published_at.desc&limit=40&select=id,channel,category,format,published_at,learning",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": false,
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "cb30ecdb-fd3e-4b5a-82d2-665e0e8fbaf1",
+      "name": "Fetch Recent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "XOmXUuyLVSazDIh5",
+          "name": "Atacama Labs - Supabase"
+        }
+      },
+      "parameters": {
+        "method": "GET",
+        "url": "https://uwquwjmiofixzugttals.supabase.co/rest/v1/content_pieces?icp_pack_id=eq.0ba54785-bff0-4a2d-a397-64e697d34e38&is_test=eq.false&status=in.(in_review,approved,scheduled,published)&order=created_at.desc&limit=30&select=status,channel,category,format,hook:piece->>hook",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": false,
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "adb9052f-0fb1-4f57-8cc5-8f76fdd2a902",
+      "name": "Summarize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "jsCode": "function actionsOf(row) {\r\n  if (!row) return null;\r\n  const v = [row.likes, row.comments, row.shares].filter((x) => typeof x === 'number');\r\n  return v.length ? v.reduce((a, b) => a + b, 0) : null;\r\n}\n\nfunction summarizeLearnings(pieces) {\r\n  const list = (Array.isArray(pieces) ? pieces : []).filter((p) => p && p.learning);\r\n  const avg = (a) => (a.length ? Math.round((a.reduce((x, y) => x + y, 0) / a.length) * 100) / 100 : null);\r\n  const groupBy = (keyFn) => {\r\n    const g = {};\r\n    list.forEach((p) => { const k = keyFn(p); if (!k) return; (g[k] = g[k] || []).push(p); });\r\n    return Object.keys(g).sort().map((k) => {\r\n      const acts = g[k].map((p) => p.learning.metrics && p.learning.metrics.actions).filter((v) => typeof v === 'number');\r\n      return { key: k, n: g[k].length, n_with_actions: acts.length, avg_actions: avg(acts), tentative: g[k].length < 5 };\r\n    });\r\n  };\r\n  return {\r\n    n_learnings: list.length,\r\n    note: 'Orientativo. Las interacciones (me gusta + comentarios + compartidos) solo se comparan dentro de la misma plataforma; con n < 5 es tentativo y no demuestra causalidad.',\r\n    do_not_repeat_hooks: list.map((p) => p.learning.hook).filter(Boolean),\r\n    by_channel: groupBy((p) => p.channel), by_category: groupBy((p) => p.category), by_format: groupBy((p) => p.format),\r\n    learnings: list.map((p) => ({ piece_id: p.id, published_at: p.published_at, channel: p.channel, category: p.category, format: p.format, topic: p.learning.topic, hook: p.learning.hook, initial_score: p.learning.initial_score,\r\n      actions: p.learning.metrics ? p.learning.metrics.actions : null, worked: p.learning.worked, not_worked: p.learning.not_worked, hypotheses: p.learning.hypotheses, guidance: p.learning.guidance, confidence: p.learning.confidence })),\r\n  };\r\n}\n\nconst lRes = $('Fetch Learned').first().json || {};\nconst rRes = $json || {};\nif ((lRes.statusCode || 0) >= 300 || (rRes.statusCode || 0) >= 300) throw new Error('Supabase falló (aprendizajes HTTP ' + lRes.statusCode + ', recientes HTTP ' + rRes.statusCode + ')');\nconst learned = Array.isArray(lRes.body) ? lRes.body : [];\nconst recent = Array.isArray(rRes.body) ? rRes.body : [];\nconst sum = summarizeLearnings(learned);\nreturn [{ json: { ok: true, ...sum,\n  recent_pieces: recent.map((p) => ({ status: p.status, channel: p.channel, category: p.category, format: p.format, hook: p.hook })),\n  how_to_use: 'Antes de proponer contenido: no repetir los hooks de do_not_repeat_hooks ni de recent_pieces; usa by_channel/by_category/by_format solo como orientación (n pequeño = tentativo, sin causalidad); no compares métricas entre Instagram y LinkedIn.' } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Learnings Webhook": {
+      "main": [
+        [
+          {
+            "node": "Fetch Learned",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Learned": {
+      "main": [
+        [
+          {
+            "node": "Fetch Recent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Recent": {
+      "main": [
+        [
+          {
+            "node": "Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
