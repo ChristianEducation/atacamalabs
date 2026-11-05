@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "generar_documento_pdf — entrada",
+  "description": "Datos estructurados. NUNCA HTML: todo el texto se escapa. En los textos solo se admite **negrita**.",
+  "type": "object",
+  "required": ["title", "sections"],
+  "additionalProperties": true,
+  "properties": {
+    "request_id": { "type": "string", "maxLength": 80, "description": "Opcional. Identificador estable de la conversación/solicitud. Si Lety reintenta con el mismo valor (10 min) devuelve el mismo enlace sin regenerar." },
+    "title": { "type": "string", "minLength": 1, "maxLength": 140, "description": "Título del documento. Ej.: «Informe técnico de terreno»." },
+    "category": { "type": "string", "maxLength": 70, "default": "INFORME / DEMOSTRACIÓN", "description": "Rótulo sobre el título. Ej.: «REPORTE TÉCNICO / DEMOSTRACIÓN». El sistema agrega « · Emitido <fecha y hora de Chile>»." },
+    "metadata": {
+      "description": "Campos de la cabecera (2 por fila; ideal 4–6). Acepta lista de {label, value} o un objeto {Etiqueta: valor}. Valor vacío → «No informado». La fecha del HECHO va aquí, solo si la persona la dijo.",
+      "oneOf": [
+        { "type": "array", "maxItems": 12, "items": { "type": "object", "required": ["label"], "properties": { "label": { "type": "string", "maxLength": 40 }, "value": { "type": "string", "maxLength": 160 } } } },
+        { "type": "object", "additionalProperties": { "type": "string", "maxLength": 160 } }
+      ]
+    },
+    "sections": {
+      "type": "array", "minItems": 1, "maxItems": 14,
+      "description": "Secciones numeradas automáticamente (01, 02…). Para que el informe quepa en UNA hoja: 4–5 secciones y textos breves.",
+      "items": {
+        "type": "object", "required": ["heading"],
+        "properties": {
+          "heading": { "type": "string", "maxLength": 90 },
+          "text": { "type": "string", "maxLength": 4000, "description": "Párrafos separados por una línea en blanco." },
+          "items": { "type": "array", "maxItems": 20, "items": { "type": "string", "maxLength": 400 }, "description": "Viñetas." },
+          "pending": { "type": "object", "properties": { "title": { "type": "string", "maxLength": 120 }, "text": { "type": "string", "maxLength": 1000 } }, "description": "Recuadro azul de «pendiente» (estilo del informe BP-204)." }
+        },
+        "description": "Cada sección necesita al menos uno de: text, items, pending."
+      }
+    }
+  },
+  "x-limites": "Cuerpo total ≤ ~60.000 caracteres."
+}

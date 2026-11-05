@@ -1,0 +1,322 @@
+{
+  "name": "Atacama Labs - 32 ASTER PDF Link",
+  "nodes": [
+    {
+      "id": "289029d4-c053-48d5-8ebf-6db6e745fe98",
+      "name": "Webhook ASTER PDF",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "ebb65ce1-8a3e-4bfa-93e0-c593e9d8f813",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "atacama-aster-pdf-link",
+        "authentication": "headerAuth",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_KEY_CRED_ID",
+          "name": "Atacama Labs - ASTER Demo Key"
+        }
+      }
+    },
+    {
+      "id": "a7178147-eaba-4b9c-bfc7-45b508729ecf",
+      "name": "Validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const ASTER_HTML_PLACEHOLDERS = [\"{{DOCUMENT_TITLE}}\",\"{{DOCUMENT_CATEGORY}}\",\"{{METADATA_HTML}}\",\"{{SECTIONS_HTML}}\"];\nconst ASTER_HTML_DEFAULT_CATEGORY = \"INFORME / DEMOSTRACIÓN\";\nconst ASTER_HTML_LAYOUT_FIX = \"<style id=\\\"aster-layout-fix\\\">.sheet{display:flex;flex-direction:column;min-height:297mm;height:auto;padding:12mm 18mm 7mm 18mm}.brand-header{margin-bottom:5.5mm}.blue-title{min-height:0;padding:7.5mm 11mm 7mm 11mm}.blue-kicker{margin-bottom:2.4mm}.blue-title .sub{margin-top:2.5mm}.meta{padding:4mm 0 3.5mm;row-gap:2.4mm}.main-content{flex:1 0 auto;padding-top:3.5mm;padding-bottom:2mm}.section{margin-bottom:3.4mm}.sec-head{margin-bottom:1.4mm}.notice{margin-top:3mm;padding-top:3mm;break-inside:avoid}.showcase,.footer{position:static;left:auto;right:auto;bottom:auto;break-inside:avoid}.showcase{margin-top:3.5mm;margin-bottom:2.5mm}</style>\";\nconst ASTER_HTML_BLOCK_RE = \"<(h[1-6])\\\\b[^>]*>([\\\\s\\\\S]*?)<\\\\/\\\\1\\\\s*>|<(p|li|div)\\\\b[^>]*>([\\\\s\\\\S]*?)<\\\\/\\\\3\\\\s*>\";\nconst ASTER_HTML_ROW_RE = \"<(p|li|div|tr)\\\\b[^>]*>([\\\\s\\\\S]*?)<\\\\/\\\\1\\\\s*>\";\nconst clean = (s, max) => {\n  if (s == null) return '';\n  if (typeof s === 'number' || typeof s === 'boolean') s = String(s);\n  if (typeof s !== 'string') return '';\n  const t = s.replace(/\\r\\n?/g, '\\n').replace(/[ \\t]+\\n/g, '\\n').trim();\n  return t.length > max ? t.slice(0, max - 1).trimEnd() + '…' : t;\n};\nconst P = (inner, first) => '<p' + (first ? '' : ' style=\"margin-top:1.6mm\"') + '>' + inner + '</p>';\nfunction asterHtmlEsc(s) {\r\n  return String(s == null ? '' : s)\r\n    .replace(/[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]/g, '')\r\n    .replace(/&/g, '&amp;')\r\n    .replace(/</g, '&lt;')\r\n    .replace(/>/g, '&gt;')\r\n    .replace(/\"/g, '&quot;')\r\n    .replace(/'/g, '&#39;')\r\n    .replace(/\\{/g, '&#123;')\r\n    .replace(/\\}/g, '&#125;');\r\n}\n\nfunction asterHtmlRich(s) {\r\n  return asterHtmlEsc(s).replace(/\\*\\*([^*\\n]{1,200}?)\\*\\*/g, '<strong>$1</strong>');\r\n}\n\nfunction asterHtmlValidate(body) {\r\n  const bad = (code, message) => ({ ok: false, code, message });\r\n  if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length === 0) {\r\n    return bad('EMPTY_BODY', 'No llegaron datos. Envía un JSON con title y sections.');\r\n  }\r\n  let size = 0;\r\n  try { size = JSON.stringify(body).length; } catch (e) { return bad('VALIDATION_ERROR', 'El cuerpo no es JSON válido.'); }\r\n  if (size > 60000) return bad('PAYLOAD_TOO_LARGE', 'El contenido es demasiado largo (máximo ~60.000 caracteres).');\r\n\r\n  const title = clean(body.title, 140);\r\n  if (!title) return bad('VALIDATION_ERROR', 'Falta title (título del documento).');\r\n  const category = clean(body.category, 70) || ASTER_HTML_DEFAULT_CATEGORY;\r\n\r\n  // metadata: [{label,value}] o {Etiqueta: valor}\r\n  let metaIn = body.metadata;\r\n  if (metaIn && typeof metaIn === 'object' && !Array.isArray(metaIn)) {\r\n    metaIn = Object.keys(metaIn).map((k) => ({ label: k, value: metaIn[k] }));\r\n  }\r\n  if (metaIn == null) metaIn = [];\r\n  if (!Array.isArray(metaIn)) return bad('VALIDATION_ERROR', 'metadata debe ser una lista de {label, value}.');\r\n  if (metaIn.length > 12) return bad('VALIDATION_ERROR', 'metadata admite como máximo 12 campos.');\r\n  const metadata = [];\r\n  for (const m of metaIn) {\r\n    if (!m || typeof m !== 'object') return bad('VALIDATION_ERROR', 'Cada metadata debe ser {label, value}.');\r\n    const label = clean(m.label, 40);\r\n    if (!label) return bad('VALIDATION_ERROR', 'Cada metadata necesita label.');\r\n    metadata.push({ label, value: clean(m.value, 160) || 'No informado' });\r\n  }\r\n\r\n  if (!Array.isArray(body.sections) || body.sections.length === 0) return bad('VALIDATION_ERROR', 'Falta sections (al menos una sección).');\r\n  if (body.sections.length > 14) return bad('VALIDATION_ERROR', 'sections admite como máximo 14 secciones.');\r\n  const sections = [];\r\n  for (let i = 0; i < body.sections.length; i++) {\r\n    const s = body.sections[i];\r\n    if (!s || typeof s !== 'object') return bad('VALIDATION_ERROR', `La sección ${i + 1} no es válida.`);\r\n    const heading = clean(s.heading, 90);\r\n    if (!heading) return bad('VALIDATION_ERROR', `La sección ${i + 1} necesita heading.`);\r\n    const text = clean(s.text, 4000);\r\n    let items = [];\r\n    if (s.items != null) {\r\n      if (!Array.isArray(s.items)) return bad('VALIDATION_ERROR', `items de la sección ${i + 1} debe ser una lista de textos.`);\r\n      items = s.items.slice(0, 20).map((x) => clean(x, 400)).filter(Boolean);\r\n    }\r\n    let pending = null;\r\n    if (s.pending != null) {\r\n      if (typeof s.pending !== 'object' || Array.isArray(s.pending)) return bad('VALIDATION_ERROR', `pending de la sección ${i + 1} debe ser {title, text}.`);\r\n      const pt = clean(s.pending.title, 120);\r\n      const px = clean(s.pending.text, 1000);\r\n      if (pt || px) pending = { title: pt || 'Pendiente', text: px };\r\n    }\r\n    if (!text && items.length === 0 && !pending) return bad('VALIDATION_ERROR', `La sección ${i + 1} («${heading}») no tiene contenido: usa text, items o pending.`);\r\n    sections.push({ heading, text, items, pending });\r\n  }\r\n\r\n  const rid = body.request_id == null ? '' : String(body.request_id).replace(/[^A-Za-z0-9_.:-]/g, '').slice(0, 80);\r\n  return { ok: true, p: { request_id: rid, title, category, metadata, sections } };\r\n}\n\nfunction asterHtmlSlug(s) {\r\n  const t = String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);\r\n  return t || 'documento';\r\n}\n\nfunction asterHtmlIssued(date) {\r\n  const f = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Santiago', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(date);\r\n  const g = (t) => f.find((x) => x.type === t).value;\r\n  const hh = g('hour') === '24' ? '00' : g('hour');\r\n  return { stamp: `${g('year')}${g('month')}${g('day')}-${hh}${g('minute')}`, human: `${g('day')}-${g('month')}-${g('year')} ${hh}:${g('minute')}` };\r\n}\n\nfunction asterHtmlRender(p, issued) {\r\n  const metadataHtml = p.metadata\r\n    .map((m) => `<div class=\"item\"><div class=\"label\">${asterHtmlEsc(m.label)}</div><div class=\"value\">${asterHtmlRich(m.value)}</div></div>`)\r\n    .join('\\n    ');\r\n  const sectionsHtml = p.sections\r\n    .map((s, i) => {\r\n      const num = String(i + 1).padStart(2, '0');\r\n      let body = '';\r\n      let first = true;\r\n      if (s.text) {\r\n        for (const para of s.text.split(/\\n{2,}/)) {\r\n          body += P(asterHtmlRich(para.trim()).replace(/\\n/g, '<br>'), first);\r\n          first = false;\r\n        }\r\n      }\r\n      for (const it of s.items) {\r\n        body += P('• ' + asterHtmlRich(it), first);\r\n        first = false;\r\n      }\r\n      if (s.pending) {\r\n        body += `<div class=\"pending\"${first ? '' : ' style=\"margin-top:2.4mm\"'}><strong>${asterHtmlEsc(s.pending.title)}</strong>${s.pending.text ? `<p>${asterHtmlRich(s.pending.text)}</p>` : ''}</div>`;\r\n      }\r\n      return `<div class=\"section\"><div class=\"sec-head\"><span class=\"numb\">${num}</span><h2>${asterHtmlEsc(s.heading)}</h2></div>${body}</div>`;\r\n    })\r\n    .join('\\n    ');\r\n  return {\r\n    titleHtml: asterHtmlEsc(p.title),\r\n    // La fecha de EMISIÓN (de hoy) va en la franja azul y no se mezcla con la fecha del HECHO, que llega en metadata o queda «No informada».\r\n    categoryHtml: asterHtmlEsc(p.category) + ' · Emitido ' + asterHtmlEsc(issued.human),\r\n    metadataHtml,\r\n    sectionsHtml,\r\n    fileName: `atacama-${asterHtmlSlug(p.title)}-${issued.stamp}.pdf`,\r\n  };\r\n}\n\nfunction asterHtmlMerge(template, r) {\r\n  if (typeof template !== 'string' || template.length < 500) throw new Error('TEMPLATE_INVALID: la plantilla está vacía o es demasiado corta.');\r\n  for (const ph of ASTER_HTML_PLACEHOLDERS) {\r\n    if (template.indexOf(ph) === -1) throw new Error('TEMPLATE_INVALID: falta el marcador ' + ph);\r\n  }\r\n  // Identidad visual: sin el logotipo oficial incrustado NO se genera el documento (falla cerrado en vez de salir sin logo).\r\n  if (!/<img\\b[^>]*\\bclass=\"brand-logo\"[^>]*\\bsrc=\"data:image\\/[a-z+]+;base64,[A-Za-z0-9+\\/=]{2000,}\"/i.test(template)) {\r\n    throw new Error('TEMPLATE_INVALID: la plantilla no trae el logotipo oficial (img.brand-logo con la imagen incrustada en Base64).');\r\n  }\r\n  // split/join: sin patrones especiales de String.replace ($&, $1) que alteren el contenido.\r\n  const merged = template\r\n    .split('{{METADATA_HTML}}').join(r.metadataHtml)\r\n    .split('{{SECTIONS_HTML}}').join(r.sectionsHtml)\r\n    .split('{{DOCUMENT_TITLE}}').join(r.titleHtml)\r\n    .split('{{DOCUMENT_CATEGORY}}').join(r.categoryHtml);\r\n  return merged.indexOf('</head>') === -1 ? merged : merged.replace('</head>', () => ASTER_HTML_LAYOUT_FIX + '</head>');\r\n}\n\nfunction asterHtmlExtract(first) {\r\n  const item = first && typeof first === 'object' ? first : {};\r\n  const h = item.headers && typeof item.headers === 'object' ? item.headers : {};\r\n  const diag = { content_type: String(h['content-type'] || '').slice(0, 60) || null, body_type: null, keys: [] };\r\n  const parse = (v) => {\r\n    if (typeof v === 'string') {\r\n      const t = v.trim();\r\n      if (t[0] === '{' || t[0] === '[') { try { return JSON.parse(t); } catch (e) { /* queda como texto */ } }\r\n    }\r\n    return v;\r\n  };\r\n  const isObj = (o) => o !== null && typeof o === 'object' && !Array.isArray(o);\r\n  const TITLE_KEYS = ['title', 'titulo', 'título', 'document_title', 'documentTitle'];\r\n  const hasTitle = (o) => isObj(o) && TITLE_KEYS.some((k) => o[k] != null);\r\n  let b = parse(Object.prototype.hasOwnProperty.call(item, 'body') ? item.body : item);\r\n  diag.body_type = Array.isArray(b) ? 'array' : b === null ? 'null' : typeof b;\r\n  const WRAP = ['input', 'data', 'payload', 'arguments', 'args', 'parameters', 'body', 'request', 'document', 'documento'];\r\n  for (let depth = 0; depth < 3 && isObj(b) && !hasTitle(b); depth++) {\r\n    let next = null;\r\n    for (const k of WRAP) { const v = parse(b[k]); if (isObj(v)) { next = v; break; } }\r\n    if (!next) break;\r\n    b = next;\r\n  }\r\n  if (!isObj(b)) return { body: b, diag };\r\n  const al = (o, to, froms) => { if (o[to] == null) for (const f of froms) if (o[f] != null) { o[to] = o[f]; break; } };\r\n  b = Object.assign({}, b);\r\n  diag.keys = Object.keys(b).slice(0, 20);\r\n  al(b, 'title', ['titulo', 'título', 'document_title', 'documentTitle']);\r\n  al(b, 'category', ['categoria', 'categoría', 'document_category', 'documentCategory']);\r\n  al(b, 'metadata', ['metadatos']);\r\n  al(b, 'sections', ['secciones']);\r\n  b.sections = parse(b.sections);\r\n  b.metadata = parse(b.metadata);\r\n  // Herramientas que envían HTML ya armado: se reduce a datos (el HTML nunca se inserta).\r\n  if (b.sections == null && typeof b.sections_html === 'string') { b.sections = asterHtmlParseSections(b.sections_html); diag.from_html = true; }\r\n  if (b.metadata == null && typeof b.metadata_html === 'string') { b.metadata = asterHtmlParseMetadata(b.metadata_html); diag.from_html = true; }\r\n  if (Array.isArray(b.sections)) {\r\n    b.sections = b.sections.map((s0) => {\r\n      const s = parse(s0);\r\n      if (!isObj(s)) return s;\r\n      const s2 = Object.assign({}, s);\r\n      al(s2, 'heading', ['title', 'titulo', 'título', 'encabezado', 'nombre', 'section_title']);\r\n      al(s2, 'text', ['texto', 'content', 'contenido', 'body', 'descripcion', 'descripción']);\r\n      al(s2, 'items', ['puntos', 'bullets', 'lista']);\r\n      al(s2, 'pending', ['pendiente']);\r\n      s2.items = parse(s2.items);\r\n      s2.pending = parse(s2.pending);\r\n      return s2;\r\n    });\r\n  }\r\n  return { body: b, diag };\r\n}\n\nfunction asterHtmlDecode(s) {\n  return String(s == null ? '' : s)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&#x([0-9a-f]{1,6});/gi, (m, h) => { const c = parseInt(h, 16); return c >= 32 && c <= 0x10ffff ? String.fromCodePoint(c) : ''; })\n    .replace(/&#(\\d{1,7});/g, (m, d) => { const c = parseInt(d, 10); return c >= 32 && c <= 0x10ffff ? String.fromCodePoint(c) : ''; })\n    .replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/&quot;/gi, '\"').replace(/&apos;/gi, \"'\").replace(/&amp;/gi, '&');\n}\n\nfunction asterHtmlText(html) {\n  let t = String(html == null ? '' : html)\n    .replace(/<(script|style|iframe|object|embed|svg|template)\\b[\\s\\S]*?<\\/\\1\\s*>/gi, ' ')\n    .replace(/<br\\s*\\/?>/gi, '\\n')\n    .replace(/<(strong|b)\\b[^>]*>([\\s\\S]*?)<\\/\\1\\s*>/gi, (m, tag, inner) => {\n      const x = inner.replace(/<[^>]*>/g, '').replace(/\\*/g, '').trim();\n      return x ? '**' + x + '**' : '';\n    })\n    .replace(/<[^>]*>/g, ' ');\n  return asterHtmlDecode(t).replace(/[ \\t ]+/g, ' ').replace(/ *\\n */g, '\\n').replace(/\\n{3,}/g, '\\n\\n').trim();\n}\n\nfunction asterHtmlParseSections(html) {\n  const src = String(html == null ? '' : html).replace(/<(script|style|iframe|object|embed|svg|template)\\b[\\s\\S]*?<\\/\\1\\s*>/gi, ' ');\n  const re = new RegExp(ASTER_HTML_BLOCK_RE, 'gi');\n  const out = [];\n  let cur = null;\n  let m;\n  const open = (heading) => { cur = { heading, paras: [], items: [] }; out.push(cur); };\n  while ((m = re.exec(src)) !== null) {\n    if (m[1]) {\n      const h = asterHtmlText(m[2]).replace(/\\*\\*/g, '');\n      if (h) open(h.slice(0, 90));\n      continue;\n    }\n    const txt = asterHtmlText(m[4]);\n    if (!txt) continue;\n    if (!cur) open('Detalle');\n    if (m[3].toLowerCase() === 'li') cur.items.push(txt); else cur.paras.push(txt);\n  }\n  if (out.length === 0) {\n    const all = asterHtmlText(src);\n    if (all) out.push({ heading: 'Detalle', paras: [all], items: [] });\n  }\n  return out\n    .filter((s) => s.paras.length || s.items.length)\n    .map((s) => {\n      const sec = { heading: s.heading };\n      if (/pendiente/i.test(s.heading) && s.paras.length && !s.items.length) {\n        // «Pendientes» → recuadro azul de la plantilla: primera frase como título, el resto como detalle\n        const all = s.paras.join(' ');\n        const cut = all.search(/[.!?](\\s|$)/);\n        const first = cut > 0 && cut < 110 ? all.slice(0, cut + 1) : all.slice(0, 110);\n        sec.pending = { title: first.replace(/\\*\\*/g, ''), text: all.slice(first.length).trim() };\n      } else {\n        if (s.paras.length) sec.text = s.paras.join('\\n\\n');\n        if (s.items.length) sec.items = s.items;\n      }\n      return sec;\n    });\n}\n\nfunction asterHtmlParseMetadata(html) {\n  const src = String(html == null ? '' : html).replace(/<(script|style|iframe|object|embed|svg|template)\\b[\\s\\S]*?<\\/\\1\\s*>/gi, ' ');\n  const re = new RegExp(ASTER_HTML_ROW_RE, 'gi');\n  const rows = [];\n  let m;\n  while ((m = re.exec(src)) !== null) rows.push(m[2]);\n  if (rows.length === 0) rows.push(...src.split(/<br\\s*\\/?>|\\n/i));\n  const out = [];\n  for (const r of rows) {\n    const t = asterHtmlText(r);\n    if (!t) continue;\n    const i = t.indexOf(':');\n    if (i <= 0 || i > 60) continue;\n    const label = t.slice(0, i).replace(/\\*\\*/g, '').trim();\n    const value = t.slice(i + 1).replace(/\\*\\*/g, '').trim();\n    if (label) out.push({ label, value });\n  }\n  return out;\n}\nconst sd = $getWorkflowStaticData('global');\nsd.done = sd.done || {};\nconst first = $input.first().json;\nconst ex = asterHtmlExtract(first);\nconst body = ex.body;\nconst fail = (rid, code, message, extra) => [{ json: { _route: 'respond', response: Object.assign({ request_id: rid || '', status: 'failed', pdf_url: null, file_name: null, error_code: code, error: message, message }, extra || {}) } }];\nconst v = asterHtmlValidate(body);\nif (!v.ok) {\n  const seen = 'Recibí content-type ' + (ex.diag.content_type || 'ninguno') + ', cuerpo tipo ' + ex.diag.body_type + ', campos: ' + (ex.diag.keys.join(', ') || 'ninguno') + '.';\n  return fail(String((body && body.request_id) || ''), v.code, v.message + ' ' + seen, { received: ex.diag });\n}\nconst p = v.p;\nconst now = new Date();\nconst prev = p.request_id ? sd.done[p.request_id] : null;\nif (prev && now.getTime() - prev.at < 600000) {\n  return [{ json: { _route: 'respond', response: Object.assign({}, prev.response, { duplicate: true, message: 'Esta solicitud ya se había procesado; se devuelve el mismo documento.' }) } }];\n}\nconst render = asterHtmlRender(p, asterHtmlIssued(now));\nreturn [{ json: { _route: 'build', request_id: p.request_id, render } }];"
+      }
+    },
+    {
+      "id": "3454bb8a-b879-4004-a36c-dbb49df9cef7",
+      "name": "Construir?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        520,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json._route === \"build\" ? \"yes\" : \"no\" }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "5c905be6-e3f0-44f3-b95c-8dfe40109aa4",
+      "name": "Drive Buscar plantilla",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        780,
+        -80
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "resource": "fileFolder",
+        "operation": "search",
+        "searchMethod": "query",
+        "queryString": "name = 'ATACAMA-DEMO-PLANTILLA-DINAMICA.html' and trashed = false",
+        "returnAll": false,
+        "limit": 1,
+        "filter": {},
+        "options": {
+          "fields": [
+            "id",
+            "name"
+          ]
+        }
+      }
+    },
+    {
+      "id": "1df32fd0-5102-4a22-8d11-08136c9c140f",
+      "name": "Drive Descargar plantilla",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1040,
+        -80
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "resource": "file",
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "402cc4b6-1cca-4bd1-936b-fd5e5d704e98",
+      "name": "Merge",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        -80
+      ],
+      "parameters": {
+        "jsCode": "const ASTER_HTML_PLACEHOLDERS = [\"{{DOCUMENT_TITLE}}\",\"{{DOCUMENT_CATEGORY}}\",\"{{METADATA_HTML}}\",\"{{SECTIONS_HTML}}\"];\nconst ASTER_HTML_DEFAULT_CATEGORY = \"INFORME / DEMOSTRACIÓN\";\nconst ASTER_HTML_LAYOUT_FIX = \"<style id=\\\"aster-layout-fix\\\">.sheet{display:flex;flex-direction:column;min-height:297mm;height:auto;padding:12mm 18mm 7mm 18mm}.brand-header{margin-bottom:5.5mm}.blue-title{min-height:0;padding:7.5mm 11mm 7mm 11mm}.blue-kicker{margin-bottom:2.4mm}.blue-title .sub{margin-top:2.5mm}.meta{padding:4mm 0 3.5mm;row-gap:2.4mm}.main-content{flex:1 0 auto;padding-top:3.5mm;padding-bottom:2mm}.section{margin-bottom:3.4mm}.sec-head{margin-bottom:1.4mm}.notice{margin-top:3mm;padding-top:3mm;break-inside:avoid}.showcase,.footer{position:static;left:auto;right:auto;bottom:auto;break-inside:avoid}.showcase{margin-top:3.5mm;margin-bottom:2.5mm}</style>\";\nconst ASTER_HTML_BLOCK_RE = \"<(h[1-6])\\\\b[^>]*>([\\\\s\\\\S]*?)<\\\\/\\\\1\\\\s*>|<(p|li|div)\\\\b[^>]*>([\\\\s\\\\S]*?)<\\\\/\\\\3\\\\s*>\";\nconst ASTER_HTML_ROW_RE = \"<(p|li|div|tr)\\\\b[^>]*>([\\\\s\\\\S]*?)<\\\\/\\\\1\\\\s*>\";\nconst clean = (s, max) => {\n  if (s == null) return '';\n  if (typeof s === 'number' || typeof s === 'boolean') s = String(s);\n  if (typeof s !== 'string') return '';\n  const t = s.replace(/\\r\\n?/g, '\\n').replace(/[ \\t]+\\n/g, '\\n').trim();\n  return t.length > max ? t.slice(0, max - 1).trimEnd() + '…' : t;\n};\nconst P = (inner, first) => '<p' + (first ? '' : ' style=\"margin-top:1.6mm\"') + '>' + inner + '</p>';\nfunction asterHtmlEsc(s) {\r\n  return String(s == null ? '' : s)\r\n    .replace(/[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]/g, '')\r\n    .replace(/&/g, '&amp;')\r\n    .replace(/</g, '&lt;')\r\n    .replace(/>/g, '&gt;')\r\n    .replace(/\"/g, '&quot;')\r\n    .replace(/'/g, '&#39;')\r\n    .replace(/\\{/g, '&#123;')\r\n    .replace(/\\}/g, '&#125;');\r\n}\n\nfunction asterHtmlRich(s) {\r\n  return asterHtmlEsc(s).replace(/\\*\\*([^*\\n]{1,200}?)\\*\\*/g, '<strong>$1</strong>');\r\n}\n\nfunction asterHtmlValidate(body) {\r\n  const bad = (code, message) => ({ ok: false, code, message });\r\n  if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length === 0) {\r\n    return bad('EMPTY_BODY', 'No llegaron datos. Envía un JSON con title y sections.');\r\n  }\r\n  let size = 0;\r\n  try { size = JSON.stringify(body).length; } catch (e) { return bad('VALIDATION_ERROR', 'El cuerpo no es JSON válido.'); }\r\n  if (size > 60000) return bad('PAYLOAD_TOO_LARGE', 'El contenido es demasiado largo (máximo ~60.000 caracteres).');\r\n\r\n  const title = clean(body.title, 140);\r\n  if (!title) return bad('VALIDATION_ERROR', 'Falta title (título del documento).');\r\n  const category = clean(body.category, 70) || ASTER_HTML_DEFAULT_CATEGORY;\r\n\r\n  // metadata: [{label,value}] o {Etiqueta: valor}\r\n  let metaIn = body.metadata;\r\n  if (metaIn && typeof metaIn === 'object' && !Array.isArray(metaIn)) {\r\n    metaIn = Object.keys(metaIn).map((k) => ({ label: k, value: metaIn[k] }));\r\n  }\r\n  if (metaIn == null) metaIn = [];\r\n  if (!Array.isArray(metaIn)) return bad('VALIDATION_ERROR', 'metadata debe ser una lista de {label, value}.');\r\n  if (metaIn.length > 12) return bad('VALIDATION_ERROR', 'metadata admite como máximo 12 campos.');\r\n  const metadata = [];\r\n  for (const m of metaIn) {\r\n    if (!m || typeof m !== 'object') return bad('VALIDATION_ERROR', 'Cada metadata debe ser {label, value}.');\r\n    const label = clean(m.label, 40);\r\n    if (!label) return bad('VALIDATION_ERROR', 'Cada metadata necesita label.');\r\n    metadata.push({ label, value: clean(m.value, 160) || 'No informado' });\r\n  }\r\n\r\n  if (!Array.isArray(body.sections) || body.sections.length === 0) return bad('VALIDATION_ERROR', 'Falta sections (al menos una sección).');\r\n  if (body.sections.length > 14) return bad('VALIDATION_ERROR', 'sections admite como máximo 14 secciones.');\r\n  const sections = [];\r\n  for (let i = 0; i < body.sections.length; i++) {\r\n    const s = body.sections[i];\r\n    if (!s || typeof s !== 'object') return bad('VALIDATION_ERROR', `La sección ${i + 1} no es válida.`);\r\n    const heading = clean(s.heading, 90);\r\n    if (!heading) return bad('VALIDATION_ERROR', `La sección ${i + 1} necesita heading.`);\r\n    const text = clean(s.text, 4000);\r\n    let items = [];\r\n    if (s.items != null) {\r\n      if (!Array.isArray(s.items)) return bad('VALIDATION_ERROR', `items de la sección ${i + 1} debe ser una lista de textos.`);\r\n      items = s.items.slice(0, 20).map((x) => clean(x, 400)).filter(Boolean);\r\n    }\r\n    let pending = null;\r\n    if (s.pending != null) {\r\n      if (typeof s.pending !== 'object' || Array.isArray(s.pending)) return bad('VALIDATION_ERROR', `pending de la sección ${i + 1} debe ser {title, text}.`);\r\n      const pt = clean(s.pending.title, 120);\r\n      const px = clean(s.pending.text, 1000);\r\n      if (pt || px) pending = { title: pt || 'Pendiente', text: px };\r\n    }\r\n    if (!text && items.length === 0 && !pending) return bad('VALIDATION_ERROR', `La sección ${i + 1} («${heading}») no tiene contenido: usa text, items o pending.`);\r\n    sections.push({ heading, text, items, pending });\r\n  }\r\n\r\n  const rid = body.request_id == null ? '' : String(body.request_id).replace(/[^A-Za-z0-9_.:-]/g, '').slice(0, 80);\r\n  return { ok: true, p: { request_id: rid, title, category, metadata, sections } };\r\n}\n\nfunction asterHtmlSlug(s) {\r\n  const t = String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);\r\n  return t || 'documento';\r\n}\n\nfunction asterHtmlIssued(date) {\r\n  const f = new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Santiago', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(date);\r\n  const g = (t) => f.find((x) => x.type === t).value;\r\n  const hh = g('hour') === '24' ? '00' : g('hour');\r\n  return { stamp: `${g('year')}${g('month')}${g('day')}-${hh}${g('minute')}`, human: `${g('day')}-${g('month')}-${g('year')} ${hh}:${g('minute')}` };\r\n}\n\nfunction asterHtmlRender(p, issued) {\r\n  const metadataHtml = p.metadata\r\n    .map((m) => `<div class=\"item\"><div class=\"label\">${asterHtmlEsc(m.label)}</div><div class=\"value\">${asterHtmlRich(m.value)}</div></div>`)\r\n    .join('\\n    ');\r\n  const sectionsHtml = p.sections\r\n    .map((s, i) => {\r\n      const num = String(i + 1).padStart(2, '0');\r\n      let body = '';\r\n      let first = true;\r\n      if (s.text) {\r\n        for (const para of s.text.split(/\\n{2,}/)) {\r\n          body += P(asterHtmlRich(para.trim()).replace(/\\n/g, '<br>'), first);\r\n          first = false;\r\n        }\r\n      }\r\n      for (const it of s.items) {\r\n        body += P('• ' + asterHtmlRich(it), first);\r\n        first = false;\r\n      }\r\n      if (s.pending) {\r\n        body += `<div class=\"pending\"${first ? '' : ' style=\"margin-top:2.4mm\"'}><strong>${asterHtmlEsc(s.pending.title)}</strong>${s.pending.text ? `<p>${asterHtmlRich(s.pending.text)}</p>` : ''}</div>`;\r\n      }\r\n      return `<div class=\"section\"><div class=\"sec-head\"><span class=\"numb\">${num}</span><h2>${asterHtmlEsc(s.heading)}</h2></div>${body}</div>`;\r\n    })\r\n    .join('\\n    ');\r\n  return {\r\n    titleHtml: asterHtmlEsc(p.title),\r\n    // La fecha de EMISIÓN (de hoy) va en la franja azul y no se mezcla con la fecha del HECHO, que llega en metadata o queda «No informada».\r\n    categoryHtml: asterHtmlEsc(p.category) + ' · Emitido ' + asterHtmlEsc(issued.human),\r\n    metadataHtml,\r\n    sectionsHtml,\r\n    fileName: `atacama-${asterHtmlSlug(p.title)}-${issued.stamp}.pdf`,\r\n  };\r\n}\n\nfunction asterHtmlMerge(template, r) {\r\n  if (typeof template !== 'string' || template.length < 500) throw new Error('TEMPLATE_INVALID: la plantilla está vacía o es demasiado corta.');\r\n  for (const ph of ASTER_HTML_PLACEHOLDERS) {\r\n    if (template.indexOf(ph) === -1) throw new Error('TEMPLATE_INVALID: falta el marcador ' + ph);\r\n  }\r\n  // Identidad visual: sin el logotipo oficial incrustado NO se genera el documento (falla cerrado en vez de salir sin logo).\r\n  if (!/<img\\b[^>]*\\bclass=\"brand-logo\"[^>]*\\bsrc=\"data:image\\/[a-z+]+;base64,[A-Za-z0-9+\\/=]{2000,}\"/i.test(template)) {\r\n    throw new Error('TEMPLATE_INVALID: la plantilla no trae el logotipo oficial (img.brand-logo con la imagen incrustada en Base64).');\r\n  }\r\n  // split/join: sin patrones especiales de String.replace ($&, $1) que alteren el contenido.\r\n  const merged = template\r\n    .split('{{METADATA_HTML}}').join(r.metadataHtml)\r\n    .split('{{SECTIONS_HTML}}').join(r.sectionsHtml)\r\n    .split('{{DOCUMENT_TITLE}}').join(r.titleHtml)\r\n    .split('{{DOCUMENT_CATEGORY}}').join(r.categoryHtml);\r\n  return merged.indexOf('</head>') === -1 ? merged : merged.replace('</head>', () => ASTER_HTML_LAYOUT_FIX + '</head>');\r\n}\n\nfunction asterHtmlExtract(first) {\r\n  const item = first && typeof first === 'object' ? first : {};\r\n  const h = item.headers && typeof item.headers === 'object' ? item.headers : {};\r\n  const diag = { content_type: String(h['content-type'] || '').slice(0, 60) || null, body_type: null, keys: [] };\r\n  const parse = (v) => {\r\n    if (typeof v === 'string') {\r\n      const t = v.trim();\r\n      if (t[0] === '{' || t[0] === '[') { try { return JSON.parse(t); } catch (e) { /* queda como texto */ } }\r\n    }\r\n    return v;\r\n  };\r\n  const isObj = (o) => o !== null && typeof o === 'object' && !Array.isArray(o);\r\n  const TITLE_KEYS = ['title', 'titulo', 'título', 'document_title', 'documentTitle'];\r\n  const hasTitle = (o) => isObj(o) && TITLE_KEYS.some((k) => o[k] != null);\r\n  let b = parse(Object.prototype.hasOwnProperty.call(item, 'body') ? item.body : item);\r\n  diag.body_type = Array.isArray(b) ? 'array' : b === null ? 'null' : typeof b;\r\n  const WRAP = ['input', 'data', 'payload', 'arguments', 'args', 'parameters', 'body', 'request', 'document', 'documento'];\r\n  for (let depth = 0; depth < 3 && isObj(b) && !hasTitle(b); depth++) {\r\n    let next = null;\r\n    for (const k of WRAP) { const v = parse(b[k]); if (isObj(v)) { next = v; break; } }\r\n    if (!next) break;\r\n    b = next;\r\n  }\r\n  if (!isObj(b)) return { body: b, diag };\r\n  const al = (o, to, froms) => { if (o[to] == null) for (const f of froms) if (o[f] != null) { o[to] = o[f]; break; } };\r\n  b = Object.assign({}, b);\r\n  diag.keys = Object.keys(b).slice(0, 20);\r\n  al(b, 'title', ['titulo', 'título', 'document_title', 'documentTitle']);\r\n  al(b, 'category', ['categoria', 'categoría', 'document_category', 'documentCategory']);\r\n  al(b, 'metadata', ['metadatos']);\r\n  al(b, 'sections', ['secciones']);\r\n  b.sections = parse(b.sections);\r\n  b.metadata = parse(b.metadata);\r\n  // Herramientas que envían HTML ya armado: se reduce a datos (el HTML nunca se inserta).\r\n  if (b.sections == null && typeof b.sections_html === 'string') { b.sections = asterHtmlParseSections(b.sections_html); diag.from_html = true; }\r\n  if (b.metadata == null && typeof b.metadata_html === 'string') { b.metadata = asterHtmlParseMetadata(b.metadata_html); diag.from_html = true; }\r\n  if (Array.isArray(b.sections)) {\r\n    b.sections = b.sections.map((s0) => {\r\n      const s = parse(s0);\r\n      if (!isObj(s)) return s;\r\n      const s2 = Object.assign({}, s);\r\n      al(s2, 'heading', ['title', 'titulo', 'título', 'encabezado', 'nombre', 'section_title']);\r\n      al(s2, 'text', ['texto', 'content', 'contenido', 'body', 'descripcion', 'descripción']);\r\n      al(s2, 'items', ['puntos', 'bullets', 'lista']);\r\n      al(s2, 'pending', ['pendiente']);\r\n      s2.items = parse(s2.items);\r\n      s2.pending = parse(s2.pending);\r\n      return s2;\r\n    });\r\n  }\r\n  return { body: b, diag };\r\n}\n\nfunction asterHtmlDecode(s) {\n  return String(s == null ? '' : s)\n    .replace(/&nbsp;/gi, ' ')\n    .replace(/&#x([0-9a-f]{1,6});/gi, (m, h) => { const c = parseInt(h, 16); return c >= 32 && c <= 0x10ffff ? String.fromCodePoint(c) : ''; })\n    .replace(/&#(\\d{1,7});/g, (m, d) => { const c = parseInt(d, 10); return c >= 32 && c <= 0x10ffff ? String.fromCodePoint(c) : ''; })\n    .replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/&quot;/gi, '\"').replace(/&apos;/gi, \"'\").replace(/&amp;/gi, '&');\n}\n\nfunction asterHtmlText(html) {\n  let t = String(html == null ? '' : html)\n    .replace(/<(script|style|iframe|object|embed|svg|template)\\b[\\s\\S]*?<\\/\\1\\s*>/gi, ' ')\n    .replace(/<br\\s*\\/?>/gi, '\\n')\n    .replace(/<(strong|b)\\b[^>]*>([\\s\\S]*?)<\\/\\1\\s*>/gi, (m, tag, inner) => {\n      const x = inner.replace(/<[^>]*>/g, '').replace(/\\*/g, '').trim();\n      return x ? '**' + x + '**' : '';\n    })\n    .replace(/<[^>]*>/g, ' ');\n  return asterHtmlDecode(t).replace(/[ \\t ]+/g, ' ').replace(/ *\\n */g, '\\n').replace(/\\n{3,}/g, '\\n\\n').trim();\n}\n\nfunction asterHtmlParseSections(html) {\n  const src = String(html == null ? '' : html).replace(/<(script|style|iframe|object|embed|svg|template)\\b[\\s\\S]*?<\\/\\1\\s*>/gi, ' ');\n  const re = new RegExp(ASTER_HTML_BLOCK_RE, 'gi');\n  const out = [];\n  let cur = null;\n  let m;\n  const open = (heading) => { cur = { heading, paras: [], items: [] }; out.push(cur); };\n  while ((m = re.exec(src)) !== null) {\n    if (m[1]) {\n      const h = asterHtmlText(m[2]).replace(/\\*\\*/g, '');\n      if (h) open(h.slice(0, 90));\n      continue;\n    }\n    const txt = asterHtmlText(m[4]);\n    if (!txt) continue;\n    if (!cur) open('Detalle');\n    if (m[3].toLowerCase() === 'li') cur.items.push(txt); else cur.paras.push(txt);\n  }\n  if (out.length === 0) {\n    const all = asterHtmlText(src);\n    if (all) out.push({ heading: 'Detalle', paras: [all], items: [] });\n  }\n  return out\n    .filter((s) => s.paras.length || s.items.length)\n    .map((s) => {\n      const sec = { heading: s.heading };\n      if (/pendiente/i.test(s.heading) && s.paras.length && !s.items.length) {\n        // «Pendientes» → recuadro azul de la plantilla: primera frase como título, el resto como detalle\n        const all = s.paras.join(' ');\n        const cut = all.search(/[.!?](\\s|$)/);\n        const first = cut > 0 && cut < 110 ? all.slice(0, cut + 1) : all.slice(0, 110);\n        sec.pending = { title: first.replace(/\\*\\*/g, ''), text: all.slice(first.length).trim() };\n      } else {\n        if (s.paras.length) sec.text = s.paras.join('\\n\\n');\n        if (s.items.length) sec.items = s.items;\n      }\n      return sec;\n    });\n}\n\nfunction asterHtmlParseMetadata(html) {\n  const src = String(html == null ? '' : html).replace(/<(script|style|iframe|object|embed|svg|template)\\b[\\s\\S]*?<\\/\\1\\s*>/gi, ' ');\n  const re = new RegExp(ASTER_HTML_ROW_RE, 'gi');\n  const rows = [];\n  let m;\n  while ((m = re.exec(src)) !== null) rows.push(m[2]);\n  if (rows.length === 0) rows.push(...src.split(/<br\\s*\\/?>|\\n/i));\n  const out = [];\n  for (const r of rows) {\n    const t = asterHtmlText(r);\n    if (!t) continue;\n    const i = t.indexOf(':');\n    if (i <= 0 || i > 60) continue;\n    const label = t.slice(0, i).replace(/\\*\\*/g, '').trim();\n    const value = t.slice(i + 1).replace(/\\*\\*/g, '').trim();\n    if (label) out.push({ label, value });\n  }\n  return out;\n}\nconst st = $('Validate').first().json;\nconst fail = (code, message) => [{ json: { _route: 'respond', response: { request_id: st.request_id || '', status: 'failed', pdf_url: null, file_name: null, error_code: code, error: message, message } } }];\nlet template = '';\ntry { const buf = await this.helpers.getBinaryDataBuffer(0, 'data'); template = buf.toString('utf8'); } catch (e) { template = ''; }\nif (!template) return fail('TEMPLATE_UNAVAILABLE', 'No se pudo leer la plantilla corporativa desde Google Drive. Revisa la credencial de Drive y que exista el archivo ATACAMA-DEMO-PLANTILLA-DINAMICA.html.');\nlet html;\ntry { html = asterHtmlMerge(template, st.render); } catch (e) { return fail('TEMPLATE_INVALID', String(e.message || e).slice(0, 200)); }\nreturn [{ json: { _route: 'pdf', request_id: st.request_id, file_name: st.render.fileName, api2pdf_body: { html, fileName: st.render.fileName, inline: false, options: { printBackground: true, preferCSSPageSize: true } } } }];"
+      }
+    },
+    {
+      "id": "8a57aa70-d152-4f2c-8032-e3a4daee8f14",
+      "name": "PDF?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1560,
+        -80
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json._route === \"pdf\" ? \"yes\" : \"no\" }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "eb18e7d1-2feb-4653-8705-f955f2d02cab",
+      "name": "API2PDF HTML a PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1820,
+        -160
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "https://v2.api2pdf.com/chrome/pdf/html",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.api2pdf_body) }}",
+        "options": {
+          "timeout": 60000
+        }
+      }
+    },
+    {
+      "id": "77884211-ecd4-4ef3-a509-518a1eae90ad",
+      "name": "Format",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2080,
+        -160
+      ],
+      "parameters": {
+        "jsCode": "const m = $('Merge').first().json;\nconst sd = $getWorkflowStaticData('global');\nsd.done = sd.done || {};\nconst j = $input.first().json || {};\nconst rid = m.request_id || '';\nconst errTxt = (x) => String(x == null ? '' : (typeof x === 'string' ? x : (x.message || JSON.stringify(x)))).replace(/\\s+/g, ' ').slice(0, 200);\nif (j.error || j.Success !== true || !j.FileUrl) {\n  const detail = errTxt(j.Error || j.error || 'sin detalle');\n  const msg = 'No se pudo generar el PDF (' + detail + ').';\n  return [{ json: { request_id: rid, status: 'failed', pdf_url: null, file_name: m.file_name, error_code: 'PDF_SERVICE_ERROR', error: msg, message: msg } }];\n}\nconst response = { request_id: rid, status: 'completed', pdf_url: j.FileUrl, file_name: m.file_name, error_code: null, error: null, message: 'Documento generado. El enlace permanece disponible por tiempo limitado.' };\nif (rid) {\n  sd.done[rid] = { at: Date.now(), response };\n  const ks = Object.keys(sd.done); if (ks.length > 300) { ks.sort((a, b) => sd.done[a].at - sd.done[b].at).slice(0, ks.length - 300).forEach((k) => delete sd.done[k]); }\n}\nreturn [{ json: response }];"
+      }
+    },
+    {
+      "id": "b026b87b-564b-434c-bc41-e49d2dcf3f06",
+      "name": "Respond",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        220
+      ],
+      "parameters": {
+        "jsCode": "return [{ json: $input.first().json.response }];"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook ASTER PDF": {
+      "main": [
+        [
+          {
+            "node": "Validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate": {
+      "main": [
+        [
+          {
+            "node": "Construir?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construir?": {
+      "main": [
+        [
+          {
+            "node": "Drive Buscar plantilla",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive Buscar plantilla": {
+      "main": [
+        [
+          {
+            "node": "Drive Descargar plantilla",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive Descargar plantilla": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "PDF?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF?": {
+      "main": [
+        [
+          {
+            "node": "API2PDF HTML a PDF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API2PDF HTML a PDF": {
+      "main": [
+        [
+          {
+            "node": "Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "all",
+    "saveManualExecutions": false
+  }
+}

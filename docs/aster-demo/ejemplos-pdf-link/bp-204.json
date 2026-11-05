@@ -1,0 +1,44 @@
+{
+  "request_id": "bp204-test-001",
+  "title": "Informe técnico de terreno",
+  "category": "REPORTE TÉCNICO / DEMOSTRACIÓN",
+  "metadata": [
+    {
+      "label": "Equipo",
+      "value": "Bomba BP-204"
+    },
+    {
+      "label": "Fecha del hecho",
+      "value": "No informada"
+    },
+    {
+      "label": "Ubicación",
+      "value": "No informada"
+    },
+    {
+      "label": "Responsable",
+      "value": "No informado"
+    }
+  ],
+  "sections": [
+    {
+      "heading": "Actividad realizada",
+      "text": "Se realizó una revisión en terreno de la bomba de agua identificada como **BP-204**, mientras el equipo se encontraba en funcionamiento."
+    },
+    {
+      "heading": "Hallazgo informado",
+      "text": "Durante la revisión se percibió un **ruido inusual** mientras la bomba estaba funcionando. No se informó la causa ni se estableció un diagnóstico técnico."
+    },
+    {
+      "heading": "Acciones realizadas",
+      "text": "La observación detectada fue comunicada al supervisor, según el relato proporcionado."
+    },
+    {
+      "heading": "Estado y actividades pendientes",
+      "pending": {
+        "title": "Revisión de mantenimiento pendiente",
+        "text": "No se indicaron responsable, plazo ni mediciones asociadas. El hallazgo permanece pendiente de verificación."
+      }
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "_nota": "Config de la landing /aster. Cambiar video/poster/subtitulos aqui sin tocar componentes. video=null muestra la tarjeta de respaldo.",
+  "whatsappE164": "56936108103",
+  "video": null,
+  "poster": "/aster/poster.jpg",
+  "captions": null,
+  "captionsLang": "es",
+  "mainSiteUrl": "https://atacamalabs.cl"
+}

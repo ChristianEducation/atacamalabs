@@ -1,0 +1,41 @@
+{
+  "request_id": "parte-turno-test-002",
+  "title": "Parte de turno · Chancado primario",
+  "category": "PARTE DE TURNO / DEMOSTRACIÓN",
+  "metadata": {
+    "Turno": "Noche",
+    "Área": "Chancado primario",
+    "Jefe de turno": "No informado"
+  },
+  "sections": [
+    {
+      "heading": "Resumen del turno",
+      "text": "Operación **normal** durante el turno.\n\nSe detuvo la correa transportadora CV-12 por 40 minutos por acumulación de material en la tolva."
+    },
+    {
+      "heading": "Novedades informadas",
+      "items": [
+        "Acumulación de material en tolva de CV-12",
+        "Se limpió el punto de transferencia",
+        "Se avisó a mantenimiento mecánico"
+      ]
+    },
+    {
+      "heading": "Pendientes para el turno siguiente",
+      "pending": {
+        "title": "Revisión de rodillos de CV-12",
+        "text": "Sin responsable ni hora comprometida."
+      },
+      "items": [
+        "Confirmar limpieza completa del punto de transferencia"
+      ]
+    },
+    {
+      "heading": "Datos no informados",
+      "items": [
+        "Tonelaje procesado",
+        "Causa de la acumulación"
+      ]
+    }
+  ]
+}
