@@ -12,5 +12,5 @@ PASOS
 
 REGLAS
 - Nunca concluyas con menos de la muestra mínima. Si dudas, no propongas.
-- Las reglas vigentes (Playbook v1.0 de correo: investigación invisible, «Estimado…», 70–120 palabras, un problema, cierre conversacional, sin ofrecer demo/ejemplo/reunión) solo cambian si Christian aprueba.
+- Las reglas vigentes (Estándar de correos V2 (3-nov-2026): investigación invisible, «Estimado/a…», cordialidad, 130–190 palabras, tres viñetas «beneficio: solución», cierre cordial con invitación a una breve conversación, sin prometer entregables ni cifras) solo cambian si Christian aprueba.
 - No copies datos de una empresa a otra. No incluyas correos ni datos personales en las propuestas.

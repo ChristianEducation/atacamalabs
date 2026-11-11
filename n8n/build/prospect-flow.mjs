@@ -14,6 +14,7 @@
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import { evidenceKind, evidenceSupports, normalizeVertical, mapSolution, mapChannel, evaluateAdmission, lintDraft, host, buildDraft, buildGhlPayloads, buildReviewNote, findExistingContact } from '../../scripts/prospecting/admit-core.mjs';
+import { emailKitV2, emailDraftV2 } from '../../scripts/outreach/email-v2-core.mjs';
 
 const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 const GHL = 'https://services.leadconnectorhq.com';
@@ -85,7 +86,7 @@ export function buildProspectSearch() {
 }
 
 /* ============================================================== 18 ADMIT */
-const LIB = [evidenceKind, evidenceSupports, normalizeVertical, mapSolution, mapChannel, evaluateAdmission, lintDraft, host, buildDraft, buildGhlPayloads, buildReviewNote, findExistingContact].map((f) => f.toString()).join('\n\n');
+const LIB = [evidenceKind, evidenceSupports, normalizeVertical, mapSolution, mapChannel, evaluateAdmission, lintDraft, host, buildDraft, buildGhlPayloads, buildReviewNote, findExistingContact, emailKitV2, emailDraftV2].map((f) => f.toString()).join('\n\n');
 
 const initCode = (pack) => `const PACK_ID = '${pack.id}';
 const first = $input.first().json || {};

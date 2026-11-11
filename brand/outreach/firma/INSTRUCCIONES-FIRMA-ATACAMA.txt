@@ -1,0 +1,8 @@
+Firma de Atacama Labs - Christian Wevar
+
+1. Abre Firma_Atacama_Labs_Christian.html en un navegador para previsualizar.
+2. Gmail: Configuracion > Ver todos los ajustes > General > Firma > Crear nueva. Copia SOLO la firma visual y pegala.
+3. Si Gmail omite fotos/logo, sube Foto_Circular_Christian_Atacama.png y Logo_Atacama_Firma.png directamente con el boton Insertar imagen en la firma de Gmail.
+4. Automatizaciones (n8n/GHL): usa Firma_Atacama_Labs_Automatizaciones.html, reemplazando las URLs de foto/logo por URL HTTPS publicas en tu dominio. No sirve la ruta local de archivos ni los data URI para envios fiables.
+5. Envia un email de prueba antes de activar la firma.
+6. Se uso contacto@atacamalabs.cl como direccion visible; cambiala si corresponde.

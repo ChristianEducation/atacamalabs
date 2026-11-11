@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as cm from './coldmail-core.mjs';
 import * as oc from './outreach-core.mjs';
 import * as ftt from './followup-templates.mjs';
+import * as ev from './email-v2-core.mjs';
 
 let n = 0;
 const ok = (name, fn) => { try { fn(); n++; } catch (e) { console.error('FAIL', name, '\n', e.stack.split('\n').slice(0, 4).join('\n')); process.exitCode = 1; } };
@@ -9,91 +10,143 @@ const ok = (name, fn) => { try { fn(); n++; } catch (e) { console.error('FAIL', 
 const CFG = { mode: 'live', paused: false, from_email: 'christian@atacamalabs.cl', from_name: 'Christian Wevar', daily_cap: 5, window_start: '09:00', window_end: '17:30', tz: 'America/Santiago', legal_footer: null };
 const WED = Date.parse('2026-10-07T15:00:00Z');
 
-// ---- correos de ejemplo: la plantilla vieja (la que aplanaba todo) y correos escritos con el PLAYBOOK de correos outbound v1.0 (13-oct-2026)
+// ---- correos de ejemplo: la plantilla vieja (la que aplanaba todo) y correos del ESTÁNDAR V2 (guía aprobada por Christian el 3-nov-2026: tres viñetas «beneficio: solución»)
 const OLD = (co, extra) => ({ kind: 'initial', subject: 'Una idea para ' + co, body: 'Hola, equipo de ' + co + ',\n\nVi que atienden varias especialidades en dos sucursales y reciben solicitudes por formularios, WhatsApp y llamada. Mi hipótesis (no lo he visto por dentro) es que recepción repite preguntas sobre tratamiento, sucursal y horarios antes de convertir la consulta en hora.\n\nEn Atacama Labs armamos agentes que identifican tratamiento y sucursal, responden lo básico y entregan la consulta ordenada a recepción. ' + (extra || '¿Te parece si lo vemos en 15 minutos esta semana?') });
-const GOOD_A = { kind: 'initial', subject: 'consultas entre sedes antes de agendar', body: 'Estimada Andrea,\n\nCuando una paciente escribe por WhatsApp preguntando por una limpieza, en clínicas con más de una sede suele haber un trabajo previo: averiguar en cuál hay hora, qué tratamiento corresponde y qué datos faltan antes de agendar.\n\nSoy Christian, de Atacama Labs. Armamos agentes que pueden hacerse cargo de esa primera parte, dejar cada consulta con sede y tratamiento definidos y derivarla a recepción cuando realmente necesita a una persona.\n\n¿Te haría sentido conversar sobre cómo automatizar esta primera etapa u otro proceso que hoy les esté quitando tiempo?' };
-const GOOD_B = { kind: 'initial', subject: 'datos para cotizar un pedido', body: 'Estimado Marcelo,\n\nEn la venta de equipos industriales es habitual que una solicitud de cotización llegue sin el modelo, la cantidad o el plazo, y que alguien tenga que volver a preguntar por correo antes de poder responder con un precio.\n\nSoy Christian, de Atacama Labs. Construimos agentes que piden esos datos en la primera respuesta, completan lo que falta y dejan cada solicitud ordenada y lista para que ventas cotice, o para que una persona la revise si hay dudas.\n\n¿Hay alguna parte de este proceso que hoy les esté quitando más tiempo?' };
-const GOOD_C = { kind: 'initial', subject: 'primer filtro de solicitudes técnicas', body: 'Estimado equipo de Taller Norte,\n\nCuando una solicitud técnica llega sin equipo, ubicación ni urgencia, normalmente vuelve con varias llamadas antes de que ingeniería pueda evaluarla, y ese ordenamiento previo rara vez queda registrado en un solo lugar.\n\nSoy Christian, de Atacama Labs. Armamos agentes que trabajan dentro de ese proceso: reúnen los antecedentes, preguntan lo que falta, clasifican el requerimiento y lo dejan preparado para una persona del equipo.\n\n¿Qué parte de este proceso sigue requiriendo más coordinación de ustedes?' };
+const V2 = (greet, sector, bullets) => greet + ':\n\nJunto con saludar, espero que se encuentre muy bien.\n\nLe escribo desde Atacama Labs, empresa especializada en agentes de inteligencia artificial, automatización e integración de sistemas. Ayudamos a simplificar tareas operativas y comerciales con soluciones que se conectan con las herramientas que ya usan.\n\nEn el sector ' + sector + ', por ejemplo, podemos ayudar a:\n\n' + bullets.map((b) => '- ' + b).join('\n') + '\n\nPrimero entendemos cómo trabaja cada empresa y después elegimos la tecnología.\n\nMe gustaría mostrarle cómo alguna de estas soluciones podría aplicarse a su operación. Si le resulta interesante, con gusto podemos coordinar una breve conversación.\n\nQuedo atento a sus comentarios.';
+const GOOD_A = { kind: 'initial', subject: 'consultas entre sedes antes de agendar', body: V2('Estimada Andrea', 'odontológico', ['Reducir horas perdidas por inasistencias: recordando citas y facilitando su confirmación o reagendamiento entre sedes.', 'Evitar consultas sin respuesta: orientando sobre tratamientos y pasos para pedir una hora, también fuera del horario de atención.', 'Disminuir tareas administrativas: conectando WhatsApp, correo y la agenda para que recepción reciba cada consulta ordenada.']) };
+const GOOD_B = { kind: 'initial', subject: 'datos para cotizar un pedido', body: V2('Estimado Marcelo', 'de equipos industriales', ['Evitar cotizaciones que se enfrían: pidiendo modelo, cantidad y plazo en la primera respuesta y haciendo seguimiento a cada solicitud.', 'Reducir idas y vueltas por correo: dejando cada solicitud completa y lista para que ventas cotice.', 'Ordenar la información comercial: conectando correo, WhatsApp y el CRM para que nada quede en bandejas personales.']) };
+const GOOD_C = { kind: 'initial', subject: 'primer filtro de solicitudes técnicas', body: V2('Estimado equipo de Taller Norte', 'de talleres y servicio técnico', ['Acelerar la evaluación de requerimientos: reuniendo equipo, ubicación y urgencia antes de que ingeniería los revise.', 'Evitar llamadas repetidas: clasificando cada solicitud y preguntando lo que falta.', 'Disminuir el trabajo de registro: dejando los antecedentes en un solo lugar, conectado con las herramientas del equipo.']) };
 const EV = { evidence: ['Atienden en dos sedes (Las Condes y Providencia)', 'Reciben consultas por WhatsApp y formulario'] };
 const cand = (o) => ({ id: 'c-1', company_name: 'Dentaline', status: 'in_ghl', ghl_contact_id: 'G1', ghl_opportunity_id: 'O1', ghl_stage: 'investigado', canonical: { contact: { email: 'contacto@dentaline.cl' } }, drafts: {}, ...(o || {}) });
 const draftRow = (o) => ({ id: 'm-1', candidate_id: 'c-1', company_name: 'Dentaline', kind: 'initial', direction: 'outbound', status: 'draft', to_email: 'contacto@dentaline.cl', subject: OLD('Dentaline').subject, body: OLD('Dentaline').body, content_hash: oc.contentHash('contacto@dentaline.cl', OLD('Dentaline').subject, OLD('Dentaline').body), created_at: '2026-10-07T12:00:00.000Z', metadata: {}, ...(o || {}) });
 const ctx = (o) => ({ now: WED, candidate: cand(), history: [], suppression: [], new_id: 'm-9', config: CFG, peers: [], ...(o || {}) });
 const strictLint = (d, peers, cold) => cm.coldLint({ ...d, strict: true }, peers, cold);
+const withBefore = (g, marker, txt) => ({ ...g, body: g.body.replace(marker, txt + ' ' + marker) });
 
-ok('cmCtaKind distingue reunión, ejemplo, quién lo ve y pregunta', () => {
+ok('cmCtaKind distingue reunión, ejemplo, quién lo ve y pregunta; y reconoce la invitación cordial del estándar V2 solo en primeros correos', () => {
   assert.equal(cm.cmCtaKind('Hola.\n\nQuizás sirva. ¿Te parece si lo vemos en 15 minutos?'), 'meeting');
   assert.equal(cm.cmCtaKind('Hola.\n\nQuizás sirva. ¿Te mando un ejemplo?'), 'example');
   assert.equal(cm.cmCtaKind('Hola.\n\nQuizás sirva. ¿Esto lo ve alguien de operaciones?'), 'who');
   assert.equal(cm.cmCtaKind('Hola.\n\nQuizás sirva. ¿Cómo lo manejan hoy?'), 'question');
+  assert.equal(cm.cmCtaKind(GOOD_A.body, true), 'invitation');
+  assert.notEqual(cm.cmCtaKind(GOOD_A.body), 'invitation', 'sin la marca de primer correo no se reconoce (seguimientos)');
+  assert.equal(cm.cmCtaKind(GOOD_A.body + '\n\nSaludos cordiales,\n\nChristian Wevar', true), 'invitation', 'la despedida y el nombre al final no cuentan');
 });
 
-ok('playbook: los correos nuevos puntúan «bueno» sin avisos de estilo y sin bloqueos, incluso en modo estricto', () => {
+ok('estándar V2: los correos nuevos puntúan «bueno» sin avisos de estilo y sin bloqueos, incluso en modo estricto', () => {
   for (const g of [GOOD_A, GOOD_B, GOOD_C]) {
     const l = strictLint(g, [], EV);
     assert.ok(l.score >= 80, g.subject + '=' + l.score + ' ' + JSON.stringify(l.warnings.map((w) => w.code)));
     assert.deepEqual(l.hard, [], g.subject);
-    assert.equal(l.cta_kind, 'question', g.subject);
-    assert.ok(l.rewards.some((r) => r.code === 'saludo_formal'), g.subject);
-    assert.ok(l.metrics.words >= 55 && l.metrics.words <= 120, g.subject + ' ' + l.metrics.words);
+    assert.equal(l.cta_kind, 'invitation', g.subject);
+    for (const r of ['saludo_formal', 'cordialidad', 'tres_aplicaciones', 'cta_invitacion']) assert.ok(l.rewards.some((x) => x.code === r), g.subject + ' ' + r);
+    assert.ok(l.metrics.words >= 110 && l.metrics.words <= 230, g.subject + ' ' + l.metrics.words);
   }
 });
 
-ok('playbook: la plantilla vieja («Hola», «Vi que», «Mi hipótesis», reunión de 15 minutos) queda en score bajo', () => {
+ok('estándar V2: las plantillas de respaldo por rubro (email-v2-core) cumplen el linter estricto y traen tres viñetas «beneficio: solución»', () => {
+  const rubros = { seguros: 'corredora de seguros', hoteles: 'hotel', restaurantes: 'restaurante', casinos_colegios: 'casino de colegio', casinos_empresas: 'servicios de alimentación', salud: 'clínica dental', corredoras: 'corredora de propiedades', generico: 'ferretería' };
+  for (const [key, hint] of Object.entries(rubros)) {
+    for (const first of ['', 'María']) {
+      const d = ev.emailDraftV2({ company: 'Empresa Prueba', firstName: first, hint });
+      assert.equal(d.kit, key, hint);
+      const l = strictLint({ kind: 'initial', subject: d.subject, body: d.body }, [], EV);
+      assert.deepEqual(l.hard, [], key + ' ' + JSON.stringify(l.hard));
+      assert.ok(l.score >= 80, key + '=' + l.score + ' ' + JSON.stringify(l.warnings.map((w) => w.code)));
+      assert.equal(d.body.split('\n').filter((x) => x.startsWith('- ')).length, 3, key);
+      assert.ok(d.body.startsWith(first ? 'Estimado/a María:' : 'Estimado equipo de Empresa Prueba:'), key);
+      assert.ok(/^(Evitar|Reducir|Disminuir)/.test(ev.emailKitV2(hint, 'X').bullets[0]), key);
+      assert.ok(!/\d+\s?%|garantiz|precio/i.test(d.body), key + ' sin cifras ni promesas');
+    }
+  }
+  // el ejemplo de la guía (corredora de seguros) queda literal
+  assert.deepEqual(ev.emailKitV2('corredora de seguros', 'X').bullets, ['Evitar oportunidades de venta perdidas: atendiendo y dando seguimiento a potenciales clientes.', 'Reducir cotizaciones sin respuesta: automatizando el seguimiento comercial.', 'Disminuir tareas administrativas: conectando WhatsApp, correo y CRM.']);
+});
+
+ok('estándar V2: la plantilla vieja («Hola», «Vi que», «Mi hipótesis», sin viñetas ni cordialidad) queda en score bajo', () => {
   const old = cm.coldLint(OLD('Dentaline'), [], {});
   assert.equal(old.level, 'bajo'); assert.ok(old.score <= 40, 'old=' + old.score);
   const codes = old.warnings.map((w) => w.code);
-  for (const c of ['saludo_no_playbook', 'oferta_prohibida', 'apertura_vi_que', 'mi_hipotesis', 'cta_reunion', 'asunto_generico', 'detalle_excesivo']) assert.ok(codes.includes(c), c + ' falta en ' + codes);
+  for (const c of ['saludo_no_estandar', 'sin_cordialidad', 'tres_ejemplos', 'apertura_vi_que', 'mi_hipotesis', 'detalle_excesivo']) assert.ok(codes.includes(c), c + ' falta en ' + codes);
 });
 
-ok('playbook: saludo y ofertas — en modo estricto (borrador autónomo) BLOQUEAN; en guardado manual solo restan', () => {
+ok('estándar V2: saludo, cordialidad y tres viñetas — en modo estricto (borrador autónomo) BLOQUEAN; en guardado manual solo restan', () => {
   const hola = { ...GOOD_B, body: GOOD_B.body.replace('Estimado Marcelo', 'Hola Marcelo') };
   assert.ok(strictLint(hola, [], EV).hard.some((h) => /saludo/.test(h)));
-  const manual = cm.coldLint(hola, [], EV); assert.deepEqual(manual.hard, []); assert.ok(manual.warnings.some((w) => w.code === 'saludo_no_playbook'));
+  const manual = cm.coldLint(hola, [], EV); assert.deepEqual(manual.hard, []); assert.ok(manual.warnings.some((w) => w.code === 'saludo_no_estandar'));
   for (const bad of ['Estimado contacto', 'Estimado cliente', 'Estimados señores']) assert.ok(strictLint({ ...GOOD_B, body: GOOD_B.body.replace('Estimado Marcelo', bad) }, [], EV).hard.length >= 1, bad);
   assert.deepEqual(strictLint({ ...GOOD_B, body: GOOD_B.body.replace('Estimado Marcelo', 'Estimado equipo de Ferretería Sur') }, [], EV).hard, []);
-  for (const q of ['¿Te mando un ejemplo?', '¿Te muestro cómo funciona?', '¿Quieres ver una demo?', '¿Te envío una propuesta?', '¿Agendamos 15 minutos?', '¿Les sirve que les mande un ejemplo aplicado a su ferretería?', '¿Podemos coordinar una reunión esta semana?', '¿Les parece una llamada de 10 minutos?']) {
-    const d = { ...GOOD_B, body: GOOD_B.body.replace('¿Hay alguna parte de este proceso que hoy les esté quitando más tiempo?', q) };
-    assert.ok(strictLint(d, [], EV).hard.some((h) => /ofrecer/.test(h)), q);
-    assert.deepEqual(cm.coldLint(d, [], EV).hard, [], q);
-    assert.ok(cm.coldLint(d, [], EV).warnings.some((w) => w.code === 'oferta_prohibida'), q);
+  assert.deepEqual(strictLint({ ...GOOD_B, body: GOOD_B.body.replace('Estimado Marcelo', 'Estimado/a Marcelo') }, [], EV).hard, [], '«Estimado/a» es válido');
+  // cordialidad: «espero que se encuentre muy bien» (o «esperando que se encuentre bien»)
+  const sinCord = { ...GOOD_B, body: GOOD_B.body.replace('Junto con saludar, espero que se encuentre muy bien.', 'Le escribo por un tema operativo.') };
+  assert.ok(strictLint(sinCord, [], EV).hard.some((h) => /cordialidad/.test(h)));
+  assert.ok(cm.coldLint(sinCord, [], EV).warnings.some((w) => w.code === 'sin_cordialidad'));
+  assert.deepEqual(strictLint({ ...GOOD_B, body: GOOD_B.body.replace('Junto con saludar, espero que se encuentre muy bien.', 'Esperando que se encuentre bien,') }, [], EV).hard, []);
+  // tres viñetas exactas
+  const dos = { ...GOOD_B, body: GOOD_B.body.split('\n').filter((l) => !/^- Ordenar/.test(l)).join('\n') };
+  assert.ok(strictLint(dos, [], EV).hard.some((h) => /tres viñetas/.test(h)));
+  assert.ok(cm.coldLint(dos, [], EV).warnings.some((w) => w.code === 'tres_ejemplos'));
+  assert.ok(strictLint({ ...GOOD_B, body: GOOD_B.body + '\n- Una cuarta viñeta: haciendo algo más.' }, [], EV).hard.some((h) => /tres viñetas/.test(h)));
+  // la invitación a una breve conversación o reunión YA NO se bloquea (reemplaza la regla del Playbook v1.0)
+  for (const q of ['¿Les parece una llamada de 10 minutos?', '¿Podemos coordinar una reunión esta semana?', 'Si le resulta interesante, con gusto podemos coordinar una breve conversación.']) {
+    const d = { ...GOOD_B, body: GOOD_B.body.replace('Si le resulta interesante, con gusto podemos coordinar una breve conversación.', q) };
+    assert.deepEqual(strictLint(d, [], EV).hard, [], q);
+    assert.ok(!cm.coldLint(d, [], EV).warnings.some((w) => /oferta_prohibida|cta_reunion/.test(w.code)), q);
   }
-  // si el recurso existe de verdad el motor puede permitir la oferta
-  const allowed = strictLint({ ...GOOD_B, allow_offer: true, body: GOOD_B.body.replace('¿Hay alguna parte de este proceso que hoy les esté quitando más tiempo?', '¿Les mando el esquema que armamos para este caso?') }, [], EV);
-  assert.deepEqual(allowed.hard, []);
-  // los seguimientos no se rigen por esta regla
+  // pero no se prometen entregables ni condiciones comerciales no validadas
+  for (const bad of ['Le envío una propuesta con precios.', 'Le mando una demo.', 'Ofrecemos una prueba gratis.', 'Hay un descuento especial.']) {
+    const d = { ...GOOD_B, body: GOOD_B.body.replace('Quedo atento a sus comentarios.', bad + ' Quedo atento a sus comentarios.') };
+    assert.deepEqual(strictLint(d, [], EV).hard, [], bad + ' avisa pero no bloquea');
+    assert.ok(cm.coldLint(d, [], EV).warnings.some((w) => w.code === 'promete_recurso'), bad);
+  }
+  // si el recurso existe de verdad el motor puede permitirlo (allow_offer salta las reglas del primer correo)
+  assert.deepEqual(strictLint({ ...GOOD_B, allow_offer: true, body: 'Hola Marcelo, ¿te mando el esquema que armamos para este caso?' }, [], EV).hard, []);
+  // los seguimientos no se rigen por estas reglas
   assert.deepEqual(strictLint({ kind: 'followup_1', subject: 'Re: x', body: 'Hola Andrea, te dejo un ejemplo concreto de cómo se vería. ¿Te sirve que te mande el esquema?' }, [], {}).hard, []);
 });
 
+ok('viñetas: cada una debe partir del beneficio y no ser una lista de tecnologías', () => {
+  const tech = { ...GOOD_B, body: GOOD_B.body.replace(/^- Evitar[^\n]*$/m, '- WhatsApp, CRM y API de correo.').replace(/^- Reducir[^\n]*$/m, '- Chatbot con software y base de datos.') };
+  const l = cm.coldLint(tech, [], EV);
+  const w = l.warnings.find((x) => x.code === 'vineta_sin_beneficio'); assert.ok(w, JSON.stringify(l.warnings.map((x) => x.code)));
+  assert.ok(/tecnolog/.test(w.text)); assert.ok(!l.rewards.some((r) => r.code === 'tres_aplicaciones'));
+  assert.deepEqual(strictLint(tech, [], EV).hard, [], 'es un aviso de calidad, no un bloqueo');
+  assert.ok(!cm.coldLint(GOOD_B, [], EV).warnings.some((x) => x.code === 'vineta_sin_beneficio'));
+});
+
 ok('playbook: la investigación debe ser invisible (fórmulas «Vi que», enlaces, correos, conteos de sedes) y las inferencias no se afirman como hechos', () => {
-  const peek = (txt) => cm.coldLint({ ...GOOD_B, body: GOOD_B.body.replace('En la venta de equipos industriales es habitual', txt) }, [], EV).warnings.map((w) => w.code);
-  for (const open of ['Vi que en la venta de equipos industriales es habitual', 'Revisando su sitio noté que es habitual', 'Estuve mirando su catálogo y es habitual', 'En su web dicen que es habitual', 'Noté que es habitual']) assert.ok(peek(open).some((c) => /apertura_vi_que|frase_investigacion/.test(c)), open);
-  assert.ok(peek('En su sitio web, contacto@empresa.cl y +56 9 1234 5678, es habitual').includes('evidencia_expuesta'));
-  assert.ok(peek('Con dos sucursales, tres números de WhatsApp y 14 servicios es habitual').includes('detalle_excesivo'));
-  assert.ok(peek('Su equipo pierde mucho tiempo respondiendo lo mismo y es habitual').includes('inferencia_como_hecho'));
-  assert.ok(!peek('En la venta de equipos industriales suele ocurrir').some((c) => /apertura_vi_que|frase_investigacion|evidencia_expuesta|detalle_excesivo|inferencia_como_hecho/.test(c)));
-  const chat = cm.coldLint({ ...GOOD_B, body: GOOD_B.body.replace('Construimos agentes', 'Instalamos un chatbot con asistente inteligente 24/7, es decir agentes') }, [], EV);
+  const peek = (txt) => cm.coldLint(withBefore(GOOD_B, 'Primero entendemos', txt), [], EV).warnings.map((w) => w.code);
+  for (const open of ['Vi que en la venta de equipos industriales es habitual.', 'Revisando su sitio noté que es habitual.', 'Estuve mirando su catálogo y es habitual.', 'En su web dicen que es habitual.', 'Noté que es habitual.']) assert.ok(peek(open).some((c) => /apertura_vi_que|frase_investigacion/.test(c)), open);
+  assert.ok(peek('En su sitio web, contacto@empresa.cl y +56 9 1234 5678, es habitual.').includes('evidencia_expuesta'));
+  assert.ok(peek('Con dos sucursales, tres números de WhatsApp y 14 servicios es habitual.').includes('detalle_excesivo'));
+  assert.ok(peek('Su equipo pierde mucho tiempo respondiendo lo mismo.').includes('inferencia_como_hecho'));
+  assert.ok(!peek('En la venta de equipos industriales suele ocurrir.').some((c) => /apertura_vi_que|frase_investigacion|evidencia_expuesta|detalle_excesivo|inferencia_como_hecho/.test(c)));
+  const chat = cm.coldLint({ ...GOOD_B, body: GOOD_B.body.replace('Ayudamos a simplificar', 'Instalamos un chatbot con asistente inteligente 24/7 y ayudamos a simplificar') }, [], EV);
   assert.ok(chat.warnings.some((w) => w.code === 'suena_chatbot'));
 });
 
 ok('playbook: «imagino que…» y «ahí suele aparecer el trabajo repetitivo» restan, más si ya están en otros correos', () => {
-  const m = { ...GOOD_A, body: GOOD_A.body.replace('en clínicas con más de una sede suele haber', 'imagino que hay') };
+  const m = withBefore(GOOD_A, 'Primero entendemos', 'Imagino que hay mucho trabajo repetitivo.');
   const solo = cm.coldLint(m, [], EV); assert.ok(solo.warnings.some((w) => w.code === 'muletilla_repetida'));
-  const peers = [1, 2, 3].map((i) => ({ id: 'p' + i, company_name: 'E' + i, ...GOOD_C, body: GOOD_C.body.replace('normalmente vuelve', 'imagino que vuelve') }));
+  const peers = [1, 2, 3].map((i) => ({ id: 'p' + i, company_name: 'E' + i, ...withBefore(GOOD_C, 'Primero entendemos', 'Imagino que vuelve a pasar.') }));
   const rep = cm.coldLint(m, peers, EV);
   assert.ok(rep.warnings.find((w) => w.code === 'muletilla_repetida').pts > solo.warnings.find((w) => w.code === 'muletilla_repetida').pts);
 });
 
-ok('playbook: asunto de 3–7 palabras, sin campaña, y largo de 70–120 palabras', () => {
+ok('asunto específico (los de la guía V2 ya no se castigan), sin campaña, y largo de 130–190 palabras', () => {
   const sub = (s) => cm.coldLint({ ...GOOD_A, subject: s }, [], EV).warnings.map((w) => w.code);
-  assert.ok(sub('Una propuesta para Dentaline').includes('asunto_generico'));
+  assert.ok(!sub('Una idea para mejorar los procesos de Dentaline').some((c) => /asunto_/.test(c)), 'asunto de la guía V2');
+  assert.ok(!sub('Una propuesta para simplificar la coordinación de pedidos').some((c) => /asunto_/.test(c)), 'asunto de la guía V2');
+  assert.ok(sub('Propuesta comercial para Dentaline').includes('asunto_generico'));
   assert.ok(sub('Potencia tu empresa con IA').includes('asunto_generico'));
   assert.ok(sub('Automatización con Inteligencia Artificial').includes('asunto_generico'));
   assert.ok(sub('OFERTA ESPECIAL AUTOMATIZACIÓN').includes('asunto_publicitario'));
-  assert.ok(sub('consultas entre sedes antes de agendar una hora con la clínica hoy').includes('asunto_largo'));
+  assert.ok(sub('consultas entre sedes antes de agendar una hora con la clínica de hoy').includes('asunto_largo'));
   assert.ok(!sub('consultas entre sedes antes de agendar').some((c) => /asunto_/.test(c)));
-  const largo = cm.coldLint({ ...GOOD_A, body: GOOD_A.body + ' ' + 'Además queremos aclarar que cada consulta se registra con detalle para que nadie pierda información importante durante el proceso completo de atención. '.repeat(3) }, [], EV);
+  const largo = cm.coldLint({ ...GOOD_A, body: GOOD_A.body + ' ' + 'Además queremos aclarar que cada consulta se registra con detalle para que nadie pierda información importante durante el proceso completo de atención. '.repeat(4) }, [], EV);
   assert.ok(largo.warnings.some((w) => w.code === 'largo'));
   assert.ok(cm.coldLint({ kind: 'initial', subject: 'consultas por sede', body: 'Estimada Andrea,\n\nSuele haber trabajo previo en cada consulta.\n\n¿Les haría sentido conversar?' }, [], {}).warnings.some((w) => w.code === 'muy_corto'));
+  assert.ok(cm.coldLint(GOOD_A, [], EV).rewards.some((r) => r.code === 'breve'), 'largo ideal premia');
 });
 
 ok('linter: repetir el patrón entre borradores castiga más que usarlo una vez (asunto, «Vi que», «hipótesis»)', () => {
@@ -116,14 +169,22 @@ ok('Similarity Guard: 10 correos con la misma estructura se marcan como muy simi
   assert.ok(distinct.rewards.some((r) => r.code === 'diverso'));
 });
 
-ok('diversidad: los correos nuevos usan asuntos y cierres distintos entre sí', () => {
+ok('V2: las partes fijas del estándar (saludo, presentación, enfoque, cierre) NO cuentan como similitud; las viñetas copiadas sí', () => {
+  const peers = [GOOD_A, GOOD_B, GOOD_C].map((x, i) => ({ id: 'q' + i, company_name: 'P' + i, ...x }));
+  const l = cm.coldLint({ ...GOOD_A, subject: 'otro asunto distinto de agenda', body: GOOD_A.body.replace('Estimada Andrea', 'Estimado Pedro') }, peers.slice(1), EV);
+  assert.ok(l.similarity.max < 0.25, 'solo con las partes fijas iguales y viñetas distintas: ' + l.similarity.max);
+  const copia = cm.coldLint({ ...GOOD_A, body: GOOD_A.body.replace('Estimada Andrea', 'Estimado Pedro') }, [{ id: 'z', company_name: 'Z', ...GOOD_A }], EV);
+  assert.ok(copia.similarity.max >= 0.5 && copia.warnings.some((w) => w.code === 'muy_similar'), 'viñetas idénticas = misma plantilla');
+});
+
+ok('diversidad: los correos nuevos usan asuntos y viñetas distintos entre sí, sin penalizar el saludo y cierre estándar', () => {
   const set = [GOOD_A, GOOD_B, GOOD_C];
   assert.equal(new Set(set.map((g) => g.subject)).size, 3);
-  assert.equal(new Set(set.map((g) => g.body.trim().split('\n').pop())).size, 3);
+  assert.equal(new Set(set.map((g) => g.body.split('\n').find((l) => l.startsWith('- ')))).size, 3);
   for (const g of set) { const peers = set.filter((x) => x !== g).map((x, i) => ({ id: 'q' + i, ...x })); const l = cm.coldLint(g, peers, EV); assert.ok(!l.warnings.some((w) => /asunto_|apertura_|cta_repetido|similar|misma_estructura/.test(w.code)), g.subject + ' ' + JSON.stringify(l.warnings.map((w) => w.code))); }
 });
 
-ok('máximo un problema: tres problemas distintos restan puntos', () => {
+ok('máximo un problema (correos sin viñetas): tres problemas distintos restan puntos; el formato de tres viñetas no', () => {
   const multi = { kind: 'initial', subject: 'recepción y ventas', body: 'Estimada Ana,\n\nRecepción repite las mismas preguntas todo el día. Además las cotizaciones se pierden entre correos y nadie las persigue. También el seguimiento a mano de los pedidos demora semanas. Y la agenda queda desordenada.\n\n¿Les haría sentido conversar?' };
   const l = cm.coldLint(multi, [], {});
   assert.ok(l.warnings.some((w) => w.code === 'varios_problemas'));
@@ -133,8 +194,8 @@ ok('máximo un problema: tres problemas distintos restan puntos', () => {
 ok('tono: buzzwords, agencia, tono IA y frases defensivas restan', () => {
   const bad = { kind: 'initial', subject: 'transformación digital', body: 'Hola,\n\nEspero que este mensaje te encuentre bien. En el mundo actual las empresas necesitan soluciones a medida y una transformación digital con sinergia. Somos una agencia de expertos — líderes en IA — y no quiero quitarte tiempo.\n\n¿Agendamos 15 minutos?' };
   const codes = cm.coldLint(bad, [], {}).warnings.map((w) => w.code);
-  for (const c of ['buzzwords', 'tono_agencia', 'tono_ia', 'frases_defensivas', 'cta_reunion']) assert.ok(codes.includes(c), c + ' falta en ' + codes);
-  assert.ok(cm.coldLint({ ...GOOD_A, body: GOOD_A.body.replace('Armamos agentes', 'Podemos transformar su empresa y potenciar su negocio con agentes') }, [], EV).warnings.some((w) => w.code === 'buzzwords'));
+  for (const c of ['buzzwords', 'tono_agencia', 'tono_ia', 'frases_defensivas', 'saludo_no_estandar', 'tres_ejemplos']) assert.ok(codes.includes(c), c + ' falta en ' + codes);
+  assert.ok(cm.coldLint({ ...GOOD_A, body: GOOD_A.body.replace('Ayudamos a simplificar', 'Podemos transformar su empresa y potenciar su negocio con agentes para simplificar') }, [], EV).warnings.some((w) => w.code === 'buzzwords'));
 });
 
 ok('personalización: sin señal concreta resta; la investigación es invisible (ya no se exige repetir la evidencia declarada)', () => {
@@ -198,7 +259,7 @@ ok('seguimientos (Playbook §17 revisado): prometer y el seguimiento vacío pena
 
 ok('bloqueos reales: porcentajes, garantías y números de clientes sin respaldo', () => {
   for (const claim of ['Reducimos el tiempo de respuesta en 40% en todos nuestros clientes.', 'Garantizamos resultados desde el primer mes.', 'Hemos ayudado a más de 30 empresas a automatizar su atención.']) {
-    const l = cm.coldLint({ kind: 'initial', subject: 'consultas entre sedes', body: GOOD_A.body.replace('Soy Christian', claim + ' Soy Christian') }, [], EV);
+    const l = cm.coldLint(withBefore(GOOD_A, 'Primero entendemos', claim), [], EV);
     assert.ok(l.hard.length >= 1, claim);
   }
   assert.deepEqual(cm.coldLint(GOOD_A, [], EV).hard, []);
@@ -208,12 +269,12 @@ ok('bloqueos reales: porcentajes, garantías y números de clientes sin respaldo
 
 ok('regenerar mantiene el MISMO registro, destinatario y estado draft; guarda la versión anterior; no envía', () => {
   const live = draftRow();
-  const r = oc.planDraft({ kind: 'initial', subject: GOOD_A.subject, body: GOOD_A.body, by: 'Hermes', reason: 'Playbook v1.0', cold: EV }, ctx({ history: [live] }));
+  const r = oc.planDraft({ kind: 'initial', subject: GOOD_A.subject, body: GOOD_A.body, by: 'Hermes', reason: 'Estándar V2', cold: EV }, ctx({ history: [live] }));
   assert.equal(r.response.ok, true); assert.equal(r.response.status, 'updated');
   assert.equal(r.writes.length, 1); assert.equal(r.writes[0].method, 'PATCH'); assert.equal(r.writes[0].path, 'outreach_messages?id=eq.m-1');
   const b = r.writes[0].body;
   assert.equal(b.to_email, 'contacto@dentaline.cl'); assert.equal(b.status, 'draft'); assert.equal(b.approved_at, null); assert.equal(b.subject, 'Consultas entre sedes antes de agendar', 'el asunto del correo inicial se guarda con mayúscula inicial');
-  assert.equal(b.metadata.history.length, 1); assert.equal(b.metadata.history[0].subject, 'Una idea para Dentaline'); assert.ok(/Vi que/.test(b.metadata.history[0].body)); assert.equal(b.metadata.history[0].reason, 'Playbook v1.0');
+  assert.equal(b.metadata.history.length, 1); assert.equal(b.metadata.history[0].subject, 'Una idea para Dentaline'); assert.ok(/Vi que/.test(b.metadata.history[0].body)); assert.equal(b.metadata.history[0].reason, 'Estándar V2');
   assert.ok(b.metadata.cold.score >= 80); assert.equal(b.metadata.cold.evidence.length, 2);
   assert.equal(r.response.safety, undefined); assert.ok(!r.writes.some((w) => w.method === 'POST'));
   assert.notEqual(b.content_hash, live.content_hash);
@@ -235,27 +296,27 @@ ok('el historial conserva las versiones anteriores (máx. 6) en orden', () => {
   assert.equal(live.metadata.history.length, 6); assert.ok(/Versión 6/.test(live.metadata.history.at(-1).body));
 });
 
-ok('auto=true: exige evidencia, cumplir el playbook (saludo/ofertas) y un score mínimo; si no, NO guarda nada y devuelve el motivo', () => {
+ok('auto=true: exige evidencia, cumplir el estándar V2 (saludo, cordialidad, tres viñetas) y un score mínimo; si no, NO guarda nada y devuelve el motivo', () => {
   const noEv = oc.planDraft({ kind: 'initial', subject: GOOD_A.subject, body: GOOD_A.body, auto: true }, ctx());
   assert.equal(noEv.response.ok, false); assert.equal(noEv.response.status, 'needs_evidence'); assert.deepEqual(noEv.writes, []);
-  // la plantilla vieja incumple el playbook (saludo «Hola» y reunión de 15 minutos): bloqueo duro
+  // la plantilla vieja incumple el estándar (saludo «Hola», sin cordialidad ni viñetas): bloqueo duro
   const old = oc.planDraft({ kind: 'initial', subject: OLD('Dentaline').subject, body: OLD('Dentaline').body, auto: true, cold: EV }, ctx());
-  assert.equal(old.response.status, 'invalid_draft'); assert.deepEqual(old.writes, []); assert.ok(old.response.errors.some((e) => /saludo/.test(e))); assert.ok(old.response.errors.some((e) => /ofrecer/.test(e)));
-  // un correo que cumple el playbook pero queda flojo (genérico, largo) sigue cayendo por score mínimo
-  const weak = { subject: 'consultas', body: 'Estimado equipo de Dentaline,\n\nTrabajamos con empresas de su rubro para que su negocio funcione mejor, más ordenado, más rápido y con mejores resultados en todos sus procesos internos, comerciales y de atención de clientes. ' + 'Nuestra experiencia nos permite colaborar con equipos de distintos tamaños en múltiples áreas de su organización y acompañarlos con soluciones personalizadas. '.repeat(2) + '\n\nSomos una agencia que ofrece soluciones a medida y una transformación digital con sinergia.\n\nQuedamos atentos.' };
+  assert.equal(old.response.status, 'invalid_draft'); assert.deepEqual(old.writes, []); assert.ok(old.response.errors.some((e) => /saludo/.test(e))); assert.ok(old.response.errors.some((e) => /viñetas/.test(e))); assert.ok(old.response.errors.some((e) => /cordialidad/.test(e)));
+  // un correo que cumple el estándar de forma pero queda flojo (jerga, agencia, viñetas de tecnologías) sigue cayendo por score mínimo
+  const weak = { subject: 'consultas', body: 'Estimado equipo de Dentaline:\n\nEsperando que se encuentre bien, somos una agencia que ofrece soluciones a medida y una transformación digital con sinergia para empresas de su rubro y de todo tamaño.\n\nEn empresas como la suya podemos ayudar a:\n\n- Soluciones integrales de WhatsApp, CRM y API.\n- Chatbot asistente virtual 24/7 con software.\n- Transformación digital de su negocio.\n\nQuedamos atentos.' };
   const low = oc.planDraft({ kind: 'initial', subject: weak.subject, body: weak.body, auto: true, cold: EV }, ctx());
   assert.equal(low.response.status, 'low_quality', JSON.stringify(low.response)); assert.deepEqual(low.writes, []); assert.ok(low.response.score < 70); assert.ok(low.response.warnings.length >= 3);
   const good = oc.planDraft({ kind: 'initial', subject: GOOD_A.subject, body: GOOD_A.body, auto: true, cold: EV }, ctx());
   assert.equal(good.response.ok, true); assert.equal(good.response.status, 'created'); assert.equal(good.writes[0].body.metadata.cold.score >= 70, true);
 });
 
-ok('guardado manual (Christian) nunca se bloquea por score ni por el saludo/ofertas del playbook: se guarda con avisos', () => {
+ok('guardado manual (Christian) nunca se bloquea por score ni por el saludo/viñetas del estándar: se guarda con avisos', () => {
   const r = oc.planDraft({ kind: 'initial', subject: OLD('Dentaline').subject, body: OLD('Dentaline').body }, ctx());
   assert.equal(r.response.ok, true); assert.ok(r.response.cold.score < 50); assert.ok(r.response.warnings.length >= 3);
 });
 
 ok('bloqueo duro por afirmación sin respaldo también aplica al guardar', () => {
-  const r = oc.planDraft({ kind: 'initial', subject: 'consultas entre sedes', body: GOOD_A.body.replace('Soy Christian', 'Reducimos 40% el tiempo de respuesta. Soy Christian') }, ctx());
+  const r = oc.planDraft({ kind: 'initial', subject: 'consultas entre sedes', body: withBefore(GOOD_A, 'Primero entendemos', 'Reducimos 40% el tiempo de respuesta.').body }, ctx());
   assert.equal(r.response.ok, false); assert.equal(r.response.status, 'invalid_draft'); assert.deepEqual(r.writes, []);
 });
 
@@ -294,12 +355,11 @@ ok('las respuestas (kind reply) no pasan por el linter de correo en frío', () =
   assert.equal(r.response.ok, true); assert.equal(r.response.cold, null);
 });
 
-ok('tono cercano: presentarse en una frase corta NO cuenta como explicar a Atacama; explicar en varias oraciones sí penaliza', () => {
-  const close = { kind: 'initial', subject: 'consultas entre sedes', body: 'Estimado equipo de Dentaline,\n\nCon sedes en Las Condes y Providencia, cuando alguien escribe por WhatsApp pidiendo una primera evaluación, suele pasar que recepción tiene que averiguar primero en cuál sede le acomoda atenderse, y esa coordinación previa consume bastante tiempo del equipo cada semana.\n\nSoy Christian, de Atacama Labs. Armamos agentes que se encargan de esa primera conversación para que recepción reciba la consulta con sede y tratamiento ya definidos.\n\n¿Les haría sentido conversar sobre cómo automatizar esta primera etapa u otro proceso que hoy les esté quitando tiempo?' };
-  const l = strictLint(close, [], EV);
+ok('tono cercano: la presentación breve del estándar NO cuenta como explicar a Atacama; explicar en muchas oraciones sí penaliza', () => {
+  const l = strictLint(GOOD_A, [], EV);
   assert.ok(!l.warnings.some((w) => w.code === 'explica_atacama'), JSON.stringify(l.warnings.map((w) => w.code)));
-  assert.equal(l.cta_kind, 'question'); assert.ok(l.score >= 80, String(l.score)); assert.deepEqual(l.hard, []);
-  const much = { ...close, body: close.body.replace('Soy Christian, de Atacama Labs. Armamos', 'Soy Christian. En Atacama Labs ayudamos a empresas de todos los rubros a ordenar su operación. Además armamos') };
+  assert.equal(l.cta_kind, 'invitation'); assert.ok(l.score >= 80, String(l.score)); assert.deepEqual(l.hard, []);
+  const much = withBefore(GOOD_A, 'Primero entendemos', 'Atacama Labs es una empresa chilena. Nuestros agentes trabajan dentro del proceso. Armamos agentes para cada rubro.');
   assert.ok(cm.coldLint(much, [], EV).warnings.some((w) => w.code === 'explica_atacama'));
 });
 

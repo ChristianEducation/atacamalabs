@@ -142,7 +142,7 @@ export function cleanDraftText(subject, body, opts) {
   while (lines.length && guard++ < 5) {
     const last = lines[lines.length - 1].trim();
     if (!last) { lines.pop(); continue; }
-    if (/^(saludos|atentamente|cordialmente|un abrazo|un saludo|cari[ñn]os|gracias)[,.!]?$/i.test(last) || /^christian( wevar)?\s*([·|,\-–—].*)?$/i.test(last) || /^atacama labs\s*([·|,\-–—].*)?$/i.test(last) || /^(https?:\/\/)?(www\.)?atacamalabs\.cl\/?$/i.test(last)) { lines.pop(); continue; }
+    if (/^(saludos( cordiales)?|atentamente|cordialmente|un abrazo|un saludo|cari[ñn]os|gracias)[,.!]?$/i.test(last) || /^fundador( de atacama labs)?[,.!]?$/i.test(last) || /^christian( wevar)?\s*([·|,\-–—].*)?$/i.test(last) || /^atacama labs\s*([·|,\-–—].*)?$/i.test(last) || /^(https?:\/\/)?(www\.)?atacamalabs\.cl\/?$/i.test(last)) { lines.pop(); continue; }
     break;
   }
   // Solo los correos iniciales: seguimientos y respuestas conservan el asunto original tal cual para no romper el hilo.
@@ -198,28 +198,53 @@ export function escapeHtml(s) { return String(s == null ? '' : s).replace(/&/g, 
 /** ¿El pie legal configurado es solo la marca (temporal)? Entonces no se repite: la firma ya la dice. */
 export function isBrandOnlyFooter(foot) { const f = stripAcc(String(foot || '')).toLowerCase().replace(/[\s·|\-–—]+/g, ' ').trim(); return !f || f === 'atacama labs atacamalabs.cl' || f === 'atacamalabs.cl' || f === 'atacama labs'; }
 /**
- * Correo final = cuerpo aprobado + firma + (pie legal si existe) + línea de baja. El sistema solo agrega esto.
- * Firma: «Christian Wevar | Atacama Labs» / «atacamalabs.cl» / logo oficial (PNG derivado de public/brand/logo-horizontal.svg).
- * opts.logo: 'cid' (envío: imagen incrustada cid:atacama-logo) | '<data URI>' (vista previa) | null (sin logo).
+ * Firma corporativa de Atacama Labs (kit de firma de Christian, 3-nov-2026): logo horizontal oficial, foto circular, nombre, cargo, web y correo.
+ * La MISMA función genera la firma de los correos automáticos (imágenes inline cid:) y el HTML que se pega en Gmail (imágenes con URL pública https):
+ * así la identidad visual es una sola. o = { logo, foto, name, title, email } donde logo/foto son una URL, un data URI, 'cid:…' o null (se omite).
+ */
+export function renderSignatureHtml(o) {
+  const x = o && typeof o === 'object' ? o : {};
+  const name = escapeHtml(x.name || 'Christian Wevar');
+  const title = escapeHtml(x.title || 'Fundador');
+  const email = escapeHtml(x.email || 'contacto@atacamalabs.cl');
+  const logoRow = x.logo ? '<tr><td colspan="3" style="padding:0 0 16px 0"><a href="https://atacamalabs.cl" style="border:0;text-decoration:none"><img src="' + escapeHtml(x.logo) + '" alt="Atacama Labs" width="205" style="width:205px;max-width:205px;height:auto;border:0;display:block"></a></td></tr>' : '';
+  const fotoCell = x.foto ? '<td width="84" style="width:84px;padding:0 14px 0 0;vertical-align:middle"><img src="' + escapeHtml(x.foto) + '" alt="' + name + '" width="80" height="80" style="width:80px;height:80px;border:0;display:block;border-radius:50%"></td>' : '';
+  return '<table id="firma-atacama" role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;border-spacing:0;font-family:Arial,Helvetica,sans-serif;color:#041228;background:#ffffff;width:100%;max-width:550px"><tbody>'
+    + logoRow + '<tr>' + fotoCell
+    + '<td style="padding:0 20px 0 0;vertical-align:middle;white-space:nowrap"><div style="font-size:15px;font-weight:700;line-height:21px;color:#041228">' + name + '</div><div style="font-size:12px;line-height:19px;color:#30445f">' + title + '</div><div style="font-size:12px;line-height:19px;color:#30445f">Atacama Labs</div><div style="font-size:11px;line-height:17px;color:#5e6d7e">Tecnología para el trabajo real</div></td>'
+    + '<td style="padding:2px 0 2px 15px;border-left:1px solid #0F5CED;vertical-align:middle"><div style="font-size:12px;line-height:20px;white-space:nowrap"><a href="https://atacamalabs.cl" style="color:#0f5ced;text-decoration:none">atacamalabs.cl</a></div><div style="font-size:12px;line-height:20px;white-space:nowrap"><a href="mailto:' + email + '" style="color:#30445f;text-decoration:none">' + email + '</a></div></td>'
+    + '</tr></tbody></table>';
+}
+
+/**
+ * Correo final = cuerpo aprobado + «Saludos cordiales,» + firma corporativa + (pie legal si existe) + línea de baja. El sistema solo agrega esto.
+ * opts.logo / opts.foto: 'cid' (envío: imágenes incrustadas cid:atacama-logo y cid:atacama-foto) | '<URL o data URI>' (vista previa) | null (sin imagen).
+ * Las líneas que empiezan con «- » se muestran como lista en el HTML (estándar V2: tres viñetas); el texto plano las conserva tal cual.
  */
 export function renderEmail(msg, cfg, opts) {
   const name = (cfg && cfg.from_name) || 'Christian Wevar';
+  const title = (cfg && cfg.from_title) || 'Fundador';
+  const sigEmail = (cfg && cfg.signature_email) || 'contacto@atacamalabs.cl';
   const foot = (cfg && cfg.legal_footer) ? String(cfg.legal_footer).trim() : '';
   const legal = isBrandOnlyFooter(foot) ? '' : foot;
   const unsub = 'Si prefieres no recibir más mensajes de Atacama Labs, responde «baja» y no volveré a escribirte.';
   const bodyText = String(msg.body || '').trim();
-  const text = bodyText + '\n\n' + name + ' | Atacama Labs\natacamalabs.cl\n\n--\n' + (legal ? legal + '\n' : '') + unsub;
+  const text = bodyText + '\n\nSaludos cordiales,\n\n' + name + '\n' + title + ' · Atacama Labs\nhttps://atacamalabs.cl | ' + sigEmail + '\n\n--\n' + (legal ? legal + '\n' : '') + unsub;
   const logo = opts && opts.logo !== undefined ? opts.logo : 'cid';
-  const src = logo === 'cid' ? 'cid:atacama-logo' : logo;
-  const paras = bodyText.split(/\n{2,}/).map((p) => '<p style="margin:0 0 14px 0;">' + escapeHtml(p).replace(/\n/g, '<br>') + '</p>').join('');
+  const foto = opts && opts.foto !== undefined ? opts.foto : 'cid';
+  const logoSrc = logo === 'cid' ? 'cid:atacama-logo' : logo;
+  const fotoSrc = foto === 'cid' ? 'cid:atacama-foto' : foto;
+  const bulletRe = /^(?:[-•*–])\s+/;
+  const paras = bodyText.split(/\n{2,}/).map((p) => {
+    const lines = p.split('\n').map((l) => l.trim()).filter(Boolean);
+    if (lines.length && lines.every((l) => bulletRe.test(l))) return '<ul style="margin:0 0 14px 0;padding-left:22px;">' + lines.map((l) => '<li style="margin:0 0 6px 0;">' + escapeHtml(l.replace(bulletRe, '')) + '</li>').join('') + '</ul>';
+    return '<p style="margin:0 0 14px 0;">' + escapeHtml(p).replace(/\n/g, '<br>') + '</p>';
+  }).join('');
   const html = '<!DOCTYPE html><html lang="es"><body style="margin:0;padding:0;background:#ffffff;">'
     + '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#121A2B;max-width:640px;padding:4px 0;">'
     + paras
-    + '<div style="margin-top:22px;">'
-    + '<div style="font-weight:700;color:#121A2B;">' + escapeHtml(name) + ' | Atacama Labs</div>'
-    + '<div style="margin-top:2px;"><a href="https://atacamalabs.cl" style="color:#0F5CED;text-decoration:none;">atacamalabs.cl</a></div>'
-    + (src ? '<div style="margin-top:12px;"><img src="' + src + '" width="220" alt="Atacama Labs" style="display:block;border:0;width:220px;max-width:100%;height:auto;"></div>' : '')
-    + '</div>'
+    + '<p style="margin:18px 0 16px 0;">Saludos cordiales,</p>'
+    + renderSignatureHtml({ logo: logoSrc, foto: fotoSrc, name, title, email: sigEmail })
     + '<div style="margin-top:22px;padding-top:10px;border-top:1px solid #E5E7EB;font-size:12px;line-height:1.5;color:#6B7280;">' + (legal ? escapeHtml(legal) + '<br>' : '') + escapeHtml(unsub) + '</div>'
     + '</div></body></html>';
   return { subject: String(msg.subject || '').trim(), text, html };
@@ -230,7 +255,7 @@ export function encodeHeader(s) { return /^[\x20-\x7e]*$/.test(s) ? s : '=?UTF-8
 export function wrap76(b64) { return String(b64).replace(/(.{76})/g, '$1\r\n'); }
 /**
  * Mensaje RFC 2822 listo para users.messages.send (base64url). Incluye List-Unsubscribe mailto y encadenado de hilo.
- * Con o.html: multipart/alternative [ text/plain, multipart/related [ text/html, image/png inline (Content-ID <atacama-logo>) ] ].
+ * Con o.html: multipart/alternative [ text/plain, multipart/related [ text/html, image/png inline (Content-ID <atacama-logo>), foto inline opcional (<atacama-foto>) ] ].
  */
 export function buildMime(o) {
   const from = o.from_name ? encodeHeader(o.from_name) + ' <' + o.from + '>' : o.from;
@@ -247,6 +272,7 @@ export function buildMime(o) {
   const alt = 'alt_' + tag, rel = 'rel_' + tag;
   const related = ['--' + rel, part('text/html', o.html)];
   if (o.inline_png_b64) related.push('--' + rel, 'Content-Type: image/png; name="logo-atacama-labs.png"\r\nContent-Transfer-Encoding: base64\r\nContent-ID: <atacama-logo>\r\nContent-Disposition: inline; filename="logo-atacama-labs.png"\r\n\r\n' + wrap76(o.inline_png_b64));
+  if (o.inline_foto_b64) related.push('--' + rel, 'Content-Type: image/png; name="christian-wevar.png"\r\nContent-Transfer-Encoding: base64\r\nContent-ID: <atacama-foto>\r\nContent-Disposition: inline; filename="christian-wevar.png"\r\n\r\n' + wrap76(o.inline_foto_b64));
   related.push('--' + rel + '--');
   const body = ['--' + alt, part('text/plain', o.text), '--' + alt, 'Content-Type: multipart/related; boundary="' + rel + '"\r\n', related.join('\r\n'), '--' + alt + '--', ''].join('\r\n');
   return { raw: b64url(common.concat(['Content-Type: multipart/alternative; boundary="' + alt + '"']).join('\r\n') + '\r\n\r\n' + body), message_id: messageId };

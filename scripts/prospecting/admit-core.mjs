@@ -9,6 +9,8 @@
  * la URL), al menos 3 factores con evidencia literal, contacto público con su fuente, motivo para escribir ahora y ángulo comercial.
  * Lo que no pasa se queda en Supabase (con el motivo); nada se envía y nada pasa a «Contactado».
  */
+import { emailDraftV2 } from '../outreach/email-v2-core.mjs'; // plantilla V2 de respaldo; en n8n se incrusta junto con emailKitV2 (ver n8n/build)
+
 
 /** Hechos vs inferencias: «literal» = nivel 2 con cita encontrada en la página; «inferencia»; «sin verificar». */
 export function evidenceKind(r) {
@@ -110,35 +112,39 @@ export function evaluateAdmission(row) {
 }
 
 
-/** Revisa un borrador de contacto. Devuelve la lista de problemas (vacía = aprobado). */
+/** Revisa un borrador de contacto contra el estándar V2 de correos (guía aprobada el 3-nov-2026). Devuelve la lista de problemas (vacía = aprobado). */
 export function lintDraft(subject, message, ctx) {
   const FORBIDDEN = [
     [/vi que (est[aá]n|estás|est[aá]s|tienen|tienes) (teniendo )?(problemas|dificultades)/i, 'afirma_un_problema_no_demostrado'],
     [/revolucion|disrupt|transforma(r|mos) (tu|su) (negocio|empresa)|el mejor|garantizamos|100 ?%|sin riesgo|inigualable/i, 'exageracion'],
     [/chatbot/i, 'dice_chatbot'],
     [/como (conversamos|hablamos|acordamos)|seguimiento (de|a) (nuestra|mi) (conversaci[oó]n|llamada)|de nuevo|nuevamente/i, 'finge_relacion_previa'],
-    // Playbook de correos outbound v1.0: la investigación es invisible y el primer correo no ofrece demo/ejemplo/reunión.
+    // Estándar V2: la investigación sigue siendo invisible (sin citar la web ni exponer datos); la invitación a una breve conversación SÍ está permitida.
     [/\bvi que\b|\bveo que\b|estuve (mirando|revisando)|revisando (su|tu) (sitio|web|p[aá]gina)|\bnot[eé] que\b|me fij[eé] que|en (su|tu) (sitio|p[aá]gina|web)\b|https?:|www\./i, 'evidencia_expuesta'],
-    [/\b\d+\s*(min|minutos)\b|\breuni[oó]n\b|videollamada|\bdemo\b|\bpropuesta\b|auditor[ií]a|\b(te|les) (mando|muestro|env[ií]o|comparto|dejo|paso)\b/i, 'ofrece_demo_o_reunion'],
+    // promesas de entregables o condiciones comerciales que Atacama no ha validado
+    [/\b(te|les|le) (mando|env[ií]o|enviar[eé]|preparo)\b[^.?!]{0,40}\b(propuesta|cotizaci[oó]n|demo|video|auditor[ií]a|presupuesto)|prueba gratis|gratuit[oa]|sin costo|descuento/i, 'promete_recurso'],
   ];
   const probs = [];
   const text = String(message || '').trim();
   const words = text.split(/\s+/).filter(Boolean).length;
   if (words < 40) probs.push('muy_corto');
-  if (words > 140) probs.push('muy_largo');
-  if (!/^estimad[oa]s? /i.test(text)) probs.push('saludo_no_estimado');
-  else if (/^estimad[oa]s? (contacto|cliente|se(ñ|n)ores?|sres?)\b/i.test(text)) probs.push('saludo_generico');
+  if (words > 230) probs.push('muy_largo');
+  if (!/^estimad[oa](?:\/a)?s? /i.test(text)) probs.push('saludo_no_estimado');
+  else if (/^estimad[oa](?:\/a)?s? (contacto|cliente|se(ñ|n)ores?|sres?)\b/i.test(text)) probs.push('saludo_generico');
+  if (!/\b(espero|esperando) que [^.]{0,30}encuentr/i.test(text)) probs.push('sin_cordialidad');
+  const bullets = text.replace(/\r/g, '').split('\n').filter((l) => /^\s*(?:[-•*–]|\d+[.)])\s+\S/.test(l)).length;
+  if (bullets !== 3) probs.push('tres_ejemplos');
   if (!String(subject || '').trim() || String(subject).length > 90) probs.push('asunto_invalido');
   const co = String((ctx && ctx.company) || '').trim();
   let t2 = text; // el nombre de la empresa (p. ej. «Empresa Demo») no cuenta como oferta de demo
   co.split(/\s+/).filter((w) => w.length >= 3).forEach((w) => { t2 = t2.split(w).join(' '); });
   let s2 = String(subject || '');
   co.split(/\s+/).filter((w) => w.length >= 3).forEach((w) => { s2 = s2.split(w).join(' '); });
-  FORBIDDEN.forEach(([re, tag]) => { const plain = tag === 'evidencia_expuesta' || tag === 'ofrece_demo_o_reunion'; if (re.test(plain ? t2 : text) || re.test(plain ? s2 : String(subject || ''))) probs.push(tag); });
-  if (!/\?/.test(text)) probs.push('sin_pregunta_final');
+  FORBIDDEN.forEach(([re, tag]) => { const plain = tag === 'evidencia_expuesta' || tag === 'promete_recurso'; if (re.test(plain ? t2 : text) || re.test(plain ? s2 : String(subject || ''))) probs.push(tag); });
+  if (!/(coordinar|conversar|conversaci[oó]n|reuni[oó]n|llamada)/i.test(text)) probs.push('sin_invitacion_final');
   const name = String((ctx && ctx.company) || '').toLowerCase().split(/\s+/)[0];
   if (name && name.length > 2 && !text.toLowerCase().includes(name) && !String(subject || '').toLowerCase().includes(name)) probs.push('no_menciona_a_la_empresa');
-  const services = (text.match(/\b(chatbot|sitio web|p[aá]gina web|ecommerce|crm|erp|app m[oó]vil|marketing|seo|dise[ñn]o)\b/gi) || []).length;
+  const services = (text.match(/\b(chatbot|sitio web|p[aá]gina web|ecommerce|app m[oó]vil|marketing|seo|dise[ñn]o)\b/gi) || []).length;
   if (services > 3) probs.push('ofrece_demasiados_servicios');
   return probs;
 }
@@ -156,14 +162,11 @@ export function buildDraft(row, adm) {
   const hBody = String(h.draft || '').trim();
   const hProbs = hBody ? lintDraft(hSubject, hBody, ctx) : ['sin_borrador_de_hermes'];
   if (!hProbs.length) return { subject: hSubject, message: hBody, source: 'hermes', lint: [] };
-  // Playbook de correos outbound v1.0: saludo «Estimado equipo de…» (no hay certeza de género/nombre confiable en esta plantilla), investigación invisible (sin citar la web ni la cita verificada),
-  // un solo problema planteado con prudencia, el agente trabaja dentro del proceso y cierre conversacional sin ofrecer demo/ejemplo/reunión. Es solo una base: contact-prep la reescribe con criterio.
-  const lines = ['Estimado equipo de ' + company + ',', ''];
-  lines.push('En operaciones como la de ' + company + ', suele haber bastante trabajo previo en reunir información, completar lo que falta y ordenar cada solicitud antes de que una persona pueda continuar.', '');
-  lines.push('Soy Christian, de Atacama Labs. Armamos agentes que pueden hacerse cargo de esa primera parte, dejar cada solicitud registrada y lista para que el equipo continúe, y derivarla a una persona cuando realmente hace falta.', '');
-  lines.push('¿Les haría sentido conversar sobre cómo automatizar esta primera etapa u otro proceso que hoy les esté quitando tiempo?', '', 'Christian Wevar · Atacama Labs · atacamalabs.cl');
-  const message = lines.join('\n');
-  const subject = 'la etapa previa a cada solicitud';
+  // Estándar V2 de correos (guía aprobada el 3-nov-2026): saludo «Estimado equipo de…», cordialidad, presentación breve, «En el sector X, por ejemplo, podemos ayudar a:» con tres viñetas
+  // «beneficio: solución» según el rubro, enfoque y cierre con invitación a una breve conversación. Es solo una base: contact-prep la reescribe con criterio y la investigación real.
+  const v2 = emailDraftV2({ company, firstName: '', hint: [h.vertical, h.commercial_angle, h.proposed_solution, a.name].filter(Boolean).join(' ') });
+  const message = v2.body;
+  const subject = v2.subject;
   return { subject, message, source: 'plantilla', lint: lintDraft(subject, message, ctx), hermes_lint: hProbs };
 }
 

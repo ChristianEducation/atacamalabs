@@ -8,6 +8,8 @@
  * conversación?». Se busca fit razonable + señal observable + hipótesis comercial defendible + canal posible. NO se exige evidencia explícita
  * de «dolor». Se distingue siempre HECHO / INFERENCIA / HIPÓTESIS.
  */
+import { emailDraftV2 } from '../outreach/email-v2-core.mjs'; // plantilla V2 de respaldo; en n8n se incrusta junto con emailKitV2 (ver n8n/build)
+
 
 /* ============================================================== NORMALIZACIÓN */
 
@@ -508,19 +510,22 @@ export function lintOutreach(subject, message, company, opts) {
   const text = String(message || '').trim();
   const words = text.split(/\s+/).filter(Boolean).length;
   if (words < 20) probs.push('muy_corto');
-  if (words > 150) probs.push('muy_largo');
+  if (words > (opts && opts.email ? 230 : 150)) probs.push('muy_largo');
   if (/vi que (est[aá]n|estás|tienen|tienes) (teniendo )?(problemas|dificultades)/i.test(text)) probs.push('afirma_un_problema_no_demostrado');
   if (/revolucion|disrupt|el mejor|garantizamos|100 ?%|sin riesgo/i.test(text)) probs.push('exageracion');
   if (/chatbot/i.test(text)) probs.push('dice_chatbot');
   if (/como (conversamos|hablamos|acordamos)|de nuevo|nuevamente/i.test(text)) probs.push('finge_relacion_previa');
-  if (!/\?/.test(text)) probs.push('sin_pregunta_final');
-  // Playbook de correos outbound v1.0 (solo correos: el WhatsApp tiene otro formato y no empieza con «Estimado»).
+  if (!(opts && opts.email) && !/\?/.test(text)) probs.push('sin_pregunta_final');
+  // Estándar V2 de correos (guía aprobada el 3-nov-2026; solo correos: el WhatsApp tiene otro formato y no empieza con «Estimado»).
   if (opts && opts.email) {
     let t2 = text; // el nombre de la empresa no cuenta como oferta de demo/propuesta
     String(company || '').split(/\s+/).filter((w) => w.length >= 3).forEach((w) => { t2 = t2.split(w).join(' '); });
-    if (!/^estimad[oa]s? /i.test(text)) probs.push('saludo_no_estimado');
+    if (!/^estimad[oa](?:\/a)?s? /i.test(text)) probs.push('saludo_no_estimado');
+    if (!/\b(espero|esperando) que [^.]{0,30}encuentr/i.test(text)) probs.push('sin_cordialidad');
+    if (text.replace(/\r/g, '').split('\n').filter((l) => /^\s*(?:[-•*–]|\d+[.)])\s+\S/.test(l)).length !== 3) probs.push('tres_ejemplos');
+    if (!/(coordinar|conversar|conversaci[oó]n|reuni[oó]n|llamada)/i.test(text)) probs.push('sin_invitacion_final');
     if (/\bvi que\b|\bveo que\b|estuve (mirando|revisando)|revisando (su|tu) (sitio|web|p[aá]gina)|\bnot[eé] que\b|me fij[eé] que|https?:|www\./i.test(t2)) probs.push('evidencia_expuesta');
-    if (/\b\d+\s*(min|minutos)\b|\breuni[oó]n\b|videollamada|\bdemo\b|\bpropuesta\b|auditor[ií]a|\b(te|les) (mando|muestro|env[ií]o|comparto|dejo|paso)\b/i.test(t2)) probs.push('ofrece_demo_o_reunion');
+    if (/\b(te|les|le) (mando|env[ií]o|enviar[eé]|preparo)\b[^.?!]{0,40}\b(propuesta|cotizaci[oó]n|demo|video|auditor[ií]a|presupuesto)|prueba gratis|gratuit[oa]|sin costo|descuento/i.test(t2)) probs.push('promete_recurso');
   }
   const n = String(company || '').toLowerCase().split(/\s+/)[0];
   if (n && n.length > 2 && !text.toLowerCase().includes(n) && !String(subject || '').toLowerCase().includes(n)) probs.push('no_menciona_a_la_empresa');
@@ -537,13 +542,10 @@ export function prepareDrafts(c) {
   const hyp = (c.commercial_hypotheses || []).find((h) => h.length >= 20) || (c.inferences || [])[0] || '';
   const hypClean = String(hyp).replace(/\s+/g, ' ').replace(/[.\s]+$/, '').slice(0, 220);
   const sol = String(c.proposed_solution || '').replace(/\s+/g, ' ').replace(/[.\s]+$/, '').slice(0, 200);
-  // Playbook de correos outbound v1.0: «Estimado equipo de…», investigación invisible, un solo problema con prudencia, el agente trabaja dentro del proceso y cierre conversacional sin demo/ejemplo/reunión.
-  const lines = ['Estimado equipo de ' + company + ',', ''];
-  lines.push('En operaciones como la de ' + company + ', suele haber bastante trabajo previo en reunir información, completar lo que falta y ordenar cada solicitud antes de que una persona pueda continuar.', '');
-  lines.push('Soy Christian, de Atacama Labs. Armamos agentes que pueden hacerse cargo de esa primera parte, dejar cada solicitud registrada y lista para que el equipo continúe, y derivarla a una persona cuando realmente hace falta.', '');
-  lines.push('¿Les haría sentido conversar sobre cómo automatizar esta primera etapa u otro proceso que hoy les esté quitando tiempo?', '', 'Christian Wevar · Atacama Labs · atacamalabs.cl');
-  const emailBody = lines.join('\n');
-  const subject = 'la etapa previa a cada solicitud';
+  // Estándar V2 de correos (guía aprobada el 3-nov-2026): «Estimado equipo de…», cordialidad, tres viñetas «beneficio: solución» según el rubro y cierre con invitación a una breve conversación.
+  const v2 = emailDraftV2({ company, firstName: '', hint: [c.industry, c.proposed_solution, hyp].filter(Boolean).join(' ') });
+  const emailBody = v2.body;
+  const subject = v2.subject;
   const wa = 'Hola' + (first ? ' ' + first : '') + ', soy Christian de Atacama Labs. ' + (factClean ? 'Vi que ' + factClean.charAt(0).toLowerCase() + factClean.slice(1).slice(0, 140) + '. ' : '') + 'Armamos agentes que ordenan ese trabajo (sin reemplazar a su equipo). ¿Te muestro una idea en 10 minutos?';
   const hermesLint = c.suggested_email ? lintOutreach(subject, c.suggested_email, company, { email: true }) : ['sin_borrador_previo'];
   const useGiven = c.suggested_email && !hermesLint.length && !/^Asunto:/i.test(c.suggested_email.trim() ? '' : '');
