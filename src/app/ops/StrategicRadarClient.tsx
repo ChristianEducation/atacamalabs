@@ -48,7 +48,7 @@ export function ConfirmTargetForm({ id, repo }: { id: string; repo: string | nul
     <details className="ops-more-box" data-testid="strategic-confirm">
       <summary>Confirmar registro</summary>
       <form className="ops-form" onSubmit={(e) => { e.preventDefault(); if (!ready) return; run({ action: "strategic_target_confirm", target_id: id, repo_full_name: f.repo.trim(), deployment_url: f.dep.trim(), health_url: f.health.trim(), ...(f.provider.trim() ? { provider: f.provider.trim() } : {}), reason: f.reason.trim() }); }}>
-        <label className="ops-strategic-field">Repositorio (dueño/nombre)<input className="ops-input" name="repo" value={f.repo} onChange={set("repo")} placeholder="ChristianEducation/LibreriaCrecer" autoComplete="off" /></label>
+        <label className="ops-strategic-field">Repositorio (dueño/nombre)<input className="ops-input" name="repo" value={f.repo} onChange={set("repo")} placeholder="dueño/nombre-del-repositorio" autoComplete="off" /></label>
         <label className="ops-strategic-field">Sitio en producción (https)<input className="ops-input" name="dep" value={f.dep} onChange={set("dep")} placeholder="https://…" inputMode="url" autoComplete="off" /></label>
         <label className="ops-strategic-field">Dirección de salud (https)<input className="ops-input" name="health" value={f.health} onChange={set("health")} placeholder="https://…/health" inputMode="url" autoComplete="off" /></label>
         <label className="ops-strategic-field">Proveedor (opcional)<input className="ops-input" name="provider" value={f.provider} onChange={set("provider")} placeholder="Vercel" autoComplete="off" /></label>
