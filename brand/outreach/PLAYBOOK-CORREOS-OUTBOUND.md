@@ -1,7 +1,11 @@
 # Atacama Labs — Playbook de Correos Outbound
 
-**Versión:** 1.0  
+**Versión:** 2.0 — 3 de noviembre de 2026 (reemplaza a la v1.0 del 13-oct-2026)
 **Objetivo:** Mantener una calidad alta y consistente en los correos outbound de Atacama Labs sin convertirlos en una plantilla rígida.
+
+> **Estándar único.** La estructura, el tono, la cordialidad, las tres viñetas y el cierre los define la **Guía V2** (`ATACAMA-LABS-ESTILO-CORREOS.md`, v2.1), aprobada por Christian el 3-nov-2026. Este Playbook es su complemento operativo (investigación, hechos vs inferencias, empresas con tecnología, partners, asuntos, seguimientos) y **no puede contradecirla**. Si algo difiere, manda la Guía V2.
+>
+> **Qué cambió respecto de la v1.0:** (1) el primer correo ya **no** busca solo una respuesta con «un solo problema»: presenta **tres aplicaciones concretas** «beneficio: solución» para el rubro; (2) el cierre **sí invita cordialmente a una breve conversación o reunión**; (3) largo orientativo **130–190 palabras**; (4) saludo «Estimado/a …:» con «Junto con saludar, espero que se encuentre muy bien.»; (5) firma corporativa nueva con foto. Se mantienen: la investigación es invisible, no afirmar problemas sin evidencia, no prometer cifras ni capacidades no validadas, el agente trabaja dentro del proceso (no es un chatbot).
 
 ---
 
@@ -9,9 +13,7 @@
 
 > **La investigación debe ser invisible. Personaliza el problema, no la evidencia de que investigaste.**
 
-La investigación del prospecto sirve para entender su operación, detectar un posible trabajo repetitivo y elegir un ángulo relevante.
-
-No debe usarse para demostrar cuánto investigamos a la empresa.
+La investigación del prospecto sirve para entender su operación, elegir las tres aplicaciones más relevantes y escribir con el vocabulario de su rubro. No debe usarse para demostrar cuánto investigamos a la empresa.
 
 El correo debe sentirse como una observación profesional y natural, no como:
 
@@ -31,19 +33,16 @@ No:
 
 ## 2. Qué debe lograr el primer correo
 
-El primer correo **no tiene que vender todo Atacama Labs**.
+El primer correo **no tiene que vender todo Atacama Labs**. Su objetivo es que el prospecto entienda **qué podemos resolver y qué beneficio obtendría**, y abrir una conversación breve.
 
-Su único objetivo es generar una conversación.
-
-Debe conseguir que el prospecto piense alguna de estas cosas:
+Debe conseguir que piense alguna de estas cosas:
 
 - “Sí, eso nos pasa.”
 - “Ese proceso efectivamente es manual.”
 - “Tenemos otro problema parecido.”
 - “Podría tener sentido hablar.”
-- “No es exactamente eso, pero sí tenemos otra tarea repetitiva.”
 
-El correo no necesita cerrar una reunión, mostrar una demo ni presentar una propuesta.
+El correo **invita** a una breve conversación o reunión, sin presionar. No promete demos, propuestas, precios ni integraciones que no estén validados.
 
 ---
 
@@ -52,16 +51,13 @@ El correo no necesita cerrar una reunión, mostrar una demo ni presentar una pro
 Los correos deben sonar:
 
 - profesionales;
-- humanos;
-- tranquilos;
-- observadores;
-- concretos;
+- humanos y cercanos;
+- directos y concretos;
 - seguros, pero no arrogantes;
+- sin presión comercial;
 - tecnológicos sin hablar innecesariamente de tecnología.
 
-Atacama Labs no vende “IA porque sí”.
-
-Atacama Labs identifica trabajo repetitivo u operativo y construye agentes que pueden asumirlo, coordinarlo o dejarlo preparado para una persona.
+Atacama Labs no vende “IA porque sí”. Identifica trabajo repetitivo u operativo y construye agentes que pueden asumirlo, coordinarlo o dejarlo preparado para una persona.
 
 ### Evitar
 
@@ -76,149 +72,66 @@ Atacama Labs identifica trabajo repetitivo u operativo y construye agentes que p
 
 ---
 
-## 4. El saludo
+## 4. El saludo y la cordialidad
 
-El correo comienza siempre de forma profesional.
+El correo comienza siempre de forma profesional, con la cordialidad de la guía.
 
 ### Si existe un nombre confiable
 
-Usar:
-
-- `Estimado Ignacio,`
-- `Estimada María José,`
-- `Estimado Roberto,`
+- `Estimado Ignacio:`
+- `Estimada María José:`
+- `Estimado/a Roberto:` (cuando no se conoce con certeza el género)
 
 ### Si no existe una persona confiable
 
-Usar:
+- `Estimado equipo de SETECMA:`
+- `Estimado equipo de Labclin:`
 
-- `Estimado equipo de SETECMA,`
-- `Estimado equipo de Labclin,`
-- `Estimado equipo de ITC,`
+### Cordialidad (obligatoria)
+
+`Junto con saludar, espero que se encuentre muy bien.` (con «equipo»: «se encuentren») o `Esperando que se encuentre bien, …`
 
 ### Evitar
 
-- `Hola,`
-- `Hola equipo,`
+- `Hola,` / `Hola equipo,`;
 - nombres deducidos con baja confianza;
-- usar “Estimado contacto” o nombres de casillas genéricas.
+- «Estimado contacto» o nombres de casillas genéricas.
 
 ---
 
-## 5. Estructura flexible
+## 5. Estructura estándar (Guía V2)
 
-No existe una estructura obligatoria palabra por palabra.
+1. Asunto específico.
+2. Saludo + cordialidad.
+3. Presentación breve de Atacama Labs (1–2 frases): agentes de inteligencia artificial, automatización, software e integración de sistemas.
+4. **«En el sector [rubro], por ejemplo, podemos ayudar a:»** + **tres viñetas** `Beneficio o dolor que se resuelve: solución concreta`.
+5. Enfoque: «Primero entendemos cómo trabaja cada empresa y después elegimos la tecnología.»
+6. Cierre cordial: invitación a una breve conversación o reunión, sin presión + «Quedo atento a sus comentarios.».
+7. «Saludos cordiales,» y firma: **las agrega el sistema**; el texto guardado termina en el punto 6.
 
-Sin embargo, un buen correo normalmente contiene cuatro movimientos.
+### Las tres viñetas
 
-### A. Contexto natural
+- Soluciones **concretas de Atacama Labs**, conectadas con **dolores del prospecto** y su **consecuencia comercial o económica** (sin cifras inventadas).
+- No enumerar tecnologías ni presentar únicamente problemas.
+- Elegir las tres más relevantes para esa empresa, su rubro y el cargo de quien recibe; una sobre atención/entrada de trabajo, otra sobre seguimiento/operación y otra sobre sistemas/integración suele ser una buena cobertura, pero no es obligatoria.
+- Ejemplo (corredora de seguros): «Evitar oportunidades de venta perdidas: atendiendo y dando seguimiento a potenciales clientes.» · «Reducir cotizaciones sin respuesta: automatizando el seguimiento comercial.» · «Disminuir tareas administrativas: conectando WhatsApp, correo y CRM.»
+- Los kits por rubro (corredoras de propiedades y de seguros, salud, hoteles, restaurantes, casinos escolares y corporativos, genérico) viven en la Guía V2 §4 y en `scripts/outreach/email-v2-core.mjs` (plantilla de respaldo del sistema).
 
-Introduce el tipo de proceso o situación de negocio.
+### El agente trabaja dentro del proceso
 
-Debe sonar como conocimiento del rubro o de la operación, no como una auditoría del sitio web.
+Mantener siempre la idea: el agente **trabaja dentro del proceso** (reúne información, completa datos, clasifica, consulta sistemas, registra, hace seguimiento o deja el caso listo para una persona). No solo conversa.
 
-Ejemplo:
+### Flexibilidad
 
-> En empresas que coordinan arriendos para faenas, una parte importante del trabajo previo a cotizar suele estar en reunir antecedentes, fechas y equipos requeridos.
-
-También puede partir directamente desde la fricción:
-
-> Cuando una solicitud técnica necesita varios antecedentes antes de llegar a ingeniería, suele haber bastante trabajo previo en pedir información, completar lo que falta y ordenar el requerimiento.
-
-No es obligatorio comenzar siempre igual.
-
----
-
-### B. Fricción concreta
-
-Elegir **un solo problema**.
-
-Ejemplos:
-
-- completar datos antes de cotizar;
-- clasificar solicitudes;
-- responder consultas repetitivas;
-- coordinar agenda;
-- reunir documentos;
-- hacer seguimiento de antecedentes faltantes;
-- separar distintos tipos de requerimiento;
-- preparar una solicitud antes de derivarla.
-
-No intentar vender tres automatizaciones en el mismo correo.
-
----
-
-### C. Qué hace Atacama Labs
-
-Explicar la solución en relación directa con esa fricción.
-
-Una formulación base posible:
-
-> Soy Christian, de Atacama Labs. Armamos agentes que pueden hacerse cargo de esa primera parte, reunir la información necesaria y dejar cada solicitud registrada y lista para que el equipo continúe, derivándola cuando realmente necesita a una persona.
-
-Esto **no debe repetirse literalmente en todos los correos**.
-
-Puede adaptarse según el proceso:
-
-- dejar una solicitud lista para cotizar;
-- preparar un caso para ingeniería;
-- dejar una consulta lista para agendar;
-- ordenar antecedentes antes de una visita;
-- clasificar un requerimiento antes de derivarlo.
-
-### Mantener siempre la idea
-
-El agente **trabaja dentro del proceso**.
-
-No solo conversa.
-
----
-
-### D. Cierre conversacional
-
-El CTA debe abrir conversación y no amarrar a Christian a entregar algo que todavía no existe.
-
-### Cierre recomendado
-
-> ¿Te haría sentido conversar sobre cómo automatizar esta primera etapa u otro proceso que hoy les esté quitando tiempo?
-
-Adaptar singular/plural:
-
-> ¿Les haría sentido conversar sobre cómo automatizar esta primera etapa u otro proceso que hoy les esté quitando tiempo?
-
-### Variaciones válidas
-
-- ¿Es un proceso que hoy les haría sentido automatizar?
-- ¿Hay alguna parte de este proceso que hoy les esté quitando más tiempo?
-- ¿Han evaluado automatizar esta primera etapa?
-- ¿Te haría sentido conversar sobre este u otro proceso que hoy siga siendo bastante manual?
-- ¿Qué parte de este proceso sigue requiriendo más coordinación del equipo?
-
-La pregunta debe depender del contexto.
-
-**No usar siempre exactamente el mismo CTA.**
+No es una plantilla palabra por palabra: se personalizan el asunto, el rubro, las viñetas y, si corresponde, el cierre. La presentación y el enfoque son estables.
 
 ---
 
 ## 6. Investigación: cómo usarla
 
-La investigación puede incluir:
+La investigación puede incluir: servicios; canales de contacto; formulario; WhatsApp; proceso comercial; ubicación; tipos de clientes; productos; operaciones; software visible; cargos; casos de uso; información pública del sitio o LinkedIn.
 
-- servicios;
-- canales de contacto;
-- formulario;
-- WhatsApp;
-- proceso comercial;
-- ubicación;
-- tipos de clientes;
-- productos;
-- operaciones;
-- software visible;
-- cargos;
-- casos de uso;
-- información pública del sitio o LinkedIn.
-
-Pero el correo debe utilizar únicamente la cantidad de contexto necesaria para formular una hipótesis razonable.
+Pero el correo debe utilizar únicamente la cantidad de contexto necesaria para elegir las viñetas y formular una hipótesis razonable.
 
 ### Correcto
 
@@ -226,9 +139,9 @@ Investigación interna:
 
 > Arriendan maquinaria para minería, reciben requerimientos por WhatsApp y correo, despachan en la Región de Antofagasta.
 
-Correo:
+Correo (viñeta):
 
-> En solicitudes de arriendo para faena, normalmente hay varios antecedentes que reunir antes de llegar a una cotización: equipo, ubicación y plazo.
+> Evitar cotizaciones que se enfrían: reuniendo equipo, ubicación y plazo antes de cotizar y haciendo seguimiento a cada solicitud.
 
 ### Incorrecto
 
@@ -254,177 +167,81 @@ Debe escribirse como posibilidad, nunca como hecho.
 
 No debe afirmarse.
 
-Ejemplo:
-
 **MAL**
 
 > Su equipo pierde mucho tiempo contestando las mismas consultas.
 
-Si no tenemos evidencia, no lo sabemos.
-
 **MEJOR**
 
-> En este tipo de operación suele aparecer bastante trabajo repetitivo en responder consultas, completar antecedentes y ordenar cada solicitud.
+> En el sector [rubro], por ejemplo, podemos ayudar a reducir las consultas repetidas…
 
 ---
 
 ## 8. Empresas que ya tienen tecnología
 
-Si el prospecto ya tiene:
-
-- plataforma propia;
-- software;
-- CRM;
-- automatizaciones;
-- IA;
-- sistema de reservas;
-- portal de clientes;
-
-no asumir que todo es manual.
-
-Buscar la capa que puede seguir existiendo alrededor del sistema.
-
-Ejemplos:
-
-- intake antes de ingresar al software;
-- coordinación entre sistemas;
-- seguimiento;
-- recopilación documental;
-- información faltante;
-- tareas entre cliente y plataforma;
-- procesos fuera del producto principal.
-
-El tono debe ser de complementariedad.
-
-Ejemplo:
-
-> Ya tienen resuelta buena parte del flujo dentro de su plataforma. Me genera curiosidad la etapa anterior, cuando todavía hay que reunir antecedentes antes de que el caso entre al sistema.
+Si el prospecto ya tiene plataforma propia, software, CRM, automatizaciones, IA, sistema de reservas o portal de clientes, no asumir que todo es manual. Buscar la capa que puede seguir existiendo alrededor del sistema: intake antes de ingresar al software, coordinación entre sistemas, seguimiento, recopilación documental, información faltante, tareas entre cliente y plataforma. El tono debe ser de complementariedad.
 
 ---
 
 ## 9. Partners o empresas similares a Atacama Labs
 
-No enviarles el mismo correo que a un cliente final.
-
-El ángulo puede ser:
-
-- integración;
-- complementariedad;
-- white-label;
-- implementación;
-- capa adicional;
-- alianza.
-
-No intentar convencer a una empresa de automatización de que “debería automatizarse”.
+No enviarles el mismo correo que a un cliente final. El ángulo puede ser integración, complementariedad, white-label, implementación, capa adicional o alianza. No intentar convencer a una empresa de automatización de que “debería automatizarse”.
 
 ---
 
 ## 10. Asuntos
 
-El asunto debe parecer un correo real, no una campaña.
-
-Preferir 3–7 palabras aproximadamente.
+El asunto debe parecer un correo real, específico del rubro, la empresa o el proceso (4–9 palabras aproximadamente).
 
 **Mayúscula inicial (decisión de Christian, 22-oct-2026):** el asunto empieza con mayúscula y el resto va en minúsculas naturales, como una frase (no Title Case). El sistema lo corrige solo al guardar un correo inicial; los seguimientos y respuestas conservan el asunto original para no romper el hilo.
 
 Ejemplos:
 
-- `Solicitudes de arriendo antes de cotizar`
-- `Consultas antes de coordinar una visita`
-- `Primer filtro de solicitudes técnicas`
-- `Coordinación de exámenes ocupacionales`
-- `La etapa previa al expediente`
-- `Datos para cotizar un flete`
+- `Una idea para mejorar los procesos de [Empresa]`
+- `Seguimiento de cotizaciones y renovaciones en [Corredora]`
+- `Atención y seguimiento de consultas en [Hotel]`
+- `Postulaciones de arriendo en [Corredora]`
+- `Coordinación de pedidos y pagos en [Casino]`
+- `Automatización de consultas y agendamiento en [Centro]`
 
-Evitar:
-
-- `Una propuesta para [Empresa]`
-- `Potencia tu empresa con IA`
-- `Automatización con Inteligencia Artificial`
-- `Tenemos una solución para ustedes`
-- emojis;
-- MAYÚSCULAS;
-- asuntos demasiado publicitarios.
+Evitar: `Potencia tu empresa con IA`, `Automatización con Inteligencia Artificial`, `Tenemos una solución para ustedes`, emojis, MAYÚSCULAS y asuntos publicitarios o con promesas.
 
 ---
 
 ## 11. Largo
 
-Objetivo orientativo:
-
-**70–120 palabras.**
-
-Puede ser más corto si la idea queda clara.
-
-No agregar contenido únicamente para alcanzar una cantidad de palabras.
-
-Cada párrafo debe cumplir una función.
+Objetivo orientativo: **130–190 palabras** (guía V2), priorizando claridad y naturalidad. Puede ser más corto si hay contacto previo. No agregar contenido únicamente para alcanzar una cantidad de palabras: cada párrafo y cada viñeta debe cumplir una función.
 
 ---
 
 ## 12. Expresiones que normalmente deben evitarse
 
-Evitar como fórmula de apertura:
+Evitar como fórmula de apertura: `Vi que...`, `Veo que...`, `Revisando su sitio...`, `Estuve mirando...`, `En su web dicen...`, `Noté que...`, `Me fijé que...`.
 
-- `Vi que...`
-- `Veo que...`
-- `Revisando su sitio...`
-- `Estuve mirando...`
-- `En su web dicen...`
-- `Noté que...`
-- `Me fijé que...`
-
-También evitar repetir:
-
-- `Imagino que...`
-- `Ahí suele aparecer el trabajo repetitivo...`
+También evitar repetir: `Imagino que...`, `Ahí suele aparecer el trabajo repetitivo...`.
 
 Estas expresiones no están prohibidas lingüísticamente, pero no deben convertirse en la estructura estándar.
 
 ---
 
-## 13. Compromisos que NO debe hacer el primer correo
+## 13. Compromisos que el primer correo NO debe hacer
 
-No ofrecer automáticamente:
+El primer correo **sí** invita a una breve conversación o reunión (es el cierre estándar). Lo que **no** debe hacer es prometer algo que Atacama Labs no tiene preparado o validado:
 
-- una demo;
-- un ejemplo;
-- una prueba;
-- un video;
-- un flujo preparado;
-- una propuesta;
-- una cotización;
-- una auditoría;
-- una reunión de 10/15/30 minutos.
+- una demo o prueba gratuita;
+- una propuesta, cotización, presupuesto o auditoría concreta;
+- precios, descuentos o plazos;
+- cifras o porcentajes de ahorro o resultados;
+- integraciones nativas o automatizaciones ya listas;
+- un video, un flujo preparado o un ejemplo que no exista.
 
-Evitar:
-
-- `¿Te mando un ejemplo?`
-- `¿Te muestro cómo funciona?`
-- `¿Quieres ver una demo?`
-- `¿Te envío una propuesta?`
-- `¿Agendamos 15 minutos?`
-
-Solo usar algo así si el recurso existe de verdad y existe una razón comercial para ofrecerlo.
+Solo usar algo así si el recurso existe de verdad y existe una razón comercial para ofrecerlo (el sistema lo permite con `allow_offer`).
 
 ---
 
 ## 14. Flexibilidad obligatoria
 
-El generador NO debe tratar este documento como una plantilla.
-
-Debe variar naturalmente:
-
-- la forma de plantear el problema;
-- la longitud de los párrafos;
-- la transición hacia Atacama Labs;
-- el CTA;
-- el asunto;
-- la estructura sintáctica.
-
-Dos correos consecutivos no deberían parecer copias donde solo cambia el nombre de la empresa.
-
-### Regla
+El generador NO debe tratar este documento como una plantilla palabra por palabra. La estructura es estable, pero debe variar naturalmente: las viñetas (según rubro, empresa y contexto), el asunto y, si corresponde, el cierre. Dos correos consecutivos no deberían parecer copias donde solo cambia el nombre de la empresa: **las viñetas son lo que los diferencia**.
 
 > **Consistencia de criterio, diversidad de redacción.**
 
@@ -432,137 +249,77 @@ Dos correos consecutivos no deberían parecer copias donde solo cambia el nombre
 
 ## 15. Checklist antes de guardar un correo
 
-Un correo solo puede quedar listo para revisión si cumple:
-
-### Saludo
-- [ ] Usa `Estimado/Estimada` + nombre cuando el nombre es confiable.
-- [ ] Usa `Estimado equipo de [Empresa]` cuando no existe contacto confiable.
+### Saludo y cordialidad
+- [ ] Usa `Estimado/a [nombre]:` con nombre confiable, o `Estimado equipo de [Empresa]:`.
+- [ ] Incluye «Junto con saludar, espero que se encuentre muy bien.» (o equivalente).
 
 ### Personalización
-- [ ] Tiene un ángulo específico para esa empresa.
+- [ ] El asunto y las viñetas son específicos para esa empresa y rubro.
 - [ ] No revela innecesariamente la investigación realizada.
-- [ ] No acumula detalles del sitio web solo para demostrar personalización.
 
-### Problema
-- [ ] Habla de un solo problema principal.
-- [ ] El problema es razonable según la evidencia.
-- [ ] No presenta una inferencia como un hecho.
+### Viñetas
+- [ ] Hay **exactamente tres**, con el formato «beneficio o dolor que se resuelve: solución concreta».
+- [ ] Conectan dolor y consecuencia comercial o económica, sin cifras ni tecnologías enumeradas.
+- [ ] No presentan una inferencia como un hecho ni atribuyen problemas sin evidencia.
 
 ### Atacama Labs
-- [ ] Explica un trabajo que un agente podría ejecutar.
-- [ ] No presenta al agente como un simple chatbot.
+- [ ] Explica un trabajo que un agente podría ejecutar y no lo presenta como un simple chatbot.
 - [ ] No promete capacidades que no están disponibles.
 
-### CTA
-- [ ] Termina con una pregunta fácil de responder.
-- [ ] Busca conversación, no una venta inmediata.
-- [ ] No promete demo, ejemplo o recurso inexistente.
+### Cierre
+- [ ] Invita cordialmente a una breve conversación o reunión, sin presión.
+- [ ] No promete demo, propuesta, precios ni recursos inexistentes.
+- [ ] No incluye despedida ni firma (las agrega el sistema).
 
 ### Calidad
-- [ ] Suena escrito por una persona.
-- [ ] No parece una plantilla.
+- [ ] Suena escrito por una persona y no parece una plantilla.
 - [ ] No utiliza lenguaje de marketing genérico.
-- [ ] Tiene aproximadamente 70–120 palabras.
-- [ ] No es demasiado parecido a los últimos correos generados.
+- [ ] Tiene aproximadamente 130–190 palabras.
+- [ ] Sus viñetas no son demasiado parecidas a las de los últimos correos.
 
 ---
 
 ## 16. Bloque de instrucciones para el generador
 
-El siguiente bloque puede utilizarse como regla del sistema para generar nuevos correos:
+### SYSTEM RULE — ATACAMA LABS OUTBOUND EMAIL (V2)
 
----
+Redacta un correo outbound profesional, cercano y breve en nombre de Christian, fundador de Atacama Labs, siguiendo la Guía V2 (`ATACAMA-LABS-ESTILO-CORREOS.md`).
 
-### SYSTEM RULE — ATACAMA LABS OUTBOUND EMAIL
-
-Redacta un correo outbound breve y profesional en nombre de Christian, fundador de Atacama Labs.
-
-Tu objetivo no es vender en el primer correo. Tu objetivo es iniciar una conversación a partir de un problema operativo plausible y relevante.
-
-Usa toda la investigación disponible para comprender el negocio, pero no demuestres explícitamente cuánto investigaste.
-
-La investigación debe ser invisible.
-
-Personaliza el problema, no la evidencia de que investigaste.
+Tu objetivo es que el prospecto entienda qué puede resolver Atacama Labs en su rubro y qué beneficio obtendría, y abrir una conversación breve. Usa toda la investigación disponible para comprender el negocio y elegir las tres aplicaciones más relevantes, pero no demuestres explícitamente cuánto investigaste: la investigación es invisible.
 
 #### Saludo
 
-Si existe un nombre de contacto confiable:
-
-`Estimado/Estimada [primer nombre],`
-
-Si no existe:
-
-`Estimado equipo de [empresa],`
-
-No comenzar con “Hola”.
+`Estimado/a [primer nombre]:` si hay un nombre confiable; si no, `Estimado equipo de [empresa]:`. Nunca «Hola». Luego: «Junto con saludar, espero que se encuentre muy bien.»
 
 #### Contenido
 
-Identifica un solo proceso repetitivo, operativo o comercial que tenga sentido según la evidencia disponible.
+1. Presenta brevemente Atacama Labs: agentes de inteligencia artificial, automatización, software e integración de sistemas que se conectan con las herramientas de la empresa. Nunca «chatbots».
+2. «En el sector [rubro], por ejemplo, podemos ayudar a:» + **exactamente tres viñetas** (cada una empieza con «- ») con el formato «Beneficio o dolor que se resuelve: solución concreta de Atacama Labs», personalizadas según empresa, rubro y contexto investigado. No enumeres tecnologías ni presentes solo problemas; no uses cifras.
+3. «Primero entendemos cómo trabaja cada empresa y después elegimos la tecnología.»
+4. Cierre cordial: invitación a una breve conversación o reunión, sin presión; luego «Quedo atento a sus comentarios.».
 
-Describe el problema de forma natural y prudente.
-
-No afirmes que el proceso es manual, lento o problemático si eso no está demostrado. Cuando corresponda, habla de lo que “suele ocurrir” en ese tipo de operación.
-
-Después explica brevemente cómo un agente de Atacama Labs podría asumir o coordinar esa parte del trabajo: reunir información, completar datos, clasificar solicitudes, consultar sistemas, registrar información, hacer seguimiento o dejar el caso preparado para una persona.
-
-El agente debe presentarse como alguien que trabaja dentro del proceso, no como un chatbot.
-
-#### CTA
-
-Termina con una pregunta conversacional y de baja presión.
-
-La pregunta debe abrir la posibilidad de conversar sobre ese proceso o sobre otro proceso que hoy les quite tiempo.
-
-No ofrecer demos, ejemplos, auditorías, propuestas, videos ni reuniones salvo que se indique explícitamente que ese recurso existe.
+No afirmes que el prospecto tiene un problema específico sin evidencia; no prometas cifras, propuestas, demos, precios ni integraciones no validadas. No escribas despedida ni firma: el sistema agrega «Saludos cordiales,» y la firma corporativa.
 
 #### Estilo
 
-- Profesional.
-- Humano.
-- Directo.
-- Sin exageraciones.
-- Sin jerga innecesaria.
-- Aproximadamente 70–120 palabras.
-- Un solo dolor por correo.
-- Frases y estructura variadas.
+- Profesional, cercano, directo, sin exageraciones ni presión.
+- 130–190 palabras.
+- Asunto específico del rubro, la empresa o el proceso.
+- No uses de forma repetitiva: “Vi que…”, “Veo que…”, “Revisando su sitio…”, “Estuve mirando…”, “Imagino que…”, “Ahí suele aparecer el trabajo repetitivo…”.
 
-No uses de forma repetitiva:
-
-“Vi que…”
-“Veo que…”
-“Revisando su sitio…”
-“Estuve mirando…”
-“Imagino que…”
-“Ahí suele aparecer el trabajo repetitivo…”
-
-No uses una plantilla fija.
-
-Mantén el criterio, pero varía la redacción.
-
-Antes de entregar el correo, comprueba:
-
-1. ¿Parece escrito específicamente para esta empresa sin parecer invasivo?
-2. ¿El problema está respaldado o planteado prudentemente?
-3. ¿Atacama Labs aparece como solución a trabajo real?
-4. ¿La pregunta final es fácil de responder?
-5. ¿Prometí algo que Christian todavía no tiene preparado?
-6. ¿Se parece demasiado a los últimos correos?
-
-Si alguna respuesta genera dudas, reescribe antes de entregar.
+Antes de entregar, comprueba el checklist de la sección 15. Si alguna respuesta genera dudas, reescribe.
 
 ---
 
 ## 17. Follow-ups outbound (revisión 22-oct-2026: secuencia de 4 correos)
 
-Los seguimientos no deben prometer demos, ejemplos, videos, propuestas, precios ni reuniones que no estén realmente preparados. Siguen siendo borradores: nunca se envían sin la aprobación de Christian.
+Los seguimientos no deben prometer demos, ejemplos, videos, propuestas, precios ni reuniones que no estén realmente preparados. Siguen siendo borradores: nunca se envían sin la aprobación de Christian. **Esta sección no cambia con la Guía V2** (los seguimientos son breves, hilan sobre el correo inicial y no repiten la presentación); el sistema les agrega «Saludos cordiales,» y la misma firma.
 
 **Secuencia (días hábiles desde el primer envío, mismo hilo con el asunto original y «Re:»):**
 
 | Correo | Día | Qué es | Largo |
 |---|---|---|---|
-| 1 | 0 | Primer correo (secciones anteriores) | 70–120 palabras |
+| 1 | 0 | Primer correo (Guía V2) | 130–190 palabras |
 | 2 (seguimiento 1) | 4 | **El dolor del rubro**: contexto concreto de cómo se rompe el proceso y qué hace el agente, sin vender más de la cuenta | 100–170 |
 | 3 (seguimiento 2) | 9 | **Valor práctico**: algo útil aunque no cambien nada (checklist, cuenta simple, patrón del rubro) y una pregunta fácil | 100–170 |
 | 4 (seguimiento 3) | 18 | **Cierre del hilo**: sin presión, puerta abierta, pide indicar con quién conviene hablar si no corresponde | 40–70 |
@@ -572,19 +329,19 @@ Reglas de los seguimientos 1 y 2:
 - Cada toque trae algo nuevo. Prohibido el «solo para saber si viste mi correo» / «retomo por si quedó abajo» como contenido único.
 - El dolor se plantea como patrón del rubro («suele ocurrir…», «en los casinos donde…»), nunca como algo observado o afirmado de esa empresa.
 - Una sola pregunta, conversacional y de baja presión. Las cuentas de ejemplo usan números ilustrativos («por ejemplo»), nunca porcentajes ni resultados prometidos.
-- El «por ejemplo» que ilustra una cuenta NO es ofrecer un ejemplo; ofrecer «te mando un ejemplo / una demo / una propuesta» sigue prohibido.
+- El «por ejemplo» que ilustra una cuenta NO es ofrecer un ejemplo; ofrecer «te mando un ejemplo / una demo / una propuesta» sigue prohibido en los seguimientos.
 - El correo 4 no vuelve a presentar la solución ni hace preguntas.
 - Las plantillas por rubro (corredoras, clínicas/salud, casinos de colegios, casinos de empresas y genérico) viven en `scripts/outreach/followup-templates.mjs` y el humano las edita antes de aprobar.
 
 ### Foco comercial de 2 semanas (23-oct a 6-nov-2026)
 
-Solo tres rubros y solo la Región de Antofagasta: corredoras de propiedades (postulaciones y su evaluación contra requisitos), clínicas/consultas dentales, veterinarias y profesionales de la salud independientes (agenda, seguimiento y confirmación para bajar el no-show) y casinos/servicios de alimentación (colegios que aún publican datos de transferencia; empresas de alimentación para minería, retail o corporativo). Meta: 15 prospectos nuevos por día hábil (5 por rubro). El primer correo abre con el patrón del rubro (opción B: «En los casinos donde las familias pagan por transferencia y mandan el comprobante, suele aparecer un trabajo repetido…»), sin «vi que» y sin precios.
+Solo tres rubros y solo la Región de Antofagasta: corredoras de propiedades (postulaciones y su evaluación contra requisitos), clínicas/consultas dentales, veterinarias y profesionales de la salud independientes (agenda, seguimiento y confirmación para bajar el no-show) y casinos/servicios de alimentación (colegios que aún publican datos de transferencia; empresas de alimentación para minería, retail o corporativo). Meta: 15 prospectos nuevos por día hábil (5 por rubro). El primer correo usa el kit de tres viñetas de ese rubro (Guía V2 §4), sin «vi que» y sin precios.
 
 ### Nota de implementación
 
-- La firma («Christian Wevar | Atacama Labs») la agrega el sistema al enviar.
+- La despedida («Saludos cordiales,») y la firma corporativa (logo, foto circular, Christian Wevar · Fundador, atacamalabs.cl, contacto@atacamalabs.cl) las agrega el sistema al enviar; las imágenes van incrustadas en el correo. La firma para Gmail manual vive en `brand/outreach/firma/Firma_Gmail_Christian.html`.
 - Los asuntos de los correos iniciales llevan mayúscula inicial; los seguimientos conservan el asunto original para no romper el hilo.
-- La plantilla anterior (seguimiento 1 «Retomo esto por si quedó abajo…» y seguimiento 2 «Cierro el hilo…») queda reemplazada por esta secuencia.
+- El linter (`scripts/outreach/coldmail-core.mjs`), las plantillas de respaldo (`scripts/outreach/email-v2-core.mjs`), los prompts de Hermes y los workflows n8n 18, 19 y 21 implementan este estándar. En los borradores automáticos de Hermes (`auto=true`) incumplir el saludo, la cordialidad o las tres viñetas **bloquea** el guardado; en los guardados manuales de Christian solo resta puntos.
 
 ---
 
@@ -594,7 +351,6 @@ El mejor correo de Atacama Labs no es el que demuestra que sabemos mucho sobre l
 
 Es el que hace que el destinatario piense:
 
-> **“Sí, ese trabajo existe acá.”**
+> **“Sí, ese trabajo existe acá, y esto es lo que podrían resolver por mí.”**
 
 Y responda.
-

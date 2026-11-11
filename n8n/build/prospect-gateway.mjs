@@ -15,6 +15,7 @@ import fs from 'node:fs';
 import * as core from '../../scripts/prospecting/gateway-core.mjs';
 import * as ops from '../../scripts/prospecting/gateway-ops.mjs';
 import * as flow from '../../scripts/prospecting/gateway-flow.mjs';
+import * as ev from '../../scripts/outreach/email-v2-core.mjs';
 
 const SUPABASE = 'https://uwquwjmiofixzugttals.supabase.co';
 const GHL = 'https://services.leadconnectorhq.com';
@@ -48,7 +49,7 @@ const ifNode = (name, expr, pos) => ({ id: uuid(), name, type: 'n8n-nodes-base.i
 const to = (n) => [{ node: n, type: 'main', index: 0 }];
 
 // Todas las funciones puras (núcleo + operaciones + orquestación) se incrustan tal cual en los nodos Code.
-const FUNCS = [...Object.values(core), ...Object.values(ops), ...Object.values(flow)].filter((f) => typeof f === 'function');
+const FUNCS = [...Object.values(core), ...Object.values(ops), ...Object.values(flow), ...Object.values(ev)].filter((f) => typeof f === 'function');
 const extra = ['decodeEntities', 'sectionKey', 'finishHtmlCard', 'toList'].map((n) => core[n]).filter(Boolean);
 export const LIB = [...new Map([...FUNCS, ...extra].map((f) => [f.name, f])).values()].map((f) => f.toString().replace(/^async /, 'async ')).join('\n\n');
 

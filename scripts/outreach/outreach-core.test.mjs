@@ -440,18 +440,43 @@ ok('lista blanca de envío: en live solo sale a los correos autorizados (el rest
   assert.equal(oc.pickDue([appr()], { ...allow, send_allowlist: [] }, WED, 0, [], cb).action, 'send');
   assert.equal(oc.pickDue([appr()], { ...allow, mode: 'test_sim' }, WED, 0, [], { 'c-1': cand({ company_name: 'Clínica TEST' }) }).action, 'send');
 });
-ok('renderEmail: firma «Christian Wevar | Atacama Labs» + atacamalabs.cl + logo, sin duplicar firma ni pie', () => {
+ok('renderEmail: «Saludos cordiales,» + firma corporativa (logo, foto, nombre, cargo, web, correo) + pie y línea de baja, sin duplicar firma ni pie', () => {
   const r = oc.renderEmail({ subject: 'S', body: BODY }, CFG);
-  assert.ok(r.text.includes('Christian Wevar | Atacama Labs\natacamalabs.cl')); assert.ok(r.text.includes('responde «baja»')); assert.ok(!r.text.includes('Atacama Labs · atacamalabs.cl'));
-  assert.equal(r.text.split('Christian Wevar').length, 2); assert.equal(r.text.split('atacamalabs.cl').length, 2);
-  assert.ok(r.html.includes('Christian Wevar | Atacama Labs') && r.html.includes('href="https://atacamalabs.cl"') && r.html.includes('src="cid:atacama-logo"') && r.html.includes('width="220"'));
-  assert.equal(r.html.split('Christian Wevar').length, 2);
+  assert.ok(r.text.includes('\n\nSaludos cordiales,\n\nChristian Wevar\nFundador · Atacama Labs\nhttps://atacamalabs.cl | contacto@atacamalabs.cl\n\n--\n'), r.text);
+  assert.ok(r.text.includes('responde «baja»')); assert.ok(!r.text.includes('Atacama Labs · atacamalabs.cl'));
+  assert.equal(r.text.split('Christian Wevar').length, 2);
+  assert.ok(r.html.includes('Saludos cordiales,') && r.html.includes('id="firma-atacama"') && r.html.includes('href="https://atacamalabs.cl"') && r.html.includes('href="mailto:contacto@atacamalabs.cl"'));
+  assert.ok(r.html.includes('src="cid:atacama-logo"') && r.html.includes('width="205"') && r.html.includes('src="cid:atacama-foto"') && r.html.includes('width="80" height="80"'), 'imágenes incrustadas por cid (no se pueden bloquear)');
+  assert.ok(r.html.includes('Fundador') && r.html.includes('Tecnología para el trabajo real') && r.html.includes('border-left:1px solid #0F5CED') && r.html.includes('#041228'));
+  assert.equal(r.html.split('Christian Wevar').length, 3, 'nombre visible + alt de la foto');
   const legal = oc.renderEmail({ subject: 'S', body: BODY }, { ...CFG, legal_footer: 'Atacama Labs SpA · RUT 76.000.000-0 · Antofagasta' });
   assert.ok(legal.text.includes('RUT 76.000.000-0') && legal.html.includes('RUT 76.000.000-0'));
-  assert.ok(!oc.renderEmail({ subject: 'S', body: BODY }, CFG, { logo: null }).html.includes('<img'));
-  assert.ok(oc.renderEmail({ subject: 'S', body: BODY }, CFG, { logo: 'data:image/png;base64,AAA' }).html.includes('src="data:image/png;base64,AAA"'));
+  assert.ok(!oc.renderEmail({ subject: 'S', body: BODY }, CFG, { logo: null, foto: null }).html.includes('<img'));
+  const sinLogo = oc.renderEmail({ subject: 'S', body: BODY }, CFG, { logo: null }).html; assert.ok(!sinLogo.includes('cid:atacama-logo') && sinLogo.includes('cid:atacama-foto'));
+  const prev = oc.renderEmail({ subject: 'S', body: BODY }, CFG, { logo: 'data:image/png;base64,AAA', foto: 'https://atacamalabs.cl/brand/email/firma-foto-christian.png' }).html;
+  assert.ok(prev.includes('src="data:image/png;base64,AAA"') && prev.includes('src="https://atacamalabs.cl/brand/email/firma-foto-christian.png"'));
+  const custom = oc.renderEmail({ subject: 'S', body: BODY }, { ...CFG, from_title: 'Director', signature_email: 'ventas@atacamalabs.cl' });
+  assert.ok(custom.html.includes('Director') && custom.html.includes('mailto:ventas@atacamalabs.cl') && custom.text.includes('Director · Atacama Labs') && custom.text.includes('ventas@atacamalabs.cl'));
   for (const f of [null, '', 'Atacama Labs · atacamalabs.cl', 'atacamalabs.cl', ' Atacama Labs | atacamalabs.cl ']) assert.ok(oc.isBrandOnlyFooter(f), String(f));
   assert.ok(!oc.isBrandOnlyFooter('Atacama Labs SpA · RUT 76.000.000-0'));
+});
+ok('renderSignatureHtml: misma firma para Gmail (URL https) y automatizaciones (cid); escapa y omite imágenes ausentes', () => {
+  const g = oc.renderSignatureHtml({ logo: 'https://atacamalabs.cl/brand/email/firma-logo.png', foto: 'https://atacamalabs.cl/brand/email/firma-foto-christian.png', name: 'Christian <Wevar>', title: 'Fundador', email: 'contacto@atacamalabs.cl' });
+  assert.ok(g.startsWith('<table id="firma-atacama"') && g.includes('https://atacamalabs.cl/brand/email/firma-logo.png') && g.includes('Christian &lt;Wevar&gt;') && !g.includes('<Wevar>'));
+  assert.equal((g.match(/<img /g) || []).length, 2);
+  assert.ok(!/data:image|base64/.test(g), 'sin data URI (Gmail los elimina)');
+  assert.equal((oc.renderSignatureHtml({ foto: null, logo: 'x.png' }).match(/<img /g) || []).length, 1);
+  assert.equal(oc.renderSignatureHtml({}).includes('<img'), false);
+  const a = oc.renderEmail({ subject: 'S', body: BODY }, CFG).html.match(/<table id="firma-atacama".*<\/table>/)[0].replace(/cid:atacama-(logo|foto)/g, 'X');
+  const b = oc.renderSignatureHtml({ logo: 'X', foto: 'X', name: 'Christian Wevar', title: 'Fundador', email: 'contacto@atacamalabs.cl' });
+  assert.equal(a, b, 'la firma del motor y la de Gmail son la misma función');
+});
+ok('renderEmail: las viñetas «- » del estándar V2 se muestran como lista en el HTML y se conservan en el texto plano', () => {
+  const body = 'Estimado equipo de X:\n\nEn el sector Y, por ejemplo, podemos ayudar a:\n\n- Evitar A: haciendo B.\n- Reducir C: haciendo D.\n- Disminuir E: haciendo F.\n\nQuedo atento a sus comentarios.';
+  const r = oc.renderEmail({ subject: 'S', body }, CFG);
+  assert.equal((r.html.match(/<li /g) || []).length, 3); assert.ok(r.html.includes('<ul ') && r.html.includes('Evitar A: haciendo B.</li>') && !r.html.includes('>- Evitar'));
+  assert.ok(r.text.includes('- Evitar A: haciendo B.\n- Reducir C: haciendo D.'));
+  assert.ok(r.html.includes('<p style="margin:0 0 14px 0;">Quedo atento a sus comentarios.</p>'));
 });
 ok('renderEmail: el HTML escapa el cuerpo y respeta párrafos y saltos', () => {
   const r = oc.renderEmail({ subject: 'S', body: 'Hola <b>x</b> & «y»\nlínea 2\n\nSegundo párrafo' }, CFG);
@@ -470,6 +495,12 @@ ok('buildMime con HTML: multipart/alternative [texto, related [html, logo PNG in
   assert.equal(decode(/Content-Type: text\/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n([A-Za-z0-9+/=\r\n]+)/).toString('utf8'), r.html);
   assert.ok(/Content-ID: <atacama-logo>/.test(raw) && /Content-Disposition: inline; filename="logo-atacama-labs.png"/.test(raw));
   assert.equal(decode(/Content-Type: image\/png; name="logo-atacama-labs.png"[^]*?\r\n\r\n([A-Za-z0-9+/=\r\n]+)/).toString('base64'), png);
+  assert.ok(!/Content-ID: <atacama-foto>/.test(raw), 'sin foto no hay parte inline de foto');
+  const foto = Buffer.from('FOTO-DATA-1234567890-FOTO-DATA-1234567890-FOTO-DATA-1234567890').toString('base64');
+  const m2 = oc.buildMime({ from: 'christian@atacamalabs.cl', from_name: 'Christian Wevar', to: 'x@y.cl', subject: r.subject, text: r.text, html: r.html, inline_png_b64: png, inline_foto_b64: foto, now: WED });
+  const raw2 = Buffer.from(m2.raw, 'base64url').toString('utf8');
+  assert.ok(/Content-ID: <atacama-logo>/.test(raw2) && /Content-ID: <atacama-foto>/.test(raw2) && /Content-Disposition: inline; filename="christian-wevar.png"/.test(raw2));
+  assert.equal(raw2.match(/Content-Type: image\/png; name="christian-wevar.png"[^]*?\r\n\r\n([A-Za-z0-9+/=\r\n]+)/)[1].replace(/\r?\n/g, ''), foto);
   assert.match(raw, /^List-Unsubscribe: <mailto:christian@atacamalabs.cl\?subject=baja>/m);
   const plain = oc.buildMime({ from: 'a@b.cl', to: 'x@y.cl', subject: 'S', text: 'hola', now: WED });
   assert.match(Buffer.from(plain.raw, 'base64url').toString('utf8'), /Content-Type: text\/plain/);
